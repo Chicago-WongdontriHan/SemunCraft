@@ -1,0 +1,84 @@
+// ── RESIZE ───────────────────────────────────────────────────────────────────
+function resizeBoard(){
+  const vw=window.innerWidth,vh=window.innerHeight;
+  const topH=document.getElementById('top-bar').offsetHeight;
+  const botH=document.getElementById('bottom-bar').offsetHeight;
+  const hOverhead=32;
+  const base=Math.max(90,Math.min(150,Math.floor(vw*.13)));
+  const panelWL=Math.floor(base*1.5),panelWR=Math.floor(base*2.0);
+  const availW=vw-panelWL-panelWR-hOverhead;
+  const availH=vh-topH-botH-20;
+  const boardPx=Math.floor(Math.min(availW,availH)/COLS)*COLS;
+  sqPx=boardPx/COLS;
+  const wrap=document.getElementById('board-wrap');
+  const thBorder=(THEMES[mapTheme]||THEMES.jungle).border;
+  wrap.style.borderColor=thBorder;
+  wrap.style.width=boardPx+'px';wrap.style.height=boardPx+'px';
+  document.getElementById('board').style.width=boardPx+'px';document.getElementById('board').style.height=boardPx+'px';
+  const ph=boardPx+6;
+  const lp=document.getElementById('left-panel'),rp=document.getElementById('right-panel');
+  lp.style.width=panelWL+'px';lp.style.height=ph+'px';
+  rp.style.width=panelWR+'px';rp.style.height=ph+'px';
+  const gs=Math.max(12,Math.floor(sqPx*.62));
+  document.documentElement.style.setProperty('--glyph-size',gs+'px');
+  const pp=Math.max(2,Math.floor(sqPx*.10));
+  document.querySelectorAll('.hp-pip').forEach(el=>{el.style.width=pp+'px';el.style.height=Math.max(2,Math.floor(sqPx*.07))+'px';});
+  document.getElementById('ghost').style.fontSize=Math.floor(sqPx*.72)+'px';
+  const pf=Math.floor(ph/20*.512);lastPf=pf;window.lastPf=pf;
+  renderPcCards();
+  lp.querySelectorAll('.panel-label').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.9))+'px');
+  lp.querySelectorAll('.pc-glyph').forEach(el=>el.style.fontSize=Math.max(11,Math.floor(pf*1.8))+'px');
+  lp.querySelectorAll('.pc-name').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.92))+'px');
+  lp.querySelectorAll('.pc-stats').forEach(el=>el.style.fontSize=Math.max(5,Math.floor(pf*.65))+'px');
+  lp.querySelectorAll('.merge-guide').forEach(el=>el.style.fontSize=Math.max(10,Math.floor(pf*1.4))+'px');
+  const btnPad=Math.max(2,Math.floor(pf*.25));
+  const btnSize=Math.floor((panelWR-btnPad*2-2)/3);const btnPx=btnSize+'px';
+  rp.querySelectorAll('.dir-btn').forEach(el=>{el.style.width=btnPx;el.style.height=btnPx;el.style.fontSize=Math.max(9,Math.floor(btnSize*.42))+'px';});
+  const dg=document.getElementById('dir-grid');if(dg){dg.style.gridTemplateColumns='repeat(3,'+btnPx+')';dg.style.gap=btnPad+'px';}
+  rp.querySelectorAll('.panel-label').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.9))+'px');
+  rp.querySelectorAll('.act-btn').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.9))+'px');
+  rp.querySelectorAll('.pvp-id-box:not(#room-id-display)').forEach(el=>el.style.fontSize=Math.max(6,Math.floor(pf*.8))+'px');
+  rp.querySelectorAll('.room-entry').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.9))+'px');
+  const rid=document.getElementById('room-id-display');if(rid)rid.style.fontSize=Math.max(7,Math.floor(pf*.9))+'px';
+  const inp=document.getElementById('pvp-input');if(inp)inp.style.fontSize=Math.max(7,Math.floor(pf*.88))+'px';
+  const hb2=document.getElementById('hint-box');if(hb2)hb2.style.fontSize=Math.max(8,Math.floor(pf*.88))+"px";
+  // ── tutorial card scaling ──
+  const tc2=document.getElementById('tut-card');
+  if(tc2){
+    const tpf=Math.max(9,Math.floor(pf*1.05));
+    tc2.style.fontSize=tpf+'px';
+    const h3el=tc2.querySelector('h3');if(h3el)h3el.style.fontSize=Math.max(11,Math.floor(pf*1.3))+'px';
+    tc2.querySelectorAll('.tut-btn').forEach(b=>b.style.fontSize=tpf+'px');
+    const cr=tc2.getBoundingClientRect();
+    if(cr.right>window.innerWidth-8)tc2.style.left=Math.max(8,window.innerWidth-cr.width-8)+'px';
+    if(cr.bottom>window.innerHeight-8)tc2.style.top=Math.max(8,window.innerHeight-cr.height-8)+'px';
+  }
+  // ── top bar scaling ──
+  const tbf=Math.max(9,Math.floor(pf*1.05));
+  const tb=document.getElementById('top-bar');
+  if(tb){
+    const h1el=tb.querySelector('h1');if(h1el)h1el.style.fontSize=Math.max(10,Math.floor(pf*1.2))+'px';
+    const lbl=document.getElementById('api-wrap')?.querySelector('label');if(lbl)lbl.style.fontSize=tbf+'px';
+    const akey=document.getElementById('api-key');if(akey){akey.style.fontSize=tbf+'px';akey.style.width=Math.max(80,Math.floor(pf*8))+'px';}
+    const stat=document.getElementById('status');if(stat)stat.style.fontSize=tbf+'px';
+    const tc=document.getElementById('turn-counter');if(tc)tc.style.fontSize=tbf+'px';
+    const bset=document.getElementById('btn-settings');if(bset)bset.style.fontSize=tbf+'px';
+  }
+}
+window.addEventListener('resize',()=>{resizeBoard();if(!over||pieces.some(p=>p))render();resizeBoard();});
+
+document.addEventListener('keydown',e=>{
+  if(over||thinking||!isMyTurn())return;
+  const dm={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]};
+  if(dm[e.key]){e.preventDefault();moveAll(...dm[e.key]);}
+  if(e.key==='Escape'){targetMode=false;targetSrc=-1;kingSelected=false;selectedPieces=new Set();syncUI();render();setStatus('Your turn');}
+});
+
+window.addEventListener('load',()=>{
+  document.body.className='theme-jungle';
+  resizeBoard();resizeBoard();
+  renderPcCards();
+  const startOnce=()=>{if(!bgmPaused)startBgm();document.removeEventListener('pointerdown',startOnce);document.removeEventListener('keydown',startOnce);};
+  document.addEventListener('pointerdown',startOnce);
+  document.addEventListener('keydown',startOnce);
+});

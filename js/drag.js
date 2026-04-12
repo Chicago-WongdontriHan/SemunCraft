@@ -123,22 +123,23 @@ document.getElementById('board').addEventListener('touchstart',e=>{
 },{passive:false});
 document.addEventListener('touchmove',e=>{
   if(mouseDownI<0)return;const{x,y}=touchXY(e);const p=pieces[mouseDownI];
+  const yOff=isMobile()?-20:0;
   if(!dragging&&p&&p.color===myColor()&&Math.hypot(x-mouseDownX,y-mouseDownY)>6){
     dragging=true;dragSrc=mouseDownI;dragDests=getDragDests(dragSrc);
     const g=document.getElementById('ghost');
     if(p.type==='siege'){g.textContent='';g.innerHTML=buildWhiteSiegeSVG(Math.floor(sqPx*.72));}
     else{g.innerHTML='';g.textContent=GLYPH[p.type+'_'+p.color];g.style.color=p.color==='w'?'#fff':'#1a0e04';}
-    // set ghost position BEFORE showing it and rendering, so it appears at the finger immediately
-    const yOff=isMobile()?-20:0;
     g.style.left=x+'px';g.style.top=(y+yOff)+'px';
     g.style.display='block';
-    render(); // render shows drag destination highlights
-  }else if(dragging){
-    const g=document.getElementById('ghost');
-    const yOff=isMobile()?-20:0;
-    g.style.left=x+'px';g.style.top=(y+yOff)+'px';
+    // defer render to next frame — calling it synchronously in touchmove can cause
+    // iOS Safari to lose the touch gesture (DOM rebuild kills the touch target)
+    requestAnimationFrame(()=>render());
   }
-  if(dragging)e.preventDefault();
+  if(dragging){
+    const g=document.getElementById('ghost');
+    g.style.left=x+'px';g.style.top=(y+yOff)+'px';
+    e.preventDefault();
+  }
 },{passive:false});
 document.addEventListener('touchend',e=>{
   document.getElementById('ghost').style.display='none';const{x,y}=touchXY(e);

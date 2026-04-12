@@ -288,6 +288,79 @@ function generateMap(){
       }
     }
   });
+
+  // ── PATHFINDING VALIDATION ──────────────────────────────────────────────────
+  // Ensure at least one cardinal path (for rook) and one diagonal path (for bishop)
+  // can reach from one king zone to the other. If not, remove blocking obstacles.
+  const wKiPos=idx(7,1), bKiPos=idx(1,7);
+
+  function hasPath(startPos,endPos,dirSet){
+    // BFS using only the given directions through non-blocked tiles
+    const visited=new Set([startPos]);
+    const queue=[startPos];
+    while(queue.length){
+      const cur=queue.shift();
+      if(cur===endPos)return true;
+      const r=ROW(cur),c=COL(cur);
+      for(const [dr,dc] of dirSet){
+        const nr=r+dr,nc=c+dc;
+        if(!inB(nr,nc))continue;
+        const ni=idx(nr,nc);
+        if(visited.has(ni))continue;
+        if(isTileBlocked(ni))continue;
+        visited.add(ni);
+        queue.push(ni);
+      }
+    }
+    return false;
+  }
+
+  function findBlockers(startPos,endPos,dirSet){
+    // BFS that also steps through blocked tiles, tracking which obstacles are in the way.
+    // Returns the set of obstacle tile indices on the shortest path.
+    const visited=new Map(); // idx -> {parent, wasBlocked}
+    visited.set(startPos,{parent:-1,wasBlocked:false});
+    const queue=[startPos];
+    while(queue.length){
+      const cur=queue.shift();
+      if(cur===endPos){
+        // trace back to find all blocked tiles on this path
+        const blockers=[];
+        let t=cur;
+        while(t!==-1){
+          const info=visited.get(t);
+          if(info.wasBlocked)blockers.push(t);
+          t=info.parent;
+        }
+        return blockers;
+      }
+      const r=ROW(cur),c=COL(cur);
+      for(const [dr,dc] of dirSet){
+        const nr=r+dr,nc=c+dc;
+        if(!inB(nr,nc))continue;
+        const ni=idx(nr,nc);
+        if(visited.has(ni))continue;
+        visited.set(ni,{parent:cur,wasBlocked:isTileBlocked(ni)});
+        queue.push(ni);
+      }
+    }
+    return [];
+  }
+
+  const cardinalDirs=[[0,1],[0,-1],[1,0],[-1,0]];
+  const diagonalDirs=[[1,1],[1,-1],[-1,1],[-1,-1]];
+
+  // Check cardinal path (rook)
+  if(!hasPath(wKiPos,bKiPos,cardinalDirs)){
+    const blockers=findBlockers(wKiPos,bKiPos,cardinalDirs);
+    blockers.forEach(ti=>{tileData[ti]='';});
+  }
+  // Check diagonal path (bishop)
+  if(!hasPath(wKiPos,bKiPos,diagonalDirs)){
+    const blockers=findBlockers(wKiPos,bKiPos,diagonalDirs);
+    blockers.forEach(ti=>{tileData[ti]='';});
+  }
+
   // desert: mark one sandstone as mummy-spawner pyramid
   if(mapTheme==='desert'){
     const sTiles=[];
@@ -301,7 +374,7 @@ function generateMap(){
       const mr=ROW(mStart),mc2=COL(mStart);
       animals.push({emoji:'\uD83E\uDDDF',hp:2,maxHp:2,name:'Mummy',aggressive:true,fractDmg:0,
         x:mc2+0.5,y:mr+0.5,prevTileR:mr,prevTileC:mc2,tx:mc2+0.5,ty:mr+0.5,
-        speed:0.0005,waitMs:1500,isMummy:true,dormant:false,spawnedFromPyramid:pt});
+        speed:0.0005,waitMs:1500,isMummy:true,spawnedFromPyramid:pt});
     }
   }
   // ocean: add one tornado as a roaming animal
@@ -317,7 +390,7 @@ function generateMap(){
     }
   }
   // place animals: one neutral type + one attacker type per theme
-  animals=[];
+  // (don't reset animals[] here — mummy/tornado already added above)
   function placeOneAnimal(atype,isAggressive){
     let col,row,att=0;
     do{col=2+Math.floor(Math.random()*(COLS-4));row=3+Math.floor(Math.random()*(ROWS-6));att++;}

@@ -12,6 +12,9 @@ function animatePieceMove(fromIdx,toIdx,pieceType,pieceColor,isBlack,cb,dur){
     +(isBlack?'width:'+sz+'px;height:'+sz+'px;':'');
   if(isBlack){
     el.innerHTML=buildBlackPieceSVG(pieceType,sz);
+  }else if(pieceType==='siege'){
+    el.style.width=sz+'px';el.style.height=sz+'px';
+    el.innerHTML=buildWhiteSiegeSVG(sz);
   }else{
     el.textContent=GLYPH[pieceType+'_'+pieceColor]||'?';
     el.style.color=pieceColor==='w'?'#fff':'#1a0e04';
@@ -51,9 +54,10 @@ function unsiegePiece(i){
   const p=pieces[i];if(!p||p.type!=='siege'||p.color!==myColor())return;
   const empties=adj8(i).filter(j=>!pieces[j]&&!isTileBlocked(j));
   const dest=empties.length?empties[0]:null;
-  const hp1=Math.min(4,Math.floor(p.hp/2)),hp2=Math.min(4,Math.max(1,p.hp-hp1));
-  pieces[i]={type:'rook',color:p.color,hp:hp1,maxHp:4};
-  if(dest)pieces[dest]={type:'rook',color:p.color,hp:hp2,maxHp:4};
+  // both rooks keep the siege tower's current HP (clamped to rook max)
+  const sharedHp=Math.max(1,Math.min(STATS.rook.maxHp,p.hp));
+  pieces[i]={type:'rook',color:p.color,hp:sharedHp,maxHp:STATS.rook.maxHp};
+  if(dest)pieces[dest]={type:'rook',color:p.color,hp:sharedHp,maxHp:STATS.rook.maxHp};
   addLog('Unsieged into '+(dest?'2 rooks':'1 rook'));SFX.merge();
   mergeFlash(i);if(dest)setTimeout(()=>spawnFlash(dest),120);
   tutCheckAction('unsiege');
@@ -94,6 +98,15 @@ function executeDrop(from,to,dests){
   if(!dests){render();return;}
   const p=pieces[from];
 
+  // block merging if the current campaign level disallows it
+  if(campaignLevel&&campaignLevel.noMerge&&dests.merge&&dests.merge.has(to)){
+    setStatus('No merge this round');
+    showFloatingMessage('No merge this round',to);
+    dests.merge=new Set();
+    render();
+    return;
+  }
+
   // ── GROUP MOVE: if 2-3 pawns/knights selected and dragged to a move dest ────
   if(dests.move.has(to) && selectedPieces.size>=2 && selectedPieces.has(from)){
     const mc=myColor();
@@ -123,6 +136,7 @@ function executeDrop(from,to,dests){
           render();
           movers.forEach(({si,di})=>{
             const mv=pieces[si];
+            if(mv.type==='pawn')mv.firstMove=false;
             animatePieceMove(si,di,mv.type,mv.color,false,()=>{
               pieces[si]=null;pieces[di]=mv;
               done++;if(done===movers.length){render();endTurn();}
@@ -134,21 +148,27 @@ function executeDrop(from,to,dests){
     }
   }
 
-  // bishop dragged onto wounded friendly knight: show heal vs merge choice
-  if(p.type==='bishop'&&dests.heal.has(to)&&dests.merge.has(to)){
+  // bishop dragged onto a friendly knight: always ask merge vs heal
+  if(p.type==='bishop'&&dests.merge.has(to)&&pieces[to]&&pieces[to].type==='knight'){
     const hasMana=(p.mana||0)>0;
-    if(hasMana){
-      const sq=sqElAt(to);
-      if(sq){
-        const existing=document.getElementById('bishop-choice');
-        if(existing)existing.remove();
-        const box=document.createElement('div');
-        box.id='bishop-choice';
-        box.style.cssText='position:fixed;z-index:900;background:#0e1f08;border:2px solid #4a8020;border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;box-shadow:0 6px 20px rgba(0,0,0,.8);font-family:Georgia,serif;font-size:12px;';
-        const rect=sq.getBoundingClientRect();
-        box.style.left=(rect.left+rect.width/2)+'px';
-        box.style.top=(rect.bottom+6)+'px';
-        box.style.transform='translateX(-50%)';
+    const canHeal=hasMana&&pieces[to].hp<pieces[to].maxHp;
+    const sq=sqElAt(to);
+    if(sq){
+      const existing=document.getElementById('bishop-choice');
+      if(existing)existing.remove();
+      const box=document.createElement('div');
+      box.id='bishop-choice';
+      box.style.cssText='position:fixed;z-index:900;background:#0e1f08;border:2px solid #4a8020;border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;box-shadow:0 6px 20px rgba(0,0,0,.8);font-family:Georgia,serif;font-size:12px;';
+      const rect=sq.getBoundingClientRect();
+      box.style.left=(rect.left+rect.width/2)+'px';
+      box.style.top=(rect.bottom+6)+'px';
+      box.style.transform='translateX(-50%)';
+      const cancelBtn=document.createElement('button');
+      cancelBtn.textContent='✕';
+      cancelBtn.style.cssText='padding:2px 8px;background:transparent;border:none;color:#4a6828;cursor:pointer;font-size:11px;align-self:flex-end;';
+      cancelBtn.onclick=()=>{box.remove();render();};
+      box.appendChild(cancelBtn);
+      if(canHeal){
         const healBtn=document.createElement('button');
         healBtn.textContent='\u2665 Heal '+pieces[to].type;
         healBtn.style.cssText='padding:5px 12px;background:#0a2008;border:1px solid #3a7820;color:#80e040;border-radius:4px;cursor:pointer;font-size:12px;';
@@ -159,42 +179,44 @@ function executeDrop(from,to,dests){
           setStatus('Bishop locked on heal target — fires at turn end.');
           SFX.select();tutCheckAction('heal');render();endTurn();
         };
-        const mergeBtn=document.createElement('button');
-        mergeBtn.textContent='\u2694 Merge \u2192 \u265B';
-        mergeBtn.style.cssText='padding:5px 12px;background:#0a1808;border:1px solid #2a5010;color:#60a030;border-radius:4px;cursor:pointer;font-size:12px;';
-        mergeBtn.onclick=()=>{
-          box.remove();
-          const nt='queen';
-          const newPiece={type:nt,color:p.color,hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};
-          pieces[from]=null;pieces[to]=newPiece;
-          addLog('Merged to '+nt+'@'+sqName(to));SFX.merge();tutCheckAction('merge');
-          movedThisTurn=-1;
-          setTimeout(()=>mergeFlash(to),50);endTurn();
-        };
-        const cancelBtn=document.createElement('button');
-        cancelBtn.textContent='✕';
-        cancelBtn.style.cssText='padding:2px 8px;background:transparent;border:none;color:#4a6828;cursor:pointer;font-size:11px;align-self:flex-end;';
-        cancelBtn.onclick=()=>{box.remove();render();};
-        box.appendChild(cancelBtn);box.appendChild(healBtn);box.appendChild(mergeBtn);
-        document.body.appendChild(box);
-        setTimeout(()=>document.addEventListener('mousedown',function h(e){if(!box.contains(e.target)){box.remove();document.removeEventListener('mousedown',h);}},true),10);
+        box.appendChild(healBtn);
       }
-      render();return;
+      const mergeBtn=document.createElement('button');
+      mergeBtn.textContent='\u2694 Merge \u2192 \u265B';
+      mergeBtn.style.cssText='padding:5px 12px;background:#0a1808;border:1px solid #2a5010;color:#60a030;border-radius:4px;cursor:pointer;font-size:12px;';
+      mergeBtn.onclick=()=>{
+        box.remove();
+        const nt='queen';
+        const newPiece={type:nt,color:p.color,hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};
+        pieces[from]=null;pieces[to]=newPiece;
+        addLog('Merged to '+nt+'@'+sqName(to));SFX.merge();tutCheckAction('merge');
+        movedThisTurn=-1;
+        setTimeout(()=>mergeFlash(to),50);endTurn();
+      };
+      box.appendChild(mergeBtn);
+      document.body.appendChild(box);
+      setTimeout(()=>document.addEventListener('mousedown',function h(e){if(!box.contains(e.target)){box.remove();document.removeEventListener('mousedown',h);}},true),10);
     }
+    render();return;
   }
-  // bishop drag onto healable ally: execute heal immediately (1 mana → +1 HP)
+  // bishop drag onto healable ally: execute heal with animation
   if(p.type==='bishop'&&dests.heal.has(to)&&!dests.merge.has(to)){
     if((p.mana||0)<=0){setStatus('Bishop has no mana!');return;}
     const t=pieces[to];
     if(t&&t.hp<t.maxHp){
-      t.hp=Math.min(t.maxHp,t.hp+1);
+      t.hp=Math.min(t.maxHp,t.hp+2);
       p.mana=Math.max(0,(p.mana||0)-1);
-      flashSq(to,'heal-flash');
+      p.lastHealTurn=whiteTurnCount;
       addLog('Bishop heals '+t.type+'@'+sqName(to)+' ('+p.mana+' mana left)');SFX.heal();
       delete whiteTargets[from];
       movedThisTurn=from;
-      tutCheckAction('heal');
-      render();endTurn();return;
+      render();
+      attackAnim(from,to,'heal',()=>{
+        flashSq(to,'heal-flash');
+        tutCheckAction('heal');
+        render();endTurn();
+      });
+      return;
     }
     return;
   }
@@ -242,7 +264,6 @@ function executeDrop(from,to,dests){
   // any piece can attack an animal at the target tile
   if(!pieces[to]){
     const aHitIdx=animals.findIndex(na=>{
-      if(na.isMummy&&na.dormant)return false;
       const ar=Math.round(na.y-0.5),ac=Math.round(na.x-0.5);
       return inB(ar,ac)&&idx(ar,ac)===to;
     });
@@ -281,6 +302,7 @@ function executeDrop(from,to,dests){
     delete whiteTargets[from];
     addLog(p.type+' moves to '+sqName(to));SFX.move();tutCheckAction('move');
     const _mv=pieces[from];
+    if(_mv.type==='pawn')_mv.firstMove=false;
     movedThisTurn=from;
     render();
     animatePieceMove(from,to,_mv.type,_mv.color,false,()=>{
@@ -295,6 +317,20 @@ function executeDrop(from,to,dests){
 function handleClick(i){
   const p=pieces[i];const mc=myColor();
   const ki=pieces.findIndex(q=>q&&q.color===mc&&q.type==='king');
+  // click-to-move: if exactly one friendly piece is selected and the clicked tile is
+  // a valid move/attack/merge destination for it, execute the action
+  if(selectedPieces.size===1&&!kingSelected&&!targetMode){
+    const srcI=[...selectedPieces][0];
+    const sp=pieces[srcI];
+    if(sp&&sp.color===mc&&srcI!==i){
+      const dests=getDragDests(srcI);
+      if(dests.move.has(i)||dests.attack.has(i)||dests.merge.has(i)||dests.heal.has(i)){
+        selectedPieces=new Set();
+        executeDrop(srcI,i,dests);
+        return;
+      }
+    }
+  }
   if(p&&p.color===mc&&p.type==='siege'){
     selectedPieces=new Set([i]);render();
     setStatus('Siege tower selected — right-click to unsiege into 2 rooks');return;
@@ -308,9 +344,9 @@ function handleClick(i){
       const rs=spawnRemaining();
       if(rs<=0){setStatus('No spawn charges left');kingSelected=false;render();return;}
       if(isTileBlocked(i)){setStatus('Cannot spawn on obstacle');kingSelected=false;render();return;}
-      pieces[i]={type:'pawn',color:mc,hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,newborn:true};
+      pieces[i]={type:'pawn',color:mc,hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,newborn:true,firstMove:true};
       spawnHistory.push(whiteTurnCount);
-      addLog('Spawned pawn ('+spawnRemaining()+' left)');spawnFlash(i);SFX.spawn();kingSelected=false;endTurn();}
+      addLog('Spawned pawn ('+spawnRemaining()+' left)');spawnFlash(i);SFX.spawn();kingSelected=false;tutCheckAction('spawn');endTurn();}
     else{kingSelected=false;render();setStatus('Your turn');}
     return;
   }
@@ -345,9 +381,9 @@ function doSpawn(){
   if(ki<0)return;
   const cands=adj8(ki).filter(i=>!pieces[i]&&!isTileBlocked(i));if(!cands.length){setStatus('No empty squares near king!');return;}
   const best=bKi>=0?cands.reduce((a,b)=>cheb(a,bKi)<cheb(b,bKi)?a:b):cands[0];
-  pieces[best]={type:'pawn',color:mc,hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,newborn:true};
+  pieces[best]={type:'pawn',color:mc,hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,newborn:true,firstMove:true};
   spawnHistory.push(whiteTurnCount);
-  addLog('Spawned pawn ('+spawnRemaining()+' left)');spawnFlash(best);SFX.spawn();endTurn();
+  addLog('Spawned pawn ('+spawnRemaining()+' left)');spawnFlash(best);SFX.spawn();tutCheckAction('spawn');endTurn();
 }
 
 function moveAll(dr,dc){
@@ -369,6 +405,7 @@ function moveAll(dr,dc){
 
 function doMergeAll(){
   if(over||thinking||!isMyTurn())return;
+  if(campaignLevel&&campaignLevel.noMerge){setStatus('No merge this round');return;}
   const mc=myColor();
   const tiers=[
     {a:'pawn',  b:'pawn',   r:'knight'},

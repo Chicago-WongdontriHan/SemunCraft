@@ -1,6 +1,10 @@
 // ── RENDER ───────────────────────────────────────────────────────────────────
 function render(){
+  clampViewport();
+  updateExploredTiles();
   const boardEl=document.getElementById('board'); boardEl.innerHTML='';
+  const vRows=viewRowsN(), vCols=viewColsN();
+  boardEl.style.gridTemplateColumns='repeat('+vCols+',1fr)';
   const mc=myColor();
   const ki=pieces.findIndex(p=>p&&p.color===mc&&p.type==='king');
   const prodTgts=kingSelected&&ki>=0?new Set(adj8(ki).filter(i=>!pieces[i]&&!isTileBlocked(i))):new Set();
@@ -13,6 +17,7 @@ function render(){
     if(selP&&selP.color===mc)selDests=getDragDests(selIdx);
   }
   // compute aura map: tileIdx -> 'type-color' class suffix
+  // auras are shown for all pieces, including enemies in the fog (so players can sense threats)
   const auraMap=new Map();
   for(let pi=0;pi<ROWS*COLS;pi++){
     const pp=pieces[pi];if(!pp)continue;
@@ -32,13 +37,51 @@ function render(){
   const pipW=Math.max(2,Math.floor(sqPx*.10))+'px';
   const pipH=Math.max(2,Math.floor(sqPx*.07))+'px';
 
-  for(let r=0;r<ROWS;r++){
-    for(let c=0;c<COLS;c++){
+  for(let r=viewRow0;r<viewRow0+vRows;r++){
+    for(let c=viewCol0;c<viewCol0+vCols;c++){
       const i=idx(r,c);
       const sq=document.createElement('div');
       const thm=THEMES[mapTheme]||THEMES.jungle;
       sq.className='sq '+((r+c)%2===0?'lt':'dk');
       sq.style.background=(r+c)%2===0?thm.lt:thm.dk;
+      sq.style.width=sqPx+'px'; sq.style.height=sqPx+'px';
+      // fog of war: three visibility states
+      const vis=tileVisibility(i);
+      if(vis==='unknown'){
+        // unexplored — opaque fog cover hides everything
+        sq.classList.add('fog','fog-unknown');
+        const cov=document.createElement('div');cov.className='fog-cover';sq.appendChild(cov);
+        if(c===viewCol0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
+        if(r===viewRow0+vRows-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
+        boardEl.appendChild(sq);
+        continue;
+      }
+      if(vis==='explored'){
+        // explored but no scout — show obstacles and terrain under light fog, hide enemy pieces
+        const ttype2=tileData[i];
+        if(ttype2){
+          const cssType2=ttype2==='sandstone-spawner'?'sandstone-spawner':ttype2;
+          sq.classList.add('tile-'+cssType2);
+          if(isTileBlocked(i))sq.classList.add('tile-blocked');
+          if(ttype2==='sandstone-spawner'){
+            const arch=document.createElement('div');arch.className='spawner-arch';sq.appendChild(arch);
+          }
+        }
+        // still show auras so players can sense enemy threats in explored fog
+        if(auraMap.has(i)){
+          const {cls,count}=auraMap.get(i);
+          sq.classList.add('aura-'+cls);
+          if(count>=4)sq.classList.add('aura-depth-4');
+          else if(count>=3)sq.classList.add('aura-depth-3');
+          else if(count>=2)sq.classList.add('aura-depth-2');
+        }
+        sq.classList.add('fog','fog-explored');
+        const cov2=document.createElement('div');cov2.className='fog-cover';sq.appendChild(cov2);
+        if(c===viewCol0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
+        if(r===viewRow0+vRows-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
+        boardEl.appendChild(sq);
+        continue;
+      }
       const ttype=tileData[i];
       if(ttype){
         const cssType=ttype==='sandstone-spawner'?'sandstone-spawner':ttype;
@@ -48,7 +91,6 @@ function render(){
           const arch=document.createElement('div');arch.className='spawner-arch';sq.appendChild(arch);
         }
       }
-      sq.style.width=sqPx+'px'; sq.style.height=sqPx+'px';
 
       if(dragging&&dragDests){
         if(i===dragSrc)sq.style.opacity='0.28';
@@ -75,10 +117,18 @@ function render(){
           else if(count>=3)sq.classList.add('aura-depth-3');
           else if(count>=2)sq.classList.add('aura-depth-2');
         }
-        // selection overlay on top
+        // selection overlay — clear solid highlight for move/attack/heal
         if(selDests){
-          if(selDests.move.has(i))sq.classList.add('show-move');
-          else if(selDests.attack.has(i))sq.classList.add('show-atk');
+          let cls='';
+          if(selDests.attack&&selDests.attack.has(i))cls='sel-atk';
+          else if(selDests.heal&&selDests.heal.has(i))cls='sel-heal';
+          else if(selDests.move&&selDests.move.has(i))cls='sel-move';
+          if(cls){
+            sq.classList.add(cls);
+            const ov=document.createElement('div');
+            ov.className='sel-overlay '+cls+'-ov';
+            sq.appendChild(ov);
+          }
         }
         if(!dragging&&i===blackLastFrom)sq.classList.add('last-from');
         if(!dragging&&i===blackLastTo)sq.classList.add('last-to');
@@ -106,27 +156,10 @@ function render(){
           svgWrap.innerHTML=buildBlackPieceSVG(p.type,sqPx);
           div.appendChild(svgWrap);
         }else if(p.type==='siege'){
-          // Siege tower: inline SVG — stacked rook battlements
           const sz=Math.floor(sqPx*.82);
           const svgWrap=document.createElement('div');
           svgWrap.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:1;';
-          svgWrap.innerHTML=`<svg viewBox="0 0 100 100" width="${sz}" height="${sz}" xmlns="http://www.w3.org/2000/svg">
-            <!-- base block -->
-            <rect x="20" y="55" width="60" height="35" rx="3" fill="#d0d0e0" stroke="#888" stroke-width="2"/>
-            <!-- battlements row 1 -->
-            <rect x="20" y="42" width="14" height="18" rx="2" fill="#c8c8d8" stroke="#888" stroke-width="1.5"/>
-            <rect x="43" y="42" width="14" height="18" rx="2" fill="#c8c8d8" stroke="#888" stroke-width="1.5"/>
-            <rect x="66" y="42" width="14" height="18" rx="2" fill="#c8c8d8" stroke="#888" stroke-width="1.5"/>
-            <!-- platform line -->
-            <rect x="18" y="50" width="64" height="6" rx="1" fill="#b0b0c8"/>
-            <!-- twin swords crossed on face -->
-            <line x1="32" y1="68" x2="68" y2="88" stroke="#c8a040" stroke-width="4" stroke-linecap="round"/>
-            <line x1="68" y1="68" x2="32" y2="88" stroke="#c8a040" stroke-width="4" stroke-linecap="round"/>
-            <circle cx="32" cy="68" r="3" fill="#e8c060"/>
-            <circle cx="68" cy="68" r="3" fill="#e8c060"/>
-            <!-- shine -->
-            <rect x="22" y="57" width="8" height="20" rx="2" fill="rgba(255,255,255,.18)"/>
-          </svg>`;
+          svgWrap.innerHTML=buildWhiteSiegeSVG(sz);
           div.appendChild(svgWrap);
         }else{
           const gl=document.createElement('span');gl.className='glyph glyph-'+p.color;
@@ -150,14 +183,20 @@ function render(){
       }
 
       // animals rendered in separate overlay by renderAnimalOverlay()
-      if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
-      if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
+      if(c===viewCol0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
+      if(r===viewRow0+vRows-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
       boardEl.appendChild(sq);
     }
   }
 }
 
-function sqElAt(i){return document.getElementById('board').children[i]||null;}
+function sqElAt(i){
+  const r=ROW(i),c=COL(i);
+  const vRows=viewRowsN(),vCols=viewColsN();
+  if(r<viewRow0||r>=viewRow0+vRows||c<viewCol0||c>=viewCol0+vCols)return null;
+  const localR=r-viewRow0, localC=c-viewCol0;
+  return document.getElementById('board').children[localR*vCols+localC]||null;
+}
 function flashSq(i,cls){const el=sqElAt(i);if(!el)return;el.classList.add(cls);setTimeout(()=>el&&el.classList.remove(cls),500);}
 function spawnFlash(i){
   const el=sqElAt(i);if(!el)return;

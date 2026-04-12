@@ -1,12 +1,14 @@
 // ── ATTACK SYSTEM ────────────────────────────────────────────────────────────
 function sqCenter(i){
   const b=document.getElementById('board').getBoundingClientRect();
-  const sw=b.width/COLS, sh=b.height/ROWS;
+  const vRows=viewRowsN(),vCols=viewColsN();
+  const sw=b.width/vCols, sh=b.height/vRows;
+  const localC=COL(i)-viewCol0, localR=ROW(i)-viewRow0;
   return{
-    x: b.left + (COL(i)+0.5)*sw,   // viewport X (for fixed-pos emoji)
-    y: b.top  + (ROW(i)+0.5)*sh,   // viewport Y
-    sx:(COL(i)+0.5)*sw,             // SVG-local X (relative to board)
-    sy:(ROW(i)+0.5)*sh              // SVG-local Y
+    x: b.left + (localC+0.5)*sw,   // viewport X (for fixed-pos emoji)
+    y: b.top  + (localR+0.5)*sh,   // viewport Y
+    sx:(localC+0.5)*sw,             // SVG-local X (relative to board)
+    sy:(localR+0.5)*sh              // SVG-local Y
   };
 }
 
@@ -114,24 +116,62 @@ function attackAnim(attacker,target,type,cb){
   }else if(type==='rook'){
     svgCannonball(a.sx,a.sy,t.sx,t.sy,cb);
   }else if(type==='heal'){
-    const svg=document.getElementById('atk-overlay');
-    const circ=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    circ.setAttribute('cx',t.sx);circ.setAttribute('cy',t.sy);circ.setAttribute('r','4');
-    circ.setAttribute('stroke','#40e060');circ.setAttribute('stroke-width','2');circ.setAttribute('fill','rgba(40,220,80,.15)');circ.setAttribute('opacity','0.9');
-    svg.appendChild(circ);
-    const cross=document.createElement('div');cross.className='atk-emoji';cross.textContent='✚';
-    cross.style.position='fixed';cross.style.pointerEvents='none';cross.style.zIndex='600';
-    cross.style.color='#40e060';cross.style.fontSize=Math.floor(sqPx*.45)+'px';
-    cross.style.left=t.x+'px';cross.style.top=t.y+'px';cross.style.transform='translate(-50%,-50%)';
-    document.body.appendChild(cross);
-    const start=performance.now();const dur=500;
+    // heal sign ✚ flies from bishop to target like a projectile
+    const em=document.createElement('div');em.className='atk-emoji';em.textContent='✚';
+    em.style.position='fixed';em.style.pointerEvents='none';em.style.zIndex='600';
+    em.style.color='#40e060';em.style.fontSize=Math.max(16,Math.floor(sqPx*.5))+'px';
+    em.style.transform='translate(-50%,-50%)';
+    em.style.textShadow='0 0 8px rgba(64,224,96,.8)';
+    document.body.appendChild(em);
+    const start=performance.now();const dur=400;
     const step=ts=>{
       const s=Math.min(1,(ts-start)/dur);
-      circ.setAttribute('r',(4+s*sqPx*.4)+'');circ.setAttribute('opacity',''+(0.9*(1-s)));
-      cross.style.opacity=s<.6?''+s/.6:''+(1-(s-.6)/.4);
-      cross.style.transform='translate(-50%,-50%) scale('+(1+s*.3)+')';
-      if(s<1)requestAnimationFrame(step); else{svg.removeChild(circ);cross.remove();cb();}
+      const ease=s<.5?2*s*s:(4-2*s)*s-1;
+      const cx=a.x+(t.x-a.x)*ease,cy=a.y+(t.y-a.y)*ease-Math.sin(s*Math.PI)*sqPx*.4;
+      em.style.left=cx+'px';em.style.top=cy+'px';
+      em.style.opacity=s<.8?'1':(1-(s-.8)/.2)+'';
+      em.style.transform='translate(-50%,-50%) scale('+(1+Math.sin(s*Math.PI)*.3)+')';
+      if(s<1)requestAnimationFrame(step);else{em.remove();flashSq(target,'heal-flash');cb();}
     };requestAnimationFrame(step);
+  }else if(type==='bishop'){
+    // green magic bolt ✦ arcing from bishop to target
+    const em=document.createElement('div');em.className='atk-emoji';em.textContent='✦';
+    em.style.position='fixed';em.style.pointerEvents='none';em.style.zIndex='600';
+    em.style.color='#60ff80';em.style.fontSize=Math.max(18,Math.floor(sqPx*.55))+'px';
+    em.style.transform='translate(-50%,-50%)';
+    em.style.textShadow='0 0 10px rgba(96,255,128,.9),0 0 20px rgba(64,200,80,.5)';
+    document.body.appendChild(em);
+    const start=performance.now();const dur=380;
+    const step=ts=>{
+      const s=Math.min(1,(ts-start)/dur);
+      const ease=s<.5?2*s*s:(4-2*s)*s-1;
+      const cx=a.x+(t.x-a.x)*ease,cy=a.y+(t.y-a.y)*ease-Math.sin(s*Math.PI)*sqPx*.5;
+      em.style.left=cx+'px';em.style.top=cy+'px';
+      em.style.opacity=s<.85?'1':(1-(s-.85)/.15)+'';
+      em.style.transform='translate(-50%,-50%) scale('+(1+Math.sin(s*Math.PI)*.4)+') rotate('+(s*360)+'deg)';
+      if(s<1)requestAnimationFrame(step);else{em.remove();cb();}
+    };requestAnimationFrame(step);
+  }else if(type==='queen'){
+    // lightning ⚡ flying from queen to target
+    const em=document.createElement('div');em.className='atk-emoji';em.textContent='⚡';
+    em.style.position='fixed';em.style.pointerEvents='none';em.style.zIndex='600';
+    em.style.color='#ffe040';em.style.fontSize=Math.max(18,Math.floor(sqPx*.55))+'px';
+    em.style.transform='translate(-50%,-50%)';
+    em.style.textShadow='0 0 10px rgba(255,224,64,.9),0 0 20px rgba(255,200,40,.5)';
+    document.body.appendChild(em);
+    const start=performance.now();const dur=300;
+    const step=ts=>{
+      const s=Math.min(1,(ts-start)/dur);
+      const ease=s<.3?s/.3:1;
+      const cx=a.x+(t.x-a.x)*ease,cy=a.y+(t.y-a.y)*ease;
+      em.style.left=cx+'px';em.style.top=cy+'px';
+      em.style.opacity=s<.8?'1':(1-(s-.8)/.2)+'';
+      em.style.transform='translate(-50%,-50%) scale('+(1.2-s*.4)+')';
+      if(s<1)requestAnimationFrame(step);else{em.remove();cb();}
+    };requestAnimationFrame(step);
+  }else if(type==='siege'){
+    // siege: cannonball same as rook
+    svgCannonball(a.sx,a.sy,t.sx,t.sy,cb);
   }else if(type==='king'){
     emojiAnim('👑',a.x,a.y,t.x,t.y,sqPx*.3,400,cb);
   }else{
@@ -149,27 +189,28 @@ function computeActions(color){
     if(p.type==='bishop'){
       const bRange=bishopRange(i);
       const tgt=targets[i];
+      // heal only when the player explicitly locks a heal target (no auto-heal)
       let healI=-1;
       if(tgt!==undefined&&pieces[tgt]&&pieces[tgt].color===color&&pieces[tgt].hp<pieces[tgt].maxHp&&bRange.includes(tgt)){
         healI=tgt;
-      }else{
-        if(tgt!==undefined&&(pieces[tgt]===null||pieces[tgt]===undefined||!bRange.includes(tgt))){
-          if(color==='w')delete whiteTargets[i];else delete blackTargets[i];
-        }
-        const cands=bRange.filter(j=>pieces[j]&&pieces[j].color===color&&pieces[j].hp<pieces[j].maxHp);
-        if(cands.length)healI=cands.reduce((a,b)=>pieces[a].hp<pieces[b].hp?a:b);
+      }else if(tgt!==undefined){
+        // stale heal target (moved out of range or gone) — clear it
+        if(color==='w')delete whiteTargets[i];else delete blackTargets[i];
       }
       if(healI>=0&&(pieces[i].mana||0)>0){actions.push({attacker:i,target:healI,action:'heal'});}
       else{
-        const adjEnemies=adj8(i).filter(j=>pieces[j]&&pieces[j].color===enemy);
-        if(adjEnemies.length){
-          adjEnemies.sort((a,b)=>{const pa=pieces[a],pb=pieces[b];if(pa.type==='king')return -1;if(pb.type==='king')return 1;return pa.hp-pb.hp;});
-          actions.push({attacker:i,target:adjEnemies[0],action:'attack'});
+        let bEnemies=bishopRange(i).filter(j=>pieces[j]&&pieces[j].color===enemy);
+        // fog of war: white cannot attack fogged enemies
+        if(color==='w'&&!mapCheat)bEnemies=bEnemies.filter(j=>isTileVisible(j));
+        if(bEnemies.length){
+          bEnemies.sort((a,b)=>{const pa=pieces[a],pb=pieces[b];if(pa.type==='king')return -1;if(pb.type==='king')return 1;return pa.hp-pb.hp;});
+          actions.push({attacker:i,target:bEnemies[0],action:'attack'});
         }
       }
     }else{
       const range=p.type==='queen'?queenRange(i):p.type==='siege'?siegeRange(i):p.type==='rook'?rookRange(i):p.type==='knight'?kJumps(i):p.type==='bishop'?bishopRange(i):adj8(i);
-      const enemies=range.filter(j=>pieces[j]&&pieces[j].color===enemy);
+      let enemies=range.filter(j=>pieces[j]&&pieces[j].color===enemy);
+      if(color==='w'&&!mapCheat)enemies=enemies.filter(j=>isTileVisible(j));
       if(!enemies.length)continue;
       const manualTgt=targets[i];
       let tgtI;
@@ -213,18 +254,18 @@ function executeActions(actions,color,cb){
       svg.appendChild(line);
     }
   });
-  const attackActions=actions.filter(a=>a.action!=='heal');
-  if(!attackActions.length){
+  const animActions=actions.filter(a=>a.action==='attack'||a.action==='heal');
+  if(!animActions.length){
     setTimeout(()=>{svg.innerHTML='';applyActions(actions,color);cb();},400);
     return;
   }
-  let pending=attackActions.length;let fired=false;
+  let pending=animActions.length;let fired=false;
   const done=()=>{
     pending--;
     if(pending<=0&&!fired){fired=true;svg.innerHTML='';applyActions(actions,color);cb();}
   };
-  attackActions.forEach(({attacker,target})=>{
-    const type=pieces[attacker]?.type||'pawn';
+  animActions.forEach(({attacker,target,action})=>{
+    const type=action==='heal'?'heal':(pieces[attacker]?.type||'pawn');
     setTimeout(()=>attackAnim(attacker,target,type,done),80);
   });
   setTimeout(()=>{if(!fired){fired=true;svg.innerHTML='';applyActions(actions,color);cb();}},1500);
@@ -241,11 +282,15 @@ function showDeath(sqIdx, color, type){
   burst.style.cssText='position:fixed;pointer-events:none;z-index:799;left:'+cx+'px;top:'+cy+'px;width:'+sqPx+'px;height:'+sqPx+'px;border-radius:50%;border:3px solid '+(color==='w'?'rgba(255,255,200,.7)':'rgba(255,100,30,.7)')+';';
   burst.style.animation='burstAnim .5s ease-out forwards';
   document.body.appendChild(burst);
-  const glyph=GLYPH[type+'_'+color]||'✕';
   const d=document.createElement('div');
   d.className='death-piece';
   d.style.cssText='position:fixed;pointer-events:none;z-index:800;left:'+cx+'px;top:'+cy+'px;font-size:'+fs+';color:'+(color==='w'?'#fff':'#1a0e04')+';text-shadow:0 0 8px '+(color==='w'?'rgba(255,255,200,.9)':'rgba(255,100,30,.9)')+';';
-  d.textContent=glyph;
+  if(type==='siege'){
+    const sz=Math.max(16,Math.floor(sqPx*.65));
+    d.innerHTML=color==='w'?buildWhiteSiegeSVG(sz):buildBlackPieceSVG('siege',sz);
+  }else{
+    d.textContent=GLYPH[type+'_'+color]||'✕';
+  }
   document.body.appendChild(d);
   setTimeout(()=>{burst.remove();d.remove();},700);
 }
@@ -257,19 +302,25 @@ function applyActions(actions,color){
     if(over)return;
     if(action==='heal'){
       const t=pieces[target];if(!t||t.color!==color)return;
-      t.hp=Math.min(t.maxHp,t.hp+1);flashSq(target,'heal-flash');
-      const bp=pieces[attacker];if(bp&&bp.type==='bishop')bp.mana=Math.max(0,(bp.mana||0)-1);
+      t.hp=Math.min(t.maxHp,t.hp+2);flashSq(target,'heal-flash');
+      const bp=pieces[attacker];if(bp&&bp.type==='bishop'){bp.mana=Math.max(0,(bp.mana||0)-1);bp.lastHealTurn=whiteTurnCount;}
       msgs.push('healed '+t.type+'@'+sqName(target)+' '+t.hp+'HP');
     }else{
       const t=pieces[target];
       if(!t){return;}
       if(t.color!==enemy)return;
-      t.hp--;flashSq(target,'hit-flash');
+      // siege tower deals 2 damage per hit; all other pieces deal 1
+      const ap=pieces[attacker];
+      const dmg=(ap&&ap.type==='siege')?2:1;
+      t.hp-=dmg;flashSq(target,'hit-flash');
+      // track hits on black pieces for reactive AI
+      if(color==='w'&&t.color==='b'&&t.hp>0)blackHitBy.push({target,attacker});
       if(t.hp<=0){
         showDeath(target,t.color,t.type);SFX.kill();
         pieces[target]=null;
         msgs.push(t.type+'@'+sqName(target)+' ✕');
-        if(t.type==='king'){over=true;}
+        if(campaignLevel){const cr=checkCampaignWin();if(cr)over=true;}
+        else if(t.type==='king'){over=true;}
       }else msgs.push(t.type+'@'+sqName(target)+' '+t.hp+'HP');
     }
   });

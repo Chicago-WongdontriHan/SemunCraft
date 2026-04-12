@@ -92,7 +92,7 @@ function updateAnimals(dt){
               const ax=na.x*sqPx,ay=na.y*sqPx;
               const board=document.getElementById('board');
               if(board){const br=board.getBoundingClientRect();emojiAnim(na.emoji,br.left+ax,br.top+ay,tc.x,tc.y,sqPx*.5,220,()=>{});}
-              if(tp.hp<=0){showDeath(tgt,tp.color,tp.type);pieces[tgt]=null;if(tp.type==='king')over=true;}
+              if(tp.hp<=0){showDeath(tgt,tp.color,tp.type);pieces[tgt]=null;if(campaignLevel){const cr=checkCampaignWin();if(cr)over=true;}else if(tp.type==='king')over=true;}
               render();
             }
           }
@@ -142,7 +142,7 @@ function buildMummySVG(sz){
 }
 
 function renderAnimalOverlay(){
-  const wrap=document.getElementById('board-wrap');
+  const wrap=document.getElementById('board-inner')||document.getElementById('board-wrap');
   if(!wrap)return;
   const fs=Math.max(12,Math.floor(sqPx*.52))+'px';
   const pipW=Math.max(3,Math.floor(sqPx*.10))+'px';
@@ -156,7 +156,14 @@ function renderAnimalOverlay(){
   }
 
   animals.forEach((na,i)=>{
-    const px=na.x*sqPx, py=na.y*sqPx;
+    // position relative to viewport (subtract viewport offset)
+    const px=(na.x-viewCol0)*sqPx, py=(na.y-viewRow0)*sqPx;
+    // hide if outside viewport or fogged (fog of war)
+    let inView=na.x>=viewCol0&&na.x<viewCol0+viewColsN()&&na.y>=viewRow0&&na.y<viewRow0+viewRowsN();
+    if(inView&&!mapCheat){
+      const ar=Math.round(na.y-0.5),ac=Math.round(na.x-0.5);
+      if(inB(ar,ac)&&!isTileVisible(idx(ar,ac)))inView=false;
+    }
     let div=animalDivs.get(i);
     if(!div){
       div=document.createElement('div');
@@ -202,6 +209,7 @@ function renderAnimalOverlay(){
       div.style.animation='';
     }
     div.style.fontSize=fs;
+    div.style.display=inView?'':'none';
     const pips=div.querySelectorAll('.animal-pip');
     pips.forEach((pip,h)=>{pip.style.background=h<na.hp?'#c0a040':'rgba(0,0,0,.25)';pip.style.width=pipW;pip.style.height=pipH;});
   });

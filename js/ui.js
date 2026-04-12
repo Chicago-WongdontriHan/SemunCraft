@@ -10,11 +10,26 @@ function syncUI(){
   if(tb){tb.classList.toggle('active-mode',targetMode);}
   const spawnBtn=document.getElementById('btn-spawn');
   if(spawnBtn){
-    const rem=spawnRemaining();
-    const turnsToNext=6-(whiteTurnCount%6)||6;
-    spawnBtn.textContent='Spawn ('+rem+') (+1 in '+turnsToNext+'t)';
-    if(!locked&&rem<=0)spawnBtn.disabled=true;
+    if(campaignLevel&&!campaignLevel.allowSpawn){
+      spawnBtn.disabled=true;
+      spawnBtn.textContent='Spawn (N/A)';
+    }else{
+      const rem=spawnRemaining();
+      const turnsToNext=6-(whiteTurnCount%6)||6;
+      spawnBtn.textContent='Spawn ('+rem+') (+1 in '+turnsToNext+'t)';
+      if(!locked&&rem<=0)spawnBtn.disabled=true;
+    }
   }
+  const mergeBtn=document.getElementById('btn-merge');
+  if(mergeBtn){
+    if(campaignLevel&&campaignLevel.noMerge){
+      mergeBtn.disabled=true;
+      mergeBtn.textContent='Merge (N/A)';
+    }else{
+      mergeBtn.textContent='⚗ Merge';
+    }
+  }
+  updateViewportControls();
 }
 
 function showMoveHint(){
@@ -116,6 +131,10 @@ function doRematch(){
 }
 
 function goIntro(){
+  hideGameOver();
+  // reset board size if coming from campaign
+  campaignLevel=null; campaignLevelId=-1;
+  COLS=9; ROWS=9;
   document.getElementById('intro').classList.remove('hidden');
   document.getElementById('diff-row').style.display='none';
   over=true; thinking=false;
@@ -126,5 +145,258 @@ function goIntro(){
   titleTileData=tileData.slice();
   titleAnimals=animals.map(a=>({...a}));
   animals=[];
+  viewN=9; viewRow0=0; viewCol0=0;
   render();
+  resizeBoard();
+}
+
+// ── FLOATING MESSAGE (temporary text near a board tile) ─────────────────────
+function showFloatingMessage(text,tileIdx,opts){
+  const el=sqElAt(tileIdx);
+  let cx,cy;
+  if(el){
+    const r=el.getBoundingClientRect();
+    cx=r.left+r.width/2;
+    cy=r.top+r.height/2;
+  }else{
+    const center=sqCenter(tileIdx);
+    cx=center.x;cy=center.y;
+  }
+  const msg=document.createElement('div');
+  msg.textContent=text;
+  msg.style.cssText='position:fixed;pointer-events:none;z-index:900;left:'+cx+'px;top:'+cy+'px;'
+    +'transform:translate(-50%,-50%);'
+    +'padding:6px 14px;background:rgba(20,10,5,.92);border:2px solid #e05020;border-radius:6px;'
+    +'color:#ffe8c0;font-family:Georgia,serif;font-size:13px;font-variant:small-caps;letter-spacing:.05em;'
+    +'box-shadow:0 4px 14px rgba(0,0,0,.75),0 0 12px rgba(255,100,40,.4);'
+    +'white-space:nowrap;'
+    +'animation:floatMsg 1.6s ease-out forwards;';
+  document.body.appendChild(msg);
+  setTimeout(()=>msg.remove(),1700);
+}
+
+// ── FOG OF WAR TOGGLE ────────────────────────────────────────────────────────
+function toggleMapCheat(){
+  mapCheat=!mapCheat;
+  const btn=document.getElementById('btn-mapcheat');
+  if(btn)btn.textContent='🗺 Map Cheat: '+(mapCheat?'ON':'OFF');
+  render(); renderMinimap();
+}
+
+// ── VIEWPORT (zoom + pan + minimap) ──────────────────────────────────────────
+function animatePanSlide(dx,dy){
+  const inner=document.getElementById('board-inner');
+  if(!inner)return;
+  inner.style.transition='none';
+  inner.style.transform='translate('+dx+'px,'+dy+'px)';
+  // force reflow
+  void inner.offsetWidth;
+  inner.style.transition='transform 220ms ease-out';
+  inner.style.transform='translate(0,0)';
+  setTimeout(()=>{inner.style.transition='';inner.style.transform='';},240);
+}
+
+function animateZoomScale(fromScale,toScale,onDone){
+  const inner=document.getElementById('board-inner');
+  if(!inner){if(onDone)onDone();return;}
+  inner.style.transition='none';
+  inner.style.transformOrigin='center center';
+  inner.style.transform='scale('+fromScale+')';
+  void inner.offsetWidth;
+  inner.style.transition='transform 260ms ease-out';
+  inner.style.transform='scale('+toScale+')';
+  setTimeout(()=>{
+    inner.style.transition='';inner.style.transform='';
+    if(onDone)onDone();
+  },280);
+}
+
+function panView(dr,dc){
+  const oldR=viewRow0, oldC=viewCol0;
+  viewRow0+=dr; viewCol0+=dc;
+  clampViewport();
+  if(viewRow0===oldR&&viewCol0===oldC)return false;
+  const actualDr=viewRow0-oldR, actualDc=viewCol0-oldC;
+  // disable each animal's own left/top transition so only the parent pan transform drives them
+  animalDivs.forEach((el)=>{if(el)el.style.transition='none';});
+  render(); resizeBoard(); updateViewportControls();
+  // smooth slide: start at old position, animate to new
+  animatePanSlide(actualDc*sqPx, actualDr*sqPx);
+  // restore animal transitions after pan animation completes
+  setTimeout(()=>{
+    animalDivs.forEach((el)=>{if(el&&el.isConnected)el.style.transition='left 80ms linear,top 80ms linear';});
+  },260);
+  return true;
+}
+
+// step viewN by 2 so odd→odd (5, 7, 9) keeps viewport center aligned and
+// scale = oldN/newN fully clips the 2 outer rows/cols (not just half-clips)
+function zoomIn(){
+  if(viewN<=5)return;
+  const step=2;
+  if(viewN-step<5)return;
+  const oldViewN=viewN;
+  const newViewN=oldViewN-step;
+  const cR=viewRow0+Math.floor(viewRowsN()/2);
+  const cC=viewCol0+Math.floor(viewColsN()/2);
+  // scale ratio matches final tile size ratio: new_sqPx/old_sqPx ≈ oldN/newN
+  const scaleUp=oldViewN/newViewN;
+  animateZoomScale(1,scaleUp,()=>{
+    viewN=newViewN;
+    viewRow0=cR-Math.floor(viewRowsN()/2);
+    viewCol0=cC-Math.floor(viewColsN()/2);
+    clampViewport();
+    resizeBoard(); render(); updateViewportControls();
+  });
+}
+
+function zoomOut(){
+  const maxN=Math.max(ROWS,COLS);
+  if(viewN>=maxN)return;
+  const step=2;
+  if(viewN+step>maxN)return;
+  const oldSqPx=sqPx, oldViewN=viewN;
+  const newViewN=oldViewN+step;
+  const cR=viewRow0+Math.floor(viewRowsN()/2);
+  const cC=viewCol0+Math.floor(viewColsN()/2);
+  viewN=newViewN;
+  viewRow0=cR-Math.floor(viewRowsN()/2);
+  viewCol0=cC-Math.floor(viewColsN()/2);
+  clampViewport();
+  resizeBoard(); render(); updateViewportControls();
+  // initial scale makes new tiles visually the same size as old (outer rows clipped)
+  const startScale=oldSqPx/sqPx;
+  animateZoomScale(startScale,1);
+}
+
+// hold-to-pan
+let panHoldTimer=null, panHoldInterval=null;
+function startPanHold(dr,dc){
+  panView(dr,dc);
+  panHoldTimer=setTimeout(()=>{
+    panHoldInterval=setInterval(()=>{if(!panView(dr,dc))stopPanHold();},150);
+  },350);
+}
+function stopPanHold(){
+  if(panHoldTimer){clearTimeout(panHoldTimer);panHoldTimer=null;}
+  if(panHoldInterval){clearInterval(panHoldInterval);panHoldInterval=null;}
+}
+
+function updateViewportControls(){
+  // update arrow button visibility based on pan availability
+  const arN=document.getElementById('pan-n'),arS=document.getElementById('pan-s'),
+        arW=document.getElementById('pan-w'),arE=document.getElementById('pan-e');
+  if(arN)arN.style.display=canPanN()?'block':'none';
+  if(arS)arS.style.display=canPanS()?'block':'none';
+  if(arW)arW.style.display=canPanW()?'block':'none';
+  if(arE)arE.style.display=canPanE()?'block':'none';
+  renderMinimap();
+  // zoom buttons
+  const zi=document.getElementById('btn-zoom-in'),zo=document.getElementById('btn-zoom-out');
+  if(zi)zi.disabled=viewN-2<5;
+  if(zo)zo.disabled=viewN+2>Math.max(ROWS,COLS);
+}
+
+// simple rgb darken helper for obstacles: returns a darker shade of #rrggbb
+function mmDarken(hex,amt){
+  const m=hex.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  if(!m)return hex;
+  const r=Math.max(0,Math.floor(parseInt(m[1],16)*amt));
+  const g=Math.max(0,Math.floor(parseInt(m[2],16)*amt));
+  const b=Math.max(0,Math.floor(parseInt(m[3],16)*amt));
+  return 'rgb('+r+','+g+','+b+')';
+}
+
+function renderMinimap(){
+  const mm=document.getElementById('minimap');
+  if(!mm)return;
+  mm.innerHTML='';
+  // fit within the panel box: compute both width- and height-constrained cell sizes
+  // and pick the smaller so aspect ratio is preserved without overflowing.
+  const rp=document.getElementById('right-panel');
+  const availW=rp?Math.max(60,rp.clientWidth-12):96;
+  const maxH=rp?Math.max(60,Math.floor(rp.clientHeight*0.28)):150;
+  const cellByW=Math.floor(availW/COLS);
+  const cellByH=Math.floor(maxH/ROWS);
+  const cell=Math.max(4,Math.min(cellByW,cellByH));
+  mm.style.width=(cell*COLS)+'px';
+  mm.style.height=(cell*ROWS)+'px';
+  mm.style.gridTemplateColumns='repeat('+COLS+','+cell+'px)';
+  // use theme colors to match the main board
+  const thm=THEMES[mapTheme]||THEMES.jungle;
+  const lt=thm.lt, dk=thm.dk;
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const i=idx(r,c);
+      const d=document.createElement('div');
+      d.className='mm-cell';
+      d.style.width=cell+'px';d.style.height=cell+'px';
+      d.style.position='relative';
+      const isLt=(r+c)%2===0;
+      // fog of war: 3 states
+      const vis=tileVisibility(i);
+      if(vis==='unknown'){
+        d.style.background='radial-gradient(circle at 30% 40%,#9a9a9a,#5a5a5a 60%,#2a2a2a)';
+        if(r>=viewRow0&&r<viewRow0+viewRowsN()&&c>=viewCol0&&c<viewCol0+viewColsN()){
+          d.style.outline='1px solid rgba(200,240,80,.9)';
+        }
+        mm.appendChild(d);
+        continue;
+      }
+      if(vis==='explored'){
+        // partial fog on minimap: show terrain underneath with a gray overlay
+        d.style.background=isLt?lt:dk;
+        if(isTileBlocked(i)){
+          const t=tileData[i];
+          const tileKey=(t==='sandstone-spawner')?'sandstone':t;
+          const info=thm.tiles&&thm.tiles[tileKey];
+          if(info&&info.icon){
+            const ic=document.createElement('div');
+            ic.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:'+Math.max(6,Math.floor(cell*0.85))+'px;line-height:1;pointer-events:none;opacity:.7;';
+            ic.textContent=info.icon;
+            d.appendChild(ic);
+          }
+        }
+        // partial fog overlay
+        const overlay=document.createElement('div');
+        overlay.style.cssText='position:absolute;inset:0;background:rgba(120,120,120,.45);pointer-events:none;';
+        d.appendChild(overlay);
+        if(r>=viewRow0&&r<viewRow0+viewRowsN()&&c>=viewCol0&&c<viewCol0+viewColsN()){
+          d.style.outline='1px solid rgba(200,240,80,.9)';
+        }
+        mm.appendChild(d);
+        continue;
+      }
+      // base: theme light/dark
+      d.style.background=isLt?lt:dk;
+      // obstacle: overlay a small icon
+      if(isTileBlocked(i)){
+        const t=tileData[i];
+        const tileKey=(t==='sandstone-spawner')?'sandstone':t;
+        const info=thm.tiles&&thm.tiles[tileKey];
+        if(info&&info.icon){
+          const ic=document.createElement('div');
+          ic.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:'+Math.max(6,Math.floor(cell*0.85))+'px;line-height:1;pointer-events:none;';
+          ic.textContent=info.icon;
+          d.appendChild(ic);
+        }else{
+          d.style.background=mmDarken(dk,0.45);
+        }
+      }
+      // viewport highlight
+      if(r>=viewRow0&&r<viewRow0+viewRowsN()&&c>=viewCol0&&c<viewCol0+viewColsN()){
+        d.style.outline='1px solid rgba(200,240,80,.9)';
+        // slightly brighten the viewport area
+        d.style.filter='brightness(1.35)';
+      }
+      // piece dot
+      const p=pieces[i];
+      if(p){
+        const dot=document.createElement('div');
+        dot.style.cssText='width:60%;height:60%;border-radius:50%;margin:20% auto;background:'+(p.color==='w'?'#fff':'#1a0e04')+';';
+        d.appendChild(dot);
+      }
+      mm.appendChild(d);
+    }
+  }
 }

@@ -4,34 +4,86 @@ let tutWaitingForAction=false;
 let tutActionType='';
 let tutFromAutoChain=false;
 let tutActionTarget=-1;
+let tutEnemySpawn=-1; // spawn tile of the tutorial enemy
+
+function tutAddEnemy(type,r,c,opts){
+  const i=idx(r,c);
+  if(!inB(r,c))return;
+  // clear any existing black pieces first (only one tutorial enemy at a time)
+  for(let j=0;j<ROWS*COLS;j++){if(pieces[j]&&pieces[j].color==='b')pieces[j]=null;}
+  const st=STATS[type];
+  pieces[i]={type,color:'b',hp:st.hp,maxHp:st.maxHp};
+  if(opts&&opts.stationary)pieces[i].stationary=true;
+  tutEnemySpawn=i;
+}
+
+// called once per turn (from aiAct in tutorial mode) to move the tutorial enemy
+function tutMoveEnemyOnce(){
+  if(!isTutorialActive())return;
+  // only move non-stationary enemies that haven't auto-attacked this turn
+  const ei=pieces.findIndex(p=>p&&p.color==='b'&&!p.stationary);
+  if(ei<0)return;
+  if(blackActed.has(ei))return; // already attacked this turn — can't also move
+  if(tutEnemySpawn<0)return;
+  const p=pieces[ei];
+  // wander within 1 tile of the original spawn location
+  const neighbors=adj8(ei).filter(j=>!pieces[j]&&!isTileBlocked(j)&&cheb(j,tutEnemySpawn)<=1);
+  if(!neighbors.length)return;
+  const dest=neighbors[Math.floor(Math.random()*neighbors.length)];
+  pieces[ei]=null;pieces[dest]=p;
+  blackLastFrom=ei; blackLastTo=dest;
+  render();
+  animatePieceMove(ei,dest,p.type,'b',true,()=>{},180);
+}
+
+function stopTutEnemyWander(){
+  tutEnemySpawn=-1;
+}
 
 const TUTORIAL_STEPS=[
-  // ── PAWN + MERGE ──────────────────────────────────────────────────────────
+  // ── KING & SPAWN (first!) ─────────────────────────────────────────────────
   {
-    title:'The Pawn \u2659',
-    desc:'Pawns move to any adjacent tile (8 directions, 1 step) and attack the same way. First move your pawn, then attack the enemy that appears.',
-    hint:'Drag the pawn one step in any direction.',
-    action:'move',
-    setup(){ tutBoard({w:{pawn:[idx(4,4)]},b:{}}); tutHighlightPiece(idx(4,4)); },
-    onMove(){
+    title:'King \u2654 & Spawning',
+    desc:'An enemy is marching from the top-right toward your king! Click the king to enter spawn mode, then click an adjacent empty square to spawn a defender.',
+    hint:'Click the king, then click an adjacent empty square.',
+    action:'spawn',
+    setup(){
+      tutBoard({w:{},b:{}});
+      tutAddEnemy('pawn',1,7);
+      render();
+      const ki=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='king');
+      tutHighlightPiece(ki);
+    },
+    onSpawn(){
+      // keep the pawn where the user spawned it (adjacent to the king)
       const pi=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='pawn');
-      if(pi>=0){
-        const adj=adj8(pi).filter(j=>!pieces[j]&&!isTileBlocked(j));
-        if(adj.length)pieces[adj[0]]={type:'pawn',color:'b',hp:1,maxHp:1};
-        render();tutHighlightPiece(pi);
-      }
-      tutContinue('attack','Now drag your pawn onto the enemy!');
+      if(pi>=0)tutHighlightPiece(pi);
+      document.getElementById('tut-title').textContent='The Pawn \u2659';
+      document.getElementById('tut-desc').textContent='You spawned a pawn! Pawns move to any adjacent tile (8 directions, 1 step) and attack the same way. The enemy is marching toward your king — move your pawn to intercept and attack it!';
+      tutContinue('move','Drag the pawn one step toward the enemy.');
+    },
+    onMove(){
+      // enemy already exists — just prompt for attack if adjacent, otherwise keep moving
+      const pi=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='pawn');
+      if(pi>=0)tutHighlightPiece(pi);
+      tutContinue('attack','Keep moving toward the enemy, then drag onto it to attack!');
     },
     onAttack(){
-      for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='b'&&pieces[i].type!=='king')pieces[i]=null;}
-      for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='w'&&pieces[i].type==='pawn')pieces[i]=null;}
-      const cR=Math.floor(ROWS/2),cC=Math.floor(COLS/2);
-      const c1=idx(cR,cC),c2=idx(cR,cC+1);
-      pieces[c1]={type:'pawn',color:'w',hp:1,maxHp:1};
-      pieces[c2]={type:'pawn',color:'w',hp:1,maxHp:1};
-      render();tutHighlightPiece(c1);
-      tutContinue('merge','\u2659+\u2659 \u2192 \u2658: Drag your pawn onto the other pawn to merge!');
-      document.getElementById('tut-title').textContent='Merge: \u2659+\u2659 \u2192 \u2658';
+      stopTutEnemyWander();
+      document.getElementById('tut-desc').textContent='Enemy defeated! Press Next to learn how to merge pieces.';
+      tutWaitForNext(()=>{
+        for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='b'&&pieces[i].type!=='king')pieces[i]=null;}
+        for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='w'&&pieces[i].type==='pawn')pieces[i]=null;}
+        const cR=Math.floor(ROWS/2),cC=Math.floor(COLS/2);
+        const c1=idx(cR,cC),c2=idx(cR,cC+1);
+        pieces[c1]={type:'pawn',color:'w',hp:1,maxHp:1};
+        pieces[c2]={type:'pawn',color:'w',hp:1,maxHp:1};
+        tutAddEnemy('pawn',1,7,{stationary:true});
+        render();tutHighlightPiece(c1);
+        document.getElementById('tut-desc').textContent='Great! Now let\'s learn how to make a stronger piece. Merge two provided pawn in adjacent tiles.';
+        tutContinue('merge','\u2659+\u2659 \u2192 \u2658: Drag your pawn onto the other pawn to merge!');
+        document.getElementById('tut-title').textContent='Merge: \u2659+\u2659 \u2192 \u2658';
+      });
     },
     onMerge(){
       tutAutoNext(1);
@@ -40,32 +92,39 @@ const TUTORIAL_STEPS=[
   // ── KNIGHT ────────────────────────────────────────────────────────────────
   {
     title:'The Knight \u2658',
-    desc:'Knights move in an L-shape: 2 squares one way, 1 square perpendicular, jumping over pieces. Move the knight, then attack the enemy that appears.',
-    hint:'Jump the knight to an L-shaped square.',
+    desc:'Knights move in an L-shape: 2 squares one way, 1 square perpendicular, jumping over pieces. Move the newly-formed knight toward the enemy at the top-right and attack it.',
+    hint:'Jump the knight toward the enemy.',
     action:'move',
-    setup(){ tutBoard({w:{knight:[idx(4,4)]},b:{}}); tutHighlightPiece(idx(4,4)); },
+    // preserve the merged-knight position and the enemy pawn from the previous step
     fromMerge:true,
+    setup(){
+      tutBoard({w:{knight:[idx(4,4)]},b:{}});
+      tutAddEnemy('pawn',1,7,{stationary:true});
+      render();
+      tutHighlightPiece(idx(4,4));
+    },
     onMove(){
       const ki=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='knight');
-      if(ki>=0){
-        const tgts=kJumps(ki).filter(j=>!pieces[j]&&!isTileBlocked(j));
-        if(tgts.length)pieces[tgts[0]]={type:'pawn',color:'b',hp:1,maxHp:1};
-        render();tutHighlightPiece(ki);
-      }
-      tutContinue('attack','Now drag the knight onto the enemy!');
+      if(ki>=0)tutHighlightPiece(ki);
+      tutContinue('attack','Keep jumping toward the enemy, then drag onto it to attack!');
     },
     onAttack(){
-      for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color!=='w'||pieces[i]&&pieces[i].type==='king'?false:pieces[i]&&pieces[i].color==='b')pieces[i]=null;}
-      for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='w'&&pieces[i].type!=='king')pieces[i]=null;}
-      pieces[idx(4,4)]={type:'knight',color:'w',hp:4,maxHp:4};
-      pieces[idx(4,3)]={type:'pawn',color:'w',hp:1,maxHp:1};
-      render();tutHighlightPiece(idx(4,3));
-      tutContinue('merge','\u2659+\u2658 \u2192 \u2657: Drag the pawn onto the knight!');
-      document.getElementById('tut-title').textContent='Merge: \u2659+\u2658 \u2192 \u2657';
+      stopTutEnemyWander();
+      document.getElementById('tut-desc').textContent='Enemy defeated! Press Next to learn the pawn+knight merge.';
+      tutWaitForNext(()=>{
+        for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='b'&&pieces[i].type!=='king')pieces[i]=null;}
+        for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='w'&&pieces[i].type!=='king')pieces[i]=null;}
+        pieces[idx(4,4)]={type:'knight',color:'w',hp:4,maxHp:4};
+        pieces[idx(4,3)]={type:'pawn',color:'w',hp:1,maxHp:1};
+        render();tutHighlightPiece(idx(4,3));
+        document.getElementById('tut-desc').textContent='Well done! Combine a pawn and a knight to form a Bishop. Drag the pawn onto the adjacent knight.';
+        tutContinue('merge','\u2659+\u2658 \u2192 \u2657: Drag the pawn onto the knight!');
+        document.getElementById('tut-title').textContent='Merge: \u2659+\u2658 \u2192 \u2657';
+      });
     },
     onMerge(){
       document.getElementById('tut-title').textContent='The Bishop \u2657';
-      document.getElementById('tut-desc').textContent='Bishops move diagonally up to 2 squares (or 1 cardinally). They attack diagonally and heal allies using mana (blue dots). Move the bishop, then attack, then heal!';
+      document.getElementById('tut-desc').textContent='Bishops move diagonally up to 2 squares. They attack diagonally and heal allies using mana (blue dots). Move the bishop, then attack, then heal!';
       document.getElementById('tut-hint').textContent='Drag the bishop diagonally 1 or 2 squares.';
       tutAutoNext(2);
     },
@@ -73,25 +132,20 @@ const TUTORIAL_STEPS=[
   // ── BISHOP ────────────────────────────────────────────────────────────────
   {
     title:'The Bishop \u2657',
-    desc:'Bishops move diagonally up to 2 squares (or 1 cardinally). They attack diagonally and heal allies using mana (blue dots). Move the bishop, then attack, then heal!',
-    hint:'Drag the bishop diagonally 1 or 2 squares.',
+    desc:'Bishops move diagonally up to 2 squares. They can only attack or heal along diagonal lines. Move the bishop to a diagonal from the enemy at the top-right and attack it!',
+    hint:'Line the bishop up diagonally with the enemy, then drag to attack.',
     action:'move',
     setup(){
       tutBoard({w:{bishop:[idx(4,4)]},b:{}});
       const bp=pieces[idx(4,4)];if(bp)bp.mana=2;
+      tutAddEnemy('pawn',1,7,{stationary:true});
+      render();
       tutHighlightPiece(idx(4,4));
     },
-    fromMerge:true,
     onMove(){
       const bi=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='bishop');
-      if(bi>=0){
-        const diag=[[-2,-2],[-2,2],[2,-2],[2,2],[-1,-1],[-1,1],[1,-1],[1,1]]
-          .map(([dr,dc])=>idx(ROW(bi)+dr,COL(bi)+dc))
-          .filter(j=>inB(ROW(j),COL(j))&&!pieces[j]&&!isTileBlocked(j));
-        if(diag.length)pieces[diag[0]]={type:'pawn',color:'b',hp:1,maxHp:1};
-        render();tutHighlightPiece(bi);
-      }
-      tutContinue('attack','Now drag the bishop diagonally onto the enemy!');
+      if(bi>=0)tutHighlightPiece(bi);
+      tutContinue('attack','Keep moving diagonally toward the enemy, then drag onto it to attack!');
     },
     onAttack(){
       const step=TUTORIAL_STEPS[tutStep];
@@ -99,19 +153,23 @@ const TUTORIAL_STEPS=[
         tutWaitingForAction=true; tutActionType='attack';
         return;
       }
-      for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='b'&&pieces[i].type!=='king')pieces[i]=null;}
-      const bi=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='bishop');
-      if(bi>=0){const bp=pieces[bi];if(bp)bp.mana=2;}
-      const wKn=idx(4,4);
-      const eKn=idx(2,3);
-      for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='w'&&pieces[i].type!=='king'&&pieces[i].type!=='bishop')pieces[i]=null;}
-      pieces[wKn]={type:'knight',color:'w',hp:2,maxHp:4};
-      pieces[eKn]={type:'knight',color:'b',hp:4,maxHp:4};
-      render();
-      if(bi>=0)tutHighlightPiece(bi);
-      document.getElementById('tut-desc').textContent='Your knight is wounded (2/4 HP)! Drag the bishop onto the wounded knight to heal it. Each heal costs 1 mana and restores 1 HP.';
-      tutContinue('heal','Drag the bishop onto the wounded white knight!');
-      document.getElementById('tut-title').textContent='Bishop Heals \u2657';
+      stopTutEnemyWander();
+      document.getElementById('tut-desc').textContent='Enemy defeated! Press Next to learn how to heal.';
+      tutWaitForNext(()=>{
+        for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='w'&&pieces[i].type!=='king')pieces[i]=null;}
+        for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='b'&&pieces[i].type!=='king')pieces[i]=null;}
+        const wKn=idx(4,4);
+        const eKn=idx(2,3);
+        const bPos=idx(6,6);
+        pieces[wKn]={type:'knight',color:'w',hp:3,maxHp:4};
+        pieces[eKn]={type:'knight',color:'b',hp:4,maxHp:4,stationary:true};
+        pieces[bPos]={type:'bishop',color:'w',hp:STATS.bishop.hp,maxHp:STATS.bishop.maxHp,mana:2};
+        render();
+        tutHighlightPiece(bPos);
+        document.getElementById('tut-desc').textContent='Your knight is wounded and the enemy knight will attack it! Drag the bishop diagonally onto the wounded knight to heal it. Each heal costs 1 mana and restores 2 HP.';
+        tutContinue('heal','Drag the bishop onto the wounded white knight!');
+        document.getElementById('tut-title').textContent='Bishop Heals \u2657';
+      });
     },
     onHeal(){
       const bi=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='bishop');
@@ -119,7 +177,7 @@ const TUTORIAL_STEPS=[
       const wKn=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='knight');
       if(wKn>=0){render();tutHighlightPiece(wKn);}
       if(manaLeft>0){
-        document.getElementById('tut-desc').textContent='The knight gained 1 HP! Bishop still has '+manaLeft+' mana — you can heal again, or attack the enemy knight with your knight.';
+        document.getElementById('tut-desc').textContent='The knight gained 2 HP! Bishop still has '+manaLeft+' mana — you can heal again, or attack the enemy knight with your knight.';
         document.getElementById('tut-hint').textContent='Heal again or attack the enemy knight!';
       }else{
         document.getElementById('tut-desc').textContent='The knight is healed by 1 HP! The bishop is now out of mana — it will recover 1 mana every 3 turns. Now attack the enemy knight with your knight to finish the fight!';
@@ -141,7 +199,7 @@ const TUTORIAL_STEPS=[
       pieces[idx(4,3)]={type:'knight',color:'w',hp:4,maxHp:4};
       render();tutHighlightPiece(idx(4,3));
       document.getElementById('tut-title').textContent='Merge: \u2658+\u2658 \u2192 \u2656';
-      document.getElementById('tut-desc').textContent='Merge two adjacent knights to form a Rook — heavy artillery with long cardinal range.';
+      document.getElementById('tut-desc').textContent='Nice work! Now combine two knights to form a Rook, a powerful piece with heavy cardinal artillery. Merge the two provided knights in adjacent tiles.';
       document.getElementById('tut-hint').textContent='\u2658+\u2658 \u2192 \u2656: Drag one knight onto the other!';
       tutWaitingForAction=true; tutActionType='merge';
       const nb=document.getElementById('tut-next');
@@ -151,23 +209,37 @@ const TUTORIAL_STEPS=[
   // ── ROOK ──────────────────────────────────────────────────────────────────
   {
     title:'The Rook \u2656',
-    desc:'Rooks move up to 2 squares cardinally and attack up to 3 squares cardinally, piercing through pieces. Move the rook, then set up a siege!',
-    hint:'Move the rook toward the enemy pawn.',
+    desc:'Rooks move up to 2 squares cardinally and attack up to 3 squares cardinally, piercing through pieces. Move toward the enemy at the top-right and attack it!',
+    hint:'Move the rook toward the enemy, then attack.',
     action:'move',
     setup(){
-      tutBoard({w:{rook:[idx(4,2)]},b:{pawn:[idx(4,6)]}});
-      tutHighlightPiece(idx(4,2));
+      tutBoard({w:{rook:[idx(4,4)]},b:{}});
+      tutAddEnemy('pawn',1,7,{stationary:true});
+      render();
+      tutHighlightPiece(idx(4,4));
     },
-    fromMerge:true,
     onMove(){
       const ri=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='rook');
-      if(ri>=0){
-        const adjr=adj8(ri).filter(j=>!pieces[j]&&!isTileBlocked(j));
-        if(adjr.length)pieces[adjr[0]]={type:'rook',color:'w',hp:4,maxHp:4};
-        render();tutHighlightPiece(ri);
-      }
-      tutContinue('merge','\u2656+\u2656 \u2192 \u2694: Drag one rook onto the other!');
-      document.getElementById('tut-title').textContent='Merge: \u2656+\u2656 \u2192 \u2694';
+      if(ri>=0)tutHighlightPiece(ri);
+      tutContinue('attack','Line the rook up cardinally with the enemy, then drag onto it to attack!');
+    },
+    onAttack(){
+      stopTutEnemyWander();
+      document.getElementById('tut-desc').textContent='Enemy defeated! Press Next to set up the rook merge.';
+      tutWaitForNext(()=>{
+        for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='b'&&pieces[i].type!=='king')pieces[i]=null;}
+        for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='w'&&pieces[i].type!=='king')pieces[i]=null;}
+        pieces[idx(4,3)]={type:'rook',color:'w',hp:4,maxHp:4};
+        pieces[idx(4,4)]={type:'rook',color:'w',hp:4,maxHp:4};
+        // stationary enemy queen at the top edge — out of both rooks' attack range (3 cardinal),
+        // but within the siege tower's 4-cardinal range once merged at (4,3)
+        pieces[idx(0,3)]={type:'queen',color:'b',hp:STATS.queen.hp,maxHp:STATS.queen.maxHp,stationary:true};
+        tutEnemySpawn=idx(0,3);
+        render();tutHighlightPiece(idx(4,4));
+        document.getElementById('tut-desc').textContent='Excellent! A distant enemy queen looms at the top edge — too far for rooks to reach. Merge the two rooks into a Siege Tower to unlock 4-tile cardinal attack range. Drag the highlighted rook onto the other rook.';
+        tutContinue('merge','\u2656+\u2656 \u2192 🏰: Drag the right rook onto the left rook to form a siege tower at the left position.');
+        document.getElementById('tut-title').textContent='Merge: \u2656+\u2656 \u2192 🏰';
+      });
     },
     onMerge(){
       tutAutoNext(4);
@@ -175,38 +247,45 @@ const TUTORIAL_STEPS=[
   },
   // ── SIEGE ─────────────────────────────────────────────────────────────────
   {
-    title:'Siege Tower \u2694',
-    desc:'The Siege Tower cannot move, but attacks 4 squares cardinally with 3 damage — devastating. Right-click to unsiege it back into two rooks.',
-    hint:'Right-click the siege tower to unsiege.',
+    title:'Siege Tower 🏰',
+    desc:'The Siege Tower cannot move, but attacks 4 tiles cardinally — now within range of the enemy queen. Wait for the siege tower to fire at the queen, then right-click the siege tower to unsiege it back into two rooks.',
+    hint:'Let the siege tower attack the queen, then right-click to unsiege.',
     action:'unsiege',
     setup(){},
     fromMerge:true,
     onUnsiege(){
-      tutAutoNext(5);
+      // wait for the user to press Next instead of auto-advancing
+      document.getElementById('tut-desc').textContent='Nicely done! The siege tower split back into two rooks. Press Next to continue.';
+      tutTaskDone();
     },
   },
   // ── QUEEN (♘+♗→♛) ─────────────────────────────────────────────────────────
   {
     title:'Merge: \u2658+\u2657 \u2192 \u265B',
-    desc:'A Knight and Bishop merge into the Queen — the most versatile piece, attacking in all directions up to 2 squares (except L-shapes). Drag the knight onto the bishop.',
+    desc:'The final merge! Combine a knight and a bishop to form the Queen, then attack the enemy at the top-right with your new queen.',
     hint:'Drag the knight onto the bishop.',
     action:'merge',
     setup(){
       tutBoard({w:{knight:[idx(4,3)],bishop:[idx(4,4)]},b:{}});
       const bp=pieces[idx(4,4)];if(bp)bp.mana=1;
+      tutAddEnemy('pawn',1,7);
+      render();
       tutHighlightPiece(idx(4,3));
     },
-  },
-  // ── KING & SPAWN ──────────────────────────────────────────────────────────
-  {
-    title:'King \u2654 & Spawning',
-    desc:'Your King spawns new pawns from adjacent squares. Click the king to enter spawn mode, then click an adjacent empty square.',
-    hint:'Click the king, then click an adjacent empty square.',
-    action:'spawn',
-    setup(){
-      tutBoard({w:{},b:{}});
-      const ki=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='king');
-      tutHighlightPiece(ki);
+    onMerge(){
+      const qi=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='queen');
+      if(qi>=0)tutHighlightPiece(qi);
+      document.getElementById('tut-desc').textContent='You summoned the Queen! Now move her toward the enemy at the top-right and attack it.';
+      tutContinue('move','Move the queen toward the enemy.');
+    },
+    onMove(){
+      const qi=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='queen');
+      if(qi>=0)tutHighlightPiece(qi);
+      tutContinue('attack','Keep advancing, then drag the queen onto the enemy to attack!');
+    },
+    onAttack(){
+      stopTutEnemyWander();
+      tutTaskDone();
     },
   },
   // ── DONE ──────────────────────────────────────────────────────────────────
@@ -264,6 +343,7 @@ function tutApplyStep(){
   over=false; thinking=false; turn='w';
   spawnHistory=[]; whiteTurnCount=0; movedThisTurn=-1;
   whiteTargets={}; blackTargets={};
+  stopTutEnemyWander();
   if(!tutFromAutoChain)step.setup();
   else{
     if(!pieces.find(p=>p&&p.color==='w'&&p.type==='king'))pieces[idx(7,1)]={type:'king',color:'w',hp:5,maxHp:5};
@@ -303,10 +383,31 @@ function tutTaskDone(){
   };
 }
 
+// wait for the player to press Next, then run the callback (instead of auto-advancing)
+function tutWaitForNext(cb){
+  tutWaitingForAction=false;
+  const nextBtn=document.getElementById('tut-next');
+  if(!nextBtn){cb();return;}
+  nextBtn.textContent='\u2713 Next \u2192';
+  nextBtn.style.background='#1a4010';
+  nextBtn.style.borderColor='#70c030';
+  nextBtn.style.color='#c8f040';
+  nextBtn.onclick=()=>{
+    nextBtn.style.background='';nextBtn.style.borderColor='';nextBtn.style.color='';
+    nextBtn.textContent='Skip Step \u2192';
+    nextBtn.onclick=tutNext;
+    cb();
+  };
+}
+
 function startTutorial(){
   document.getElementById('intro').classList.add('hidden');
   document.getElementById('tutorial-overlay').classList.add('show');
   mapTheme='jungle'; document.body.className='theme-jungle';
+  // tutorial always runs with full map visibility
+  mapCheat=true;
+  const mcBtn=document.getElementById('btn-mapcheat');
+  if(mcBtn)mcBtn.textContent='🗺 Map Cheat: ON';
   generateMap();
   animals=[];
   animalDivs.forEach(el=>el.remove());animalDivs.clear();
@@ -324,6 +425,8 @@ function tutRedo(){
 
 function tutNext(){
   tutStep=Math.min(tutStep+1,TUTORIAL_STEPS.length-1);
+  // user-triggered advance always fully sets up the new step
+  tutFromAutoChain=false;
   tutApplyStep();
 }
 
@@ -335,6 +438,7 @@ function tutSkip(){
 function tutEnd(){
   document.getElementById('tutorial-overlay').classList.remove('show');
   tutWaitingForAction=false;
+  stopTutEnemyWander();
   over=true;
 }
 
@@ -352,9 +456,13 @@ function tutAutoNext(nextIdx){
   tutStep=nextIdx;
   over=false;thinking=false;turn='w';
   spawnHistory=[];whiteTurnCount=0;movedThisTurn=-1;whiteTargets={};blackTargets={};
+  stopTutEnemyWander();
   if(nextStep.fromMerge){
     tutFromAutoChain=true;
     if(!pieces.find(p=>p&&p.color==='w'&&p.type==='king'))pieces[idx(7,1)]={type:'king',color:'w',hp:5,maxHp:5};
+    // if an enemy was preserved from the previous step, restore its spawn reference
+    const existingEnemy=pieces.findIndex(p=>p&&p.color==='b'&&!p.stationary);
+    if(existingEnemy>=0)tutEnemySpawn=existingEnemy;
   }else{
     tutFromAutoChain=false;
     nextStep.setup();

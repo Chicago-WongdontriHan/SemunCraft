@@ -24,11 +24,11 @@ The goal: **destroy the enemy King** while building up your army through a merge
 |-------|-------|----|----------|--------|
 | **Pawn** | ♙/♟ | 1 | 1 step, any of 8 directions | Adjacent (8 dirs) |
 | **Knight** | ♘/♞ | 4 | L-shape jump (2+1), jumps over pieces | L-shape range |
-| **Bishop** | ♗/♝ | 2 | Diagonal up to 2 squares, cardinal 1 | Diagonal up to 2 (sliding); also heals allies with mana |
+| **Bishop** | ♗/♝ | 2 | Diagonal up to 2 squares | Diagonal up to 2 (sliding); also heals allies with mana |
 | **Rook** | ♖/♜ | 4 | Cardinal up to 2 squares (sliding) | Cardinal up to 3 squares, **piercing** (goes through pieces) |
 | **Queen** | ♛ | 5 | All 8 directions up to 2 squares (sliding) | All directions up to 2 squares (excluding L-shapes) |
 | **King** | ♔/♚ | 5 | Adjacent 1 step | Adjacent; also **spawns new pawns** |
-| **Siege Tower** | ⚔ | 8 | **Cannot move** | Cardinal up to 4 squares, 2 damage, piercing. Right-click to un-siege back into two rooks. |
+| **Siege Tower** | 🏰 | 4 | **Cannot move** | Cardinal up to 4 squares, 2 damage, piercing. Right-click to un-siege back into two rooks (same HP). |
 
 ---
 
@@ -41,7 +41,7 @@ The core progression mechanic. Drag one piece onto an adjacent ally to merge the
 ♙ + ♘  -->  ♗  (Pawn + Knight = Bishop)
 ♘ + ♘  -->  ♖  (Knight + Knight = Rook)
 ♘ + ♗  -->  ♛  (Knight + Bishop = Queen)
-♖ + ♖  -->  ⚔  (Rook + Rook = Siege Tower)
+♖ + ♖  -->  🏰  (Rook + Rook = Siege Tower)
 ```
 
 Merged pieces spawn at full HP for their new type.

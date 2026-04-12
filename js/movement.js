@@ -26,6 +26,20 @@ function getDragDests(i){
   const ec=p.color==='w'?'b':'w';
   if(p.type==='pawn'){
     adj8(i).forEach(j=>{const t=pieces[j];if(!t)move.add(j);else if(t.color===p.color){if(t.type==='pawn'||t.type==='knight')merge.add(j);}else attack.add(j);});
+    // first move: allow 2-tile forward push (toward enemy king side)
+    if(p.firstMove){
+      // "forward" = toward the opposite side of the board relative to pawn color
+      // white pawns start near the bottom, so forward is -1 row (up)
+      // black pawns start near the top, so forward is +1 row (down)
+      const fwd=p.color==='w'?-1:1;
+      const r1=ROW(i)+fwd,r2=ROW(i)+fwd*2,c=COL(i);
+      if(inB(r1,c)&&inB(r2,c)){
+        const mid=idx(r1,c),far=idx(r2,c);
+        if(!pieces[mid]&&!isTileBlocked(mid)&&!pieces[far]&&!isTileBlocked(far)){
+          move.add(far);
+        }
+      }
+    }
   }else if(p.type==='knight'){
     kJumps(i).forEach(j=>{
       if(isTileBlocked(j))return; // cannot land on blocked tile
@@ -47,14 +61,6 @@ function getDragDests(i){
         if(!t)move.add(j);else{if(t.color===ec)attack.add(j);else if(hasMana&&t.color===p.color&&t.hp<t.maxHp)heal.add(j);break;}
       }
     });
-    // cardinal: exactly 1 square (move only, no attack)
-    [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
-      const nr=ROW(i)+dr,nc=COL(i)+dc;if(!inB(nr,nc))return;
-      const j=idx(nr,nc);if(isTileBlocked(j))return;
-      const t=pieces[j];
-      if(!t)move.add(j);
-      // no attack cardinally — bishop attacks only diagonally
-    });
     // bishop can merge with adjacent knight (bishop dragged to knight)
     adj8(i).forEach(j=>{
       const t=pieces[j];
@@ -73,7 +79,7 @@ function getDragDests(i){
     adj8(i).filter(j=>pieces[j]&&pieces[j].color===p.color&&pieces[j].type==='rook').forEach(j=>merge.add(j));
     rookRange(i).filter(j=>pieces[j]&&pieces[j].color===ec).forEach(j=>attack.add(j));
   }else if(p.type==='siege'){
-    // siege: CANNOT move, attacks 3 dmg, range 4 piercing
+    // siege: CANNOT move, attacks 2 dmg, range 4 piercing
     siegeRange(i).filter(j=>pieces[j]&&pieces[j].color===ec).forEach(j=>attack.add(j));
     // right-click to unsiege (handled in handleRightClick)
   }else if(p.type==='queen'){
@@ -99,6 +105,11 @@ function getDragDests(i){
   }
   // remove blocked tiles from move destinations
   for(const j of [...move]){if(isTileBlocked(j)||neutralPieces[j+''])move.delete(j);}
+  // fog of war: can't attack or heal targets on non-visible tiles (applies to white pieces only)
+  if(p.color==='w'&&!mapCheat){
+    for(const j of [...attack]){if(!isTileVisible(j))attack.delete(j);}
+    for(const j of [...heal]){if(!isTileVisible(j))heal.delete(j);}
+  }
   return{move,merge,attack,heal};
 }
 
@@ -117,6 +128,58 @@ function stepToward(from,to,color){
       visited.add(n);
       if(isTileBlocked(n)&&n!==to)continue; // can't pass through obstacles
       if(neutralPieces[n+'']&&n!==to)continue; // blocked by neutral animal
+      const p=pieces[n];
+      if(p&&p.color===color&&n!==to)continue;
+      const newPath=[...path,n];
+      if(n===to)return newPath[0];
+      queue.push([n,newPath]);
+    }
+  }
+  return -1;
+}
+
+// BFS step toward target using only cardinal directions (for rooks)
+function stepTowardCardinal(from,to,color){
+  if(from===to)return -1;
+  const visited=new Set([from]);
+  const queue=[[from,[]]];
+  const dirs=[[-1,0],[1,0],[0,-1],[0,1]];
+  while(queue.length){
+    const[cur,path]=queue.shift();
+    const r=ROW(cur),c=COL(cur);
+    for(const [dr,dc] of dirs){
+      const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;
+      const n=idx(nr,nc);
+      if(visited.has(n))continue;
+      visited.add(n);
+      if(isTileBlocked(n)&&n!==to)continue;
+      if(neutralPieces[n+'']&&n!==to)continue;
+      const p=pieces[n];
+      if(p&&p.color===color&&n!==to)continue;
+      const newPath=[...path,n];
+      if(n===to)return newPath[0];
+      queue.push([n,newPath]);
+    }
+  }
+  return -1;
+}
+
+// BFS step toward target using only diagonal directions (for bishops)
+function stepTowardDiagonal(from,to,color){
+  if(from===to)return -1;
+  const visited=new Set([from]);
+  const queue=[[from,[]]];
+  const dirs=[[-1,-1],[-1,1],[1,-1],[1,1]];
+  while(queue.length){
+    const[cur,path]=queue.shift();
+    const r=ROW(cur),c=COL(cur);
+    for(const [dr,dc] of dirs){
+      const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;
+      const n=idx(nr,nc);
+      if(visited.has(n))continue;
+      visited.add(n);
+      if(isTileBlocked(n)&&n!==to)continue;
+      if(neutralPieces[n+'']&&n!==to)continue;
       const p=pieces[n];
       if(p&&p.color===color&&n!==to)continue;
       const newPath=[...path,n];

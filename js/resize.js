@@ -8,14 +8,24 @@ function resizeBoard(){
   const panelWL=Math.floor(base*1.5),panelWR=Math.floor(base*2.0);
   const availW=vw-panelWL-panelWR-hOverhead;
   const availH=vh-topH-botH-20;
-  const boardPx=Math.floor(Math.min(availW,availH)/COLS)*COLS;
-  sqPx=boardPx/COLS;
+  const vRows=viewRowsN(),vCols=viewColsN();
+  let boardW,boardH;
+  if(vRows===vCols){
+    // square viewport: pixel-perfect
+    const boardPx=Math.floor(Math.min(availW,availH)/vCols)*vCols;
+    sqPx=boardPx/vCols;
+    boardW=boardPx;boardH=boardPx;
+  }else{
+    // non-square viewport (campaign): fit both dimensions
+    sqPx=Math.floor(Math.min(availW/vCols,availH/vRows));
+    boardW=sqPx*vCols;boardH=sqPx*vRows;
+  }
   const wrap=document.getElementById('board-wrap');
   const thBorder=(THEMES[mapTheme]||THEMES.jungle).border;
   wrap.style.borderColor=thBorder;
-  wrap.style.width=boardPx+'px';wrap.style.height=boardPx+'px';
-  document.getElementById('board').style.width=boardPx+'px';document.getElementById('board').style.height=boardPx+'px';
-  const ph=boardPx+6;
+  wrap.style.width=boardW+'px';wrap.style.height=boardH+'px';
+  document.getElementById('board').style.width=boardW+'px';document.getElementById('board').style.height=boardH+'px';
+  const ph=boardH+6;
   const lp=document.getElementById('left-panel'),rp=document.getElementById('right-panel');
   lp.style.width=panelWL+'px';lp.style.height=ph+'px';
   rp.style.width=panelWR+'px';rp.style.height=ph+'px';

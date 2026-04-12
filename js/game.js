@@ -2,6 +2,9 @@
 function startGame(mode){
   gameMode=mode;
   difficulty=mode==='hard'?'hard':'easy';
+  // reset board size and campaign state for non-campaign modes
+  campaignLevel=null; campaignLevelId=-1;
+  COLS=9; ROWS=9;
   document.getElementById('intro').classList.add('hidden');
   const pvpVisible=mode==='pvp';
   document.getElementById('pvp-section').style.display='none';
@@ -12,11 +15,19 @@ function startGame(mode){
 
 function initGame(){
   pieces=new Array(ROWS*COLS).fill(null);
-  pieces[idx(7,1)]={type:'king',color:'w',hp:5,maxHp:5};
-  pieces[idx(1,7)]={type:'king',color:'b',hp:5,maxHp:5};
+  const wKiPos=idx(7,1), bKiPos=idx(1,7);
+  pieces[wKiPos]={type:'king',color:'w',hp:5,maxHp:5};
+  pieces[bKiPos]={type:'king',color:'b',hp:5,maxHp:5};
+  // place 3 starting pawns for each side on the king-adjacent tiles closest to the enemy king
+  const wPawnTiles=adj8(wKiPos).filter(j=>!pieces[j]).sort((a,b)=>cheb(a,bKiPos)-cheb(b,bKiPos)).slice(0,3);
+  wPawnTiles.forEach(j=>{pieces[j]={type:'pawn',color:'w',hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,firstMove:true};});
+  const bPawnTiles=adj8(bKiPos).filter(j=>!pieces[j]).sort((a,b)=>cheb(a,wKiPos)-cheb(b,wKiPos)).slice(0,3);
+  bPawnTiles.forEach(j=>{pieces[j]={type:'pawn',color:'b',hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,firstMove:true};});
+  viewN=Math.max(ROWS,COLS); viewRow0=0; viewCol0=0;
   turn='w'; over=false; thinking=false; logLines=[]; kingSelected=false;
   whiteTargets={}; blackTargets={};
-  spawnHistory=[]; whiteTurnCount=0; movedThisTurn=-1;
+  spawnHistory=[]; blackSpawnHistory=[]; whiteTurnCount=0; blackTurnCount=0; movedThisTurn=-1;
+  exploredTiles=new Set();
   const tc=document.getElementById('turn-counter');if(tc)tc.textContent='Turn 0';
   animalDivs.forEach(el=>el.remove());animalDivs.clear();
   // single-player: reuse title-screen map; PvP always regenerates
@@ -94,12 +105,14 @@ function startWhiteTurn(){
   }
   // clear newborn aura from previous turn
   for(let i=0;i<ROWS*COLS;i++){if(pieces[i]?.newborn)pieces[i].newborn=false;}
-  // bishop mana: +1 every 3 turns (all bishops)
-  if(whiteTurnCount>0&&whiteTurnCount%3===0){
-    for(let i=0;i<ROWS*COLS;i++){
-      const p=pieces[i];
-      if(p&&p.type==='bishop'){
+  // bishop mana: +1 mana every 3 turns after the bishop last healed
+  for(let i=0;i<ROWS*COLS;i++){
+    const p=pieces[i];
+    if(p&&p.type==='bishop'&&(p.mana||0)<2){
+      const lastHeal=p.lastHealTurn||0;
+      if(whiteTurnCount-lastHeal>=3&&whiteTurnCount>0){
         p.mana=Math.min(2,(p.mana||0)+1);
+        p.lastHealTurn=whiteTurnCount; // reset cooldown from this regen
         if(p.mana===2)flashSq(i,'heal-flash');
       }
     }
@@ -112,6 +125,7 @@ function startWhiteTurn(){
 function endTurn(){
   if(over)return;
   whiteTurnCount++;
+  blackHitBy=[]; // reset hit tracker before white auto-attacks populate it
   const tc=document.getElementById('turn-counter');if(tc)tc.textContent='Turn '+whiteTurnCount;
   targetMode=false;targetSrc=-1;kingSelected=false;selectedPieces=new Set();boxSelecting=false;boxMouseDownOnEmpty=false;clearBoxSelect();
 
@@ -128,12 +142,14 @@ function endTurn(){
       document.getElementById('thinking-dot').classList.add('on');
       setStatus('Enemy thinking...');
       const bActions=computeActions('b');
+      blackActed=new Set(bActions.map(a=>a.attacker));
       if(bActions.length){
         setTimeout(()=>executeActions(bActions,'b',()=>{
-          render();if(over){setStatus('Black wins! ♚');SFX.lose();syncUI();setTimeout(()=>showGameOver(myColor()==='b'?'win':'lose'),600);return;}
+          render();if(over){if(campaignLevel){const cr=checkCampaignWin();setTimeout(()=>handleCampaignEnd(cr||'lose'),600);}else{setStatus('Black wins! ♚');SFX.lose();syncUI();setTimeout(()=>showGameOver(myColor()==='b'?'win':'lose'),600);}return;}
           setTimeout(aiAct,200);
         }),200);
       }else{
+        blackActed=new Set();
         setTimeout(aiAct,300);
       }
     };
@@ -141,7 +157,7 @@ function endTurn(){
       setStatus('Attacking...');
       setTimeout(()=>executeActions(wActions,'w',()=>{
         render();
-        if(over){setStatus('White wins! ♔');SFX.win();syncUI();broadcastState('w');setTimeout(()=>showGameOver(myColor()==='w'?'win':'lose'),600);return;}
+        if(over){if(campaignLevel){const cr=checkCampaignWin();setTimeout(()=>handleCampaignEnd(cr||'win'),600);}else{setStatus('White wins! ♔');SFX.win();syncUI();broadcastState('w');setTimeout(()=>showGameOver(myColor()==='w'?'win':'lose'),600);}return;}
         runBlack();
       }),100);
     }else{
@@ -152,6 +168,7 @@ function endTurn(){
 
 function finishBlackTurn(){
   thinking=false;
+  blackTurnCount++;
   document.getElementById('thinking-dot').classList.remove('on');
   if(!over){startWhiteTurn();}
 }

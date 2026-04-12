@@ -1,5 +1,5 @@
 // ── DRAG ─────────────────────────────────────────────────────────────────────
-function sqIdxFromPoint(x,y){const rect=document.getElementById('board').getBoundingClientRect();const c=Math.floor((x-rect.left)/sqPx),r=Math.floor((y-rect.top)/sqPx);return(r>=0&&r<ROWS&&c>=0&&c<COLS)?idx(r,c):-1;}
+function sqIdxFromPoint(x,y){const rect=document.getElementById('board').getBoundingClientRect();const c=Math.floor((x-rect.left)/sqPx)+viewCol0,r=Math.floor((y-rect.top)/sqPx)+viewRow0;return(r>=viewRow0&&r<viewRow0+viewRowsN()&&c>=viewCol0&&c<viewCol0+viewColsN())?idx(r,c):-1;}
 
 // ── box selection state ───────────────────────────────────────────────────────
 let boxSelecting=false,boxX0=0,boxY0=0,boxX1=0,boxY1=0,boxMouseDownOnEmpty=false;
@@ -36,7 +36,10 @@ document.addEventListener('mousemove',e=>{
   const p=pieces[mouseDownI];
   if(!dragging&&p&&p.color===myColor()&&Math.hypot(e.clientX-mouseDownX,e.clientY-mouseDownY)>5){
     dragging=true;dragSrc=mouseDownI;dragDests=getDragDests(dragSrc);
-    const g=document.getElementById('ghost');g.textContent=GLYPH[p.type+'_'+p.color];g.style.color=p.color==='w'?'#fff':'#1a0e04';g.style.display='block';render();
+    const g=document.getElementById('ghost');
+    if(p.type==='siege'){g.textContent='';g.innerHTML=buildWhiteSiegeSVG(Math.floor(sqPx*.72));}
+    else{g.innerHTML='';g.textContent=GLYPH[p.type+'_'+p.color];g.style.color=p.color==='w'?'#fff':'#1a0e04';}
+    g.style.display='block';render();
   }
   if(dragging){const g=document.getElementById('ghost');g.style.left=e.clientX+'px';g.style.top=e.clientY+'px';}
 });
@@ -108,7 +111,7 @@ document.getElementById('board').addEventListener('touchstart',e=>{
 },{passive:false});
 document.addEventListener('touchmove',e=>{
   if(mouseDownI<0)return;const{x,y}=touchXY(e);const p=pieces[mouseDownI];
-  if(!dragging&&p&&p.color===myColor()&&Math.hypot(x-mouseDownX,y-mouseDownY)>8){dragging=true;dragSrc=mouseDownI;dragDests=getDragDests(dragSrc);const g=document.getElementById('ghost');g.textContent=GLYPH[p.type+'_'+p.color];g.style.color=p.color==='w'?'#fff':'#1a0e04';g.style.display='block';render();}
+  if(!dragging&&p&&p.color===myColor()&&Math.hypot(x-mouseDownX,y-mouseDownY)>8){dragging=true;dragSrc=mouseDownI;dragDests=getDragDests(dragSrc);const g=document.getElementById('ghost');if(p.type==='siege'){g.textContent='';g.innerHTML=buildWhiteSiegeSVG(Math.floor(sqPx*.72));}else{g.innerHTML='';g.textContent=GLYPH[p.type+'_'+p.color];g.style.color=p.color==='w'?'#fff':'#1a0e04';}g.style.display='block';render();}
   if(dragging){const g=document.getElementById('ghost');g.style.left=x+'px';g.style.top=y+'px';e.preventDefault();}
 },{passive:false});
 document.addEventListener('touchend',e=>{

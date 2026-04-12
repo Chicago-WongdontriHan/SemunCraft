@@ -1,4 +1,36 @@
 // ── PVP ──────────────────────────────────────────────────────────────────────
+// WebRTC ICE configuration: STUN for NAT discovery + multiple free TURN relays
+// for cross-country connections that can't do direct peer-to-peer.
+// Open Relay Project (openrelay.metered.ca) is widely cited but often rate-limited;
+// we include several alternative free TURN providers as fallback.
+const PEER_ICE_CONFIG={
+  iceServers:[
+    // STUN — fast path for non-symmetric NAT
+    {urls:'stun:stun.l.google.com:19302'},
+    {urls:'stun:stun1.l.google.com:19302'},
+    {urls:'stun:stun2.l.google.com:19302'},
+    {urls:'stun:stun.cloudflare.com:3478'},
+    // TURN — Open Relay Project (free but unreliable)
+    {urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},
+    {urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'},
+    {urls:'turn:openrelay.metered.ca:443?transport=tcp',username:'openrelayproject',credential:'openrelayproject'},
+    {urls:'turn:openrelay.metered.ca:80?transport=tcp',username:'openrelayproject',credential:'openrelayproject'},
+    // TURN — Relay.Metered.ca (another free tier)
+    {urls:'turn:a.relay.metered.ca:80',username:'e8dd65b92c62d3e36cafb807',credential:'uWdWNmkhvyqTEswO'},
+    {urls:'turn:a.relay.metered.ca:80?transport=tcp',username:'e8dd65b92c62d3e36cafb807',credential:'uWdWNmkhvyqTEswO'},
+    {urls:'turn:a.relay.metered.ca:443',username:'e8dd65b92c62d3e36cafb807',credential:'uWdWNmkhvyqTEswO'},
+    {urls:'turns:a.relay.metered.ca:443?transport=tcp',username:'e8dd65b92c62d3e36cafb807',credential:'uWdWNmkhvyqTEswO'}
+  ],
+  iceCandidatePoolSize:4,
+  iceTransportPolicy:'all'
+};
+
+function newPeerWithTurn(id){
+  // debug:1 in PeerJS logs connection attempts to the console so we can see what's failing
+  const opts={config:PEER_ICE_CONFIG,debug:2};
+  return id?new Peer(id,opts):new Peer(undefined,opts);
+}
+
 function myColor(){ if(!pvpActive)return 'w'; return pvpRole==='host'?'w':'b'; }
 function isMyTurn(){ return turn===myColor(); }
 function broadcastState(winner){ if(!pvpActive||!conn||!conn.open)return; conn.send(JSON.stringify({type:'state',pieces,turn,over,winner:winner||null,wt:whiteTargets,bt:blackTargets,blf:blackLastFrom,blt:blackLastTo})); }
@@ -7,9 +39,9 @@ function initBC(){ try{bc=new BroadcastChannel('kingdom-pvp-lobby');}catch(e){bc
       if(msg.type==='room'&&collectingRooms) addPvpLobbyRoom(msg.id,msg.name); }; }
 function setPvpStatus(t,col){ const el=document.getElementById('pvp-status'); el.textContent=t; el.style.color=col||'#6a7830'; }
 function addRoomEntry(id,name){ const list=document.getElementById('room-list'); list.querySelectorAll('.room-entry.empty').forEach(el=>el.remove()); const d=document.createElement('div'); d.className='room-entry'; d.dataset.id=id; d.textContent=name+' ('+id.slice(0,8)+')'; d.style.fontSize=Math.max(7,Math.floor(lastPf*.90))+'px'; d.onclick=()=>joinRoom(id); list.appendChild(d); }
-function hostGame(){ if(peer)peer.destroy(); pvpActive=false; myPeerId=null; if(!bc)initBC(); bcRoomName='Room '+Math.random().toString(36).slice(2,6).toUpperCase(); peer=new Peer(); peer.on('open',id=>{ myPeerId=id; document.getElementById('room-id-display').textContent=bcRoomName+' ('+id.slice(0,8)+')'; setPvpStatus('waiting...','#a8c050'); if(bc)bc.postMessage({type:'room',id,name:bcRoomName}); const ann=setInterval(()=>{ if(!myPeerId||pvpActive){clearInterval(ann);return;} if(bc)bc.postMessage({type:'room',id,name:bcRoomName}); },2000); peer.on('connection',c=>{ clearInterval(ann); conn=c; pvpRole='host'; pvpActive=true; conn.on('data',onPeerData); conn.on('close',()=>{pvpActive=false;setPvpStatus('disconnected','#c05030');}); setPvpStatus('connected','#90e040'); initGame(); }); }); peer.on('error',e=>setPvpStatus('error','#c05030')); }
+function hostGame(){ if(peer)peer.destroy(); pvpActive=false; myPeerId=null; if(!bc)initBC(); bcRoomName='Room '+Math.random().toString(36).slice(2,6).toUpperCase(); peer=newPeerWithTurn(); peer.on('open',id=>{ myPeerId=id; document.getElementById('room-id-display').textContent=bcRoomName+' ('+id.slice(0,8)+')'; setPvpStatus('waiting...','#a8c050'); if(bc)bc.postMessage({type:'room',id,name:bcRoomName}); const ann=setInterval(()=>{ if(!myPeerId||pvpActive){clearInterval(ann);return;} if(bc)bc.postMessage({type:'room',id,name:bcRoomName}); },2000); peer.on('connection',c=>{ clearInterval(ann); conn=c; pvpRole='host'; pvpActive=true; conn.on('data',onPeerData); conn.on('close',()=>{pvpActive=false;setPvpStatus('disconnected','#c05030');}); setPvpStatus('connected','#90e040'); initGame(); }); }); peer.on('error',e=>setPvpStatus('error','#c05030')); }
 function refreshRooms(){ if(!bc)initBC(); if(!bc){setPvpStatus('not supported','#c05030');return;} collectingRooms=true; setPvpStatus('scanning...','#a8c050'); const list=document.getElementById('room-list'); list.innerHTML='<div class="room-entry empty">scanning...</div>'; bc.postMessage({type:'list?'}); setTimeout(()=>{ collectingRooms=false; if(!list.querySelectorAll('.room-entry:not(.empty)').length) list.innerHTML='<div class="room-entry empty">no rooms found</div>'; setPvpStatus('done','#8ab840'); },1500); }
-function joinRoom(roomId){ if(peer)peer.destroy(); peer=new Peer(); peer.on('open',()=>{ conn=peer.connect(roomId); pvpRole='guest'; setPvpStatus('connecting...','#a8c050'); conn.on('open',()=>{ pvpActive=true; conn.on('data',onPeerData); conn.on('close',()=>{pvpActive=false;setPvpStatus('disconnected','#c05030');}); setPvpStatus('connected','#90e040'); initGame(); }); conn.on('error',()=>setPvpStatus('join failed','#c05030')); }); peer.on('error',()=>setPvpStatus('peer error','#c05030')); }
+function joinRoom(roomId){ if(peer)peer.destroy(); peer=newPeerWithTurn(); peer.on('open',()=>{ conn=peer.connect(roomId); pvpRole='guest'; setPvpStatus('connecting...','#a8c050'); conn.on('open',()=>{ pvpActive=true; conn.on('data',onPeerData); conn.on('close',()=>{pvpActive=false;setPvpStatus('disconnected','#c05030');}); setPvpStatus('connected','#90e040'); initGame(); }); conn.on('error',()=>setPvpStatus('join failed','#c05030')); }); peer.on('error',()=>setPvpStatus('peer error','#c05030')); }
 function onPeerData(raw){ const msg=JSON.parse(raw); if(msg.type==='state'){ pieces=msg.pieces.map(p=>p?{...p}:null); turn=msg.turn; over=msg.over; whiteTargets=msg.wt||{}; blackTargets=msg.bt||{}; blackLastFrom=msg.blf||-1; blackLastTo=msg.blt||-1; render(); syncUI(); if(over)setStatus(msg.winner==='w'?'White wins! ♔':'Black wins! ♚'); else setStatus(isMyTurn()?'Your turn':'Opponent turn...'); } }
 
 // ── PVP LOBBY ────────────────────────────────────────────────────────────────
@@ -30,11 +62,16 @@ function pvpLobbyHost(){
   if(peer)peer.destroy();pvpActive=false;myPeerId=null;
   if(!bc)initBC();
   bcRoomName='Room '+Math.random().toString(36).slice(2,6).toUpperCase();
-  peer=new Peer();
+  peer=newPeerWithTurn();
   peer.on('open',id=>{
     myPeerId=id;
     const rid=document.getElementById('pvp-lobby-room-id');
     if(rid)rid.textContent=bcRoomName+' ('+id.slice(0,8)+')';
+    // reveal the full peer ID so the host can share it with a remote player
+    const fullRow=document.getElementById('pvp-full-id-row');
+    const fullInp=document.getElementById('pvp-full-id');
+    if(fullRow)fullRow.style.display='flex';
+    if(fullInp)fullInp.value=id;
     setPvpLobbyStatus('Waiting for opponent...','#a8c050');
     if(bc)bc.postMessage({type:'room',id,name:bcRoomName});
     const ann=setInterval(()=>{
@@ -76,18 +113,83 @@ function addPvpLobbyRoom(id,name){
   list.appendChild(d);
 }
 function pvpLobbyJoin(roomId){
-  if(peer)peer.destroy();peer=new Peer();
+  if(peer)peer.destroy();peer=newPeerWithTurn();
+  // fail-fast timeout: if the WebRTC data channel doesn't open within 30s, show a clear error
+  let joined=false;
+  let signalOpened=false, peerConnectCalled=false;
+  const joinTimeout=setTimeout(()=>{
+    if(joined||pvpActive)return;
+    // report what stage we got stuck at
+    let detail;
+    if(!signalOpened)detail='couldn\'t reach PeerJS signaling server';
+    else if(!peerConnectCalled)detail='host ID invalid or expired';
+    else detail='WebRTC data channel blocked by firewall (TURN relay failed)';
+    setPvpLobbyStatus('Connection failed: '+detail,'#c05030');
+    console.error('[PvP] Join failed:',detail,'signalOpened=',signalOpened,'peerConnectCalled=',peerConnectCalled);
+    if(peer){try{peer.destroy();}catch(e){}peer=null;}
+  },30000);
   peer.on('open',()=>{
-    conn=peer.connect(roomId);pvpRole='guest';
-    setPvpLobbyStatus('connecting...','#a8c050');
+    signalOpened=true;
+    console.log('[PvP] Signaling opened, connecting to',roomId);
+    conn=peer.connect(roomId,{reliable:true});pvpRole='guest';
+    peerConnectCalled=true;
+    setPvpLobbyStatus('connecting... (up to 30s)','#a8c050');
+    // log ICE candidate events for debugging
+    try{
+      if(conn&&conn.peerConnection){
+        conn.peerConnection.addEventListener('iceconnectionstatechange',()=>{
+          console.log('[PvP] ICE state:',conn.peerConnection.iceConnectionState);
+          setPvpLobbyStatus('ICE: '+conn.peerConnection.iceConnectionState,'#a8c050');
+        });
+      }
+    }catch(e){}
     conn.on('open',()=>{
+      joined=true;clearTimeout(joinTimeout);
+      console.log('[PvP] Data channel opened');
       pvpActive=true;conn.on('data',onPeerData);
       conn.on('close',()=>{pvpActive=false;setPvpLobbyStatus('disconnected','#c05030');});
       setPvpLobbyStatus('Connected!','#90e040');
       document.getElementById('pvp-lobby').classList.remove('show');
       startGame('pvp');
     });
-    conn.on('error',()=>setPvpLobbyStatus('join failed','#c05030'));
+    conn.on('error',(err)=>{
+      console.error('[PvP] conn error:',err);
+      clearTimeout(joinTimeout);
+      setPvpLobbyStatus('join error: '+(err&&err.type||err&&err.message||'unknown'),'#c05030');
+    });
   });
-  peer.on('error',()=>setPvpLobbyStatus('peer error','#c05030'));
+  peer.on('error',(err)=>{
+    console.error('[PvP] peer error:',err);
+    clearTimeout(joinTimeout);
+    setPvpLobbyStatus('peer error: '+(err&&err.type||err&&err.message||'unknown'),'#c05030');
+  });
+}
+
+// copy the host's peer ID to the clipboard so it can be shared
+function pvpCopyId(){
+  const inp=document.getElementById('pvp-full-id');
+  if(!inp||!inp.value)return;
+  const val=inp.value;
+  inp.select();
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(val).then(
+        ()=>setPvpLobbyStatus('ID copied to clipboard','#90e040'),
+        ()=>{document.execCommand&&document.execCommand('copy');setPvpLobbyStatus('ID copied','#90e040');}
+      );
+    }else{
+      document.execCommand&&document.execCommand('copy');
+      setPvpLobbyStatus('ID copied','#90e040');
+    }
+  }catch(e){setPvpLobbyStatus('copy failed — select & copy manually','#c05030');}
+}
+
+// join a remote host by pasted peer ID
+function pvpJoinById(){
+  const inp=document.getElementById('pvp-join-id-input');
+  if(!inp)return;
+  const id=(inp.value||'').trim();
+  if(!id){setPvpLobbyStatus('paste a peer ID first','#c05030');return;}
+  setPvpLobbyStatus('joining '+id.slice(0,8)+'...','#a8c050');
+  pvpLobbyJoin(id);
 }

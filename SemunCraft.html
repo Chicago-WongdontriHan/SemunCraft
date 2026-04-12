@@ -63,10 +63,14 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 .sq.drop-ok{background:#90c840 !important;}
 .sq.show-move{outline:2px solid rgba(160,220,60,.7);outline-offset:-2px;background:rgba(100,200,40,.08) !important;}
 .sq.show-atk{outline:2px solid rgba(255,80,30,.7);outline-offset:-2px;background:rgba(255,80,30,.10) !important;}
-/* piece-type auras — pseudo-element overlay, not affected by tile backgrounds */
+/* clear, solid selection auras — sit above tile bg but below .piece (z-index 1) */
+.sel-overlay{position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:2px;}
+.sel-overlay.sel-atk-ov{background:radial-gradient(circle at 50% 50%,rgba(255,80,30,.92) 0%,rgba(220,40,10,.95) 60%,rgba(160,20,0,1) 100%);box-shadow:inset 0 0 14px rgba(255,200,100,.5);}
+.sel-overlay.sel-heal-ov{background:radial-gradient(circle at 50% 50%,rgba(80,230,120,.92) 0%,rgba(40,200,90,.95) 60%,rgba(20,160,60,1) 100%);box-shadow:inset 0 0 14px rgba(180,255,200,.5);}
+.sel-overlay.sel-move-ov{background:radial-gradient(circle at 50% 50%,rgba(180,240,80,.9) 0%,rgba(140,200,50,.92) 60%,rgba(90,150,30,.95) 100%);box-shadow:inset 0 0 14px rgba(220,255,140,.45);}
+.sq.sel-atk,.sq.sel-heal,.sq.sel-move{outline:2px solid rgba(255,255,255,.55);outline-offset:-2px;}
 .sq[class*="aura-"]::before{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;border-radius:2px;}
 .piece{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;gap:0;z-index:1;}
-/* white pieces — warm/cool hues */
 .sq.aura-pawn-w::before  {background:radial-gradient(ellipse at 50% 50%,rgba(210,255,80,.42) 0%,rgba(180,240,60,.16) 40%,transparent 70%);}
 .sq.aura-knight-w::before{background:radial-gradient(ellipse at 50% 50%,rgba(80,190,255,.42) 0%,rgba(60,170,255,.15) 40%,transparent 70%);}
 .sq.aura-bishop-w::before{background:radial-gradient(ellipse at 50% 50%,rgba(60,255,170,.42) 0%,rgba(40,240,150,.15) 40%,transparent 70%);}
@@ -74,7 +78,6 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 .sq.aura-queen-w::before {background:radial-gradient(ellipse at 50% 50%,rgba(255,100,210,.44) 0%,rgba(255,80,200,.16) 40%,transparent 70%);}
 .sq.aura-king-w::before  {background:radial-gradient(ellipse at 50% 50%,rgba(255,255,120,.65) 0%,rgba(255,255,100,.26) 40%,transparent 70%);}
 .sq.aura-siege-w::before {background:radial-gradient(ellipse at 50% 50%,rgba(255,140,40,.46) 0%,rgba(255,120,20,.17) 40%,transparent 70%);}
-/* black pieces — hot/dangerous hues */
 .sq.aura-pawn-b::before  {background:radial-gradient(ellipse at 50% 50%,rgba(255,100,30,.42) 0%,rgba(255,80,10,.15) 40%,transparent 70%);}
 .sq.aura-knight-b::before{background:radial-gradient(ellipse at 50% 50%,rgba(255,50,50,.42) 0%,rgba(240,30,30,.15) 40%,transparent 70%);}
 .sq.aura-bishop-b::before{background:radial-gradient(ellipse at 50% 50%,rgba(255,50,170,.42) 0%,rgba(240,30,160,.15) 40%,transparent 70%);}
@@ -82,7 +85,6 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 .sq.aura-queen-b::before {background:radial-gradient(ellipse at 50% 50%,rgba(190,40,255,.44) 0%,rgba(180,20,255,.16) 40%,transparent 70%);}
 .sq.aura-king-b::before  {background:radial-gradient(ellipse at 50% 50%,rgba(255,30,30,.42) 0%,rgba(240,10,10,.15) 40%,transparent 70%);}
 .sq.aura-siege-b::before {background:radial-gradient(ellipse at 50% 50%,rgba(255,60,10,.46) 0%,rgba(255,40,0,.17) 40%,transparent 70%);}
-/* stacking depth — brighter ::after layer */
 .sq.aura-depth-2::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;background:rgba(255,255,255,.10);border-radius:2px;}
 .sq.aura-depth-3::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;background:rgba(255,255,255,.20);border-radius:2px;}
 .sq.aura-depth-4::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;background:rgba(255,255,255,.32);border-radius:2px;}
@@ -98,12 +100,6 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 .sq.atk-preview-to{outline:2px solid rgba(255,60,20,.5);outline-offset:-1px;}
 .sq.heal-target{outline:2px solid #40e060;outline-offset:-2px;}
 .sq.hit-flash{animation:hitflash .4s ease;}
-
-
-
-
-
-
 .sq.heal-flash{animation:healflash .5s ease;}
 .sq.spawn-anim{animation:spawnPop .4s cubic-bezier(.2,1.6,.4,1);}
 @keyframes hitflash{0%{filter:brightness(3) saturate(.2)}100%{filter:brightness(1)}}
@@ -114,10 +110,7 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 .newborn-aura{position:absolute;inset:-3px;border-radius:3px;pointer-events:none;
   background:radial-gradient(ellipse at 50% 60%,rgba(160,255,80,.55) 0%,rgba(80,200,30,.18) 55%,transparent 75%);
   animation:newbornPulse 1.1s ease-in-out infinite;}
-@keyframes newbornPulse{
-  0%,100%{opacity:.55;transform:scale(.92);}
-  50%{opacity:1;transform:scale(1.06);}
-}
+@keyframes newbornPulse{0%,100%{opacity:.55;transform:scale(.92);}50%{opacity:1;transform:scale(1.06);}}
 
 .glyph{line-height:1;font-size:var(--glyph-size,18px);}
 .glyph-w{color:#fff;text-shadow:0 0 4px rgba(0,0,0,.9),0 1px 2px #333;}
@@ -128,7 +121,7 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 .hp-pip.full-w{background:#90e040;}
 .hp-pip.empty-w{background:rgba(0,0,0,.35);}
 .hp-pip.full-b{background:#e05020;}
-.mana-bar{position:absolute;bottom:0;left:0;right:0;display:flex;gap:1px;justify-content:center;z-index:5;}
+.mana-bar{position:absolute;top:2px;left:0;right:0;display:flex;gap:1px;justify-content:center;z-index:5;}
 .mana-pip{border-radius:50%;flex-shrink:0;background:#4090e8;}
 .mana-pip.empty{background:rgba(40,80,200,.2);}
 .hp-pip.empty-b{background:rgba(255,255,255,.12);}
@@ -166,20 +159,15 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 #thinking-dot.on{display:inline-block;}
 @keyframes pulse{0%,100%{opacity:.12}50%{opacity:1}}
 
-/* attack anim elements */
 .atk-emoji{position:fixed;pointer-events:none;z-index:500;font-size:20px;transition:none;}
-
 
 /* ── TUTORIAL ── */
 #tutorial-overlay{display:none;position:fixed;inset:0;z-index:600;pointer-events:none;}
 #tutorial-overlay.show{display:block;}
-/* dark veil around highlighted tile */
 #tut-veil{display:none;}
-/* highlight cutout — positioned dynamically */
 #tut-highlight{position:absolute;border:3px solid #c8f040;border-radius:4px;
   box-shadow:0 0 16px 4px #c8f040,inset 0 0 10px rgba(200,240,64,.2);
   pointer-events:none;transition:all .28s ease;}
-/* tooltip card */
 #tut-card{position:absolute;background:#0e1f08;border:2px solid #4a8020;border-radius:8px;
   padding:16px 22px;width:clamp(240px,36vw,480px);max-width:calc(100vw - 24px);pointer-events:all;
   box-shadow:0 8px 24px rgba(0,0,0,.8);font-family:Georgia,serif;box-sizing:border-box;}
@@ -191,66 +179,104 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 .tut-btn:hover{background:#1e3010;color:#b0d060;}
 .tut-btn.tut-primary{border-color:#6ab030;color:#a0d040;}
 #tut-step{position:absolute;top:12px;right:14px;font-size:10px;color:#4a7020;font-family:monospace;}
+
 /* ── PVP LOBBY OVERLAY ── */
-#pvp-lobby{display:none;position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.65);
-  align-items:center;justify-content:center;}
+#pvp-lobby{display:none;position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.65);align-items:center;justify-content:center;}
 #pvp-lobby.show{display:flex;}
-#pvp-lobby-box{background:#0e1f08;border:2px solid #4a8020;border-radius:10px;
-  padding:28px 32px;width:clamp(280px,40vw,460px);display:flex;flex-direction:column;gap:12px;
-  box-shadow:0 12px 40px rgba(0,0,0,.9);}
+#pvp-lobby-box{background:#0e1f08;border:2px solid #4a8020;border-radius:10px;padding:28px 32px;width:clamp(280px,40vw,460px);display:flex;flex-direction:column;gap:12px;box-shadow:0 12px 40px rgba(0,0,0,.9);}
 #pvp-lobby-box h2{font-size:16px;color:#c8a840;font-variant:small-caps;letter-spacing:.1em;text-align:center;margin-bottom:4px;}
 .pvp-lbl{font-size:10px;color:#4a6828;font-family:monospace;font-variant:small-caps;letter-spacing:.1em;}
-#pvp-room-id{font-size:11px;color:#90e050;font-family:monospace;padding:4px 8px;
-  background:#0a1406;border:1px solid #2a4018;border-radius:3px;text-align:center;}
+#pvp-room-id{font-size:11px;color:#90e050;font-family:monospace;padding:4px 8px;background:#0a1406;border:1px solid #2a4018;border-radius:3px;text-align:center;}
 #pvp-rooms{display:flex;flex-direction:column;gap:3px;max-height:120px;overflow-y:auto;}
-.pvp-room-entry{font-size:11px;font-family:monospace;color:#7ab830;background:#0c1608;
-  border:1px solid #2a4018;border-radius:3px;padding:5px 8px;cursor:pointer;transition:background .1s;}
+.pvp-room-entry{font-size:11px;font-family:monospace;color:#7ab830;background:#0c1608;border:1px solid #2a4018;border-radius:3px;padding:5px 8px;cursor:pointer;transition:background .1s;}
 .pvp-room-entry:hover{background:#142008;color:#c8e840;}
 .pvp-room-entry.empty{color:#3a5020;cursor:default;pointer-events:none;}
 #pvp-lobby-status{font-size:10px;font-family:monospace;text-align:center;}
-.pvp-lobby-btn{padding:8px 20px;font-size:12px;font-family:Georgia,serif;font-variant:small-caps;
-  letter-spacing:.06em;background:#0e1a08;border:1px solid #3a6020;color:#80b840;
-  border-radius:5px;cursor:pointer;transition:all .18s;text-align:center;}
+.pvp-lobby-btn{padding:8px 20px;font-size:12px;font-family:Georgia,serif;font-variant:small-caps;letter-spacing:.06em;background:#0e1a08;border:1px solid #3a6020;color:#80b840;border-radius:5px;cursor:pointer;transition:all .18s;text-align:center;}
 .pvp-lobby-btn:hover{background:#162a10;color:#c8e860;border-color:#6ab030;}
 .pvp-lobby-btn.gold{color:#c8a840;border-color:#7a6020;}
 .pvp-lobby-btn.gold:hover{color:#e8c860;border-color:#c8a840;}
 #pvp-lobby-btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+
 /* ── GAME OVER OVERLAY ── */
-#game-over{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.72);
-  align-items:center;justify-content:center;flex-direction:column;gap:22px;
-  animation:goFadeIn .5s ease;}
+#game-over{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.72);align-items:center;justify-content:center;flex-direction:column;gap:22px;animation:goFadeIn .5s ease;}
 #game-over.show{display:flex;}
 @keyframes goFadeIn{from{opacity:0;transform:scale(.92);}to{opacity:1;transform:scale(1);}}
-#go-title{font-size:clamp(36px,7vw,72px);font-weight:700;font-family:Georgia,serif;
-  letter-spacing:.1em;font-variant:small-caps;text-shadow:0 0 40px currentColor,0 3px 12px rgba(0,0,0,.9);}
+#go-title{font-size:clamp(36px,7vw,72px);font-weight:700;font-family:Georgia,serif;letter-spacing:.1em;font-variant:small-caps;text-shadow:0 0 40px currentColor,0 3px 12px rgba(0,0,0,.9);}
 #go-title.win {color:#c8f040;}
 #go-title.lose{color:#e05030;}
 #go-title.draw{color:#c8a040;}
 #go-sub{font-size:clamp(13px,2vw,20px);color:#a0b880;font-family:monospace;letter-spacing:.08em;opacity:.85;}
 #go-buttons{display:flex;gap:14px;}
-.go-btn{padding:10px 30px;font-size:15px;font-family:Georgia,serif;font-variant:small-caps;
-  letter-spacing:.06em;border-radius:5px;cursor:pointer;transition:all .18s;}
+.go-btn{padding:10px 30px;font-size:15px;font-family:Georgia,serif;font-variant:small-caps;letter-spacing:.06em;border-radius:5px;cursor:pointer;transition:all .18s;}
 .go-btn.primary{background:#1a3010;border:2px solid #6ab830;color:#a0e040;}
 .go-btn.primary:hover{background:#244818;color:#c8f060;border-color:#90d040;}
 .go-btn.secondary{background:#0e1a08;border:1px solid #3a5020;color:#6a8840;}
 .go-btn.secondary:hover{background:#162208;color:#90b050;}
 
 /* ── THEMES ── */
+/* ── JUNGLE MAP DECORATIONS ── */
+body.theme-jungle .sq.lt{
+  background:
+    radial-gradient(ellipse 38% 26% at 25% 72%,rgba(120,180,55,.7),transparent),
+    radial-gradient(ellipse 32% 22% at 72% 28%,rgba(140,200,70,.55),transparent),
+    radial-gradient(ellipse 22% 16% at 58% 85%,rgba(80,140,40,.7),transparent),
+    radial-gradient(ellipse 18% 12% at 10% 20%,rgba(100,160,50,.5),transparent),
+    #7a9e4c !important;
+}
+body.theme-jungle .sq.dk{
+  background:
+    radial-gradient(ellipse 38% 26% at 28% 62%,rgba(70,110,35,.75),transparent),
+    radial-gradient(ellipse 32% 22% at 72% 28%,rgba(85,135,45,.65),transparent),
+    radial-gradient(ellipse 24% 18% at 55% 85%,rgba(50,90,25,.8),transparent),
+    radial-gradient(ellipse 15% 10% at 85% 70%,rgba(30,70,20,.65),transparent),
+    #4a6e28 !important;
+}
+/* subtle vine glow around the jungle board */
+body.theme-jungle #board-wrap{
+  border-color:#3a5018;
+  box-shadow:
+    0 0 0 1px #1a2810,
+    0 6px 24px rgba(0,0,0,.7),
+    0 0 32px rgba(90,160,40,.28),
+    inset 0 0 0 1px #6a8a30,
+    inset 0 0 18px rgba(30,70,10,.35);
+}
+/* scattered leaf tufts on select tiles via nth-child for variety */
+body.theme-jungle .sq.lt:nth-child(9n+2),
+body.theme-jungle .sq.lt:nth-child(11n+5){
+  background-image:
+    radial-gradient(ellipse 15% 8% at 30% 35%,rgba(160,220,80,.8),transparent),
+    radial-gradient(ellipse 38% 26% at 25% 72%,rgba(120,180,55,.55),transparent),
+    radial-gradient(ellipse 32% 22% at 72% 28%,rgba(140,200,70,.45),transparent),
+    radial-gradient(ellipse 22% 16% at 58% 85%,rgba(80,140,40,.55),transparent);
+}
+body.theme-jungle .sq.dk:nth-child(13n+3),
+body.theme-jungle .sq.dk:nth-child(7n+4){
+  background-image:
+    radial-gradient(ellipse 18% 10% at 70% 40%,rgba(100,160,40,.75),transparent),
+    radial-gradient(ellipse 38% 26% at 28% 62%,rgba(70,110,35,.6),transparent),
+    radial-gradient(ellipse 32% 22% at 72% 28%,rgba(85,135,45,.5),transparent),
+    radial-gradient(ellipse 24% 18% at 55% 85%,rgba(50,90,25,.65),transparent);
+}
+/* deeper rainforest ambient on body */
+body.theme-jungle{
+  background:#0c1a08;
+  background-image:
+    radial-gradient(ellipse at 20% 10%,rgba(30,70,10,.65) 0%,transparent 52%),
+    radial-gradient(ellipse at 80% 90%,rgba(10,40,5,.75) 0%,transparent 55%),
+    radial-gradient(ellipse at 50% 50%,rgba(20,45,8,.3) 0%,transparent 70%);
+}
 
-/* Theme-aware panel colors */
 body.theme-jungle #left-panel,body.theme-jungle #right-panel{background:#0e1a08;border-color:#2a4018;}
 body.theme-desert #left-panel,body.theme-desert #right-panel{background:#2a1808;border-color:#5a3810;}
 body.theme-ocean  #left-panel,body.theme-ocean  #right-panel{background:#070e1a;border-color:#1a2a50;}
-
 body.theme-jungle #top-bar{background:rgba(12,26,8,.85);}
 body.theme-desert #top-bar{background:rgba(42,24,8,.85);}
 body.theme-ocean  #top-bar{background:rgba(5,10,26,.85);}
-
 body.theme-jungle #bottom-bar{background:rgba(10,20,6,.70);}
 body.theme-desert #bottom-bar{background:rgba(36,22,6,.70);}
 body.theme-ocean  #bottom-bar{background:rgba(4,8,22,.70);}
-
-/* panel labels and text per theme */
 body.theme-desert .panel-label{color:#8a6028;}
 body.theme-desert .pc-name{color:#d4a050;}
 body.theme-desert .pc-stats{color:#8a6028;}
@@ -258,7 +284,6 @@ body.theme-desert .merge-guide{color:#e8c060;}
 body.theme-desert .tier-divider{background:#3a2810;}
 body.theme-desert .act-btn{background:#2a1808;border-color:#7a4820;color:#c8902a;}
 body.theme-desert .act-btn:hover{background:#3a2010;color:#e8b050;}
-
 body.theme-ocean .panel-label{color:#2a5080;}
 body.theme-ocean .pc-name{color:#60a8d0;}
 body.theme-ocean .pc-stats{color:#2a5070;}
@@ -267,120 +292,100 @@ body.theme-ocean .tier-divider{background:#0e2040;}
 body.theme-ocean .act-btn{background:#070e1a;border-color:#1a4070;color:#4090c0;}
 body.theme-ocean .act-btn:hover{background:#0e1a2e;color:#70c0e8;}
 body.theme-jungle{background:#0c1a08;background-image:radial-gradient(ellipse at 20% 10%,rgba(30,60,10,.6) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(10,40,5,.7) 0%,transparent 50%);}
-body.theme-desert{background:#3d2e0a;
-  background-image:
-    /* bright sandy dune highlights */
-    radial-gradient(ellipse at 30% 15%,rgba(200,160,40,.50) 0%,transparent 45%),
-    radial-gradient(ellipse at 75% 80%,rgba(180,140,30,.45) 0%,transparent 40%),
-    /* brown dirt streaks */
-    repeating-linear-gradient(15deg,transparent,transparent 28px,rgba(80,45,8,.22) 28px,rgba(80,45,8,.22) 30px),
-    repeating-linear-gradient(75deg,transparent,transparent 40px,rgba(60,35,5,.18) 40px,rgba(60,35,5,.18) 42px);
-}
+body.theme-desert{background:#3d2e0a;background-image:radial-gradient(ellipse at 30% 15%,rgba(200,160,40,.50) 0%,transparent 45%),radial-gradient(ellipse at 75% 80%,rgba(180,140,30,.45) 0%,transparent 40%),repeating-linear-gradient(15deg,transparent,transparent 28px,rgba(80,45,8,.22) 28px,rgba(80,45,8,.22) 30px),repeating-linear-gradient(75deg,transparent,transparent 40px,rgba(60,35,5,.18) 40px,rgba(60,35,5,.18) 42px);}
 body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 20% 10%,rgba(10,30,80,.6) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(5,20,60,.7) 0%,transparent 50%);}
 
 /* ── TILE VISUALS ── */
-/* Passable tiles - subtle overlay only */
 .sq.tile-river   {background:linear-gradient(135deg,#1a50c8 0%,#2060e0 40%,#1a50c8 60%,#1840a0 100%) !important;opacity:.85;}
 .sq.tile-rock    {background-image:radial-gradient(ellipse at 40% 45%,#5a5040 35%,transparent 36%),radial-gradient(ellipse at 65% 55%,#4a4030 28%,transparent 29%);}
 .sq.tile-dune    {background-image:repeating-linear-gradient(108deg,transparent,transparent 4px,rgba(180,140,60,.18) 4px,rgba(180,140,60,.18) 6px);}
-
-
-
-/* Obstacle tiles - solid impassable look */
-.sq.tile-tree{position:relative;
-  background:#1e3a0e !important;
-  background-image:
-    radial-gradient(circle at 50% 62%,#4a7020 18%,#2a5010 30%,#1a3808 55%,transparent 60%),
-    radial-gradient(circle at 50% 30%,#5a8828 22%,#2e5c12 40%,transparent 50%);
-  box-shadow:inset 0 -3px 6px rgba(0,0,0,.4),inset 0 1px 3px rgba(100,200,40,.15);}
-.sq.tile-tree::after{z-index:1;
-  content:'🌳';position:absolute;top:50%;left:50%;transform:translate(-50%,-52%);
-  font-size:calc(var(--glyph-size)*0.85);line-height:1;opacity:.9;pointer-events:none;
-  text-shadow:0 2px 4px rgba(0,0,0,.6);}
-/* Desert: two-pyramid design (flat icon style matching tree) */
-.sq.tile-sandstone{position:relative;
-  background:#6a4510 !important;
-  background-image:linear-gradient(180deg,#7a5218 0%,#5a3a0a 100%);
-  box-shadow:inset 0 -4px 8px rgba(0,0,0,.5);}
-.sq.tile-sandstone::before{content:'';position:absolute;z-index:1;pointer-events:none;
-  left:5%;bottom:14%;width:90%;height:8%;
-  background:rgba(0,0,0,.35);border-radius:50%;filter:blur(3px);}
-.sq.tile-sandstone::after{z-index:2;content:'';position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(to bottom right,#f0d070 0%,#d4960a 60%,#a06808 100%);
-  clip-path:polygon(8% 100%,40% 20%,72% 100%, 55% 44%,90% 100%,72% 100%);
-  filter:drop-shadow(0 0 2px rgba(60,30,0,.9)) drop-shadow(-1px -1px 0px rgba(60,30,0,.8)) drop-shadow(2px 3px 4px rgba(0,0,0,.7));}
-
-/* Spawner pyramid: same shape + glowing arch entrance */
-.sq.tile-sandstone-spawner{position:relative;
-  background:#6a4510 !important;
-  background-image:linear-gradient(180deg,#7a5218 0%,#5a3a0a 100%);
-  box-shadow:inset 0 -4px 8px rgba(0,0,0,.5);
-  animation:spawnerGlow 2.2s ease-in-out infinite;}
-.sq.tile-sandstone-spawner::before{content:'';position:absolute;z-index:1;pointer-events:none;
-  left:5%;bottom:14%;width:90%;height:8%;
-  background:rgba(0,0,0,.35);border-radius:50%;filter:blur(3px);}
-.sq.tile-sandstone-spawner::after{z-index:2;content:'';position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(to bottom right,#f0d070 0%,#d4960a 60%,#a06808 100%);
-  clip-path:polygon(8% 100%,40% 20%,72% 100%);
-  filter:drop-shadow(0 0 2px rgba(60,30,0,.9)) drop-shadow(-1px -1px 0px rgba(60,30,0,.8)) drop-shadow(2px 3px 4px rgba(0,0,0,.7));}
+.sq.tile-tree{position:relative;background:#1e3a0e !important;background-image:radial-gradient(circle at 50% 62%,#4a7020 18%,#2a5010 30%,#1a3808 55%,transparent 60%),radial-gradient(circle at 50% 30%,#5a8828 22%,#2e5c12 40%,transparent 50%);box-shadow:inset 0 -3px 6px rgba(0,0,0,.4),inset 0 1px 3px rgba(100,200,40,.15);}
+.sq.tile-tree::after{z-index:1;content:'🌳';position:absolute;top:50%;left:50%;transform:translate(-50%,-52%);font-size:calc(var(--glyph-size)*0.85);line-height:1;opacity:.9;pointer-events:none;text-shadow:0 2px 4px rgba(0,0,0,.6);}
+.sq.tile-sandstone{position:relative;background:#6a4510 !important;background-image:linear-gradient(180deg,#7a5218 0%,#5a3a0a 100%);box-shadow:inset 0 -4px 8px rgba(0,0,0,.5);}
+.sq.tile-sandstone::before{content:'';position:absolute;z-index:1;pointer-events:none;left:5%;bottom:14%;width:90%;height:8%;background:rgba(0,0,0,.35);border-radius:50%;filter:blur(3px);}
+.sq.tile-sandstone::after{z-index:2;content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom right,#f0d070 0%,#d4960a 60%,#a06808 100%);clip-path:polygon(8% 100%,40% 20%,72% 100%, 55% 44%,90% 100%,72% 100%);filter:drop-shadow(0 0 2px rgba(60,30,0,.9)) drop-shadow(-1px -1px 0px rgba(60,30,0,.8)) drop-shadow(2px 3px 4px rgba(0,0,0,.7));}
+.sq.tile-sandstone-spawner{position:relative;background:#6a4510 !important;background-image:linear-gradient(180deg,#7a5218 0%,#5a3a0a 100%);box-shadow:inset 0 -4px 8px rgba(0,0,0,.5);animation:spawnerGlow 2.2s ease-in-out infinite;}
+.sq.tile-sandstone-spawner::before{content:'';position:absolute;z-index:1;pointer-events:none;left:5%;bottom:14%;width:90%;height:8%;background:rgba(0,0,0,.35);border-radius:50%;filter:blur(3px);}
+.sq.tile-sandstone-spawner::after{z-index:2;content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom right,#f0d070 0%,#d4960a 60%,#a06808 100%);clip-path:polygon(8% 100%,40% 20%,72% 100%);filter:drop-shadow(0 0 2px rgba(60,30,0,.9)) drop-shadow(-1px -1px 0px rgba(60,30,0,.8)) drop-shadow(2px 3px 4px rgba(0,0,0,.7));}
 @keyframes spawnerGlow{0%,100%{box-shadow:inset 0 0 4px rgba(255,200,80,.3);}50%{box-shadow:inset 0 0 12px rgba(255,200,80,.7);}}
-/* Ocean: swirling tornado vortex */
-.sq.tile-rocks{position:relative;
-  background:#0a1428 !important;
-  background-image:radial-gradient(ellipse at 50% 50%,#0e1c38 30%,#060e20 100%);
-  overflow:hidden;}
-.sq.tile-rocks::before{content:'';position:absolute;z-index:2;pointer-events:none;
-  top:50%;left:50%;width:82%;height:82%;margin:-41% 0 0 -41%;
-  border-radius:50%;
-  border:3px solid rgba(80,160,255,.7);
-  border-top-color:rgba(180,220,255,.9);
-  border-bottom-color:rgba(40,80,200,.4);
-  animation:swirlSpin 1.8s linear infinite;}
-.sq.tile-rocks::after{content:'';position:absolute;z-index:3;pointer-events:none;
-  top:50%;left:50%;width:52%;height:52%;margin:-26% 0 0 -26%;
-  border-radius:50%;
-  border:2.5px solid rgba(120,200,255,.65);
-  border-top-color:rgba(220,240,255,.9);
-  border-right-color:rgba(40,100,200,.3);
-  animation:swirlSpin 1.1s linear infinite reverse;
-  box-shadow:0 0 8px rgba(100,180,255,.4);}
+.sq.tile-rocks{position:relative;background:#0a1428 !important;background-image:radial-gradient(ellipse at 50% 50%,#0e1c38 30%,#060e20 100%);overflow:hidden;}
+.sq.tile-rocks::before{content:'';position:absolute;z-index:2;pointer-events:none;top:50%;left:50%;width:82%;height:82%;margin:-41% 0 0 -41%;border-radius:50%;border:3px solid rgba(80,160,255,.7);border-top-color:rgba(180,220,255,.9);border-bottom-color:rgba(40,80,200,.4);animation:swirlSpin 1.8s linear infinite;}
+.sq.tile-rocks::after{content:'';position:absolute;z-index:3;pointer-events:none;top:50%;left:50%;width:52%;height:52%;margin:-26% 0 0 -26%;border-radius:50%;border:2.5px solid rgba(120,200,255,.65);border-top-color:rgba(220,240,255,.9);border-right-color:rgba(40,100,200,.3);animation:swirlSpin 1.1s linear infinite reverse;box-shadow:0 0 8px rgba(100,180,255,.4);}
 @keyframes swirlSpin{to{transform:rotate(360deg);}}
 @keyframes mummyPulse{0%,100%{filter:drop-shadow(0 0 4px rgba(160,210,40,.7)) sepia(.4) hue-rotate(20deg);}50%{filter:drop-shadow(0 0 10px rgba(200,240,60,1)) sepia(.6) hue-rotate(30deg);}}
-
-/* deep water: whirlpool / abyss */
-.sq.tile-deep{position:relative;
-  background:#050a1a !important;
-  background-image:
-    /* concentric rings — whirlpool */
-    radial-gradient(circle at 50% 50%,rgba(10,30,100,.0) 12%,rgba(10,50,160,.55) 14%,rgba(10,30,100,.0) 16%,rgba(10,50,160,.40) 24%,rgba(10,30,100,.0) 27%,rgba(10,50,160,.28) 36%,rgba(10,30,100,.0) 40%,rgba(10,50,160,.18) 50%,transparent 55%),
-    /* dark abyss base */
-    radial-gradient(ellipse at 50% 50%,#0a1438 30%,#050810 70%);
-  animation:deepSpin 6s linear infinite,deepPulse 3s ease-in-out infinite;}
+.sq.tile-deep{position:relative;background:#050a1a !important;background-image:radial-gradient(circle at 50% 50%,rgba(10,30,100,.0) 12%,rgba(10,50,160,.55) 14%,rgba(10,30,100,.0) 16%,rgba(10,50,160,.40) 24%,rgba(10,30,100,.0) 27%,rgba(10,50,160,.28) 36%,rgba(10,30,100,.0) 40%,rgba(10,50,160,.18) 50%,transparent 55%),radial-gradient(ellipse at 50% 50%,#0a1438 30%,#050810 70%);animation:deepSpin 6s linear infinite,deepPulse 3s ease-in-out infinite;}
 @keyframes deepSpin{to{background-position:0 0,0 0;filter:hue-rotate(360deg);}}
 @keyframes deepPulse{0%,100%{box-shadow:inset 0 0 10px rgba(10,40,180,.4),inset 0 0 30px rgba(5,20,100,.6);}50%{box-shadow:inset 0 0 18px rgba(20,60,220,.6),inset 0 0 40px rgba(10,30,140,.8);}}
-
-/* Blocked: cursor + dense crosshatch */
 .sq.tile-blocked{cursor:not-allowed !important;}
-/* pieces are visible above blocked tiles; obstacle art behind them */
 .sq.tile-blocked>.piece{z-index:6 !important;position:relative;}
-/* spawner arch element: dark arch cut into pyramid face */
-.spawner-arch{position:absolute;z-index:3;bottom:22%;left:50%;transform:translateX(-50%);
-  width:20%;height:24%;background:#1a0800;
-  border-radius:50% 50% 0 0 / 80% 80% 0 0;pointer-events:none;
-  box-shadow:0 0 6px rgba(255,180,60,.5);}
-
-/* tile icons overlay */
+.spawner-arch{position:absolute;z-index:3;bottom:22%;left:50%;transform:translateX(-50%);width:20%;height:24%;background:#1a0800;border-radius:50% 50% 0 0 / 80% 80% 0 0;pointer-events:none;box-shadow:0 0 6px rgba(255,180,60,.5);}
 
 /* ── DEATH ANIMATION ── */
 .death-piece{position:fixed;pointer-events:none;z-index:800;display:flex;align-items:center;justify-content:center;animation:deathAnim .65s ease-out forwards;}
-@keyframes deathAnim{
-  0%  {transform:translate(-50%,-50%) scale(1.0) rotate(0deg);opacity:1;}
-  30% {transform:translate(-50%,-50%) scale(1.4) rotate(20deg);opacity:.9;}
-  60% {transform:translate(-50%,-50%) scale(.8) rotate(-15deg) translateY(10px);opacity:.5;}
-  100%{transform:translate(-50%,-55%) scale(.3) rotate(40deg) translateY(20px);opacity:0;}
-}
+@keyframes deathAnim{0%{transform:translate(-50%,-50%) scale(1.0) rotate(0deg);opacity:1;}30%{transform:translate(-50%,-50%) scale(1.4) rotate(20deg);opacity:.9;}60%{transform:translate(-50%,-50%) scale(.8) rotate(-15deg) translateY(10px);opacity:.5;}100%{transform:translate(-50%,-55%) scale(.3) rotate(40deg) translateY(20px);opacity:0;}}
 .death-burst{position:fixed;pointer-events:none;z-index:799;animation:burstAnim .5s ease-out forwards;}
 @keyframes burstAnim{0%{transform:translate(-50%,-50%) scale(0);opacity:.9;}100%{transform:translate(-50%,-50%) scale(2.5);opacity:0;}}
+@keyframes floatMsg{
+  0%{transform:translate(-50%,-50%) scale(.6);opacity:0;}
+  15%{transform:translate(-50%,-55%) scale(1.05);opacity:1;}
+  70%{transform:translate(-50%,-70%) scale(1);opacity:1;}
+  100%{transform:translate(-50%,-90%) scale(.9);opacity:0;}
+}
+
+/* ── CAMPAIGN SELECT ── */
+#campaign-select{display:none;position:fixed;inset:0;z-index:160;background:rgba(0,0,0,.72);align-items:center;justify-content:center;}
+#campaign-select.show{display:flex;}
+#campaign-select-box{background:#0e1f08;border:2px solid #7a5830;border-radius:10px;padding:24px 28px;width:clamp(300px,45vw,520px);max-height:80vh;display:flex;flex-direction:column;gap:12px;box-shadow:0 12px 40px rgba(0,0,0,.9);overflow-y:auto;}
+#campaign-select-box h2{font-size:18px;color:#e0a840;font-variant:small-caps;letter-spacing:.1em;text-align:center;margin-bottom:4px;font-family:Georgia,serif;}
+#campaign-level-list{display:flex;flex-direction:column;gap:6px;}
+.campaign-level-btn{display:flex;align-items:center;gap:12px;padding:10px 14px;background:#162208;border:1px solid #3a5820;border-radius:6px;cursor:pointer;transition:all .15s;font-family:Georgia,serif;}
+.campaign-level-btn:hover{background:#1e3210;border-color:#6a9830;}
+.campaign-level-btn.locked{opacity:.35;cursor:default;pointer-events:none;}
+.clb-num{font-size:20px;font-weight:700;color:#e0a840;min-width:28px;text-align:center;}
+.clb-info{display:flex;flex-direction:column;gap:2px;}
+.clb-name{font-size:13px;color:#c8e860;font-variant:small-caps;letter-spacing:.05em;}
+.clb-size{font-size:10px;color:#6a8840;font-family:monospace;}
+.clb-stars{font-size:14px;color:#e0a840;}
+
+/* ── PAN ARROWS + MINIMAP ── */
+.pan-arrow{position:absolute;display:none;font-size:32px;line-height:44px;color:#c8e860;
+  background:rgba(14,31,8,.9);border:2px solid #6a9830;border-radius:6px;
+  text-align:center;cursor:pointer;user-select:none;
+  z-index:50;box-shadow:0 3px 10px rgba(0,0,0,.7);transition:background .12s,color .12s;}
+.pan-arrow:hover{background:#1a3020;color:#e8ff80;border-color:#8ad840;}
+.pan-arrow:active{background:#2a5030;}
+#pan-n,#pan-s{width:140px;height:46px;line-height:42px;}
+#pan-w,#pan-e{width:46px;height:140px;line-height:140px;}
+#pan-n{top:-52px;left:50%;transform:translateX(-50%);}
+#pan-s{bottom:-52px;left:50%;transform:translateX(-50%);}
+#pan-w{left:-52px;top:50%;transform:translateY(-50%);}
+#pan-e{right:-52px;top:50%;transform:translateY(-50%);}
+#board-clip{position:absolute;inset:0;overflow:hidden;border-radius:3px;}
+/* ── FOG OF WAR ── */
+.sq.fog{cursor:not-allowed;}
+/* unknown: fully OPAQUE gray fog — completely hides everything underneath */
+.sq.fog-unknown::before,
+.sq.fog-unknown::after{display:none !important;}
+.sq.fog-unknown{background:#6a6a6a !important;background-image:none !important;}
+.sq.fog-unknown>.coord{color:rgba(230,230,230,.7) !important;z-index:10;position:relative;}
+.sq.fog-unknown .fog-cover{position:absolute;inset:0;z-index:9;pointer-events:none;
+  background:#6a6a6a;
+  background-image:
+    radial-gradient(circle at 25% 30%,#9a9a9a 0%,transparent 45%),
+    radial-gradient(circle at 72% 65%,#7e7e7e 0%,transparent 50%),
+    radial-gradient(circle at 50% 85%,#585858 0%,transparent 50%);
+  box-shadow:inset 0 0 10px rgba(0,0,0,.5);}
+
+/* explored: translucent gray haze — terrain visible vaguely beneath */
+.sq.fog-explored .fog-cover{position:absolute;inset:0;z-index:9;pointer-events:none;
+  background:
+    radial-gradient(circle at 25% 30%,rgba(230,230,230,.6),transparent 40%),
+    radial-gradient(circle at 75% 60%,rgba(210,210,210,.58),transparent 45%),
+    radial-gradient(circle at 50% 85%,rgba(190,190,190,.55),transparent 40%),
+    rgba(120,120,120,.72);}
+#board-inner{position:absolute;inset:0;transform-origin:center center;}
+#minimap{display:grid;margin:4px auto;background:#0a1406;border:1px solid #2a4018;padding:2px;box-sizing:content-box;}
+.mm-cell{box-sizing:border-box;}
 
 /* ── MAP SELECTOR ── */
 #map-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
@@ -402,6 +407,7 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
       <button class="diff-btn" onclick="startGame('easy')">🌿 Easy</button>
       <button class="diff-btn" onclick="startGame('hard')">🔥 Hard</button>
     </div>
+    <button class="intro-btn" onclick="showCampaignSelect()" style="border-color:#7a5830;color:#e0a840;">🏰 Campaign</button>
     <button class="intro-btn gold" onclick="showPvpLobby()">⚡ Multiplayer</button>
     <button class="intro-btn" onclick="startTutorial()" style="border-color:#5a7830;color:#a0c860;">📖 Tutorial</button>
   </div>
@@ -416,7 +422,6 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
   <div id="intro-tip">drag a piece to move it one tile · drop on ally to merge<br>right-click to set attack / heal target<br>attacks fire automatically each turn</div>
 </div>
 
-
 <!-- ── TUTORIAL OVERLAY ── -->
 <div id="tutorial-overlay">
   <div id="tut-veil"></div>
@@ -429,7 +434,7 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
     <div class="tut-btns">
       <button class="tut-btn tut-primary" id="tut-next" onclick="tutNext()">Next →</button>
       <button class="tut-btn" onclick="tutRedo()">↺ Redo</button>
-      <button class="tut-btn" onclick="tutSkip()">Skip Tutorial</button>
+      <button class="tut-btn" onclick="tutSkip()">End Tutorial</button>
     </div>
   </div>
 </div>
@@ -445,11 +450,33 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
     </div>
     <div class="pvp-lbl">Your Room</div>
     <div id="pvp-lobby-room-id">—</div>
-    <div class="pvp-lbl">Open Rooms</div>
+    <div id="pvp-full-id-row" style="display:none;flex-direction:column;gap:4px;">
+      <div class="pvp-lbl">Your full Peer ID (share with remote player)</div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input id="pvp-full-id" readonly style="flex:1;font-size:10px;font-family:monospace;background:#0a1406;border:1px solid #2a4018;color:#c8e860;padding:4px 6px;border-radius:3px;user-select:all;">
+        <button class="pvp-lobby-btn" style="padding:4px 10px;font-size:11px;" onclick="pvpCopyId()">📋 Copy</button>
+      </div>
+    </div>
+    <div class="pvp-lbl">Join a Remote Player</div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <input id="pvp-join-id-input" placeholder="Paste host peer ID..." style="flex:1;font-size:10px;font-family:monospace;background:#0a1406;border:1px solid #2a4018;color:#c8e860;padding:4px 6px;border-radius:3px;">
+      <button class="pvp-lobby-btn" style="padding:4px 10px;font-size:11px;" onclick="pvpJoinById()">🔗 Join</button>
+    </div>
+    <div class="pvp-lbl">Open Rooms (same device)</div>
     <div id="pvp-lobby-rooms"><div class="pvp-room-entry empty">press Find Rooms to scan</div></div>
     <div id="pvp-lobby-status" style="color:#4a6828">offline</div>
   </div>
 </div>
+
+<!-- ── CAMPAIGN SELECT OVERLAY ── -->
+<div id="campaign-select">
+  <div id="campaign-select-box">
+    <h2>🏰 Campaign</h2>
+    <div id="campaign-level-list"></div>
+    <button class="go-btn secondary" onclick="hideCampaignSelect()">↺ Back</button>
+  </div>
+</div>
+
 <!-- ── GAME OVER OVERLAY ── -->
 <div id="game-over">
   <div id="go-title">You Win!</div>
@@ -469,13 +496,13 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
   </div>
   <div id="status">—</div>
   <div id="turn-counter" style="font-size:11px;color:#6a8840;padding:3px 8px;background:#0e1f08;border-radius:3px;border:1px solid #2a4818;font-family:monospace;white-space:nowrap;flex-shrink:0;">Turn 0</div>
-  <button id="btn-settings" onclick="toggleSettings()" style="padding:3px 8px;font-size:10px;font-family:monospace;background:#162208;border:1px solid #2e4a18;color:#8ab840;border-radius:3px;cursor:pointer;white-space:nowrap;">⚙ Audio</button>
+  <button id="btn-settings" onclick="toggleSettings()" style="position:fixed;top:6px;right:10px;z-index:110;padding:3px 8px;font-size:10px;font-family:monospace;background:#162208;border:1px solid #2e4a18;color:#8ab840;border-radius:3px;cursor:pointer;white-space:nowrap;">⚙ Audio</button>
 </div>
 
 <div id="main">
   <div id="left-panel">
     <div class="panel-label">Merges</div>
-    <div class="merge-guide">♙+♙→♘<br>♙+♘→♗<br>♘+♗→♛<br>♘+♘→♖<br>♖+♖→⚔</div>
+    <div class="merge-guide">♙+♙→♘<br>♙+♘→♗<br>♘+♗→♛<br>♘+♘→♖<br>♖+♖→<svg viewBox="0 0 100 100" width="16" height="16" style="vertical-align:middle;display:inline-block;" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="55" width="60" height="35" rx="3" fill="#d0d0e0" stroke="#888" stroke-width="2"/><rect x="20" y="42" width="14" height="18" rx="2" fill="#c8c8d8" stroke="#888" stroke-width="1.5"/><rect x="43" y="42" width="14" height="18" rx="2" fill="#c8c8d8" stroke="#888" stroke-width="1.5"/><rect x="66" y="42" width="14" height="18" rx="2" fill="#c8c8d8" stroke="#888" stroke-width="1.5"/><rect x="18" y="50" width="64" height="6" rx="1" fill="#b0b0c8"/><line x1="32" y1="68" x2="68" y2="88" stroke="#c8a040" stroke-width="4" stroke-linecap="round"/><line x1="68" y1="68" x2="32" y2="88" stroke="#c8a040" stroke-width="4" stroke-linecap="round"/><circle cx="32" cy="68" r="3" fill="#e8c060"/><circle cx="68" cy="68" r="3" fill="#e8c060"/></svg></div>
     <div class="tier-divider"></div>
     <div class="panel-label">Units <span id="pc-page-label" style="color:#3a5828;font-size:7px;">1/2</span></div>
     <div id="pc-cards-wrap" style="display:flex;flex-direction:column;gap:3px;flex:1;min-height:0;justify-content:space-evenly;"></div>
@@ -486,9 +513,17 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
   </div>
 
   <div id="board-wrap">
-    <div id="board"></div>
-    <svg id="atk-overlay"></svg>
-    <svg id="wep-overlay" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></svg>
+    <div id="board-clip">
+      <div id="board-inner">
+        <div id="board"></div>
+        <svg id="atk-overlay"></svg>
+        <svg id="wep-overlay" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></svg>
+      </div>
+    </div>
+    <div class="pan-arrow" id="pan-n" onmousedown="startPanHold(-1,0)" onmouseup="stopPanHold()" onmouseleave="stopPanHold()" ontouchstart="startPanHold(-1,0);event.preventDefault();" ontouchend="stopPanHold()">▲</div>
+    <div class="pan-arrow" id="pan-s" onmousedown="startPanHold(1,0)" onmouseup="stopPanHold()" onmouseleave="stopPanHold()" ontouchstart="startPanHold(1,0);event.preventDefault();" ontouchend="stopPanHold()">▼</div>
+    <div class="pan-arrow" id="pan-w" onmousedown="startPanHold(0,-1)" onmouseup="stopPanHold()" onmouseleave="stopPanHold()" ontouchstart="startPanHold(0,-1);event.preventDefault();" ontouchend="stopPanHold()">◀</div>
+    <div class="pan-arrow" id="pan-e" onmousedown="startPanHold(0,1)" onmouseup="stopPanHold()" onmouseleave="stopPanHold()" ontouchstart="startPanHold(0,1);event.preventDefault();" ontouchend="stopPanHold()">▶</div>
   </div>
 
   <div id="right-panel">
@@ -501,6 +536,14 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
       <button class="act-btn" id="btn-skip" onclick="doSkip()">⏭ Skip</button>
       <button class="act-btn gold" id="btn-new" onclick="goIntro()">↺ Menu</button>
     </div>
+    <div class="tier-divider" style="width:100%"></div>
+    <div class="panel-label">Map View</div>
+    <div id="minimap"></div>
+    <div style="display:flex;gap:4px;justify-content:center;">
+      <button class="act-btn" id="btn-zoom-in" onclick="zoomIn()" style="flex:1;">🔍+</button>
+      <button class="act-btn" id="btn-zoom-out" onclick="zoomOut()" style="flex:1;">🔍−</button>
+    </div>
+    <button class="act-btn" id="btn-mapcheat" onclick="toggleMapCheat()">🗺 Map Cheat: OFF</button>
     <div class="tier-divider" style="width:100%"></div>
     <div class="panel-label" id="pvp-label" style="display:none">Online PvP</div>
     <div id="pvp-section" style="display:none">
@@ -519,7 +562,6 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
   <div id="thinking-dot"></div>
   <div id="log"></div>
 </div>
-
 
 <!-- ── SETTINGS MODAL ── -->
 <div id="settings-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.7);align-items:center;justify-content:center;">
@@ -543,3147 +585,25 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
     </div>
   </div>
 </div>
+
+<!-- ── SCRIPTS ── -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-<script>
-
-
-// ── TUTORIAL ─────────────────────────────────────────────────────────────────
-let tutStep=0;
-let tutWaitingForAction=false;
-let tutActionType=''; // 'move','attack','merge','spawn','skip'
-let tutFromAutoChain=false; // set by tutAutoNext so tutApplyStep skips setup()
-let tutActionTarget=-1;
-
-const TUTORIAL_STEPS=[
-  // ── PAWN + MERGE ──────────────────────────────────────────────────────────
-  {
-    title:'The Pawn \u2659',
-    desc:'Pawns move to any adjacent tile (8 directions, 1 step) and attack the same way. First move your pawn, then attack the enemy that appears.',
-    hint:'Drag the pawn one step in any direction.',
-    action:'move',
-    setup(){ tutBoard({w:{pawn:[idx(4,4)]},b:{}}); tutHighlightPiece(idx(4,4)); },
-    onMove(){
-      const pi=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='pawn');
-      if(pi>=0){
-        const adj=adj8(pi).filter(j=>!pieces[j]&&!isTileBlocked(j));
-        if(adj.length)pieces[adj[0]]={type:'pawn',color:'b',hp:1,maxHp:1};
-        render();tutHighlightPiece(pi);
-      }
-      tutContinue('attack','Now drag your pawn onto the enemy!');
-    },
-    onAttack(){
-      // clear black non-king pieces
-      for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='b'&&pieces[i].type!=='king')pieces[i]=null;}
-      // reset both pawns to board center for the merge demonstration
-      for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='w'&&pieces[i].type==='pawn')pieces[i]=null;}
-      const cR=Math.floor(ROWS/2),cC=Math.floor(COLS/2);
-      const c1=idx(cR,cC),c2=idx(cR,cC+1);
-      pieces[c1]={type:'pawn',color:'w',hp:1,maxHp:1};
-      pieces[c2]={type:'pawn',color:'w',hp:1,maxHp:1};
-      render();tutHighlightPiece(c1);
-      tutContinue('merge','\u2659+\u2659 \u2192 \u2658: Drag your pawn onto the other pawn to merge!');
-      document.getElementById('tut-title').textContent='Merge: \u2659+\u2659 \u2192 \u2658';
-    },
-    onMerge(){
-      // knight appeared — continue to knight tutorial at its position
-      tutAutoNext(1);
-    },
-  },
-  // ── KNIGHT ────────────────────────────────────────────────────────────────
-  {
-    title:'The Knight \u2658',
-    desc:'Knights move in an L-shape: 2 squares one way, 1 square perpendicular, jumping over pieces. Move the knight, then attack the enemy that appears.',
-    hint:'Jump the knight to an L-shaped square.',
-    action:'move',
-    setup(){ tutBoard({w:{knight:[idx(4,4)]},b:{}}); tutHighlightPiece(idx(4,4)); },
-    fromMerge:true, // flag: don't call setup() when coming from auto-chain, use current board
-    onMove(){
-      const ki=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='knight');
-      if(ki>=0){
-        const tgts=kJumps(ki).filter(j=>!pieces[j]&&!isTileBlocked(j));
-        if(tgts.length)pieces[tgts[0]]={type:'pawn',color:'b',hp:1,maxHp:1};
-        render();tutHighlightPiece(ki);
-      }
-      tutContinue('attack','Now drag the knight onto the enemy!');
-    },
-    onAttack(){
-      // reset board to centered pawn+knight for merge demo
-      for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color!=='w'||pieces[i]&&pieces[i].type==='king'?false:pieces[i]&&pieces[i].color==='b')pieces[i]=null;}
-      for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='w'&&pieces[i].type!=='king')pieces[i]=null;}
-      pieces[idx(4,4)]={type:'knight',color:'w',hp:4,maxHp:4};
-      pieces[idx(4,3)]={type:'pawn',color:'w',hp:1,maxHp:1};
-      render();tutHighlightPiece(idx(4,3));
-      tutContinue('merge','\u2659+\u2658 \u2192 \u2657: Drag the pawn onto the knight!');
-      document.getElementById('tut-title').textContent='Merge: \u2659+\u2658 \u2192 \u2657';
-    },
-    onMerge(){
-      document.getElementById('tut-title').textContent='The Bishop \u2657';
-      document.getElementById('tut-desc').textContent='Bishops move diagonally up to 2 squares (or 1 cardinally). They attack diagonally and heal allies using mana (blue dots). Move the bishop, then attack, then heal!';
-      document.getElementById('tut-hint').textContent='Drag the bishop diagonally 1 or 2 squares.';
-      tutAutoNext(2);
-    },
-  },
-  // ── BISHOP ────────────────────────────────────────────────────────────────
-  {
-    title:'The Bishop \u2657',
-    desc:'Bishops move diagonally up to 2 squares (or 1 cardinally). They attack diagonally and heal allies using mana (blue dots). Move the bishop, then attack, then heal!',
-    hint:'Drag the bishop diagonally 1 or 2 squares.',
-    action:'move',
-    setup(){
-      tutBoard({w:{bishop:[idx(4,4)]},b:{}});
-      const bp=pieces[idx(4,4)];if(bp)bp.mana=2;
-      tutHighlightPiece(idx(4,4));
-    },
-    fromMerge:true,
-    onMove(){
-      const bi=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='bishop');
-      if(bi>=0){
-        const diag=[[-2,-2],[-2,2],[2,-2],[2,2],[-1,-1],[-1,1],[1,-1],[1,1]]
-          .map(([dr,dc])=>idx(ROW(bi)+dr,COL(bi)+dc))
-          .filter(j=>inB(ROW(j),COL(j))&&!pieces[j]&&!isTileBlocked(j));
-        if(diag.length)pieces[diag[0]]={type:'pawn',color:'b',hp:1,maxHp:1};
-        render();tutHighlightPiece(bi);
-      }
-      tutContinue('attack','Now drag the bishop diagonally onto the enemy!');
-    },
-    onAttack(){
-      const step=TUTORIAL_STEPS[tutStep];
-      if(step&&step._healPhase){
-        // still in kill phase — keep waiting (startWhiteTurn detects enemy death)
-        tutWaitingForAction=true; tutActionType='attack';
-        return;
-      }
-      // Phase 3: healing scenario
-      // place our wounded knight at center and an enemy knight nearby (already attacked once)
-      for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='b'&&pieces[i].type!=='king')pieces[i]=null;}
-      const bi=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='bishop');
-      // reset bishop mana to full
-      if(bi>=0){const bp=pieces[bi];if(bp)bp.mana=2;}
-      // place wounded white knight and enemy knight at L-distance from each other
-      const wKn=idx(4,4); // white knight (wounded)
-      const eKn=idx(2,3); // enemy knight at L-jump distance
-      for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='w'&&pieces[i].type!=='king'&&pieces[i].type!=='bishop')pieces[i]=null;}
-      pieces[wKn]={type:'knight',color:'w',hp:2,maxHp:4}; // wounded (2/4 HP)
-      pieces[eKn]={type:'knight',color:'b',hp:4,maxHp:4}; // enemy at full HP
-      render();
-      // highlight bishop as the piece to use for healing
-      if(bi>=0)tutHighlightPiece(bi);
-      document.getElementById('tut-desc').textContent='Your knight is wounded (2/4 HP)! Drag the bishop onto the wounded knight to heal it. Each heal costs 1 mana and restores 1 HP.';
-      tutContinue('heal','Drag the bishop onto the wounded white knight!');
-      document.getElementById('tut-title').textContent='Bishop Heals \u2657';
-    },
-    onHeal(){
-      // bishop healed 1 HP (already applied in executeDrop) — check bishop mana
-      const bi=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='bishop');
-      const manaLeft=bi>=0?(pieces[bi].mana||0):0;
-      const wKn=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='knight');
-      if(wKn>=0){render();tutHighlightPiece(wKn);}
-      if(manaLeft>0){
-        document.getElementById('tut-desc').textContent='The knight gained 1 HP! Bishop still has '+manaLeft+' mana — you can heal again, or attack the enemy knight with your knight.';
-        document.getElementById('tut-hint').textContent='Heal again or attack the enemy knight!';
-      }else{
-        document.getElementById('tut-desc').textContent='The knight is healed by 1 HP! The bishop is now out of mana — it will recover 1 mana every 3 turns. Now attack the enemy knight with your knight to finish the fight!';
-        document.getElementById('tut-hint').textContent='Drag your knight onto the enemy knight to attack!';
-      }
-      document.getElementById('tut-title').textContent='Bishop Heals \u2657 \u2192 Knight Fights!';
-      tutWaitingForAction=true; tutActionType='attack';
-      TUTORIAL_STEPS[tutStep]._healPhase=true;
-    },
-    onMerge(){
-      // two knights merged to rook — advance to rook step
-      tutAutoNext(3);
-    },
-    // called when user presses Next after the kill-enemy phase
-    // tutNext will call tutApplyStep which calls setup() — but fromMerge prevents that
-    // so we override: tutNext on this step sets up rook merge instead
-    _afterKillNext(){
-      for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&(pieces[i].color==='b'||pieces[i].type==='knight'||pieces[i].type==='bishop'))pieces[i]=null;}
-      pieces[idx(7,1)]={type:'king',color:'w',hp:5,maxHp:5};
-      tileData=new Array(ROWS*COLS).fill('');
-      for(let r=0;r<4;r++)for(let c=0;c<3;c++){const o=mapTheme==='desert'?'sandstone':mapTheme==='ocean'?'rocks':'tree';tileData[idx(r,c)]=o;}
-      pieces[idx(4,4)]={type:'knight',color:'w',hp:4,maxHp:4};
-      pieces[idx(4,3)]={type:'knight',color:'w',hp:4,maxHp:4};
-      render();tutHighlightPiece(idx(4,3));
-      document.getElementById('tut-title').textContent='Merge: \u2658+\u2658 \u2192 \u2656';
-      document.getElementById('tut-desc').textContent='Merge two adjacent knights to form a Rook — heavy artillery with long cardinal range.';
-      document.getElementById('tut-hint').textContent='\u2658+\u2658 \u2192 \u2656: Drag one knight onto the other!';
-      tutWaitingForAction=true; tutActionType='merge';
-      const nb=document.getElementById('tut-next');
-      if(nb){nb.textContent='Skip Step \u2192';nb.style.background='';nb.style.borderColor='';nb.style.color='';nb.onclick=tutNext;}
-    },
-  },
-  // ── ROOK ──────────────────────────────────────────────────────────────────
-  {
-    title:'The Rook \u2656',
-    desc:'Rooks move up to 2 squares cardinally and attack up to 3 squares cardinally, piercing through pieces. Move the rook, then set up a siege!',
-    hint:'Move the rook toward the enemy pawn.',
-    action:'move',
-    setup(){
-      tutBoard({w:{rook:[idx(4,2)]},b:{pawn:[idx(4,6)]}});
-      tutHighlightPiece(idx(4,2));
-    },
-    fromMerge:true,
-    onMove(){
-      const ri=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='rook');
-      if(ri>=0){
-        const adjr=adj8(ri).filter(j=>!pieces[j]&&!isTileBlocked(j));
-        if(adjr.length)pieces[adjr[0]]={type:'rook',color:'w',hp:4,maxHp:4};
-        render();tutHighlightPiece(ri);
-      }
-      tutContinue('merge','\u2656+\u2656 \u2192 \u2694: Drag one rook onto the other!');
-      document.getElementById('tut-title').textContent='Merge: \u2656+\u2656 \u2192 \u2694';
-    },
-    onMerge(){
-      tutAutoNext(4);
-    },
-  },
-  // ── SIEGE ─────────────────────────────────────────────────────────────────
-  {
-    title:'Siege Tower \u2694',
-    desc:'The Siege Tower cannot move, but attacks 4 squares cardinally with 3 damage — devastating. Right-click to unsiege it back into two rooks.',
-    hint:'Right-click the siege tower to unsiege.',
-    action:'unsiege',
-    setup(){
-      tutBoard({w:{},b:{}});
-      pieces[idx(4,4)]={type:'siege',color:'w',hp:8,maxHp:8,sieged:true};
-      tutHighlightPiece(idx(4,4));
-    },
-    fromMerge:true,
-    onUnsiege(){
-      tutAutoNext(5);
-    },
-  },
-  // ── QUEEN (♘+♗→♛) ─────────────────────────────────────────────────────────
-  {
-    title:'Merge: \u2658+\u2657 \u2192 \u265B',
-    desc:'A Knight and Bishop merge into the Queen — the most versatile piece, attacking in all directions up to 2 squares (except L-shapes). Drag the knight onto the bishop.',
-    hint:'Drag the knight onto the bishop.',
-    action:'merge',
-    setup(){
-      tutBoard({w:{knight:[idx(4,3)],bishop:[idx(4,4)]},b:{}});
-      const bp=pieces[idx(4,4)];if(bp)bp.mana=1;
-      tutHighlightPiece(idx(4,3));
-    },
-  },
-  // ── KING & SPAWN ──────────────────────────────────────────────────────────
-  {
-    title:'King \u2654 & Spawning',
-    desc:'Your King spawns new pawns from adjacent squares. Click the king to enter spawn mode, then click an adjacent empty square.',
-    hint:'Click the king, then click an adjacent empty square.',
-    action:'spawn',
-    setup(){
-      tutBoard({w:{},b:{}});
-      const ki=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='king');
-      tutHighlightPiece(ki);
-    },
-  },
-  // ── DONE ──────────────────────────────────────────────────────────────────
-  {
-    title:'Tutorial Complete! \uD83C\uDF89',
-    desc:'You know all the pieces and merge chains! Build from pawns, merge up the chain, and destroy the enemy king. Good luck!',
-    hint:'Press Start Playing to begin!',
-    action:'done',
-    setup(){},
-  },
-];
-
-function tutBoard(setup){
-  // clear board; only white king; no obstacles (tileData cleared)
-  pieces=new Array(ROWS*COLS).fill(null);
-  tileData=new Array(ROWS*COLS).fill(''); // no obstacles in tutorial
-  // mark top-left tiles as blocked (they're hidden behind the tutorial card)
-  // card covers approx top 3 rows × left 4 columns
-  for(let r=0;r<4;r++)for(let c=0;c<3;c++){const obsType=mapTheme==='desert'?'sandstone':mapTheme==='ocean'?'rocks':'tree';tileData[idx(r,c)]=obsType;}
-  pieces[idx(7,1)]={type:'king',color:'w',hp:5,maxHp:5};
-  // no opponent king in tutorial
-  const types=['pawn','knight','bishop','rook','queen','king'];
-  ['w','b'].forEach(col=>{
-    const s=setup[col]||{};
-    types.forEach(t=>{
-      (s[t]||[]).forEach(ti=>{
-        const st=STATS[t];
-        pieces[ti]={type:t,color:col,hp:st.hp,maxHp:st.maxHp};
-        if(t==='bishop')pieces[ti].mana=1;
-      });
-    });
-  });
-}
-
-function tutHighlightPiece(i){
-  if(i<0)return;
-  const el=sqElAt(i);if(!el)return;
-  const hl=document.getElementById('tut-highlight');
-  const rect=el.getBoundingClientRect();
-  hl.style.left=(rect.left-3)+'px';
-  hl.style.top=(rect.top-3)+'px';
-  hl.style.width=(rect.width+6)+'px';
-  hl.style.height=(rect.height+6)+'px';
-  // reposition card relative to new highlight position
-  requestAnimationFrame(()=>tutPositionCard());
-}
-
-function tutPositionCard(){
-  const card=document.getElementById('tut-card');
-  if(!card)return;
-  card.style.top='12px';
-  card.style.left='12px';
-  card.style.bottom='';
-  card.style.right='';
-}
-
-function tutApplyStep(){
-  const step=TUTORIAL_STEPS[tutStep];
-  if(!step)return;
-  // setup board — skip if arriving via auto-chain (piece already placed by merge)
-  over=false; thinking=false; turn='w';
-  spawnHistory=[]; whiteTurnCount=0; movedThisTurn=-1;
-  whiteTargets={}; blackTargets={};
-  if(!tutFromAutoChain)step.setup();
-  else{
-    if(!pieces.find(p=>p&&p.color==='w'&&p.type==='king'))pieces[idx(7,1)]={type:'king',color:'w',hp:5,maxHp:5};
-  }
-  tutFromAutoChain=false;
-  render();syncUI();
-  // update card
-  document.getElementById('tut-title').textContent=step.title;
-  document.getElementById('tut-desc').textContent=step.desc;
-  document.getElementById('tut-hint').textContent=step.hint;
-  document.getElementById('tut-step').textContent='Step '+(tutStep+1)+' / '+TUTORIAL_STEPS.length;
-  const nextBtn=document.getElementById('tut-next');
-  if(step.action==='done'){
-    nextBtn.textContent='Start Playing!';
-    nextBtn.style.display='inline-block';
-    nextBtn.onclick=()=>{tutEnd();startGame('easy');};
-  }else{
-    nextBtn.textContent='Skip Step →';
-    nextBtn.style.display='inline-block';
-    nextBtn.onclick=tutNext;
-  }
-  // position card relative to highlighted piece — defer so highlight is set
-  requestAnimationFrame(()=>tutPositionCard());
-  tutWaitingForAction=(step.action!=='done');
-  tutActionType=step.action;
-}
-
-function tutTaskDone(){
-  // called when the required action is completed — update button to "Next" but don't advance
-  tutWaitingForAction=false;
-  const nextBtn=document.getElementById('tut-next');
-  if(!nextBtn)return;
-  nextBtn.textContent='\u2713 Next \u2192';
-  nextBtn.style.background='#1a4010';
-  nextBtn.style.borderColor='#70c030';
-  nextBtn.style.color='#c8f040';
-  nextBtn.onclick=()=>{
-    nextBtn.style.background='';nextBtn.style.borderColor='';nextBtn.style.color='';
-    tutNext();
-  };
-}
-
-function startTutorial(){
-  document.getElementById('intro').classList.add('hidden');
-  document.getElementById('tutorial-overlay').classList.add('show');
-  mapTheme='jungle'; document.body.className='theme-jungle';
-  generateMap();
-  // no animals in tutorial
-  animals=[];
-  animalDivs.forEach(el=>el.remove());animalDivs.clear();
-  stopAnimalLoop();
-  tutStep=0;
-  tutApplyStep();
-}
-
-function tutRedo(){
-  tutFromAutoChain=false; // force full setup on redo
-  const nextBtn=document.getElementById('tut-next');
-  if(nextBtn){nextBtn.textContent='Skip Step \u2192';nextBtn.style.background='';nextBtn.style.borderColor='';nextBtn.style.color='';nextBtn.onclick=tutNext;}
-  tutApplyStep();
-}
-
-function tutNext(){
-  tutStep=Math.min(tutStep+1,TUTORIAL_STEPS.length-1);
-  tutApplyStep();
-}
-
-function tutSkip(){
-  tutEnd();
-  document.getElementById('intro').classList.remove('hidden');
-}
-
-function tutEnd(){
-  document.getElementById('tutorial-overlay').classList.remove('show');
-  tutWaitingForAction=false;
-  over=true;
-}
-
-// update UI for next phase without resetting board
-function tutContinue(newAction,newHint){
-  tutWaitingForAction=true;tutActionType=newAction;
-  if(newHint)document.getElementById('tut-hint').textContent=newHint;
-  const nb=document.getElementById('tut-next');
-  if(nb){nb.textContent='Skip Step \u2192';nb.style.background='';nb.style.borderColor='';nb.style.color='';nb.onclick=tutNext;}
-}
-// auto-advance to next step; if fromMerge, skip setup() so piece stays
-function tutAutoNext(nextIdx){
-  if(nextIdx==null)nextIdx=tutStep+1;
-  if(nextIdx>=TUTORIAL_STEPS.length){tutTaskDone();return;}
-  const nextStep=TUTORIAL_STEPS[nextIdx];
-  tutStep=nextIdx;
-  over=false;thinking=false;turn='w';
-  spawnHistory=[];whiteTurnCount=0;movedThisTurn=-1;whiteTargets={};blackTargets={};
-  if(nextStep.fromMerge){
-    tutFromAutoChain=true;
-    // ensure white king present (no enemy king in tutorial)
-    if(!pieces.find(p=>p&&p.color==='w'&&p.type==='king'))pieces[idx(7,1)]={type:'king',color:'w',hp:5,maxHp:5};
-  }else{
-    tutFromAutoChain=false;
-    nextStep.setup();
-  }
-  document.getElementById('tut-title').textContent=nextStep.title;
-  document.getElementById('tut-desc').textContent=nextStep.desc;
-  document.getElementById('tut-hint').textContent=nextStep.hint;
-  document.getElementById('tut-step').textContent='Step '+(nextIdx+1)+' / '+TUTORIAL_STEPS.length;
-  const nb=document.getElementById('tut-next');
-  if(nextStep.action==='done'){
-    nb.textContent='Start Playing!';nb.onclick=()=>{tutEnd();startGame('easy');};
-  }else{
-    nb.textContent='Skip Step \u2192';nb.style.background='';nb.style.borderColor='';nb.style.color='';nb.onclick=tutNext;
-  }
-  tutWaitingForAction=(nextStep.action!=='done');tutActionType=nextStep.action;
-  const ti=pieces.findIndex(p=>p&&p.color==='w'&&p.type!=='king');
-  if(ti>=0)setTimeout(()=>tutHighlightPiece(ti),100);
-  render();syncUI();
-}
-function tutCheckAction(actionType){
-  if(!tutWaitingForAction)return;
-  if(tutActionType===actionType||tutActionType==='any'){
-    const step=TUTORIAL_STEPS[tutStep];
-    const hook='on'+actionType.charAt(0).toUpperCase()+actionType.slice(1);
-    if(step&&typeof step[hook]==='function'){
-      tutWaitingForAction=false;setTimeout(()=>step[hook](),500);
-    }else{
-      tutTaskDone();
-    }
-  }
-}
-
-// ── PVP LOBBY ────────────────────────────────────────────────────────────────
-function showPvpLobby(){
-  document.getElementById('pvp-lobby').classList.add('show');
-  if(!bc)initBC();
-}
-function pvpLobbyClose(){
-  document.getElementById('pvp-lobby').classList.remove('show');
-}
-function setPvpLobbyStatus(msg,col){
-  const el=document.getElementById('pvp-lobby-status');
-  if(el){el.textContent=msg;el.style.color=col||'#4a6828';}
-  // also update game-panel status for backwards compat
-  const el2=document.getElementById('pvp-status');
-  if(el2){el2.textContent=msg;el2.style.color=col||'#4a6828';}
-}
-function pvpLobbyHost(){
-  if(peer)peer.destroy();pvpActive=false;myPeerId=null;
-  if(!bc)initBC();
-  bcRoomName='Room '+Math.random().toString(36).slice(2,6).toUpperCase();
-  peer=new Peer();
-  peer.on('open',id=>{
-    myPeerId=id;
-    const rid=document.getElementById('pvp-lobby-room-id');
-    if(rid)rid.textContent=bcRoomName+' ('+id.slice(0,8)+')';
-    setPvpLobbyStatus('Waiting for opponent...','#a8c050');
-    if(bc)bc.postMessage({type:'room',id,name:bcRoomName});
-    const ann=setInterval(()=>{
-      if(!myPeerId||pvpActive){clearInterval(ann);return;}
-      if(bc)bc.postMessage({type:'room',id,name:bcRoomName});
-    },2000);
-    peer.on('connection',c=>{
-      clearInterval(ann);conn=c;pvpRole='host';pvpActive=true;
-      conn.on('data',onPeerData);
-      conn.on('close',()=>{pvpActive=false;setPvpLobbyStatus('disconnected','#c05030');});
-      setPvpLobbyStatus('Connected!','#90e040');
-      document.getElementById('pvp-lobby').classList.remove('show');
-      startGame('pvp');
-    });
-  });
-  peer.on('error',()=>setPvpLobbyStatus('error','#c05030'));
-}
-function pvpLobbyRefresh(){
-  if(!bc)initBC();if(!bc){setPvpLobbyStatus('not supported','#c05030');return;}
-  collectingRooms=true;setPvpLobbyStatus('scanning...','#a8c050');
-  const list=document.getElementById('pvp-lobby-rooms');
-  list.innerHTML='<div class="pvp-room-entry empty">scanning...</div>';
-  bc.postMessage({type:'list?'});
-  setTimeout(()=>{
-    collectingRooms=false;
-    if(!list.querySelectorAll('.pvp-room-entry:not(.empty)').length)
-      list.innerHTML='<div class="pvp-room-entry empty">no rooms found</div>';
-    setPvpLobbyStatus('done','#8ab840');
-  },1500);
-}
-function addPvpLobbyRoom(id,name){
-  const list=document.getElementById('pvp-lobby-rooms');
-  if(!list)return;
-  list.querySelectorAll('.pvp-room-entry.empty').forEach(el=>el.remove());
-  if(list.querySelector('[data-id="'+id+'"]'))return;
-  const d=document.createElement('div');d.className='pvp-room-entry';d.dataset.id=id;
-  d.textContent=name+' ('+id.slice(0,8)+')';
-  d.onclick=()=>pvpLobbyJoin(id);
-  list.appendChild(d);
-}
-function pvpLobbyJoin(roomId){
-  if(peer)peer.destroy();peer=new Peer();
-  peer.on('open',()=>{
-    conn=peer.connect(roomId);pvpRole='guest';
-    setPvpLobbyStatus('connecting...','#a8c050');
-    conn.on('open',()=>{
-      pvpActive=true;conn.on('data',onPeerData);
-      conn.on('close',()=>{pvpActive=false;setPvpLobbyStatus('disconnected','#c05030');});
-      setPvpLobbyStatus('Connected!','#90e040');
-      document.getElementById('pvp-lobby').classList.remove('show');
-      startGame('pvp');
-    });
-    conn.on('error',()=>setPvpLobbyStatus('join failed','#c05030'));
-  });
-  peer.on('error',()=>setPvpLobbyStatus('peer error','#c05030'));
-}
-
-
-function showMoveHint(){
-  const hb=document.getElementById('hint-box');
-  if(!hb)return;
-  if(difficulty!=='easy'||over||thinking||!isMyTurn()){hb.style.display='none';return;}
-  const mc=myColor();
-  // find best suggestion: merge > attack > move pawn toward enemy > spawn
-  const bp2=[];for(let i=0;i<ROWS*COLS;i++){const p=pieces[i];if(p&&p.color===mc)bp2.push({i,p});}
-  let hint='';
-  // check merges
-  for(const {i,p} of bp2){
-    const d=getDragDests(i);
-    if(d.merge.size){const t=[...d.merge][0];hint=p.type+' at '+sqName(i)+' can merge with '+pieces[t].type+' at '+sqName(t);break;}
-  }
-  // check attacks
-  if(!hint){
-    for(const {i,p} of bp2){
-      const d=getDragDests(i);
-      if(d.attack.size){const t=[...d.attack][0];hint=p.type+' at '+sqName(i)+' can attack '+pieces[t].type+' at '+sqName(t);break;}
-    }
-  }
-  // suggest pawn move toward enemy king
-  if(!hint){
-    const eki=pieces.findIndex(p=>p&&p.color!==mc&&p.type==='king');
-    const pawns=bp2.filter(({p})=>p.type==='pawn');
-    if(pawns.length&&eki>=0){
-      const best=pawns.reduce((a,b)=>cheb(a.i,eki)<cheb(b.i,eki)?a:b);
-      const d=getDragDests(best.i);
-      if(d.move.size){const mv=[...d.move].reduce((a,b)=>cheb(a,eki)<cheb(b,eki)?a:b);hint='Move pawn at '+sqName(best.i)+' toward enemy';}
-    }
-  }
-  if(!hint&&spawnRemaining()>0)hint='Spawn a pawn next to your King';
-  if(!hint)hint='Skip turn';
-  hb.textContent='Hint: '+hint;
-  hb.style.display='block';
-}
-// ── AUDIO SYSTEM ─────────────────────────────────────────────────────────────
-let audioCtx=null;
-let bgmGain=null,sfxGain=null;
-let bgmNodes=[],bgmPlaying=false,bgmPaused=false;
-let bgmVol=0.35,sfxVol=0.70;
-
-function getAudioCtx(){
-  if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)();bgmGain=audioCtx.createGain();bgmGain.gain.value=bgmVol;bgmGain.connect(audioCtx.destination);sfxGain=audioCtx.createGain();sfxGain.gain.value=sfxVol;sfxGain.connect(audioCtx.destination);}
-  if(audioCtx.state==='suspended')audioCtx.resume();
-  return audioCtx;
-}
-
-function setBgmVol(v){bgmVol=v/100;document.getElementById('bgm-val').textContent=v;if(bgmGain)bgmGain.gain.setTargetAtTime(bgmVol,getAudioCtx().currentTime,.05);}
-function setSfxVol(v){sfxVol=v/100;document.getElementById('sfx-val').textContent=v;if(sfxGain)sfxGain.gain.setTargetAtTime(sfxVol,getAudioCtx().currentTime,.05);}
-function toggleSettings(){const m=document.getElementById('settings-modal');m.style.display=m.style.display==='flex'?'none':'flex';}
-function toggleBgm(){
-  const btn=document.getElementById('btn-bgm-toggle');
-  if(bgmPaused){startBgm();bgmPaused=false;if(btn)btn.textContent='⏸ Pause BGM';}
-  else{stopBgm();bgmPaused=true;if(btn)btn.textContent='▶ Resume BGM';}
-}
-
-// ── BGM: procedural ambient loop ──────────────────────────────────────────────
-const BGM_SCALES={
-  jungle:[220,246,261,293,329,349,392],
-  desert:[196,220,247,262,294,330,349],
-  ocean: [174,196,220,246,261,293,330],
-};
-let bgmTimeout=null;
-
-function startBgm(){
-  if(bgmPlaying)return;
-  bgmPlaying=true;
-  const ctx=getAudioCtx();
-  function playNote(){
-    if(!bgmPlaying)return;
-    const scale=BGM_SCALES[mapTheme]||BGM_SCALES.jungle;
-    const freq=scale[Math.floor(Math.random()*scale.length)]*(Math.random()<.3?2:1);
-    const dur=1.2+Math.random()*1.8;
-    const osc=ctx.createOscillator();
-    const env=ctx.createGain();
-    osc.type=Math.random()<.5?'sine':'triangle';
-    osc.frequency.value=freq;
-    env.gain.setValueAtTime(0,ctx.currentTime);
-    env.gain.linearRampToValueAtTime(bgmVol*0.18,ctx.currentTime+0.3);
-    env.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);
-    osc.connect(env);env.connect(bgmGain);
-    osc.start(ctx.currentTime);osc.stop(ctx.currentTime+dur+.1);
-    bgmNodes.push({osc,env});
-    // cleanup
-    setTimeout(()=>{bgmNodes=bgmNodes.filter(n=>n.osc!==osc);},((dur+.2)*1000)|0);
-    // schedule next note
-    const gap=400+Math.random()*900;
-    bgmTimeout=setTimeout(playNote,gap);
-  }
-  playNote();
-}
-
-function stopBgm(){
-  bgmPlaying=false;
-  if(bgmTimeout){clearTimeout(bgmTimeout);bgmTimeout=null;}
-  const ctx=audioCtx;
-  if(ctx)bgmNodes.forEach(n=>{try{n.osc.stop(ctx.currentTime+.1);}catch(e){}});
-  bgmNodes=[];
-}
-
-// ── SFX ──────────────────────────────────────────────────────────────────────
-function playTone(freq,dur,type='square',vol=1){
-  const ctx=getAudioCtx();
-  const osc=ctx.createOscillator();
-  const env=ctx.createGain();
-  osc.type=type;osc.frequency.value=freq;
-  env.gain.setValueAtTime(vol*sfxVol*0.4,ctx.currentTime);
-  env.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);
-  osc.connect(env);env.connect(sfxGain);
-  osc.start(ctx.currentTime);osc.stop(ctx.currentTime+dur+.05);
-}
-
-function playNoise(dur,vol=1){
-  const ctx=getAudioCtx();
-  const buf=ctx.createBuffer(1,ctx.sampleRate*dur,ctx.sampleRate);
-  const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
-  const src=ctx.createBufferSource();src.buffer=buf;
-  const env=ctx.createGain();const flt=ctx.createBiquadFilter();
-  flt.type='bandpass';flt.frequency.value=400;flt.Q.value=0.5;
-  env.gain.setValueAtTime(vol*sfxVol*0.25,ctx.currentTime);
-  env.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);
-  src.connect(flt);flt.connect(env);env.connect(sfxGain);
-  src.start(ctx.currentTime);
-}
-
-// Named SFX
-const SFX={
-  spawn:  ()=>{playTone(523,.08,'sine',.8);setTimeout(()=>playTone(659,.12,'sine',.6),80);},
-  move:   ()=>playTone(330,.06,'triangle',.5),
-  attack: ()=>{playNoise(.12,.9);playTone(180,.1,'sawtooth',.5);},
-  hit:    ()=>{playNoise(.08,.8);playTone(150,.08,'square',.4);},
-  kill:   ()=>{playNoise(.18,1);for(let i=0;i<3;i++)setTimeout(()=>playTone(120-i*20,.1,'sawtooth',.5),i*60);},
-  merge:  ()=>{[440,550,660].forEach((f,i)=>setTimeout(()=>playTone(f,.15,'sine',.6),i*70));},
-  heal:   ()=>{playTone(528,.2,'sine',.5);setTimeout(()=>playTone(660,.2,'sine',.4),120);},
-  march:  ()=>playTone(220,.08,'triangle',.4),
-  win:    ()=>{[440,550,660,880].forEach((f,i)=>setTimeout(()=>playTone(f,.3,'sine',.7),i*120));},
-  lose:   ()=>{[440,370,330,220].forEach((f,i)=>setTimeout(()=>playTone(f,.3,'triangle',.6),i*130));},
-  kingHit:()=>{playNoise(.2,1.2);[200,160,120].forEach((f,i)=>setTimeout(()=>playTone(f,.2,'sawtooth',.7),i*80));},
-  select: ()=>playTone(440,.04,'sine',.3),
-  newborn:()=>{playTone(880,.06,'sine',.5);setTimeout(()=>playTone(1046,.1,'sine',.4),60);},
-};
-
-// ── CONSTANTS ────────────────────────────────────────────────────────────────
-const COLS=9,ROWS=9;
-const idx    = (r,c)=>r*COLS+c;
-const ROW    = i=>Math.floor(i/COLS);
-const COL    = i=>i%COLS;
-const FILES  = 'abcdefghijkl';
-const sqName = i=>FILES[COL(i)]+(ROWS-ROW(i));
-const sqFrom = s=>{ if(!s||s.length<2)return -1; const c=FILES.indexOf(s[0].toLowerCase()),r=ROWS-parseInt(s.slice(1)); return(r>=0&&r<ROWS&&c>=0&&c<COLS)?idx(r,c):-1; };
-const inB    = (r,c)=>r>=0&&r<ROWS&&c>=0&&c<COLS;
-const adj8   = i=>{ const r=ROW(i),c=COL(i),res=[]; for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;if(inB(r+dr,c+dc))res.push(idx(r+dr,c+dc));} return res; };
-const kJumps = i=>{ const r=ROW(i),c=COL(i),res=[]; [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]].forEach(([dr,dc])=>{if(inB(r+dr,c+dc))res.push(idx(r+dr,c+dc));}); return res; };
-const range2 = i=>{ const r=ROW(i),c=COL(i),res=[]; for(let dr=-2;dr<=2;dr++)for(let dc=-2;dc<=2;dc++){if(!dr&&!dc)continue;if(inB(r+dr,c+dc))res.push(idx(r+dr,c+dc));} return res; };
-// Siege range: 4 cardinal squares, piercing
-const siegeRange = i=>{ const r=ROW(i),c=COL(i),res=[];
-  [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
-    for(let s=1;s<=4;s++){
-      const nr=r+dr*s,nc=c+dc*s;if(!inB(nr,nc))break;
-      const j=idx(nr,nc);if(isTileBlocked(j))break;
-      res.push(j);
-    }
-  });
-  return res; };
-
-// Cardinal range 3 for rook — PIERCING (passes through pieces, blocked only by obstacles)
-// Bishop attack range: diagonal sliding up to 2 squares (blocked by obstacles, pierces friendly/enemy)
-const bishopRange = i=>{ const r=ROW(i),c=COL(i),res=[];
-  [[-1,-1],[-1,1],[1,-1],[1,1]].forEach(([dr,dc])=>{
-    for(let s=1;s<=2;s++){
-      const nr=r+dr*s,nc=c+dc*s;if(!inB(nr,nc))break;
-      const j=idx(nr,nc);if(isTileBlocked(j))break;
-      res.push(j);if(pieces[j])break; // piece blocks further sliding
-    }
-  });
-  return res; };
-
-const rookRange = i=>{ const r=ROW(i),c=COL(i),res=[];
-  [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
-    for(let s=1;s<=3;s++){
-      const nr=r+dr*s,nc=c+dc*s;if(!inB(nr,nc))break;
-      const j=idx(nr,nc);
-      if(isTileBlocked(j))break; // obstacle stops the ray
-      res.push(j); // piece in the way does NOT stop the ray
-    }
-  });
-  return res; };
-
-const cheb   = (a,b)=>Math.max(Math.abs(ROW(a)-ROW(b)),Math.abs(COL(a)-COL(b)));
-
-// Rook: piercing - goes through ALL pieces up to 3 squares cardinal
-// Queen: range2 (all directions within 2)
-
-
-const GLYPH={king_w:'♔',pawn_w:'♙',knight_w:'♘',bishop_w:'♗',rook_w:'♖',queen_w:'♛',siege_w:'⚔',king_b:'♚',pawn_b:'♟',knight_b:'♞',bishop_b:'♝',rook_b:'♜',queen_b:'♛',siege_b:'⚔'};
-const STATS={king:{hp:5,maxHp:5},pawn:{hp:1,maxHp:1},knight:{hp:4,maxHp:4},bishop:{hp:2,maxHp:2},rook:{hp:4,maxHp:4},queen:{hp:5,maxHp:5},siege:{hp:8,maxHp:8}};
-
-// ── GAME STATE ───────────────────────────────────────────────────────────────
-let pieces=new Array(ROWS*COLS).fill(null),turn='w',over=true,thinking=false,logLines=[],kingSelected=false;
-let selectedPieces=new Set(); // indices of white pieces selected for group move
-let whiteGroupSpeeds={}; // (unused)
-let spawnHistory=[]; // how many total spawns used
-let whiteTurnCount=0; // total white turns this game
-let movedThisTurn=-1; // idx of white piece that acted this turn (cannot auto-attack)
-function spawnQuota(){ return 8+Math.floor(whiteTurnCount/6); }
-function spawnUsed(){ return spawnHistory.length; }
-function spawnRemaining(){ return Math.max(0,spawnQuota()-spawnUsed()); }
-let whiteTargets={};  // pieceIdx -> targetIdx (enemy for attackers, friendly for bishops)
-let blackTargets={};
-let blackLastFrom=-1,blackLastTo=-1;
-let dragSrc=-1,dragDests=null,dragging=false,mouseDownI=-1,mouseDownX=0,mouseDownY=0;
-let sqPx=40;
-let gameMode='single',difficulty='easy';
-let mapTheme='jungle'; // 'jungle'|'desert'|'ocean'
-let tileData=[]; // per-sq tile type string
-let animals=[]; // array of {emoji,hp,maxHp,name,aggressive,fractDmg,x,y,tx,ty,speed}
-let titleTileData=null; // saved title-screen map for single-player reuse
-let titleAnimals=null;
-let animalAnimId=null; // requestAnimationFrame id
-let animalLastTime=0;
-let targetMode=false; // manual target-setting mode for white
-let targetSrc=-1;     // which piece is being targeted
-
-
-// ── THEME DEFINITIONS ────────────────────────────────────────────────────────
-
-
-// ── THEMATIC ENEMY PIECE SVG ─────────────────────────────────────────────────
-// Each entry is an SVG fragment (drawn on a 100x100 viewBox) that overlays
-// the chess glyph, integrating theme elements into the piece design.
-const THEME_SVG_DECOS={
-  jungle:{
-    pawn:`
-      <path d="M30,80 Q18,64 24,50 Q30,38 22,28" stroke="#3a8020" stroke-width="2.5" fill="none" opacity=".85"/>
-      <path d="M70,80 Q82,64 76,50 Q70,38 78,28" stroke="#3a8020" stroke-width="2.5" fill="none" opacity=".85"/>
-      <ellipse cx="20" cy="44" rx="7" ry="4.5" fill="#60c030" transform="rotate(-20,20,44)" opacity=".8"/>
-      <ellipse cx="80" cy="44" rx="7" ry="4.5" fill="#60c030" transform="rotate(20,80,44)" opacity=".8"/>
-      <ellipse cx="19" cy="30" rx="5" ry="3.5" fill="#48a020" transform="rotate(10,19,30)" opacity=".75"/>
-      <ellipse cx="81" cy="30" rx="5" ry="3.5" fill="#48a020" transform="rotate(-10,81,30)" opacity=".75"/>`,
-    knight:`
-      <path d="M68,82 Q88,72 92,54 Q90,38 76,44" stroke="#3a8020" stroke-width="3" fill="none" opacity=".8"/>
-      <ellipse cx="92" cy="40" rx="9" ry="6" fill="#60c030" opacity=".75"/>
-      <path d="M28,78 Q10,68 12,50" stroke="#3a8020" stroke-width="2" fill="none" opacity=".65"/>
-      <ellipse cx="25" cy="22" rx="6" ry="4" fill="#48a020" opacity=".7" transform="rotate(-15,25,22)"/>`,
-    bishop:`
-      <ellipse cx="50" cy="16" rx="9" ry="5.5" fill="#60c030" opacity=".8" transform="rotate(-35,50,16)"/>
-      <ellipse cx="50" cy="16" rx="9" ry="5.5" fill="#60c030" opacity=".8" transform="rotate(35,50,16)"/>
-      <ellipse cx="50" cy="16" rx="8" ry="5" fill="#48a020" opacity=".85"/>
-      <circle cx="50" cy="16" r="4.5" fill="#c8e820" opacity=".9"/>
-      <path d="M35,70 Q22,58 24,44" stroke="#3a8020" stroke-width="2" fill="none" opacity=".6"/>
-      <ellipse cx="22" cy="40" rx="5" ry="3.5" fill="#60c030" opacity=".65" transform="rotate(15,22,40)"/>`,
-    rook:`
-      <path d="M28,24 Q16,12 10,5" stroke="#3a8020" stroke-width="2.5" fill="none" opacity=".8"/>
-      <path d="M72,24 Q84,12 90,5" stroke="#3a8020" stroke-width="2.5" fill="none" opacity=".8"/>
-      <path d="M50,18 Q50,8 50,2" stroke="#3a8020" stroke-width="2.5" fill="none" opacity=".8"/>
-      <ellipse cx="10" cy="5" rx="8" ry="5.5" fill="#60c030" opacity=".8"/>
-      <ellipse cx="90" cy="5" rx="8" ry="5.5" fill="#60c030" opacity=".8"/>
-      <ellipse cx="50" cy="2" rx="8" ry="5.5" fill="#60c030" opacity=".8"/>
-      <path d="M20,52 Q14,44 16,34" stroke="#3a8020" stroke-width="2" fill="none" opacity=".55"/>`,
-    king:`
-      <path d="M50,78 Q18,72 12,50 Q18,28 50,32 Q82,28 88,50 Q82,72 50,78Z" fill="#2a5a10" opacity=".28"/>
-      <ellipse cx="15" cy="52" rx="13" ry="18" fill="#1a3a08" opacity=".38"/>
-      <ellipse cx="85" cy="52" rx="13" ry="18" fill="#1a3a08" opacity=".38"/>
-      <path d="M50,30 Q42,20 38,10 M50,30 Q58,20 62,10" stroke="#3a8020" stroke-width="2.5" fill="none" opacity=".7"/>
-      <ellipse cx="38" cy="8" rx="6" ry="4.5" fill="#60c030" opacity=".8"/>
-      <ellipse cx="62" cy="8" rx="6" ry="4.5" fill="#60c030" opacity=".8"/>`,
-  },
-  desert:{
-    pawn:`
-      <path d="M50,82 Q28,68 18,50 Q24,36 36,44 Q46,50 50,62Z" fill="#c8a040" opacity=".5"/>
-      <path d="M50,82 Q72,68 82,50 Q76,36 64,44 Q54,50 50,62Z" fill="#c8a040" opacity=".5"/>
-      <circle cx="50" cy="58" r="5" fill="#d06810" opacity=".6"/>
-      <ellipse cx="22" cy="46" rx="4" ry="3" fill="#a07828" opacity=".5" transform="rotate(-20,22,46)"/>
-      <ellipse cx="78" cy="46" rx="4" ry="3" fill="#a07828" opacity=".5" transform="rotate(20,78,46)"/>`,
-    knight:`
-      <path d="M28,92 Q8,78 12,58 Q18,38 38,44 Q52,48 46,66 Q40,80 58,86" stroke="#c8a040" stroke-width="3" fill="none" opacity=".75"/>
-      <ellipse cx="60" cy="88" rx="7" ry="5" fill="#d06810" opacity=".7" transform="rotate(20,60,88)"/>
-      <circle cx="11" cy="56" r="4" fill="#a07828" opacity=".6"/>`,
-    bishop:`
-      <circle cx="50" cy="16" r="10" fill="#c8c0a0" opacity=".85"/>
-      <ellipse cx="45" cy="14" rx="3.5" ry="4" fill="#1a0e04" opacity=".7"/>
-      <ellipse cx="55" cy="14" rx="3.5" ry="4" fill="#1a0e04" opacity=".7"/>
-      <rect x="43" y="21" width="14" height="2.5" rx="1" fill="#1a0e04" opacity=".6"/>
-      <rect x="46" y="23.5" width="8" height="2" rx="1" fill="#1a0e04" opacity=".5"/>
-      <path d="M38,72 Q28,62 30,48" stroke="#c8a040" stroke-width="2" fill="none" opacity=".55"/>`,
-    rook:`
-      <path d="M28,16 L24,34 L32,50" stroke="#d06810" stroke-width="2.5" fill="none" opacity=".7"/>
-      <path d="M72,16 L76,34 L68,50" stroke="#d06810" stroke-width="2.5" fill="none" opacity=".7"/>
-      <path d="M42,22 L50,38 L58,22" stroke="#c8a040" stroke-width="2" fill="none" opacity=".6"/>
-      <circle cx="50" cy="40" r="4" fill="#d06810" opacity=".5"/>
-      <path d="M18,48 Q12,40 14,28" stroke="#a07828" stroke-width="1.5" fill="none" opacity=".5"/>
-      <path d="M82,48 Q88,40 86,28" stroke="#a07828" stroke-width="1.5" fill="none" opacity=".5"/>`,
-    king:`
-      <path d="M50,78 Q16,72 10,48 Q16,24 50,28 Q84,24 90,48 Q84,72 50,78Z" fill="#c8a040" opacity=".3"/>
-      <line x1="50" y1="26" x2="50" y2="10" stroke="#c8a040" stroke-width="3.5" opacity=".75"/>
-      <line x1="34" y1="28" x2="25" y2="15" stroke="#c8a040" stroke-width="3" opacity=".7"/>
-      <line x1="66" y1="28" x2="75" y2="15" stroke="#c8a040" stroke-width="3" opacity=".7"/>
-      <line x1="18" y1="44" x2="6" y2="40" stroke="#c8a040" stroke-width="2.5" opacity=".65"/>
-      <line x1="82" y1="44" x2="94" y2="40" stroke="#c8a040" stroke-width="2.5" opacity=".65"/>
-      <circle cx="50" cy="9" r="5" fill="#c8a040" opacity=".8"/>`,
-  },
-  ocean:{
-    pawn:`
-      <path d="M34,88 Q18,80 14,68 Q18,60 28,66" stroke="#1a60d0" stroke-width="3" fill="none" opacity=".8"/>
-      <path d="M66,88 Q82,80 86,68 Q82,60 72,66" stroke="#1a60d0" stroke-width="3" fill="none" opacity=".8"/>
-      <circle cx="13" cy="66" r="5.5" fill="#20a080" opacity=".8"/>
-      <circle cx="87" cy="66" r="5.5" fill="#20a080" opacity=".8"/>
-      <path d="M13,60 L10,54 M13,60 L16,54" stroke="#1a60d0" stroke-width="1.5" fill="none" opacity=".7"/>
-      <path d="M87,60 L84,54 M87,60 L90,54" stroke="#1a60d0" stroke-width="1.5" fill="none" opacity=".7"/>`,
-    knight:`
-      <path d="M28,88 Q10,76 14,58" stroke="#1a60d0" stroke-width="2.5" fill="none" opacity=".75"/>
-      <path d="M42,94 Q30,84 34,68" stroke="#1a60d0" stroke-width="2" fill="none" opacity=".7"/>
-      <path d="M60,94 Q72,84 68,68" stroke="#1a60d0" stroke-width="2" fill="none" opacity=".7"/>
-      <path d="M76,88 Q92,76 88,58" stroke="#1a60d0" stroke-width="2.5" fill="none" opacity=".75"/>
-      <circle cx="12" cy="56" r="4" fill="#20a080" opacity=".75"/>
-      <circle cx="88" cy="56" r="4" fill="#20a080" opacity=".75"/>`,
-    bishop:`
-      <path d="M33,95 Q50,82 67,95 Q57,102 50,98 Q43,102 33,95Z" fill="#20a080" opacity=".78"/>
-      <circle cx="42" cy="62" r="3" fill="#1a60d0" opacity=".45"/>
-      <circle cx="58" cy="62" r="3" fill="#1a60d0" opacity=".45"/>
-      <circle cx="50" cy="52" r="3" fill="#1a60d0" opacity=".45"/>
-      <circle cx="42" cy="72" r="2.5" fill="#1a60d0" opacity=".35"/>
-      <circle cx="58" cy="72" r="2.5" fill="#1a60d0" opacity=".35"/>
-      <path d="M30,80 Q20,70 22,56" stroke="#1a60d0" stroke-width="2" fill="none" opacity=".5"/>`,
-    rook:`
-      <path d="M50,4 Q60,16 68,30 Q58,26 50,30 Q42,26 32,30 Q40,16 50,4Z" fill="#1a60d0" opacity=".72"/>
-      <path d="M18,48 Q34,42 50,48 Q66,42 82,48" stroke="#20a080" stroke-width="2.5" fill="none" opacity=".65"/>
-      <path d="M20,56 Q36,50 50,56 Q64,50 80,56" stroke="#20a080" stroke-width="1.8" fill="none" opacity=".45"/>
-      <circle cx="50" cy="4" r="4" fill="#20a080" opacity=".8"/>`,
-    king:`
-      <path d="M22,88 Q6,76 8,58 Q12,48 20,56" stroke="#1a60d0" stroke-width="3.5" fill="none" opacity=".8"/>
-      <path d="M78,88 Q94,76 92,58 Q88,48 80,56" stroke="#1a60d0" stroke-width="3.5" fill="none" opacity=".8"/>
-      <path d="M32,92 Q20,104 16,94" stroke="#1a60d0" stroke-width="2.5" fill="none" opacity=".7"/>
-      <path d="M68,92 Q80,104 84,94" stroke="#1a60d0" stroke-width="2.5" fill="none" opacity=".7"/>
-      <circle cx="8" cy="58" r="4" fill="#20a080" opacity=".8"/>
-      <circle cx="92" cy="58" r="4" fill="#20a080" opacity=".8"/>
-      <circle cx="15" cy="93" r="3.5" fill="#20a080" opacity=".7"/>
-      <circle cx="85" cy="93" r="3.5" fill="#20a080" opacity=".7"/>`,
-  },
-};
-
-function buildBlackPieceSVG(type,sz){
-  if(type==='siege'){
-    return `<svg viewBox="0 0 100 100" width="${sz}" height="${sz}" xmlns="http://www.w3.org/2000/svg">
-      <rect x="20" y="55" width="60" height="35" rx="3" fill="#3a1a08" stroke="#8a5020" stroke-width="2"/>
-      <rect x="20" y="42" width="14" height="18" rx="2" fill="#2e1506" stroke="#8a5020" stroke-width="1.5"/>
-      <rect x="43" y="42" width="14" height="18" rx="2" fill="#2e1506" stroke="#8a5020" stroke-width="1.5"/>
-      <rect x="66" y="42" width="14" height="18" rx="2" fill="#2e1506" stroke="#8a5020" stroke-width="1.5"/>
-      <rect x="18" y="50" width="64" height="6" rx="1" fill="#4a2010"/>
-      <line x1="32" y1="68" x2="68" y2="88" stroke="#e05020" stroke-width="4" stroke-linecap="round"/>
-      <line x1="68" y1="68" x2="32" y2="88" stroke="#e05020" stroke-width="4" stroke-linecap="round"/>
-      <circle cx="32" cy="68" r="3" fill="#ff7040"/>
-      <circle cx="68" cy="68" r="3" fill="#ff7040"/>
-    </svg>`;
-  }
-  const theme=mapTheme||'jungle';
-  const deco=THEME_SVG_DECOS[theme]?.[type]||'';
-  const glyph=GLYPH[type+'_b']||'?';
-  const fs=Math.floor(sz*0.72);
-  return `<svg viewBox="0 0 100 100" width="${sz}" height="${sz}" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;overflow:visible;pointer-events:none;">
-  <text x="50" y="64" text-anchor="middle" dominant-baseline="middle"
-    font-size="${fs}" font-family="Georgia,serif"
-    fill="#1a0e04" style="filter:drop-shadow(0 0 2px rgba(200,200,150,.4));">${glyph}</text>
-  ${deco}
-</svg>`;
-}
-
-
-const THEMES={
-  jungle:{
-    name:'Jungle',
-    lt:'#7a9e4c',dk:'#4a6e28',
-    border:'#3a2810',
-    bodyBg:'#0c1a08',
-    tiles:{
-      tree:    {chance:.12,icon:'🌳',label:'Tree',   effect:'Impassable obstacle',block:true},
-    },
-    neutral:{emoji:'\uD83D\uDC12',hp:2,maxHp:2,name:'Monkey',desc:'Roams the jungle'},
-    attacker:{emoji:'\uD83D\uDC0D',hp:1,maxHp:1,name:'Snake',desc:'Attacks adjacent pieces',aggressive:true},
-    neutralCount:2,
-  },
-  desert:{
-    name:'Desert',
-    lt:'#c8a84a',dk:'#a07828',
-    border:'#5a3818',
-    bodyBg:'#3d2e0a',
-    tiles:{
-      sandstone: {chance:.12,icon:'\uD83D\uDFE7',label:'Sandstone',effect:'Impassable obstacle',block:true},
-    },
-    neutral:{emoji:'\uD83D\uDC2A',hp:3,maxHp:3,name:'Camel',desc:'Roams the desert'},
-    attacker:null, // mummy spawns from pyramid only
-    neutralCount:2,
-  },
-  ocean:{
-    name:'Ocean',
-    lt:'#4a80c8',dk:'#2a5898',
-    border:'#1a2060',
-    bodyBg:'#050a1a',
-    tiles:{
-      rocks:  {chance:.12,icon:'\uD83E\uDEA8',label:'Sea Rocks',effect:'Impassable obstacle',block:true},
-    },
-    neutral:{emoji:'\uD83E\uDD80',hp:1,maxHp:1,name:'Crab',desc:'Scuttles the ocean floor'},
-    attacker:{emoji:'\uD83E\uDD88',hp:2,maxHp:2,name:'Shark',desc:'Patrols and attacks pieces',aggressive:true},
-    neutralCount:2,
-  },
-};
-
-function selectMap(theme){
-  mapTheme=theme;
-  ['jungle','desert','ocean'].forEach(t=>{
-    const b=document.getElementById('mbtn-'+t);
-    if(b)b.classList.toggle('sel-map',t===theme);
-  });
-  document.body.className='theme-'+theme;
-  // Regenerate obstacle preview on title screen
-  const boardEl=document.getElementById('board');
-  if(boardEl&&document.getElementById('intro')&&!document.getElementById('intro').classList.contains('hidden')){
-    generateMap(); // regenerate tileData for new theme
-    titleTileData=tileData.slice(); // save for single-player reuse
-    titleAnimals=animals.map(a=>({...a}));
-    stopAnimalLoop(); animals=[]; // no animals on title screen
-    render(); // re-render board with new theme tiles + obstacles
-    resizeBoard(); // re-apply sizing
-  }
-}
-
-function generateMap(){
-  tileData=new Array(ROWS*COLS).fill('');
-  neutralPieces={};
-  animals=[];
-  const th=THEMES[mapTheme];
-  if(!th)return;
-  // Apply theme to board colors
-  document.body.className='theme-'+mapTheme;
-  // scatter tiles in clusters
-  const tileTypes=Object.keys(th.tiles);
-  // tutorial mode: detect if we're in tutorial (animals already cleared)
-  const isTutorial=(document.getElementById('tutorial-overlay')?.classList.contains('show'));
-  const midR=Math.floor(ROWS/2), midC=Math.floor(COLS/2);
-  const tutExclude=new Set(); // center 3x3 excluded in tutorial
-  if(isTutorial){
-    for(let dr=-2;dr<=2;dr++)for(let dc=-2;dc<=2;dc++){
-      const r=midR+dr,c=midC+dc;if(inB(r,c))tutExclude.add(idx(r,c));
-    }
-  }
-
-  tileTypes.forEach(ttype=>{
-    const info=th.tiles[ttype];
-    const isBlock=!!info.block;
-    const count=Math.round(info.chance*ROWS*COLS);
-
-    if(!isBlock){
-      // non-obstacle tiles: original cluster flood-fill
-      const seeds=[];
-      for(let k=0;k<Math.ceil(count/3);k++) seeds.push(Math.floor(Math.random()*ROWS*COLS));
-      seeds.forEach(seed=>{
-        const toFill=Math.ceil(count/seeds.length);
-        const q=[seed];const seen=new Set([seed]);let placed=0;
-        while(q.length&&placed<toFill){
-          const cur=q.shift();const r=ROW(cur);
-          if(r>=3&&r<=ROWS-4&&!tileData[cur]&&!pieces[cur]&&!tutExclude.has(cur)){tileData[cur]=ttype;placed++;}
-          adj8(cur).forEach(n=>{if(!seen.has(n)&&Math.random()<.5){seen.add(n);q.push(n);}});
-        }
-      });
-    }else{
-      // OBSTACLE tiles: small chunks, avg ~2.5 tiles, max 6 in any row or column
-      const numChunks=Math.round(count/2.5);
-      const safeR=(r)=>r>=3&&r<=ROWS-4;
-
-      // helper: count consecutive blocked in a direction from a tile (including that tile)
-      const runLen=(ti,dr,dc)=>{
-        let run=0;let r=ROW(ti),c=COL(ti);
-        // count backward
-        for(let s=1;s<=6;s++){const nr=r-dr*s,nc=c-dc*s;if(!inB(nr,nc))break;if(isTileBlocked(idx(nr,nc))||tileData[idx(nr,nc)]===ttype)run++;else break;}
-        // count forward
-        for(let s=1;s<=6;s++){const nr=r+dr*s,nc=c+dc*s;if(!inB(nr,nc))break;if(isTileBlocked(idx(nr,nc))||tileData[idx(nr,nc)]===ttype)run++;else break;}
-        return run+1; // +1 for tile itself
-      };
-
-      const canPlace=(ti)=>{
-        if(!inB(ROW(ti),COL(ti)))return false;
-        if(!safeR(ROW(ti)))return false;
-        if(tileData[ti]||pieces[ti])return false;
-        if(tutExclude.has(ti))return false;
-        // max run of 6 in row or column
-        if(runLen(ti,0,1)>6||runLen(ti,1,0)>6)return false;
-        return true;
-      };
-
-      let placed=0;
-      for(let chunk=0;chunk<numChunks&&placed<count;chunk++){
-        // pick random valid seed
-        let seed=-1;
-        for(let att=0;att<60;att++){
-          const t=Math.floor(Math.random()*ROWS*COLS);
-          if(canPlace(t)){seed=t;break;}
-        }
-        if(seed<0)continue;
-        // grow chunk: avg 2.5 tiles via random adjacency walk
-        const chunkSize=Math.random()<0.5?2:Math.random()<0.5?3:Math.random()<0.4?1:4;
-        const frontier=[seed];const inChunk=new Set([seed]);
-        tileData[seed]=ttype;placed++;
-        for(let step=1;step<chunkSize&&placed<count;step++){
-          let added=false;
-          // try to extend from a random frontier tile
-          const shuffled=[...frontier].sort(()=>Math.random()-.5);
-          for(const cur of shuffled){
-            const nbrs=adj8(cur).filter(n=>!inChunk.has(n)&&canPlace(n));
-            if(nbrs.length){
-              const nb=nbrs[Math.floor(Math.random()*nbrs.length)];
-              tileData[nb]=ttype;inChunk.add(nb);frontier.push(nb);placed++;added=true;break;
-            }
-          }
-          if(!added)break;
-        }
-      }
-    }
-  });
-  // desert: mark one sandstone as mummy-spawner pyramid
-  if(mapTheme==='desert'){
-    const sTiles=[];
-    for(let i=0;i<ROWS*COLS;i++){if(tileData[i]==='sandstone')sTiles.push(i);}
-    if(sTiles.length){
-      const pt=sTiles[Math.floor(Math.random()*sTiles.length)];
-      tileData[pt]='sandstone-spawner';
-      const pr2=ROW(pt),pc2=COL(pt);
-      // place mummy on an adjacent open tile (not on the blocked pyramid itself)
-      const mStart=adj8(pt).find(j=>!isTileBlocked(j)&&inB(ROW(j),COL(j)))||pt;
-      const mr=ROW(mStart),mc2=COL(mStart);
-      animals.push({emoji:'\uD83E\uDDDF',hp:2,maxHp:2,name:'Mummy',aggressive:true,fractDmg:0,
-        x:mc2+0.5,y:mr+0.5,prevTileR:mr,prevTileC:mc2,tx:mc2+0.5,ty:mr+0.5,
-        speed:0.0005,waitMs:1500,isMummy:true,dormant:false,spawnedFromPyramid:pt});
-    }
-  }
-  // ocean: add one tornado as a roaming animal
-  if(mapTheme==='ocean'){
-    const eM=[];
-    for(let i=0;i<ROWS*COLS;i++){const r=ROW(i);if(r>=3&&r<=ROWS-4&&!tileData[i]&&!pieces[i])eM.push(i);}
-    if(eM.length){
-      const ti=eM[Math.floor(Math.random()*eM.length)];
-      const r=ROW(ti),cl=COL(ti);
-      animals.push({emoji:'\uD83C\uDF2A',hp:3,maxHp:3,name:'Tornado',aggressive:false,fractDmg:0,
-        x:cl+0.5,y:r+0.5,prevTileR:r,prevTileC:cl,tx:cl+0.5,ty:r+0.5,
-        speed:0.0004,waitMs:2000,isTornado:true,spawnTimer:0});
-    }
-  }
-  // place animals: one neutral type + one attacker type per theme
-  animals=[];
-  function placeOneAnimal(atype,isAggressive){
-    let col,row,att=0;
-    do{col=2+Math.floor(Math.random()*(COLS-4));row=3+Math.floor(Math.random()*(ROWS-6));att++;}
-    while(att<40&&(pieces[idx(row,col)]||isTileBlocked(idx(row,col))));
-    if(isTileBlocked(idx(row,col)))return;
-    animals.push({emoji:atype.emoji,hp:atype.maxHp,maxHp:atype.maxHp,
-      name:atype.name,aggressive:isAggressive,fractDmg:0,
-      x:col+0.5,y:row+0.5,prevTileR:row,prevTileC:col,tx:col+0.5,ty:row+0.5,
-      speed:0.0005+Math.random()*0.0003,waitMs:0});
-  }
-  const nc=th.neutralCount||2;
-  for(let k=0;k<nc;k++){if(th.neutral)placeOneAnimal(th.neutral,false);}
-  // attacker: jungle/ocean place one; desert attacker comes from pyramid only
-  if(th.attacker)placeOneAnimal(th.attacker,true);
-  // start continuous animation loop
-  startAnimalLoop();
-}
-
-function getTileEffect(i){
-  const t=tileData[i];if(!t)return null;
-  const th=THEMES[mapTheme];if(!th)return null;
-  return th.tiles[t]||null;
-}
-
-// ── INTRO ────────────────────────────────────────────────────────────────────
-function showDiff(){
-  document.getElementById('diff-row').style.display='flex';
-}
-
-function showGameOver(result){
-  // result: 'win' | 'lose' | 'draw'
-  const el=document.getElementById('game-over');
-  const title=document.getElementById('go-title');
-  const sub=document.getElementById('go-sub');
-  if(!el)return;
-  title.className='';
-  if(result==='win'){title.textContent='You Win!';title.classList.add('win');sub.textContent='Victory — your kingdom prevails';}
-  else if(result==='lose'){title.textContent='You Lose';title.classList.add('lose');sub.textContent='Defeat — your king has fallen';}
-  else{title.textContent='Draw';title.classList.add('draw');sub.textContent='';}
-  el.classList.add('show');
-}
-
-function hideGameOver(){
-  const el=document.getElementById('game-over');
-  if(el)el.classList.remove('show');
-}
-
-function doRematch(){
-  hideGameOver();
-  initGame();
-}
-
-function goIntro(){
-  document.getElementById('intro').classList.remove('hidden');
-  document.getElementById('diff-row').style.display='none';
-  over=true; thinking=false;
-  stopAnimalLoop();
-  document.querySelectorAll('.animal-el').forEach(el=>el.remove());
-  document.getElementById('thinking-dot').classList.remove('on');
-  // generate a fresh title map for the next game
-  generateMap();
-  titleTileData=tileData.slice();
-  titleAnimals=animals.map(a=>({...a}));
-  animals=[];
-  render();
-}
-function startGame(mode){
-  gameMode=mode;
-  difficulty=mode==='hard'?'hard':'easy';
-  document.getElementById('intro').classList.add('hidden');
-  const pvpVisible=mode==='pvp';
-  document.getElementById('pvp-section').style.display='none';
-  document.getElementById('pvp-label').style.display='none';
-  initGame();
-  if(mode==='pvp') initBC();
-}
-
-// ── PVP ──────────────────────────────────────────────────────────────────────
-let peer=null,conn=null,pvpRole=null,pvpActive=false,myPeerId=null;
-let bc=null,bcRoomName=null,collectingRooms=false;
-function initBC(){ try{bc=new BroadcastChannel('kingdom-pvp-lobby');}catch(e){bc=null;return;} bc.onmessage=e=>{ const msg=e.data; if(msg.type==='list?'&&myPeerId&&!pvpActive) bc.postMessage({type:'room',id:myPeerId,name:bcRoomName||'Room '+myPeerId.slice(0,6)}); if(msg.type==='room'&&collectingRooms&&!document.querySelector('.room-entry[data-id="'+msg.id+'"]')) addRoomEntry(msg.id,msg.name);
-      if(msg.type==='room'&&collectingRooms) addPvpLobbyRoom(msg.id,msg.name); }; }
-function setPvpStatus(t,col){ const el=document.getElementById('pvp-status'); el.textContent=t; el.style.color=col||'#6a7830'; }
-function addRoomEntry(id,name){ const list=document.getElementById('room-list'); list.querySelectorAll('.room-entry.empty').forEach(el=>el.remove()); const d=document.createElement('div'); d.className='room-entry'; d.dataset.id=id; d.textContent=name+' ('+id.slice(0,8)+')'; d.style.fontSize=Math.max(7,Math.floor(lastPf*.90))+'px'; d.onclick=()=>joinRoom(id); list.appendChild(d); }
-function hostGame(){ if(peer)peer.destroy(); pvpActive=false; myPeerId=null; if(!bc)initBC(); bcRoomName='Room '+Math.random().toString(36).slice(2,6).toUpperCase(); peer=new Peer(); peer.on('open',id=>{ myPeerId=id; document.getElementById('room-id-display').textContent=bcRoomName+' ('+id.slice(0,8)+')'; setPvpStatus('waiting...','#a8c050'); if(bc)bc.postMessage({type:'room',id,name:bcRoomName}); const ann=setInterval(()=>{ if(!myPeerId||pvpActive){clearInterval(ann);return;} if(bc)bc.postMessage({type:'room',id,name:bcRoomName}); },2000); peer.on('connection',c=>{ clearInterval(ann); conn=c; pvpRole='host'; pvpActive=true; conn.on('data',onPeerData); conn.on('close',()=>{pvpActive=false;setPvpStatus('disconnected','#c05030');}); setPvpStatus('connected','#90e040'); initGame(); }); }); peer.on('error',e=>setPvpStatus('error','#c05030')); }
-function refreshRooms(){ if(!bc)initBC(); if(!bc){setPvpStatus('not supported','#c05030');return;} collectingRooms=true; setPvpStatus('scanning...','#a8c050'); const list=document.getElementById('room-list'); list.innerHTML='<div class="room-entry empty">scanning...</div>'; bc.postMessage({type:'list?'}); setTimeout(()=>{ collectingRooms=false; if(!list.querySelectorAll('.room-entry:not(.empty)').length) list.innerHTML='<div class="room-entry empty">no rooms found</div>'; setPvpStatus('done','#8ab840'); },1500); }
-function joinRoom(roomId){ if(peer)peer.destroy(); peer=new Peer(); peer.on('open',()=>{ conn=peer.connect(roomId); pvpRole='guest'; setPvpStatus('connecting...','#a8c050'); conn.on('open',()=>{ pvpActive=true; conn.on('data',onPeerData); conn.on('close',()=>{pvpActive=false;setPvpStatus('disconnected','#c05030');}); setPvpStatus('connected','#90e040'); initGame(); }); conn.on('error',()=>setPvpStatus('join failed','#c05030')); }); peer.on('error',()=>setPvpStatus('peer error','#c05030')); }
-function onPeerData(raw){ const msg=JSON.parse(raw); if(msg.type==='state'){ pieces=msg.pieces.map(p=>p?{...p}:null); turn=msg.turn; over=msg.over; whiteTargets=msg.wt||{}; blackTargets=msg.bt||{}; blackLastFrom=msg.blf||-1; blackLastTo=msg.blt||-1; render(); syncUI(); if(over)setStatus(msg.winner==='w'?'White wins! ♔':'Black wins! ♚'); else setStatus(isMyTurn()?'Your turn':'Opponent turn...'); } }
-function myColor(){ if(!pvpActive)return 'w'; return pvpRole==='host'?'w':'b'; }
-function isMyTurn(){ return turn===myColor(); }
-function broadcastState(winner){ if(!pvpActive||!conn||!conn.open)return; conn.send(JSON.stringify({type:'state',pieces,turn,over,winner:winner||null,wt:whiteTargets,bt:blackTargets,blf:blackLastFrom,blt:blackLastTo})); }
-
-// ── INIT ─────────────────────────────────────────────────────────────────────
-function initGame(){
-  pieces=new Array(ROWS*COLS).fill(null);
-  pieces[idx(7,1)]={type:'king',color:'w',hp:5,maxHp:5};
-  pieces[idx(1,7)]={type:'king',color:'b',hp:5,maxHp:5};
-  turn='w'; over=false; thinking=false; logLines=[]; kingSelected=false;
-  whiteTargets={}; blackTargets={};
-  spawnHistory=[]; whiteTurnCount=0; movedThisTurn=-1;
-  const tc=document.getElementById('turn-counter');if(tc)tc.textContent='Turn 0';
-  animalDivs.forEach(el=>el.remove());animalDivs.clear();
-  // single-player: reuse title-screen map; PvP always regenerates
-  if(!pvpActive&&gameMode!=='pvp'&&titleTileData){
-    tileData=titleTileData.slice();
-    animals=titleAnimals.map(a=>({...a}));
-    // ensure mummy starts on a walkable tile adjacent to its pyramid
-    animals.forEach(na=>{
-      if(na.isMummy){
-        const pr=Math.round(na.y-0.5),pc=Math.round(na.x-0.5);
-        const si=inB(pr,pc)?idx(pr,pc):-1;
-        if(si<0||isTileBlocked(si)){
-          const empties=si>=0?adj8(si).filter(j=>!isTileBlocked(j)&&!pieces[j]):[];
-          if(empties.length){
-            na.x=COL(empties[0])+0.5;na.y=ROW(empties[0])+0.5;
-            na.tx=na.x;na.ty=na.y;na.prevTileR=ROW(empties[0]);na.prevTileC=COL(empties[0]);
-          }
-        }
-      }
-    });
-    startAnimalLoop();
-    setTimeout(()=>renderAnimalOverlay(),50);
-  }else{
-    generateMap();
-  }
-  titleTileData=null; titleAnimals=null; // consume the saved map
-  blackLastFrom=-1; blackLastTo=-1;
-  targetMode=false; targetSrc=-1;
-  dragSrc=-1; dragging=false;
-  document.getElementById('ghost').style.display='none';
-  document.getElementById('thinking-dot').classList.remove('on');
-  document.getElementById('log').textContent='';
-  if(!pvpActive && gameMode!=='pvp') pickStrategy();
-  if(!bgmPaused&&!bgmPlaying) startBgm();
-  syncUI(); render();
-  showMoveHint();
-  setStatus("White's turn");
-}
-
-function setStatus(t){document.getElementById('status').textContent=t;}
-
-// ── PIECE CARD PAGINATION ─────────────────────────────────────────────────────
-const PC_DATA=[
-  {gw:'♙',gb:'♟',name:'Pawn',   stats:'1HP · move any dir · atk adj'},
-  {gw:'♘',gb:'♞',name:'Knight', stats:'4HP · L-jump · atk L-dist'},
-  {gw:'♗',gb:'♝',name:'Bishop', stats:'2HP · diag2/card1 · heals (mana)'},
-  {gw:'♖',gb:'♜',name:'Rook',   stats:'4HP · card2 · pierce rng3'},
-  {gw:'♛',gb:'♛',name:'Queen',  stats:'5HP · all dir rng2'},
-  {gw:'♔',gb:'♚',name:'King',   stats:'5HP · spawns pawns'},
-];
-let pcPageIdx=0;
-const PC_PER_PAGE=3;
-
-function renderPcCards(){
-  const wrap=document.getElementById('pc-cards-wrap');
-  if(!wrap)return;
-  wrap.innerHTML='';
-  const total=Math.ceil(PC_DATA.length/PC_PER_PAGE);
-  const start=pcPageIdx*PC_PER_PAGE;
-  const slice=PC_DATA.slice(start,start+PC_PER_PAGE);
-  slice.forEach((d,i)=>{
-    if(i>0){const div=document.createElement('div');div.className='tier-divider';wrap.appendChild(div);}
-    const card=document.createElement('div');card.className='piece-card';
-    card.innerHTML='<div class="piece-card-row"><span class="pc-glyph pc-glyph-w">'+d.gw+'</span><span class="pc-glyph pc-glyph-b">'+d.gb+'</span></div>'
-      +'<div class="pc-name">'+d.name+'</div><div class="pc-stats">'+d.stats+'</div>';
-    wrap.appendChild(card);
-  });
-  const lbl=document.getElementById('pc-page-label');
-  if(lbl)lbl.textContent=(pcPageIdx+1)+'/'+total;
-  const prev=document.getElementById('pc-prev'),next=document.getElementById('pc-next');
-  if(prev)prev.style.opacity=pcPageIdx===0?'.3':'1';
-  if(next)next.style.opacity=pcPageIdx>=total-1?'.3':'1';
-  // re-apply current pf scaling
-  const lp=document.getElementById('left-panel');
-  if(lp&&window.lastPf){
-    const pf=window.lastPf;
-    lp.querySelectorAll('.pc-glyph').forEach(el=>el.style.fontSize=Math.max(11,Math.floor(pf*1.8))+'px');
-    lp.querySelectorAll('.pc-name').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.92))+'px');
-    lp.querySelectorAll('.pc-stats').forEach(el=>el.style.fontSize=Math.max(5,Math.floor(pf*.65))+'px');
-  }
-}
-
-function pcPage(dir){
-  const total=Math.ceil(PC_DATA.length/PC_PER_PAGE);
-  pcPageIdx=Math.max(0,Math.min(total-1,pcPageIdx+dir));
-  renderPcCards();
-}
-
-// initialise on load
-window.addEventListener('load',()=>renderPcCards(),{once:false});
-
-
-function addLog(msg){logLines.push(msg);if(logLines.length>4)logLines.shift();document.getElementById('log').textContent=logLines.join(' · ');}
-
-function syncUI(){
-  const locked=over||thinking||!isMyTurn();
-  ['spawn','merge','target','skip'].forEach(id=>{const b=document.getElementById('btn-'+id);if(b)b.disabled=locked;});
-  document.getElementById('btn-new').disabled=false;
-  // dir-btn removed
-  const tb=document.getElementById('btn-target');
-  if(tb){tb.classList.toggle('active-mode',targetMode);}
-  // spawn button: show quota
-  const spawnBtn=document.getElementById('btn-spawn');
-  if(spawnBtn){
-    const rem=spawnRemaining();
-    const turnsToNext=6-(whiteTurnCount%6)||6;
-    spawnBtn.textContent='Spawn ('+rem+') (+1 in '+turnsToNext+'t)';
-    if(!locked&&rem<=0)spawnBtn.disabled=true;
-  }
-}
-
-// ── DRAG DESTINATIONS ────────────────────────────────────────────────────────
-function getDragDests(i){
-  const p=pieces[i]; if(!p)return{move:new Set(),merge:new Set(),attack:new Set(),heal:new Set()};
-  const move=new Set(),merge=new Set(),attack=new Set(),heal=new Set();
-  const ec=p.color==='w'?'b':'w';
-  if(p.type==='pawn'){
-    adj8(i).forEach(j=>{const t=pieces[j];if(!t)move.add(j);else if(t.color===p.color){if(t.type==='pawn'||t.type==='knight')merge.add(j);}else attack.add(j);});
-  }else if(p.type==='knight'){
-    kJumps(i).forEach(j=>{
-      if(isTileBlocked(j))return; // cannot land on blocked tile
-      const t=pieces[j];
-      if(!t)move.add(j);else if(t.color===ec)attack.add(j);
-    });
-    // merge: adjacent AND L-jump locations (knight teleports to merge without spending turn)
-    const mergeRange=new Set([...adj8(i),...kJumps(i)]);
-    mergeRange.forEach(j=>{const t=pieces[j];if(t&&t.color===p.color&&(t.type==='pawn'||t.type==='knight'||t.type==='bishop'))merge.add(j);});
-  }else if(p.type==='bishop'){
-    const hasMana=(p.mana||0)>0;
-    // diagonal: up to 2 squares, sliding (blocked by obstacles/pieces)
-    [[-1,-1],[-1,1],[1,-1],[1,1]].forEach(([dr,dc])=>{
-      for(let s=1;s<=2;s++){
-        const nr=ROW(i)+dr*s,nc=COL(i)+dc*s;if(!inB(nr,nc))break;
-        const j=idx(nr,nc);
-        if(isTileBlocked(j))break;
-        const t=pieces[j];
-        if(!t)move.add(j);else{if(t.color===ec)attack.add(j);else if(hasMana&&t.color===p.color&&t.hp<t.maxHp)heal.add(j);break;}
-      }
-    });
-    // cardinal: exactly 1 square (move only, no attack)
-    [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
-      const nr=ROW(i)+dr,nc=COL(i)+dc;if(!inB(nr,nc))return;
-      const j=idx(nr,nc);if(isTileBlocked(j))return;
-      const t=pieces[j];
-      if(!t)move.add(j);
-      // no attack cardinally — bishop attacks only diagonally
-    });
-    // bishop can merge with adjacent knight (bishop dragged to knight)
-    adj8(i).forEach(j=>{
-      const t=pieces[j];
-      if(t&&t.color===p.color&&t.type==='knight')merge.add(j);
-    });
-  }else if(p.type==='rook'){
-    // move: up to 2 steps cardinally, sliding
-    [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
-      for(let s=1;s<=2;s++){
-        const nr=ROW(i)+dr*s,nc=COL(i)+dc*s;if(!inB(nr,nc))break;
-        const j=idx(nr,nc);if(isTileBlocked(j))break;
-        const t=pieces[j];if(!t)move.add(j);else break;
-      }
-    });
-    // merge with adjacent friendly rook → siege
-    adj8(i).filter(j=>pieces[j]&&pieces[j].color===p.color&&pieces[j].type==='rook').forEach(j=>merge.add(j));
-    rookRange(i).filter(j=>pieces[j]&&pieces[j].color===ec).forEach(j=>attack.add(j));
-  }else if(p.type==='siege'){
-    // siege: CANNOT move, attacks 3 dmg, range 4 piercing
-    siegeRange(i).filter(j=>pieces[j]&&pieces[j].color===ec).forEach(j=>attack.add(j));
-    // right-click to unsiege (handled in handleRightClick)
-  }else if(p.type==='queen'){
-    // queen moves up to 2 in any direction (sliding, blocked by pieces+obstacles)
-    [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]].forEach(([dr,dc])=>{
-      for(let s=1;s<=2;s++){
-        const nr=ROW(i)+dr*s,nc=COL(i)+dc*s;if(!inB(nr,nc))break;
-        const j=idx(nr,nc);if(isTileBlocked(j))break;
-        const t=pieces[j];if(!t)move.add(j);else{if(t.color===ec)attack.add(j);break;}
-      }
-    });
-  }else if(p.type==='king'){
-    adj8(i).forEach(j=>{
-      const t=pieces[j];
-      if(!t&&!isTileBlocked(j))move.add(j);
-      else if(t&&t.color===ec)attack.add(j);
-      // king can also attack adjacent neutral animals
-      else if(!t&&animals.some(na=>{
-        const ar=Math.round(na.y-0.5),ac=Math.round(na.x-0.5);
-        return inB(ar,ac)&&idx(ar,ac)===j;
-      }))attack.add(j);
-    });
-  }
-  // remove blocked tiles from move destinations
-  for(const j of [...move]){if(isTileBlocked(j)||neutralPieces[j+''])move.delete(j);}
-  return{move,merge,attack,heal};
-}
-
-
-
-
-
-function queenRange(i){
-  const lJumps=new Set(kJumps(i));
-  return range2(i).filter(j=>!lJumps.has(j));
-}
-
-function isTileBlocked(i){
-  const t=tileData[i];if(!t)return false;
-  if(t==='sandstone-spawner')return true;
-  const th=THEMES[mapTheme];if(!th)return false;
-  const info=th.tiles[t];
-  return !!(info&&info.block);
-}
-
-function pieceSpeed(p){
-  if(!p)return 1;
-  if(p.type==='bishop')return 2;
-  return 1;
-}
-
-
-// ── MOVE ORDERS ──────────────────────────────────────────────────────────────
-// Simple path: step from `from` toward `to` avoiding own pieces (1 step)
-
-function stepToward(from,to,color){
-  if(from===to)return -1;
-  const visited=new Set([from]);
-  const queue=[[from,[]]];
-  while(queue.length){
-    const[cur,path]=queue.shift();
-    const neighbors=adj8(cur);
-    for(const n of neighbors){
-      if(visited.has(n))continue;
-      visited.add(n);
-      if(isTileBlocked(n)&&n!==to)continue; // can't pass through obstacles
-      if(neutralPieces[n+'']&&n!==to)continue; // blocked by neutral animal
-      const p=pieces[n];
-      if(p&&p.color===color&&n!==to)continue;
-      const newPath=[...path,n];
-      if(n===to)return newPath[0];
-      queue.push([n,newPath]);
-    }
-  }
-  return -1;
-}
-
-function getPath(from,to,color){
-  if(from===to)return[];
-  const visited=new Set([from]);
-  const queue=[[from,[]]];
-  while(queue.length){
-    const[cur,path]=queue.shift();
-    const neighbors=adj8(cur);
-    for(const n of neighbors){
-      if(visited.has(n))continue;
-      visited.add(n);
-      if(isTileBlocked(n)&&n!==to)continue;
-      if(neutralPieces[n+'']&&n!==to)continue;
-      const p=pieces[n];
-      if(p&&p.color===color&&n!==to)continue;
-      const newPath=[...path,n];
-      if(n===to)return newPath;
-      if(newPath.length<ROWS*COLS)queue.push([n,newPath]);
-    }
-  }
-  return[];
-}
-
-
-
-
-// ── PIECE MOVEMENT ANIMATION ─────────────────────────────────────────────────
-function animatePieceMove(fromIdx,toIdx,pieceType,pieceColor,isBlack,cb,dur){
-  dur=dur||180;
-  const board=document.getElementById('board');
-  if(!board){cb();return;}
-  const fc=sqCenter(fromIdx), tc=sqCenter(toIdx);
-  const sz=Math.max(14,Math.floor(sqPx*.72));
-  const el=document.createElement('div');
-  el.style.cssText='position:fixed;pointer-events:none;z-index:350;transform:translate(-50%,-50%);'
-    +'left:'+fc.x+'px;top:'+fc.y+'px;'
-    +'font-size:'+sz+'px;line-height:1;'
-    +(isBlack?'width:'+sz+'px;height:'+sz+'px;':'');
-  if(isBlack){
-    el.innerHTML=buildBlackPieceSVG(pieceType,sz);
-  }else{
-    el.textContent=GLYPH[pieceType+'_'+pieceColor]||'?';
-    el.style.color=pieceColor==='w'?'#fff':'#1a0e04';
-    el.style.textShadow='0 0 6px rgba(0,0,0,.8)';
-  }
-  document.body.appendChild(el);
-
-  // knight: arc trajectory via Web Animations
-  if(pieceType==='knight'){
-    const mx=(fc.x+tc.x)/2, my=Math.min(fc.y,tc.y)-sqPx*.9;
-    el.animate([
-      {left:fc.x+'px',top:fc.y+'px',opacity:'1'},
-      {left:mx+'px', top:my+'px', opacity:'1'},
-      {left:tc.x+'px',top:tc.y+'px',opacity:'1'},
-    ],{duration:dur,easing:'ease-in-out',fill:'forwards'}).finished.then(()=>{el.remove();cb();});
-    return;
-  }
-
-  // linear slide via CSS transition
-  el.style.transition='left '+dur+'ms ease-out,top '+dur+'ms ease-out';
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    el.style.left=tc.x+'px';
-    el.style.top=tc.y+'px';
-    setTimeout(()=>{el.remove();cb();},dur+16);
-  }));
-}
-
-// ── RENDER ───────────────────────────────────────────────────────────────────
-function render(){
-  const boardEl=document.getElementById('board'); boardEl.innerHTML='';
-  const mc=myColor();
-  const ki=pieces.findIndex(p=>p&&p.color===mc&&p.type==='king');
-  const prodTgts=kingSelected&&ki>=0?new Set(adj8(ki).filter(i=>!pieces[i]&&!isTileBlocked(i))):new Set();
-  const targets=mc==='w'?whiteTargets:blackTargets;
-  // compute range highlight for single selected piece
-  let selDests=null;
-  if(selectedPieces.size===1&&!dragging&&!kingSelected&&!targetMode){
-    const selIdx=[...selectedPieces][0];
-    const selP=pieces[selIdx];
-    if(selP&&selP.color===mc)selDests=getDragDests(selIdx);
-  }
-  // compute aura map: tileIdx -> 'type-color' class suffix
-  // auraMap: idx -> {cls:'type-color', count:N}
-  const auraMap=new Map();
-  for(let pi=0;pi<ROWS*COLS;pi++){
-    const pp=pieces[pi];if(!pp)continue;
-    let zone=[];
-    if(pp.type==='pawn')zone=adj8(pi);
-    else if(pp.type==='knight')zone=kJumps(pi);
-    else if(pp.type==='bishop'){const d=getDragDests(pi);zone=[...d.move,...d.attack];}
-    else if(pp.type==='rook')zone=rookRange(pi);
-    else if(pp.type==='siege')zone=siegeRange(pi);
-    else if(pp.type==='queen'){const d=getDragDests(pi);zone=[...d.move,...d.attack];}
-    else if(pp.type==='king')zone=adj8(pi);
-    zone.forEach(j=>{
-      if(!auraMap.has(j)) auraMap.set(j,{cls:pp.type+'-'+pp.color,count:1});
-      else auraMap.get(j).count++;
-    });
-  }
-  const pipW=Math.max(2,Math.floor(sqPx*.10))+'px';
-
-  const pipH=Math.max(2,Math.floor(sqPx*.07))+'px';
-
-  for(let r=0;r<ROWS;r++){
-    for(let c=0;c<COLS;c++){
-      const i=idx(r,c);
-      const sq=document.createElement('div');
-      const thm=THEMES[mapTheme]||THEMES.jungle;
-      sq.className='sq '+((r+c)%2===0?'lt':'dk');
-      sq.style.background=(r+c)%2===0?thm.lt:thm.dk;
-      const ttype=tileData[i];
-      if(ttype){
-        const cssType=ttype==='sandstone-spawner'?'sandstone-spawner':ttype;
-        sq.classList.add('tile-'+cssType);
-        if(isTileBlocked(i))sq.classList.add('tile-blocked');
-        if(ttype==='sandstone-spawner'){
-          const arch=document.createElement('div');arch.className='spawner-arch';sq.appendChild(arch);
-        }
-      }
-      sq.style.width=sqPx+'px'; sq.style.height=sqPx+'px';
-
-      if(dragging&&dragDests){
-        if(i===dragSrc)sq.style.opacity='0.28';
-        else if(dragDests.merge.has(i))sq.classList.add('drop-mrg');
-        else if(dragDests.attack.has(i))sq.classList.add('drop-atk');
-        else if(dragDests.heal.has(i))sq.classList.add('drop-heal');
-        else if(dragDests.move.has(i))sq.classList.add('drop-ok');
-      }else if(targetMode&&targetSrc>=0&&pieces[targetSrc]){
-        const p=pieces[targetSrc];
-        if(p.type==='bishop'){
-          if(pieces[i]&&pieces[i].color===mc&&i!==targetSrc)sq.classList.add('drop-heal');
-        }else{
-          const atk=p.type==='queen'?new Set(queenRange(targetSrc).filter(j=>pieces[j]&&pieces[j].color!==mc)):p.type==='rook'?new Set(rookRange(targetSrc).filter(j=>pieces[j]&&pieces[j].color!==mc)):new Set(adj8(targetSrc).filter(j=>pieces[j]&&pieces[j].color!==mc));
-          if(atk.has(i))sq.classList.add('drop-atk');
-        }
-      }else{
-        if(kingSelected&&i===ki)sq.classList.add('sel');
-        else if(selectedPieces.has(i))sq.classList.add('sel');
-        // show move/attack range for single selected piece
-        // aura always shown — type color + stacking depth
-        if(auraMap.has(i)){
-          const {cls,count}=auraMap.get(i);
-          sq.classList.add('aura-'+cls);
-          if(count>=4)sq.classList.add('aura-depth-4');
-          else if(count>=3)sq.classList.add('aura-depth-3');
-          else if(count>=2)sq.classList.add('aura-depth-2');
-        }
-        // selection overlay on top
-        if(selDests){
-          if(selDests.move.has(i))sq.classList.add('show-move');
-          else if(selDests.attack.has(i))sq.classList.add('show-atk');
-        }
-        if(!dragging&&i===blackLastFrom)sq.classList.add('last-from');
-        if(!dragging&&i===blackLastTo)sq.classList.add('last-to');
-      }
-
-
-      // attack/heal target indicators
-      const isAtkTarget=Object.entries(targets).some(([s,t])=>parseInt(t)===i&&pieces[parseInt(s)]&&pieces[parseInt(s)].color===mc&&pieces[parseInt(s)].type!=='bishop');
-      const isHealTarget=Object.entries(targets).some(([s,t])=>parseInt(t)===i&&pieces[parseInt(s)]&&pieces[parseInt(s)].color===mc&&pieces[parseInt(s)].type==='bishop');
-      const hasTarget=targets[i]!==undefined&&pieces[i]&&pieces[i].color===mc;
-      if(isAtkTarget)sq.classList.add('atk-target');
-      if(isHealTarget)sq.classList.add('heal-target');
-      if(hasTarget)sq.classList.add('has-target');
-
-      const p=(dragging&&i===dragSrc)?null:pieces[i];
-      if(!p&&prodTgts.has(i)){
-        const div=document.createElement('div');div.className='piece piece-ghost';
-        const gl=document.createElement('span');gl.className='glyph glyph-'+mc;gl.textContent='♙';
-        div.appendChild(gl);sq.appendChild(div);
-      }else if(p){
-        const div=document.createElement('div');div.className='piece';
-        if(p.newborn){const aura=document.createElement('div');aura.className='newborn-aura';div.appendChild(aura);}
-        if(p.color==='b'){
-          const svgWrap=document.createElement('div');
-          svgWrap.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:1;';
-          svgWrap.innerHTML=buildBlackPieceSVG(p.type,sqPx);
-          div.appendChild(svgWrap);
-        }else if(p.type==='siege'){
-          // Siege tower: inline SVG — stacked rook battlements
-          const sz=Math.floor(sqPx*.82);
-          const svgWrap=document.createElement('div');
-          svgWrap.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:1;';
-          svgWrap.innerHTML=`<svg viewBox="0 0 100 100" width="${sz}" height="${sz}" xmlns="http://www.w3.org/2000/svg">
-            <!-- base block -->
-            <rect x="20" y="55" width="60" height="35" rx="3" fill="#d0d0e0" stroke="#888" stroke-width="2"/>
-            <!-- battlements row 1 -->
-            <rect x="20" y="42" width="14" height="18" rx="2" fill="#c8c8d8" stroke="#888" stroke-width="1.5"/>
-            <rect x="43" y="42" width="14" height="18" rx="2" fill="#c8c8d8" stroke="#888" stroke-width="1.5"/>
-            <rect x="66" y="42" width="14" height="18" rx="2" fill="#c8c8d8" stroke="#888" stroke-width="1.5"/>
-            <!-- platform line -->
-            <rect x="18" y="50" width="64" height="6" rx="1" fill="#b0b0c8"/>
-            <!-- twin swords crossed on face -->
-            <line x1="32" y1="68" x2="68" y2="88" stroke="#c8a040" stroke-width="4" stroke-linecap="round"/>
-            <line x1="68" y1="68" x2="32" y2="88" stroke="#c8a040" stroke-width="4" stroke-linecap="round"/>
-            <circle cx="32" cy="68" r="3" fill="#e8c060"/>
-            <circle cx="68" cy="68" r="3" fill="#e8c060"/>
-            <!-- shine -->
-            <rect x="22" y="57" width="8" height="20" rx="2" fill="rgba(255,255,255,.18)"/>
-          </svg>`;
-          div.appendChild(svgWrap);
-        }else{
-          const gl=document.createElement('span');gl.className='glyph glyph-'+p.color;
-          gl.textContent=GLYPH[p.type+'_'+p.color]||'?';div.appendChild(gl);
-        }
-        const bar=document.createElement('div');bar.className='hp-bar';
-
-        for(let h=0;h<p.maxHp;h++){const pip=document.createElement('div');pip.className='hp-pip '+(h<p.hp?'full-':'empty-')+p.color;pip.style.width=pipW;pip.style.height=pipH;bar.appendChild(pip);}
-        div.appendChild(bar);
-        // mana pips for bishops
-        if(p.type==='bishop'){
-          const manaMax=2,mana=p.mana||0;
-          const mpW=Math.max(3,Math.floor(sqPx*.09))+'px';
-          const mpH=mpW;
-          const mbar=document.createElement('div');mbar.className='mana-bar';
-
-          for(let m=0;m<manaMax;m++){const mp=document.createElement('div');mp.className='mana-pip'+(m<mana?'':' empty');mp.style.width=mpW;mp.style.height=mpH;mbar.appendChild(mp);}
-          div.appendChild(mbar);
-        }
-        sq.appendChild(div);
-      }
-
-      // animals rendered in separate overlay by renderAnimalOverlay()
-      if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
-      if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
-      boardEl.appendChild(sq);
-    }
-  }
-}
-
-function sqElAt(i){return document.getElementById('board').children[i]||null;}
-function flashSq(i,cls){const el=sqElAt(i);if(!el)return;el.classList.add(cls);setTimeout(()=>el&&el.classList.remove(cls),500);}
-function spawnFlash(i){
-  const el=sqElAt(i);if(!el)return;
-  const p=el.querySelector('.piece');
-  if(p){p.style.animation='none';void p.offsetWidth;p.style.animation='spawnPop .45s cubic-bezier(.2,1.6,.4,1)';setTimeout(()=>{if(p)p.style.animation='';},500);}
-  // ring burst at tile center
-  const rect=el.getBoundingClientRect();
-  const cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
-  const ring=document.createElement('div');
-  ring.style.cssText='position:fixed;pointer-events:none;z-index:600;'
-    +'left:'+cx+'px;top:'+cy+'px;'
-    +'width:'+sqPx+'px;height:'+sqPx+'px;'
-    +'border-radius:50%;border:3px solid rgba(200,240,80,.8);'
-    +'animation:spawnRing .45s ease-out forwards;';
-  document.body.appendChild(ring);
-  setTimeout(()=>ring.remove(),480);
-}
-
-function mergeFlash(i){
-  const el=sqElAt(i);if(!el)return;
-  const p=el.querySelector('.piece');
-  if(p){p.style.animation='none';void p.offsetWidth;p.style.animation='mergeFlash .55s ease-out';setTimeout(()=>{if(p)p.style.animation='';},600);}
-  // two rings for merge
-  const rect=el.getBoundingClientRect();
-  const cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
-  [0,120].forEach(delay=>{
-    const ring=document.createElement('div');
-    ring.style.cssText='position:fixed;pointer-events:none;z-index:600;'
-      +'left:'+cx+'px;top:'+cy+'px;'
-      +'width:'+(sqPx*1.1)+'px;height:'+(sqPx*1.1)+'px;'
-      +'border-radius:50%;border:2.5px solid rgba(100,200,255,.85);'
-      +'animation:spawnRing .5s ease-out forwards;animation-delay:'+delay+'ms;opacity:0;';
-    ring.style.animationFillMode='both';
-    document.body.appendChild(ring);
-    setTimeout(()=>ring.remove(),650+delay);
-  });
-}
-
-// ── DRAG ─────────────────────────────────────────────────────────────────────
-function sqIdxFromPoint(x,y){const rect=document.getElementById('board').getBoundingClientRect();const c=Math.floor((x-rect.left)/sqPx),r=Math.floor((y-rect.top)/sqPx);return(r>=0&&r<ROWS&&c>=0&&c<COLS)?idx(r,c):-1;}
-
-// ── box selection state ───────────────────────────────────────────────────────
-let boxSelecting=false,boxX0=0,boxY0=0,boxX1=0,boxY1=0,boxMouseDownOnEmpty=false;
-
-document.getElementById('board').addEventListener('mousedown',e=>{
-  if(over||thinking||!isMyTurn())return;
-  const i=sqIdxFromPoint(e.clientX,e.clientY);if(i<0)return;
-  if(e.button===2){e.preventDefault();handleRightClick(i,e);return;}
-  const p=pieces[i];
-  if(targetMode){handleTargetClick(i);return;}
-  if(p&&p.color===myColor()){
-    // start piece drag
-    mouseDownI=i;mouseDownX=e.clientX;mouseDownY=e.clientY;e.preventDefault();
-  }else if(!p&&kingSelected){
-    mouseDownI=i;mouseDownX=e.clientX;mouseDownY=e.clientY;e.preventDefault();
-  }else if(!p&&!kingSelected&&!targetMode){
-    // start box selection from empty square
-    boxSelecting=false;boxMouseDownOnEmpty=true;
-    boxX0=e.clientX;boxY0=e.clientY;boxX1=e.clientX;boxY1=e.clientY;
-    e.preventDefault();
-  }
-});
-document.getElementById('board').addEventListener('contextmenu',e=>e.preventDefault());
-
-document.addEventListener('mousemove',e=>{
-  if(boxMouseDownOnEmpty){
-    const moved=Math.hypot(e.clientX-boxX0,e.clientY-boxY0)>6;
-    if(moved){
-      boxSelecting=true;
-      boxX1=e.clientX;boxY1=e.clientY;
-      drawBoxSelect();
-    }
-    return;
-  }
-  if(mouseDownI<0)return;
-  const p=pieces[mouseDownI];
-  if(!dragging&&p&&p.color===myColor()&&Math.hypot(e.clientX-mouseDownX,e.clientY-mouseDownY)>5){
-    dragging=true;dragSrc=mouseDownI;dragDests=getDragDests(dragSrc);
-    const g=document.getElementById('ghost');g.textContent=GLYPH[p.type+'_'+p.color];g.style.color=p.color==='w'?'#fff':'#1a0e04';g.style.display='block';render();
-  }
-  if(dragging){const g=document.getElementById('ghost');g.style.left=e.clientX+'px';g.style.top=e.clientY+'px';}
-});
-
-document.addEventListener('mouseup',e=>{
-  document.getElementById('ghost').style.display='none';
-  if(boxSelecting){
-    boxX1=e.clientX;boxY1=e.clientY;
-    applyBoxSelect();
-    boxSelecting=false;boxMouseDownOnEmpty=false;
-    clearBoxSelect();
-    return;
-  }
-  boxMouseDownOnEmpty=false;
-  if(dragging){
-    const dropI=sqIdxFromPoint(e.clientX,e.clientY),src=dragSrc,dests=dragDests;
-    dragging=false;dragSrc=-1;dragDests=null;
-    if(dropI>=0&&src>=0)executeDrop(src,dropI,dests);else render();
-  }else if(mouseDownI>=0&&!over&&!thinking&&isMyTurn())handleClick(mouseDownI);
-  mouseDownI=-1;
-});
-
-function drawBoxSelect(){
-  let el=document.getElementById('box-select-rect');
-  if(!el){
-    el=document.createElement('div');el.id='box-select-rect';
-    el.style.cssText='position:fixed;pointer-events:none;z-index:400;border:2px dashed #c8e840;background:rgba(200,232,64,.08);border-radius:2px;';
-    document.body.appendChild(el);
-  }
-  const x=Math.min(boxX0,boxX1),y=Math.min(boxY0,boxY1);
-  const w=Math.abs(boxX1-boxX0),h=Math.abs(boxY1-boxY0);
-  el.style.left=x+'px';el.style.top=y+'px';el.style.width=w+'px';el.style.height=h+'px';
-}
-
-function clearBoxSelect(){
-  const el=document.getElementById('box-select-rect');
-  if(el)el.remove();
-}
-
-function applyBoxSelect(){
-  const rect=document.getElementById('board').getBoundingClientRect();
-  const mc=myColor();
-  const x0=Math.min(boxX0,boxX1)-rect.left,x1=Math.max(boxX0,boxX1)-rect.left;
-  const y0=Math.min(boxY0,boxY1)-rect.top, y1=Math.max(boxY0,boxY1)-rect.top;
-  const newSel=new Set();
-  for(let r=0;r<ROWS;r++){
-    for(let cc=0;cc<COLS;cc++){
-      const px=(cc+0.5)*sqPx,py=(r+0.5)*sqPx;
-      if(px>=x0&&px<=x1&&py>=y0&&py<=y1){
-        const i=idx(r,cc);
-        if(pieces[i]&&pieces[i].color===mc&&pieces[i].type!=='king')newSel.add(i);
-      }
-    }
-  }
-  selectedPieces=newSel;
-  render();
-  setStatus(selectedPieces.size>0?selectedPieces.size+' piece(s) selected — use arrows to move':'Your turn');
-}
-
-// touch
-function touchXY(e){const t=e.touches[0]||e.changedTouches[0];return{x:t.clientX,y:t.clientY};}
-document.getElementById('board').addEventListener('touchstart',e=>{
-  if(over||thinking||!isMyTurn())return;
-  const{x,y}=touchXY(e);const i=sqIdxFromPoint(x,y);if(i<0)return;
-  const p=pieces[i];
-  if(targetMode){handleTargetClick(i);e.preventDefault();return;}
-  if(p&&p.color===myColor()){mouseDownI=i;mouseDownX=x;mouseDownY=y;e.preventDefault();}
-  else if(!p&&kingSelected){mouseDownI=i;mouseDownX=x;mouseDownY=y;e.preventDefault();}
-},{passive:false});
-document.addEventListener('touchmove',e=>{
-  if(mouseDownI<0)return;const{x,y}=touchXY(e);const p=pieces[mouseDownI];
-  if(!dragging&&p&&p.color===myColor()&&Math.hypot(x-mouseDownX,y-mouseDownY)>8){dragging=true;dragSrc=mouseDownI;dragDests=getDragDests(dragSrc);const g=document.getElementById('ghost');g.textContent=GLYPH[p.type+'_'+p.color];g.style.color=p.color==='w'?'#fff':'#1a0e04';g.style.display='block';render();}
-  if(dragging){const g=document.getElementById('ghost');g.style.left=x+'px';g.style.top=y+'px';e.preventDefault();}
-},{passive:false});
-document.addEventListener('touchend',e=>{
-  document.getElementById('ghost').style.display='none';const{x,y}=touchXY(e);
-  if(dragging){const dropI=sqIdxFromPoint(x,y),src=dragSrc,dests=dragDests;dragging=false;dragSrc=-1;dragDests=null;if(dropI>=0&&src>=0)executeDrop(src,dropI,dests);else render();}
-  else if(mouseDownI>=0&&!over&&!thinking&&isMyTurn())handleClick(mouseDownI);
-  mouseDownI=-1;
-});
-
-// ── TARGET SETTING ───────────────────────────────────────────────────────────
-function toggleTargetMode(){
-  if(over||thinking||!isMyTurn())return;
-  targetMode=!targetMode; targetSrc=-1;
-  syncUI(); render();
-  setStatus(targetMode?'Target mode: click your piece, then click enemy (or friendly for bishop)':'Your turn');
-}
-
-function unsiegePiece(i){
-  const p=pieces[i];if(!p||p.type!=='siege'||p.color!==myColor())return;
-  const empties=adj8(i).filter(j=>!pieces[j]&&!isTileBlocked(j));
-  const dest=empties.length?empties[0]:null;
-  const hp1=Math.min(4,Math.floor(p.hp/2)),hp2=Math.min(4,Math.max(1,p.hp-hp1));
-  pieces[i]={type:'rook',color:p.color,hp:hp1,maxHp:4};
-  if(dest)pieces[dest]={type:'rook',color:p.color,hp:hp2,maxHp:4};
-  addLog('Unsieged into '+(dest?'2 rooks':'1 rook'));SFX.merge();
-  mergeFlash(i);if(dest)setTimeout(()=>spawnFlash(dest),120);
-  tutCheckAction('unsiege');
-  selectedPieces=new Set();endTurn();
-}
-
-function handleRightClick(i,e){
-  if(over||thinking||!isMyTurn())return;
-  const p=pieces[i];const mc=myColor();
-  if(p&&p.color===mc&&p.type==='siege'){unsiegePiece(i);return;}
-  if(p&&p.color===mc){targetSrc=i;targetMode=true;syncUI();render();setStatus('Click the target for '+p.type+(p.type==='bishop'?' (friendly)':' (enemy)'));}
-}
-
-function handleTargetClick(i){
-  if(targetSrc<0){
-    const p=pieces[i];if(p&&p.color===myColor()){targetSrc=i;render();setStatus('Now click target for '+p.type);}
-    return;
-  }
-  const p=pieces[targetSrc];
-  if(!p){targetSrc=-1;targetMode=false;syncUI();render();return;}
-  const mc=myColor();
-  const tgts=mc==='w'?whiteTargets:blackTargets;
-  if(p.type==='bishop'){
-    if(pieces[i]&&pieces[i].color===mc&&i!==targetSrc){
-      tgts[targetSrc]=i; addLog(p.type+' will heal '+sqName(i));
-    }
-  }else{
-    if(pieces[i]&&pieces[i].color!==mc){
-      tgts[targetSrc]=i; addLog(p.type+' will attack '+sqName(i));
-    }
-  }
-  targetSrc=-1; targetMode=false; syncUI(); render();
-  setStatus("Your turn");
-}
-
-// ── DROP / EXECUTE ───────────────────────────────────────────────────────────
-function executeDrop(from,to,dests){
-  if(!dests){render();return;}
-  const p=pieces[from];
-
-  // ── GROUP MOVE: if 2-3 pawns/knights selected and dragged to a move dest ────
-  if(dests.move.has(to) && selectedPieces.size>=2 && selectedPieces.has(from)){
-    const mc=myColor();
-    const groupEligible=[...selectedPieces].filter(si=>{
-      const sp=pieces[si];
-      return sp&&sp.color===mc&&(sp.type==='pawn'||sp.type==='knight');
-    }).slice(0,3); // cap at 3
-    if(groupEligible.length>=2){
-      // Compute each piece's individual move direction relative to from->to
-      const dr=ROW(to)-ROW(from), dc=COL(to)-COL(from);
-      const movers=[];
-      // Move each eligible piece the same delta (if valid)
-      for(const si of groupEligible){
-        const sp=pieces[si];
-        if(sp.type==='knight'){
-          // knight must L-jump: find a kJump target with same dr/dc or closest direction
-          const dest=kJumps(si).find(j=>ROW(j)-ROW(si)===dr&&COL(j)-COL(si)===dc);
-          if(dest!==undefined&&!pieces[dest]&&!isTileBlocked(dest))movers.push({si,di:dest});
-        }else{
-          // pawn: 1 step in same direction
-          const nr=ROW(si)+dr,nc=COL(si)+dc;
-          if(inB(nr,nc)){const di=idx(nr,nc);if(!pieces[di]&&!isTileBlocked(di))movers.push({si,di});}
-        }
-      }
-      if(movers.length>=2){
-        // Execute all moves (no collision: each goes to different tile)
-        const occupied=new Set(movers.map(m=>m.di));
-        // If any two go to the same tile, skip this group move
-        if(occupied.size===movers.length){
-          addLog(movers.length+' pieces move');SFX.move();
-          movedThisTurn=-1; // group move — no single piece tracked
-          // animate all, then commit
-          let done=0;
-          render();
-          movers.forEach(({si,di})=>{
-            const mv=pieces[si];
-            animatePieceMove(si,di,mv.type,mv.color,false,()=>{
-              pieces[si]=null;pieces[di]=mv;
-              done++;if(done===movers.length){render();endTurn();}
-            },mv.type==='knight'?260:180);
-          });
-          return;
-        }
-      }
-    }
-  }
-
-  // bishop dragged onto wounded friendly knight: show heal vs merge choice
-  if(p.type==='bishop'&&dests.heal.has(to)&&dests.merge.has(to)){
-    const hasMana=(p.mana||0)>0;
-    if(hasMana){
-      // show inline choice
-      const sq=sqElAt(to);
-      if(sq){
-        const existing=document.getElementById('bishop-choice');
-        if(existing)existing.remove();
-        const box=document.createElement('div');
-        box.id='bishop-choice';
-        box.style.cssText='position:fixed;z-index:900;background:#0e1f08;border:2px solid #4a8020;border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;box-shadow:0 6px 20px rgba(0,0,0,.8);font-family:Georgia,serif;font-size:12px;';
-        const rect=sq.getBoundingClientRect();
-        box.style.left=(rect.left+rect.width/2)+'px';
-        box.style.top=(rect.bottom+6)+'px';
-        box.style.transform='translateX(-50%)';
-        const healBtn=document.createElement('button');
-        healBtn.textContent='\u2665 Heal '+pieces[to].type;
-        healBtn.style.cssText='padding:5px 12px;background:#0a2008;border:1px solid #3a7820;color:#80e040;border-radius:4px;cursor:pointer;font-size:12px;';
-        healBtn.onclick=()=>{
-          box.remove();
-          whiteTargets[from]=to;
-          addLog('Bishop will heal '+pieces[to].type+'@'+sqName(to));
-          setStatus('Bishop locked on heal target — fires at turn end.');
-          SFX.select();tutCheckAction('heal');render();endTurn();
-        };
-        const mergeBtn=document.createElement('button');
-        mergeBtn.textContent='\u2694 Merge \u2192 \u265B';
-        mergeBtn.style.cssText='padding:5px 12px;background:#0a1808;border:1px solid #2a5010;color:#60a030;border-radius:4px;cursor:pointer;font-size:12px;';
-        mergeBtn.onclick=()=>{
-          box.remove();
-          // execute the merge
-          const nt='queen';
-          const newPiece={type:nt,color:p.color,hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};
-          pieces[from]=null;pieces[to]=newPiece;
-          addLog('Merged to '+nt+'@'+sqName(to));SFX.merge();tutCheckAction('merge');
-          movedThisTurn=-1;
-          setTimeout(()=>mergeFlash(to),50);endTurn();
-        };
-        const cancelBtn=document.createElement('button');
-        cancelBtn.textContent='✕';
-        cancelBtn.style.cssText='padding:2px 8px;background:transparent;border:none;color:#4a6828;cursor:pointer;font-size:11px;align-self:flex-end;';
-        cancelBtn.onclick=()=>{box.remove();render();};
-        box.appendChild(cancelBtn);box.appendChild(healBtn);box.appendChild(mergeBtn);
-        document.body.appendChild(box);
-        // close on outside click
-        setTimeout(()=>document.addEventListener('mousedown',function h(e){if(!box.contains(e.target)){box.remove();document.removeEventListener('mousedown',h);}},true),10);
-      }
-      render();return; // don't end turn yet
-    }
-    // no mana — merge only
-  }
-  // bishop drag onto healable ally: execute heal immediately (1 mana → +1 HP)
-  if(p.type==='bishop'&&dests.heal.has(to)&&!dests.merge.has(to)){
-    if((p.mana||0)<=0){setStatus('Bishop has no mana!');return;}
-    const t=pieces[to];
-    if(t&&t.hp<t.maxHp){
-      t.hp=Math.min(t.maxHp,t.hp+1);
-      p.mana=Math.max(0,(p.mana||0)-1);
-      flashSq(to,'heal-flash');
-      addLog('Bishop heals '+t.type+'@'+sqName(to)+' ('+p.mana+' mana left)');SFX.heal();
-      // clear heal target and mark bishop as acted so computeActions doesn't heal again
-      delete whiteTargets[from];
-      movedThisTurn=from; // bishop already acted — exclude from auto-actions this turn
-      tutCheckAction('heal');
-      render();endTurn();return;
-    }
-    return;
-  }
-  if(dests.merge.has(to)){
-    const t=pieces[to];let nt=null;
-    if(p.type==='pawn'&&t.type==='pawn')nt='knight';
-    else if((p.type==='pawn'&&t.type==='knight')||(p.type==='knight'&&t.type==='pawn'))nt='bishop';
-    else if((p.type==='knight'&&t.type==='bishop')||(p.type==='bishop'&&t.type==='knight'))nt='queen';
-    else if(p.type==='rook'&&t.type==='rook')nt='siege';
-    else if(p.type==='knight'&&t.type==='knight')nt='rook';
-    if(nt){
-      delete whiteTargets[from]; delete whiteTargets[to];
-      const newPiece={type:nt,color:p.color,hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};
-      if(nt==='bishop')newPiece.mana=1;
-      if(nt==='siege')newPiece.sieged=true;
-      pieces[from]=null;pieces[to]=newPiece;
-      addLog('Merged to '+nt+'@'+sqName(to));SFX.merge();tutCheckAction('merge');
-      movedThisTurn=-1; // merged piece can still attack
-      setTimeout(()=>mergeFlash(to),50);
-      const knightLJump=p.type==='knight'&&kJumps(from).includes(to);
-      if(knightLJump){render();return;}
-      endTurn();return;
-    }
-  }
-  // king attacking an adjacent animal
-  if(p.type==='king'&&!pieces[to]&&dests.attack.has(to)){
-    const tr=ROW(to),tc2=COL(to);
-    const aIdx=animals.findIndex(na=>{const ar=Math.round(na.y-0.5),ac=Math.round(na.x-0.5);return inB(ar,ac)&&idx(ar,ac)===to;});
-    if(aIdx>=0){
-      const na=animals[aIdx];
-      na.hp--;
-      const naC=sqCenter(to);
-      const pl=sqCenter(from);
-      emojiAnim(GLYPH['king_w'],pl.x,pl.y,naC.x,naC.y,sqPx*.4,200,()=>{});
-      addLog('King hits '+na.emoji+' → '+na.hp+'HP');SFX.attack();
-      if(na.hp<=0){
-        animals.splice(aIdx,1);
-        // burst at animal position
-        const board=document.getElementById('board');
-        if(board){const br=board.getBoundingClientRect();const burst=document.createElement('div');burst.style.cssText='position:fixed;pointer-events:none;z-index:700;left:'+(br.left+na.x*sqPx)+'px;top:'+(br.top+na.y*sqPx)+'px;width:'+sqPx+'px;height:'+sqPx+'px;border-radius:50%;border:3px solid rgba(255,220,80,.8);animation:burstAnim .4s ease-out forwards;';burst.style.transform='translate(-50%,-50%)';document.body.appendChild(burst);setTimeout(()=>burst.remove(),450);}
-        addLog('King defeats '+na.emoji+'!');SFX.kill();
-      }
-      endTurn();return;
-    }
-  }
-  // any piece can attack an animal at the target tile
-  if(!pieces[to]){
-    const aHitIdx=animals.findIndex(na=>{
-      if(na.isMummy&&na.dormant)return false; // dormant mummy can't be attacked
-      const ar=Math.round(na.y-0.5),ac=Math.round(na.x-0.5);
-      return inB(ar,ac)&&idx(ar,ac)===to;
-    });
-    if(aHitIdx>=0&&(dests.attack.has(to)||dests.move.has(to))){
-      const na=animals[aHitIdx];
-      na.hp--;
-      const naC=sqCenter(to);const pl=sqCenter(from);
-      emojiAnim(GLYPH[p.type+'_w']||'♙',pl.x,pl.y,naC.x,naC.y,sqPx*.4,200,()=>{});
-      addLog(p.type+' hits '+na.emoji+' → '+na.hp+'HP');SFX.attack();
-      if(na.hp<=0){
-        animals.splice(aHitIdx,1);
-        const board=document.getElementById('board');
-        if(board){const br=board.getBoundingClientRect();const burst=document.createElement('div');burst.style.cssText='position:fixed;pointer-events:none;z-index:700;left:'+(br.left+na.x*sqPx)+'px;top:'+(br.top+na.y*sqPx)+'px;width:'+sqPx+'px;height:'+sqPx+'px;border-radius:50%;border:3px solid rgba(255,220,80,.8);animation:burstAnim .4s ease-out forwards;';burst.style.transform='translate(-50%,-50%)';document.body.appendChild(burst);setTimeout(()=>burst.remove(),450);}
-        addLog(p.type+' defeats '+na.emoji+'!');SFX.kill();
-      }
-      renderAnimalOverlay();render();endTurn();return;
-    }
-  }
-  // if dropped on any enemy piece: set as priority target; if in range also attack now
-  if(pieces[to]&&pieces[to].color!==myColor()&&!dests.attack.has(to)){
-    // out of immediate range — set as priority target for auto-attack
-    whiteTargets[from]=to;
-    whiteTargets[from]=to;
-    addLog(p.type+' targets '+pieces[to].type+'@'+sqName(to));
-    setStatus(p.type+' will fire at '+pieces[to].type+' when in range.');
-    render();endTurn();return; // costs a turn
-  }
-  if(dests.attack.has(to)){
-    // dragging onto an in-range enemy: just set the target, don't attack now
-    // attack fires automatically at end of turn via computeActions
-    whiteTargets[from]=to;
-    tutCheckAction('attack');
-    addLog(p.type+' locked on '+pieces[to].type+'@'+sqName(to)+' (fires at turn end)');
-    setStatus(p.type+' locked — attack fires at end of turn.');
-    SFX.select();
-    render();endTurn();return; // costs a turn
-  }
-  if(dests.move.has(to)){
-    delete whiteTargets[from];
-    addLog(p.type+' moves to '+sqName(to));SFX.move();tutCheckAction('move');
-    const _mv=pieces[from];
-    movedThisTurn=from; // mark piece as having moved — it cannot attack this turn
-    render();
-    animatePieceMove(from,to,_mv.type,_mv.color,false,()=>{
-      pieces[from]=null; pieces[to]=_mv; movedThisTurn=to; render(); endTurn();
-    },_mv.type==='knight'?260:180);
-    return;
-  }
-
-
-  render();
-}
-
-function handleClick(i){
-  const p=pieces[i];const mc=myColor();
-  const ki=pieces.findIndex(q=>q&&q.color===mc&&q.type==='king');
-  if(p&&p.color===mc&&p.type==='siege'){
-    // click siege piece — select it and offer unsiege
-    selectedPieces=new Set([i]);render();
-    setStatus('Siege tower selected — right-click to unsiege into 2 rooks');return;
-  }
-  if(p&&p.color===mc&&p.type==='king'){
-    selectedPieces=new Set();kingSelected=!kingSelected;render();
-    setStatus(kingSelected?'Click adjacent square to spawn pawn':'Your turn');return;
-  }
-  if(!p&&kingSelected){
-    if(ki>=0&&adj8(ki).includes(i)){
-      const rs=spawnRemaining();
-      if(rs<=0){setStatus('No spawn charges left');kingSelected=false;render();return;}
-      if(isTileBlocked(i)){setStatus('Cannot spawn on obstacle');kingSelected=false;render();return;}
-      pieces[i]={type:'pawn',color:mc,hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,newborn:true};
-      spawnHistory.push(whiteTurnCount);
-      addLog('Spawned pawn ('+spawnRemaining()+' left)');spawnFlash(i);SFX.spawn();kingSelected=false;endTurn();}
-    else{kingSelected=false;render();setStatus('Your turn');}
-    return;
-  }
-  if(p&&p.color===mc&&p.type!=='king'){
-    // toggle piece in group selection (cap pawns+knights at 3)
-    kingSelected=false;
-    if(selectedPieces.has(i)){
-      selectedPieces.delete(i);
-    }else{
-      const pp2=pieces[i];
-      if(pp2&&(pp2.type==='pawn'||pp2.type==='knight')){
-        const grp=[...selectedPieces].filter(si=>{const sp=pieces[si];return sp&&(sp.type==='pawn'||sp.type==='knight');});
-        if(grp.length>=3){setStatus('Max 3 pieces in group');render();return;}
-      }
-      selectedPieces.add(i);SFX.select();
-    }
-    render();
-    const gSz=selectedPieces.size;
-    const gCan=gSz>=2&&[...selectedPieces].every(si=>{const sp=pieces[si];return sp&&(sp.type==='pawn'||sp.type==='knight');});
-    setStatus(gSz>0?(gCan?gSz+' pcs — drag any to move group':gSz+' selected'):'Your turn');
-    return;
-  }
-  kingSelected=false;selectedPieces=new Set();render();
-}
-
-// ── ACTIONS ──────────────────────────────────────────────────────────────────
-function doSpawn(){
-  if(over||thinking||!isMyTurn())return;
-  const mc=myColor();
-  if(spawnRemaining()<=0){setStatus('No spawn charges (next at turn '+(spawnUsed()-8)*4+4+')');return;}
-  const ki=pieces.findIndex(p=>p&&p.color===mc&&p.type==='king');
-  const bKi=pieces.findIndex(p=>p&&p.color!==mc&&p.type==='king');
-  if(ki<0)return;
-  const cands=adj8(ki).filter(i=>!pieces[i]&&!isTileBlocked(i));if(!cands.length){setStatus('No empty squares near king!');return;}
-  const best=bKi>=0?cands.reduce((a,b)=>cheb(a,bKi)<cheb(b,bKi)?a:b):cands[0];
-  pieces[best]={type:'pawn',color:mc,hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,newborn:true};
-  spawnHistory.push(whiteTurnCount);
-  addLog('Spawned pawn ('+spawnRemaining()+' left)');spawnFlash(best);SFX.spawn();endTurn();
-}
-
-function moveAll(dr,dc){
-  if(over||thinking||!isMyTurn())return;
-  // direction move: noop for player (no group movement)
-  setStatus('Drag a piece to move it');return;
-  const mc=myColor();let all=[];
-  all.sort((a,b)=>dr>0?b-a:dr<0?a-b:dc>0?b-a:a-b);
-  let moved=0;
-  all.forEach(from=>{
-    if(!pieces[from])return;const p=pieces[from];
-    if(p.type==='pawn'){const nr=ROW(from)+dr,nc=COL(from)+dc;if(inB(nr,nc)&&!pieces[idx(nr,nc)]&&!isTileBlocked(idx(nr,nc))){pieces[idx(nr,nc)]=p;pieces[from]=null;moved++;}}
-    else if(p.type==='bishop'){for(let s=2;s>=1;s--){const nr=ROW(from)+dr*s,nc=COL(from)+dc*s;if(!inB(nr,nc))continue;if(s===2){const mr=ROW(from)+dr,mc2=COL(from)+dc;if(!inB(mr,mc2)||pieces[idx(mr,mc2)])continue;}const ti=idx(nr,nc);if(!pieces[ti]){pieces[ti]=p;pieces[from]=null;moved++;break;}}}
-    else if(p.type==='knight'){const dests=kJumps(from).filter(j=>!pieces[j]&&!isTileBlocked(j));if(!dests.length)return;const best=dests.reduce((a,b)=>{const sa=(ROW(b)-ROW(from))*dr+(COL(b)-COL(from))*dc,sb=(ROW(a)-ROW(from))*dr+(COL(a)-ROW(from))*dc;return sa>sb?b:a;});if((ROW(best)-ROW(from))*dr+(COL(best)-COL(from))*dc>0){pieces[best]=p;pieces[from]=null;moved++;}}
-    else if(p.type==='rook'){const dirs=[[-1,0],[1,0],[0,-1],[0,1]];const bd=dirs.reduce((a,b)=>a[0]*dr+a[1]*dc>b[0]*dr+b[1]*dc?a:b);const[rd,rc]=bd;if(rd*dr+rc*dc>0){for(let s=3;s>=1;s--){const nr=ROW(from)+rd*s,nc=COL(from)+rc*s;if(!inB(nr,nc))continue;const ti=idx(nr,nc);if(!pieces[ti]){pieces[ti]=p;pieces[from]=null;moved++;break;}}}}
-  });
-  const dn={'-10':'N','10':'S','01':'E','0-1':'W','-11':'NE','-1-1':'NW','11':'SE','1-1':'SW'}[dr+''+dc]||'';
-  addLog('Marches '+dn+' ('+moved+')');endTurn();
-}
-
-function doMergeAll(){
-  if(over||thinking||!isMyTurn())return;
-  const mc=myColor();
-  // merge ONE pair, lowest tier first: pawn+pawn > pawn+knight > knight+bishop
-  const tiers=[
-    {a:'pawn',  b:'pawn',   r:'knight'},
-    {a:'pawn',  b:'knight', r:'bishop'},
-    {a:'knight',b:'bishop', r:'queen'},
-    {a:'knight',b:'knight', r:'rook'},
-  ];
-  for(const {a,b,r} of tiers){
-    for(let i=0;i<ROWS*COLS;i++){
-      const pi=pieces[i];if(!pi||pi.color!==mc||pi.type!==a)continue;
-      for(const j of adj8(i)){
-        const pj=pieces[j];if(!pj||pj.color!==mc)continue;
-        const match=(pi.type===a&&pj.type===b)||(a!==b&&pi.type===b&&pj.type===a);
-        if(!match)continue;
-        pieces[i]=null;pieces[j]={type:r,color:mc,hp:STATS[r].hp,maxHp:STATS[r].maxHp};
-        addLog('Merged '+a+'+'+b+' -> '+r+'@'+sqName(j));SFX.merge();
-        movedThisTurn=-1;
-        setTimeout(()=>mergeFlash(j),50);
-        endTurn();return;
-      }
-    }
-  }
-  setStatus('No adjacent pairs to merge');
-}
-
-function doSkip(){
-  if(over||thinking||!isMyTurn())return;
-  movedThisTurn=-1;
-  addLog('Turn skipped');
-  SFX.move();
-  endTurn();
-}
-
-// ── ATTACK SYSTEM (fires at START of each turn) ───────────────────────────────
-function sqCenter(i){
-  const b=document.getElementById('board').getBoundingClientRect();
-  const sw=b.width/COLS, sh=b.height/ROWS;
-  return{
-    x: b.left + (COL(i)+0.5)*sw,   // viewport X (for fixed-pos emoji)
-    y: b.top  + (ROW(i)+0.5)*sh,   // viewport Y
-    sx:(COL(i)+0.5)*sw,             // SVG-local X (relative to board)
-    sy:(ROW(i)+0.5)*sh              // SVG-local Y
-  };
-}
-
-function emojiAnim(emoji,ax,ay,tx,ty,arc,duration,cb){
-  const em=document.createElement('div');em.className='atk-emoji';em.textContent=emoji;
-  em.style.position='fixed';em.style.pointerEvents='none';em.style.zIndex='600';
-  em.style.fontSize=Math.max(16,Math.floor(sqPx*.5))+'px';
-  em.style.transform='translate(-50%,-50%)';
-  document.body.appendChild(em);
-  const start=performance.now();
-  const step=ts=>{
-    const s=Math.min(1,(ts-start)/duration);
-    const ease=s<.5?2*s*s:(4-2*s)*s-1;
-    const cx=ax+(tx-ax)*ease, cy=ay+(ty-ay)*ease-Math.sin(s*Math.PI)*arc;
-    em.style.left=cx+'px'; em.style.top=cy+'px';
-    em.style.opacity=s<.8?'1':(1-(s-.8)/.2)+'';
-    if(s<1)requestAnimationFrame(step); else{em.remove();cb();}
-  };
-  requestAnimationFrame(step);
-}
-
-function svgSpear(ax,ay,tx,ty,cb){
-  const svg=document.getElementById('wep-overlay');
-  const dx=tx-ax,dy=ty-ay,len=Math.hypot(dx,dy)||1;
-  const nx=dx/len,ny=dy/len;
-  // spear = long shaft + tip
-  const g=document.createElementNS('http://www.w3.org/2000/svg','g');
-  // shaft
-  const shaft=document.createElementNS('http://www.w3.org/2000/svg','line');
-  shaft.setAttribute('stroke','#c8a040');shaft.setAttribute('stroke-width','3');shaft.setAttribute('stroke-linecap','round');
-  // tip
-  const tip=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-  tip.setAttribute('fill','#e0e8f0');tip.setAttribute('stroke','#b0c0d0');tip.setAttribute('stroke-width','1');
-  g.appendChild(shaft);g.appendChild(tip);svg.appendChild(g);
-  const start=performance.now();const dur=400;
-  const step=ts=>{
-    const s=Math.min(1,(ts-start)/dur);
-    const ext=s<.5?s*2:2-(s-.5)*2; // poke and retract
-    const reach=ext*len*.9;
-    const ex=ax+nx*reach,ey=ay+ny*reach;
-    shaft.setAttribute('x1',ax+nx*8);shaft.setAttribute('y1',ay+ny*8);
-    shaft.setAttribute('x2',ex);shaft.setAttribute('y2',ey);
-    const tipSz=sqPx*.15;
-    const px1=ex+nx*tipSz-ny*tipSz*.4,py1=ey+ny*tipSz+nx*tipSz*.4;
-    const px2=ex+nx*tipSz+ny*tipSz*.4,py2=ey+ny*tipSz-nx*tipSz*.4;
-    const px3=ex-nx*tipSz*.2,py3=ey-ny*tipSz*.2;
-    tip.setAttribute('points',px1+','+py1+' '+px2+','+py2+' '+px3+','+py3);
-    if(s<1)requestAnimationFrame(step); else{svg.removeChild(g);cb();}
-  };
-  requestAnimationFrame(step);
-}
-
-function svgCannonball(ax,ay,tx,ty,cb){
-  const svg=document.getElementById('wep-overlay');
-  // muzzle flash at attacker
-  const flash=document.createElementNS('http://www.w3.org/2000/svg','circle');
-  flash.setAttribute('cx',ax);flash.setAttribute('cy',ay);flash.setAttribute('r',sqPx*.25+'');
-  flash.setAttribute('fill','#ffe060');flash.setAttribute('opacity','0.9');
-  svg.appendChild(flash);
-  // cannonball
-  const ball=document.createElementNS('http://www.w3.org/2000/svg','circle');
-  ball.setAttribute('r',sqPx*.12+'');ball.setAttribute('fill','#808090');
-  svg.appendChild(ball);
-  // trail
-  const trail=document.createElementNS('http://www.w3.org/2000/svg','line');
-  trail.setAttribute('stroke','#ffe08040');trail.setAttribute('stroke-width','3');
-  svg.appendChild(trail);
-  const start=performance.now();const dur=380;
-  const step=ts=>{
-    const s=Math.min(1,(ts-start)/dur);
-    // flash fades quickly
-    flash.setAttribute('opacity',(0.9*(1-s*4>0?1-s*4:0))+'');
-    // ball travels with slight arc
-    const bx=ax+(tx-ax)*s,by=ay+(ty-ay)*s-Math.sin(s*Math.PI)*sqPx*.4;
-    ball.setAttribute('cx',bx);ball.setAttribute('cy',by);
-    // trail from attacker to ball
-    trail.setAttribute('x1',ax+(tx-ax)*Math.max(0,s-.2));
-    trail.setAttribute('y1',ay+(ty-ay)*Math.max(0,s-.2)-Math.sin(Math.max(0,s-.2)*Math.PI)*sqPx*.4);
-    trail.setAttribute('x2',bx);trail.setAttribute('y2',by);
-    if(s<1)requestAnimationFrame(step); else{svg.removeChild(flash);svg.removeChild(ball);svg.removeChild(trail);
-      // impact burst
-      const burst=document.createElementNS('http://www.w3.org/2000/svg','circle');
-      burst.setAttribute('cx',tx);burst.setAttribute('cy',ty);burst.setAttribute('r','4');
-      burst.setAttribute('fill','none');burst.setAttribute('stroke','#ffe060');burst.setAttribute('stroke-width','3');
-      svg.appendChild(burst);
-      let b=0;const bstep=()=>{b+=0.1;burst.setAttribute('r',(4+b*sqPx*.3)+'');burst.setAttribute('opacity',''+(1-b));if(b<1)requestAnimationFrame(bstep);else{svg.removeChild(burst);cb();}};
-      requestAnimationFrame(bstep);
-    }
-  };
-  requestAnimationFrame(step);
-}
-
-function attackAnim(attacker,target,type,cb){
-  const a=sqCenter(attacker),t=sqCenter(target);
-  if(type==='pawn'){
-    // spear: SVG uses board-local coords (sx,sy)
-    svgSpear(a.sx,a.sy,t.sx,t.sy,cb);
-  }else if(type==='knight'){
-    // sword: emoji uses viewport coords (x,y)
-    const angle=Math.atan2(t.y-a.y,t.x-a.x)*(180/Math.PI);
-    const em=document.createElement('div');em.className='atk-emoji';em.textContent='🗡️';
-    em.style.position='fixed';em.style.pointerEvents='none';em.style.zIndex='600';
-    em.style.fontSize=Math.max(18,Math.floor(sqPx*.55))+'px';
-    em.style.transformOrigin='center bottom';
-    document.body.appendChild(em);
-    const start=performance.now();const dur=420;
-    const step=ts=>{
-      const s=Math.min(1,(ts-start)/dur);
-      const ease=s<.5?2*s*s:(4-2*s)*s-1;
-      const cx=a.x+(t.x-a.x)*ease,cy=a.y+(t.y-a.y)*ease-Math.sin(s*Math.PI)*sqPx*.5;
-      const rot=angle-90+Math.sin(s*Math.PI)*120;
-      em.style.left=cx+'px';em.style.top=cy+'px';
-      em.style.transform='translate(-50%,-50%) rotate('+rot+'deg)';
-      em.style.opacity=s<.85?'1':(1-(s-.85)/.15)+'';
-      if(s<1)requestAnimationFrame(step); else{em.remove();cb();}
-    };requestAnimationFrame(step);
-  }else if(type==='rook'){
-    // cannon: SVG uses board-local coords
-    svgCannonball(a.sx,a.sy,t.sx,t.sy,cb);
-  }else if(type==='heal'){
-    // SVG circle uses board-local coords; emoji uses viewport coords
-    const svg=document.getElementById('atk-overlay');
-    const circ=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    circ.setAttribute('cx',t.sx);circ.setAttribute('cy',t.sy);circ.setAttribute('r','4');
-    circ.setAttribute('stroke','#40e060');circ.setAttribute('stroke-width','2');circ.setAttribute('fill','rgba(40,220,80,.15)');circ.setAttribute('opacity','0.9');
-    svg.appendChild(circ);
-    const cross=document.createElement('div');cross.className='atk-emoji';cross.textContent='✚';
-    cross.style.position='fixed';cross.style.pointerEvents='none';cross.style.zIndex='600';
-    cross.style.color='#40e060';cross.style.fontSize=Math.floor(sqPx*.45)+'px';
-    cross.style.left=t.x+'px';cross.style.top=t.y+'px';cross.style.transform='translate(-50%,-50%)';
-    document.body.appendChild(cross);
-    const start=performance.now();const dur=500;
-    const step=ts=>{
-      const s=Math.min(1,(ts-start)/dur);
-      circ.setAttribute('r',(4+s*sqPx*.4)+'');circ.setAttribute('opacity',''+(0.9*(1-s)));
-      cross.style.opacity=s<.6?''+s/.6:''+(1-(s-.6)/.4);
-      cross.style.transform='translate(-50%,-50%) scale('+(1+s*.3)+')';
-      if(s<1)requestAnimationFrame(step); else{svg.removeChild(circ);cross.remove();cb();}
-    };requestAnimationFrame(step);
-  }else if(type==='king'){
-    emojiAnim('👑',a.x,a.y,t.x,t.y,sqPx*.3,400,cb);
-  }else{
-    flashSq(attacker,'hit-flash');setTimeout(cb,300);
-  }
-}
-
-function computeActions(color){
-  const enemy=color==='w'?'b':'w';
-  const targets=color==='w'?whiteTargets:blackTargets;
-  const actions=[];
-  const targeted=new Set(); // prevent two pieces targeting same enemy (auto mode)
-  for(let i=0;i<ROWS*COLS;i++){
-    const p=pieces[i];if(!p||p.color!==color)continue;
-    if(p.type==='bishop'){
-      const bRange=bishopRange(i);
-      const tgt=targets[i];
-      let healI=-1;
-      if(tgt!==undefined&&pieces[tgt]&&pieces[tgt].color===color&&pieces[tgt].hp<pieces[tgt].maxHp&&bRange.includes(tgt)){
-        healI=tgt; // use locked target if still in diagonal range
-      }else{
-        if(tgt!==undefined&&(pieces[tgt]===null||pieces[tgt]===undefined||!bRange.includes(tgt))){
-          // target moved out of heal range — reset
-          if(color==='w')delete whiteTargets[i];else delete blackTargets[i];
-        }
-        // pick most injured friendly in bishop range (prioritize lowest HP)
-        const cands=bRange.filter(j=>pieces[j]&&pieces[j].color===color&&pieces[j].hp<pieces[j].maxHp);
-        if(cands.length)healI=cands.reduce((a,b)=>pieces[a].hp<pieces[b].hp?a:b);
-      }
-      if(healI>=0&&(pieces[i].mana||0)>0){actions.push({attacker:i,target:healI,action:'heal'});}
-      else{
-        // no heal target — bishop attacks adjacent enemies like a pawn
-        const adjEnemies=adj8(i).filter(j=>pieces[j]&&pieces[j].color===enemy);
-        if(adjEnemies.length){
-          adjEnemies.sort((a,b)=>{const pa=pieces[a],pb=pieces[b];if(pa.type==='king')return -1;if(pb.type==='king')return 1;return pa.hp-pb.hp;});
-          actions.push({attacker:i,target:adjEnemies[0],action:'attack'});
-        }
-      }
-    }else{
-      const range=p.type==='queen'?queenRange(i):p.type==='siege'?siegeRange(i):p.type==='rook'?rookRange(i):p.type==='knight'?kJumps(i):p.type==='bishop'?bishopRange(i):adj8(i);
-      const enemies=range.filter(j=>pieces[j]&&pieces[j].color===enemy);
-      if(!enemies.length)continue;
-      const manualTgt=targets[i];
-      let tgtI;
-      if(manualTgt!==undefined&&pieces[manualTgt]&&pieces[manualTgt].color===enemy&&range.includes(manualTgt)){
-        tgtI=manualTgt;
-      }else{
-        // auto: prefer king, then weakest, then untargeted
-        const sorted=[...enemies].sort((a,b)=>{const pa=pieces[a],pb=pieces[b];if(pa.type==='king')return -1;if(pb.type==='king')return 1;if(!targeted.has(a)&&targeted.has(b))return -1;if(targeted.has(a)&&!targeted.has(b))return 1;return pa.hp-pb.hp;});
-        tgtI=sorted[0];
-      }
-      targeted.add(tgtI);
-      actions.push({attacker:i,target:tgtI,action:'attack'});
-    }
-  }
-  return actions;
-}
-
-function executeActions(actions,color,cb){
-  if(!actions.length){cb();return;}
-  const svg=document.getElementById('atk-overlay');svg.innerHTML='';
-  const stroke=color==='w'?'#c8e840':'#e05820';
-  const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
-  const mk=document.createElementNS('http://www.w3.org/2000/svg','marker');
-  mk.setAttribute('id','ah-'+color);mk.setAttribute('markerWidth','6');mk.setAttribute('markerHeight','6');
-  mk.setAttribute('refX','5');mk.setAttribute('refY','3');mk.setAttribute('orient','auto');
-  const poly=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-  poly.setAttribute('points','0 0,6 3,0 6');poly.setAttribute('fill',stroke);mk.appendChild(poly);defs.appendChild(mk);svg.appendChild(defs);
-  actions.forEach(({attacker,target,action})=>{
-    const a=sqCenter(attacker),t=sqCenter(target);
-    if(action==='heal'){
-      const circ=document.createElementNS('http://www.w3.org/2000/svg','circle');
-      circ.setAttribute('cx',t.sx);circ.setAttribute('cy',t.sy);circ.setAttribute('r',sqPx*.3+'');
-      circ.setAttribute('stroke','#40e060');circ.setAttribute('stroke-width','2');circ.setAttribute('fill','none');circ.setAttribute('opacity','0.85');
-      svg.appendChild(circ);
-    }else{
-      const dx=t.sx-a.sx,dy=t.sy-a.sy,len=Math.hypot(dx,dy),pad=len>0?12/len:0;
-      const line=document.createElementNS('http://www.w3.org/2000/svg','line');
-      line.setAttribute('x1',a.sx+dx*.22);line.setAttribute('y1',a.sy+dy*.22);
-      line.setAttribute('x2',t.sx-dx*pad);line.setAttribute('y2',t.sy-dy*pad);
-      line.setAttribute('stroke',stroke);line.setAttribute('stroke-width','2.5');
-      line.setAttribute('stroke-opacity','0.88');line.setAttribute('marker-end','url(#ah-'+color+')');
-      svg.appendChild(line);
-    }
-  });
-  const attackActions=actions.filter(a=>a.action!=='heal');
-  if(!attackActions.length){
-    setTimeout(()=>{svg.innerHTML='';applyActions(actions,color);cb();},400);
-    return;
-  }
-  // track completions with a guard so applyActions only fires once
-  let pending=attackActions.length;let fired=false;
-  const done=()=>{
-    pending--;
-    if(pending<=0&&!fired){fired=true;svg.innerHTML='';applyActions(actions,color);cb();}
-  };
-  attackActions.forEach(({attacker,target})=>{
-    const type=pieces[attacker]?.type||'pawn';
-    setTimeout(()=>attackAnim(attacker,target,type,done),80);
-  });
-  // safety fallback: if animations stall, fire after 1.5s
-  setTimeout(()=>{if(!fired){fired=true;svg.innerHTML='';applyActions(actions,color);cb();}},1500);
-}
-
-
-
-
-// ── NEUTRAL ANIMALS ──────────────────────────────────────────────────────────
-
-// ── CONTINUOUS ANIMAL ANIMATION ──────────────────────────────────────────────
-function startAnimalLoop(){
-  if(animalAnimId)cancelAnimationFrame(animalAnimId);
-  animalLastTime=0;
-  function loop(ts){
-    animalAnimId=requestAnimationFrame(loop);
-    if(!animalLastTime){animalLastTime=ts;return;}
-    const dt=Math.min(ts-animalLastTime,100); // cap at 100ms to avoid jumps
-    animalLastTime=ts;
-    if(over)return;
-    updateAnimals(dt);
-    renderAnimalOverlay();
-  }
-  requestAnimationFrame(loop);
-}
-
-function stopAnimalLoop(){
-  if(animalAnimId){cancelAnimationFrame(animalAnimId);animalAnimId=null;}
-}
-
-function updateAnimals(dt){
-  animals.forEach(na=>{
-    // wait timer before moving to next tile
-    if(na.waitMs>0){na.waitMs-=dt;return;}
-    const dx=na.tx-na.x, dy=na.ty-na.y;
-    const dist=Math.hypot(dx,dy);
-    if(dist<0.01){
-      // arrived at target — pick new target after a pause
-      na.x=na.tx; na.y=na.ty;
-      na.waitMs=1500+Math.random()*2500; // longer pauses
-      // pick new target tile (random adjacent, avoid edges and game pieces)
-      const candidates=[];
-      for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
-        if(!dr&&!dc)continue;
-        const nr=Math.round(na.ty-0.5)+dr, nc=Math.round(na.tx-0.5)+dc;
-        if(!inB(nr,nc))continue;
-        if(nc<1||nc>COLS-2||nr<1||nr>ROWS-2)continue;
-        const gi=idx(nr,nc);
-        if(pieces[gi])continue; // don't walk into game pieces
-        if(!na.isTornado&&isTileBlocked(gi))continue; // tornado passes over obstacles
-        candidates.push({tx:nc+0.5,ty:nr+0.5});
-      }
-      if(candidates.length){
-        const pick=candidates[Math.floor(Math.random()*candidates.length)];
-        na.tx=pick.tx; na.ty=pick.ty;
-      }
-      // tornado: occasionally spawns a black pawn (shark) as enemy
-      if(na.isTornado){
-        na.spawnTimer=(na.spawnTimer||0)+1;
-        if(na.spawnTimer>60&&Math.random()<0.012){
-          na.spawnTimer=0;
-          const tr=Math.round(na.ty-0.5),tc2=Math.round(na.tx-0.5);
-          if(inB(tr,tc2)){
-            const emp=adj8(idx(Math.max(0,Math.min(ROWS-1,tr)),Math.max(0,Math.min(COLS-1,tc2)))).filter(j=>!pieces[j]&&!isTileBlocked(j));
-            if(emp.length){const dest=emp[Math.floor(Math.random()*emp.length)];pieces[dest]={type:'pawn',color:'b',hp:2,maxHp:2};addLog('Tornado spawns a shark!');render();setTimeout(()=>spawnFlash(dest),50);}
-          }
-        }
-      }
-      // mummy: already active from start; nothing special here
-      // push: if animal shares tile with a piece, randomly push it
-      const curR2=Math.floor(na.y),curC2=Math.floor(na.x);
-      if(inB(curR2,curC2)){
-        const ci2=idx(curR2,curC2);
-        if(pieces[ci2]&&Math.random()<0.15){ // 15% chance per arrival
-          const pushDirs=adj8(ci2).filter(j=>!pieces[j]&&!isTileBlocked(j));
-          if(pushDirs.length){
-            const dest2=pushDirs[Math.floor(Math.random()*pushDirs.length)];
-            const pp=pieces[ci2];
-            pieces[dest2]=pp;pieces[ci2]=null;
-            addLog(na.emoji+' bumps '+pp.type+'→'+sqName(dest2));
-            render();
-          }
-        }
-      }
-      // aggressive: bite if a game piece is adjacent to current tile
-      if(na.aggressive){
-        const cr=Math.round(na.y-0.5), cc=Math.round(na.x-0.5);
-        const ci=idx(Math.max(0,Math.min(ROWS-1,cr)),Math.max(0,Math.min(COLS-1,cc)));
-        const adjTargets=adj8(ci).filter(j=>pieces[j]);
-        if(adjTargets.length){
-          na.fractDmg=(na.fractDmg||0)+0.5;
-          if(na.fractDmg>=1){
-            na.fractDmg=0;
-            const tgt=adjTargets[Math.floor(Math.random()*adjTargets.length)];
-            const tp=pieces[tgt];
-            if(tp){
-              tp.hp--;
-              addLog(na.emoji+' bites '+tp.type+'@'+sqName(tgt)+' '+tp.hp+'HP');
-              flashSq(tgt,'hit-flash');
-              // show attack animation from animal position to target tile
-              const tc=sqCenter(tgt);
-              const ax=na.x*sqPx,ay=na.y*sqPx;
-              const board=document.getElementById('board');
-              if(board){const br=board.getBoundingClientRect();emojiAnim(na.emoji,br.left+ax,br.top+ay,tc.x,tc.y,sqPx*.5,220,()=>{});}
-              if(tp.hp<=0){showDeath(tgt,tp.color,tp.type);pieces[tgt]=null;if(tp.type==='king')over=true;}
-              render();
-            }
-          }
-        }
-      }
-    }else{
-      // move toward target
-      const step=na.speed*dt;
-      const move=Math.min(step,dist);
-      na.x+=dx/dist*move;
-      na.y+=dy/dist*move;
-      // tile change detection at half-tile boundary
-      const tileR=Math.floor(na.y), tileC=Math.floor(na.x);
-      if(tileR!==na.prevTileR||tileC!==na.prevTileC){
-        na.prevTileR=tileR;na.prevTileC=tileC;
-        if(inB(tileR,tileC)){
-          const ti=idx(tileR,tileC);
-          const el=sqElAt(ti);
-          if(el){el.style.transition='background .25s';setTimeout(()=>{if(el)el.style.transition='';},300);}
-        }
-      }
-    }
-  });
-}
-
-// persistent animal DOM elements for smooth transitions
-const animalDivs=new Map(); // idx -> div element
-
-function buildMummySVG(sz){
-  return `<svg viewBox="0 0 60 80" width="${sz}" height="${sz}" xmlns="http://www.w3.org/2000/svg">
-    <!-- body wraps -->
-    <rect x="14" y="28" width="32" height="42" rx="6" fill="#e8e0cc" stroke="#b8a878" stroke-width="1.5"/>
-    <!-- bandage lines on body -->
-    <line x1="14" y1="38" x2="46" y2="38" stroke="#b8a878" stroke-width="1.5" opacity=".6"/>
-    <line x1="14" y1="48" x2="46" y2="48" stroke="#b8a878" stroke-width="1.5" opacity=".6"/>
-    <line x1="14" y1="58" x2="46" y2="58" stroke="#b8a878" stroke-width="1.5" opacity=".6"/>
-    <!-- arms -->
-    <rect x="2" y="32" width="12" height="8" rx="4" fill="#e8e0cc" stroke="#b8a878" stroke-width="1.5" transform="rotate(-15 8 36)"/>
-    <rect x="46" y="32" width="12" height="8" rx="4" fill="#e8e0cc" stroke="#b8a878" stroke-width="1.5" transform="rotate(15 52 36)"/>
-    <!-- head -->
-    <ellipse cx="30" cy="18" rx="14" ry="16" fill="#e8e0cc" stroke="#b8a878" stroke-width="1.5"/>
-    <!-- bandage on head -->
-    <path d="M16,10 Q30,4 44,10" stroke="#b8a878" stroke-width="2" fill="none" opacity=".7"/>
-    <path d="M16,20 Q30,14 44,20" stroke="#b8a878" stroke-width="2" fill="none" opacity=".6"/>
-    <!-- eyes (hollow dark holes) -->
-    <ellipse cx="22" cy="18" rx="4" ry="5" fill="#2a1800" opacity=".9"/>
-    <ellipse cx="38" cy="18" rx="4" ry="5" fill="#2a1800" opacity=".9"/>
-    <!-- eye glow -->
-    <ellipse cx="22" cy="18" rx="2" ry="2.5" fill="#c8ff40" opacity=".7"/>
-    <ellipse cx="38" cy="18" rx="2" ry="2.5" fill="#c8ff40" opacity=".7"/>
-  </svg>`;
-}
-
-function renderAnimalOverlay(){
-  const wrap=document.getElementById('board-wrap');
-  if(!wrap)return;
-  const fs=Math.max(12,Math.floor(sqPx*.52))+'px';
-  const pipW=Math.max(3,Math.floor(sqPx*.10))+'px';
-  const pipH=Math.max(2,Math.floor(sqPx*.06))+'px';
-  const botOff=Math.max(4,Math.floor(sqPx*.14))+'px';
-
-  // remove divs for animals that no longer exist
-  const alive=new Set(animals.map((_,i)=>i));
-  for(const[k,el] of animalDivs){
-    if(!alive.has(k)){el.remove();animalDivs.delete(k);}
-  }
-
-  animals.forEach((na,i)=>{
-    const px=na.x*sqPx, py=na.y*sqPx;
-    let div=animalDivs.get(i);
-    if(!div){
-      // create new element (no transition yet)
-      div=document.createElement('div');
-      div.className='animal-el';
-      div.style.cssText='position:absolute;pointer-events:none;z-index:50;'
-        +'transform:translate(-50%,-50%);will-change:left,top;'
-        +'font-size:'+fs+';line-height:1;';
-      // emoji or SVG
-      const em=document.createElement('span');em.className='animal-glyph';
-      if(na.isMummy){
-        em.innerHTML=buildMummySVG(Math.floor(sqPx*.7));
-        em.style.display='block';
-      }else{
-        em.textContent=na.emoji;
-      }
-      div.appendChild(em);
-      // hp bar
-      const bar=document.createElement('div');bar.className='animal-bar';
-      bar.style.cssText='position:absolute;bottom:-'+botOff+';left:50%;transform:translateX(-50%);display:flex;gap:1px;';
-      for(let h=0;h<na.maxHp;h++){
-        const pip=document.createElement('div');pip.className='animal-pip';
-        pip.style.cssText='width:'+pipW+';height:'+pipH+';border-radius:1px;';
-        bar.appendChild(pip);
-      }
-      div.appendChild(bar);
-      wrap.appendChild(div);
-      animalDivs.set(i,div);
-      // set initial position without transition
-      div.style.left=px+'px';div.style.top=py+'px';
-      // enable smooth transition after first frame
-      requestAnimationFrame(()=>{
-        if(div.isConnected)div.style.transition='left 80ms linear,top 80ms linear';
-      });
-    }else{
-      // update position with smooth CSS transition
-      div.style.left=px+'px';div.style.top=py+'px';
-    }
-    // update glyph filter for aggressive
-    if(na.isTornado){
-      div.style.filter='drop-shadow(0 0 8px rgba(100,180,255,.9))';
-      div.style.animation='swirlSpin 1.2s linear infinite';
-    }else if(na.isMummy){
-      // mummy: active — eerie green-yellow glow, slow pulse
-      div.style.opacity='1';
-      div.style.filter='drop-shadow(0 0 6px rgba(180,220,60,.85)) drop-shadow(0 0 2px rgba(100,160,20,.9)) sepia(.4) hue-rotate(20deg)';
-      div.style.animation='mummyPulse 1.8s ease-in-out infinite';
-    }else{
-      div.style.opacity='1';
-      div.style.filter=na.aggressive?'drop-shadow(0 0 5px rgba(255,40,10,.9)) drop-shadow(0 0 2px rgba(255,0,0,.6))':'';
-      div.style.animation='';
-    }
-    div.style.fontSize=fs;
-    // update hp pips
-    const pips=div.querySelectorAll('.animal-pip');
-    pips.forEach((pip,h)=>{pip.style.background=h<na.hp?'#c0a040':'rgba(0,0,0,.25)';pip.style.width=pipW;pip.style.height=pipH;});
-  });
-}
-
-
-// ── DEATH ANIMATION ──────────────────────────────────────────────────────────
-function showDeath(sqIdx, color, type){
-  const el=sqElAt(sqIdx);if(!el)return;
-  const rect=el.getBoundingClientRect();
-  const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
-  const fs=Math.max(16,Math.floor(sqPx*.65))+'px';
-  // burst circle
-  const burst=document.createElement('div');
-  burst.className='death-burst';
-  burst.style.cssText='position:fixed;pointer-events:none;z-index:799;left:'+cx+'px;top:'+cy+'px;width:'+sqPx+'px;height:'+sqPx+'px;border-radius:50%;border:3px solid '+(color==='w'?'rgba(255,255,200,.7)':'rgba(255,100,30,.7)')+';';
-  burst.style.animation='burstAnim .5s ease-out forwards';
-  document.body.appendChild(burst);
-  // piece glyph that dies
-  const glyph=GLYPH[type+'_'+color]||'✕';
-  const d=document.createElement('div');
-  d.className='death-piece';
-  d.style.cssText='position:fixed;pointer-events:none;z-index:800;left:'+cx+'px;top:'+cy+'px;font-size:'+fs+';color:'+(color==='w'?'#fff':'#1a0e04')+';text-shadow:0 0 8px '+(color==='w'?'rgba(255,255,200,.9)':'rgba(255,100,30,.9)')+';';
-  d.textContent=glyph;
-  document.body.appendChild(d);
-  setTimeout(()=>{burst.remove();d.remove();},700);
-}
-
-function applyActions(actions,color){
-  const enemy=color==='w'?'b':'w';
-  const msgs=[];
-  actions.forEach(({attacker,target,action})=>{
-    if(over)return; // stop if game already ended
-    if(action==='heal'){
-      const t=pieces[target];if(!t||t.color!==color)return;
-      const healer=pieces[action==='heal'?attacker:attacker]; // same var
-      t.hp=Math.min(t.maxHp,t.hp+1);flashSq(target,'heal-flash');
-      // consume mana from attacker (the bishop)
-      const bp=pieces[attacker];if(bp&&bp.type==='bishop')bp.mana=Math.max(0,(bp.mana||0)-1);
-      msgs.push('healed '+t.type+'@'+sqName(target)+' '+t.hp+'HP');
-    }else{
-      const t=pieces[target];
-      if(!t){return;} // already killed by an earlier action this round
-      if(t.color!==enemy)return; // sanity check
-      // thicket/rock: defense bonus - pieces here receive no damage every other hit
-      // implemented as: first hit on a thicket piece in same round is blocked
-      t.hp--;flashSq(target,'hit-flash');
-      if(t.hp<=0){
-        showDeath(target,t.color,t.type);SFX.kill();
-        pieces[target]=null;
-        msgs.push(t.type+'@'+sqName(target)+' ✕');
-        if(t.type==='king'){over=true;}
-      }else msgs.push(t.type+'@'+sqName(target)+' '+t.hp+'HP');
-    }
-  });
-  if(msgs.length)addLog((color==='w'?'W':'B')+': '+msgs.join(', '));
-  render();
-}
-
-// ── TURN MANAGEMENT ───────────────────────────────────────────────────────────
-// Attack fires at START of each turn, BEFORE the player acts
-
-function startWhiteTurn(){
-  turn='w';
-  // tutorial kill-phase check: if healPhase active and enemy knight is dead, show Next
-  if(isTutorialActive()){
-    const step=TUTORIAL_STEPS[tutStep];
-    if(step&&step._healPhase){
-      const ek=pieces.findIndex(p=>p&&p.color==='b'&&p.type==='knight');
-      if(ek<0){
-        // enemy killed — show ✓ Next button, set up rook merge on click
-        step._healPhase=false;
-        tutWaitingForAction=false;
-        document.getElementById('tut-title').textContent='Enemy Defeated! \u2658';
-        document.getElementById('tut-desc').textContent='The enemy knight is destroyed! Press Next to merge two knights into a Rook.';
-        document.getElementById('tut-hint').textContent='Press Next \u2192 to continue.';
-        const nb=document.getElementById('tut-next');
-        if(nb){
-          nb.textContent='\u2713 Next \u2192';
-          nb.style.background='#1a4010';nb.style.borderColor='#70c030';nb.style.color='#c8f040';
-          nb.onclick=()=>{
-            nb.style.background='';nb.style.borderColor='';nb.style.color='';
-            // set up two knights at center for rook merge
-            for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='b')pieces[i]=null;}
-            for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='w'&&pieces[i].type!=='king')pieces[i]=null;}
-            tileData=new Array(ROWS*COLS).fill('');
-            for(let r=0;r<4;r++)for(let c=0;c<3;c++){tileData[idx(r,c)]='tree';}
-            pieces[idx(4,4)]={type:'knight',color:'w',hp:4,maxHp:4};
-            pieces[idx(4,3)]={type:'knight',color:'w',hp:4,maxHp:4};
-            render();tutHighlightPiece(idx(4,3));
-            document.getElementById('tut-title').textContent='Merge: \u2658+\u2658 \u2192 \u2656';
-            document.getElementById('tut-desc').textContent='Merge two knights into a Rook — heavy artillery that fires 3 squares cardinally!';
-            document.getElementById('tut-hint').textContent='Drag one knight onto the other to merge!';
-            tutWaitingForAction=true; tutActionType='merge';
-            nb.textContent='Skip Step \u2192';nb.style.background='';nb.style.borderColor='';nb.style.color='';nb.onclick=tutNext;
-          };
-        }
-        render();syncUI();return;
-      }
-    }
-  }
-  // clear newborn aura from previous turn
-  for(let i=0;i<ROWS*COLS;i++){if(pieces[i]?.newborn)pieces[i].newborn=false;}
-  // bishop mana: +1 every 2 turns (all bishops)
-  if(whiteTurnCount>0&&whiteTurnCount%3===0){
-    for(let i=0;i<ROWS*COLS;i++){
-      const p=pieces[i];
-      if(p&&p.type==='bishop'){
-        p.mana=Math.min(2,(p.mana||0)+1);
-        if(p.mana===2)flashSq(i,'heal-flash'); // visual cue: full mana
-      }
-    }
-  }
-  syncUI(); render();
-  showMoveHint();
-  setStatus("White's turn");
-}
-
-function endTurn(){
-  if(over)return;
-  whiteTurnCount++;
-  const tc=document.getElementById('turn-counter');if(tc)tc.textContent='Turn '+whiteTurnCount;
-  targetMode=false;targetSrc=-1;kingSelected=false;selectedPieces=new Set();boxSelecting=false;boxMouseDownOnEmpty=false;clearBoxSelect();
-
-  if(pvpActive){
-    turn=turn==='w'?'b':'w';
-    broadcastState(null);syncUI();render();
-    setStatus(isMyTurn()?'Your turn':'Opponent turn...');
-  }else{
-    // white auto-attacks fire AFTER player action (but piece that moved cannot attack)
-    const justMoved=movedThisTurn;
-    movedThisTurn=-1;
-    const wActions=computeActions('w').filter(a=>a.attacker!==justMoved);
-    const runBlack=()=>{
-      thinking=true;syncUI();render();
-      document.getElementById('thinking-dot').classList.add('on');
-      setStatus('Enemy thinking...');
-      const bActions=computeActions('b');
-      if(bActions.length){
-        setTimeout(()=>executeActions(bActions,'b',()=>{
-          render();if(over){setStatus('Black wins! ♚');SFX.lose();syncUI();setTimeout(()=>showGameOver(myColor()==='b'?'win':'lose'),600);return;}
-          setTimeout(aiAct,200);
-        }),200);
-      }else{
-        setTimeout(aiAct,300);
-      }
-    };
-    if(wActions.length){
-      setStatus('Attacking...');
-      setTimeout(()=>executeActions(wActions,'w',()=>{
-        render();
-        if(over){setStatus('White wins! ♔');SFX.win();syncUI();broadcastState('w');setTimeout(()=>showGameOver(myColor()==='w'?'win':'lose'),600);return;}
-        runBlack();
-      }),100);
-    }else{
-      runBlack();
-    }
-  }
-}
-
-function finishBlackTurn(){
-  thinking=false;
-  document.getElementById('thinking-dot').classList.remove('on');
-  if(!over){startWhiteTurn();}
-}
-
-// ── AI ────────────────────────────────────────────────────────────────────────
-const STRATEGIES=['pawn_troops','knight_attack','pawn_knight','bishop_pawn','rook_pawn'];
-let aiStrategy='pawn_troops';
-let lastPf=12;
-
-function pickStrategy(){
-  if(difficulty==='easy'){ aiStrategy='easy_rook_rush'; addLog('Enemy: rook rush'); return; }
-  aiStrategy=STRATEGIES[Math.floor(Math.random()*STRATEGIES.length)];
-  addLog('Enemy: '+aiStrategy.replace(/_/g,' '));
-}
-
-function bPieces(){const r={pawns:[],knights:[],bishops:[],rooks:[],queens:[]};for(let i=0;i<ROWS*COLS;i++){const p=pieces[i];if(!p||p.color!=='b')continue;if(p.type==='pawn')r.pawns.push(i);if(p.type==='knight')r.knights.push(i);if(p.type==='bishop')r.bishops.push(i);if(p.type==='rook')r.rooks.push(i);if(p.type==='queen')r.queens.push(i);}return r;}
-
-function bSpawn(bKi,cands,count){
-  if(!cands.length)return false;
-  const wKi=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='king');
-  const n=Math.min(count||1,cands.length);
-  // sort cands closest to white king
-  const sorted=wKi>=0?[...cands].sort((a,b)=>cheb(a,wKi)-cheb(b,wKi)):cands;
-  for(let k=0;k<n;k++){
-    pieces[sorted[k]]={type:'pawn',color:'b',hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp};
-  }
-  addLog('Black spawns '+n+'x pawn');
-  render();
-  for(let k=0;k<n;k++) spawnFlash(sorted[k]);
-  finishBlackTurn();return true;
-}
-
-function bAdvance(typeFilter){const wKi=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='king');if(wKi<0){finishBlackTurn();return;}const mp=[];for(let i=0;i<ROWS*COLS;i++){const p=pieces[i];if(p&&p.color==='b'&&(typeFilter?typeFilter.includes(p.type):p.type!=='king'))mp.push(i);}if(!mp.length){finishBlackTurn();return;}const ar=mp.reduce((s,i)=>s+ROW(i),0)/mp.length,ac=mp.reduce((s,i)=>s+COL(i),0)/mp.length;const dr=ROW(wKi)>ar?1:ROW(wKi)<ar?-1:0,dc=COL(wKi)>ac?1:COL(wKi)<ac?-1:0;const dn={'-10':'N','10':'S','01':'E','0-1':'W','-11':'NE','-1-1':'NW','11':'SE','1-1':'SW'}[dr+''+dc]||'S';bMoveAll(dn);}
-
-function bMergeQueen(limit){
-  const bp=bPieces();
-  if(bp.queens&&bp.queens.length>=limit)return false;
-  for(const k of bp.knights)for(const b of bp.bishops){
-    if(k===b)continue;
-    if(adj8(k).includes(b)){
-      const nq={type:'queen',color:'b',hp:STATS.queen.hp,maxHp:STATS.queen.maxHp};
-      pieces[k]=null;pieces[b]=nq;addLog('Black merges->queen');render();mergeFlash(b);finishBlackTurn();return true;
-    }
-  }
-  return false;
-}
-
-function bMerge(ft,tt,rt,limit){const bp=bPieces();const pool={pawn:bp.pawns,knight:bp.knights,bishop:bp.bishops,rook:bp.rooks};const cur={knight:bp.knights.length,bishop:bp.bishops.length,rook:bp.rooks.length};if(cur[rt]!==undefined&&cur[rt]>=limit)return false;for(const a of(pool[ft]||[]))for(const b of(pool[tt]||[])){if(a===b)continue;if(adj8(a).includes(b)){const nb3={type:rt,color:'b',hp:STATS[rt].hp,maxHp:STATS[rt].maxHp};if(rt==='bishop')nb3.mana=1;pieces[a]=null;pieces[b]=nb3;addLog('Black merges->'+rt);render();mergeFlash(b);finishBlackTurn();return true;}}return false;}
-
-function bMoveAll(dirStr){
-  const M={N:[-1,0],S:[1,0],E:[0,1],W:[0,-1],NE:[-1,1],NW:[-1,-1],SE:[1,1],SW:[1,-1]};
-  const[dr,dc]=M[dirStr]||[1,0];
-  const wKi=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='king');
-  const all=[];
-  for(let i=0;i<ROWS*COLS;i++){const p=pieces[i];if(p&&p.color==='b'&&(p.type==='pawn'||p.type==='knight'))all.push(i);}
-  all.sort((a,b)=>dr>0?b-a:dr<0?a-b:dc>0?b-a:a-b);
-  let moved=0,movedPairs=[];
-  all.forEach(from=>{
-    if(!pieces[from])return;
-    const p=pieces[from];
-    if(p.type==='pawn'){
-      // try direct step first, fall back to BFS detour
-      const nr=ROW(from)+dr,nc=COL(from)+dc;
-      let dest=-1;
-      if(inB(nr,nc)&&!pieces[idx(nr,nc)]&&!isTileBlocked(idx(nr,nc))){
-        dest=idx(nr,nc);
-      }else if(wKi>=0){
-        // direct is blocked — use BFS step toward white king
-        dest=stepToward(from,wKi,'b');
-      }
-      if(dest>=0&&!pieces[dest]&&!isTileBlocked(dest)){
-        pieces[dest]=p;pieces[from]=null;movedPairs.push({f:from,t:dest,type:p.type,color:'b'});moved++;
-      }
-    }else if(p.type==='knight'){
-      const dests=kJumps(from).filter(j=>!pieces[j]&&!isTileBlocked(j));
-      if(!dests.length)return;
-      // prefer the jump that brings knight closest to white king
-      const target=wKi>=0?wKi:from;
-      const best=dests.reduce((a,b)=>cheb(a,target)<cheb(b,target)?a:b);
-      pieces[best]=p;pieces[from]=null;movedPairs.push({f:from,t:best,type:p.type,color:'b'});moved++;
-    }
-  });
-  addLog('Black advances '+dirStr);
-const allNow2=[];for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='b'&&pieces[i].type!=='king')allNow2.push(i);}
-blackLastFrom=movedPairs[0]?.f||-1;blackLastTo=movedPairs[0]?.t||-1;
-// animate moved pieces (state already updated), then finalize
-if(movedPairs.length){
-  render(); // show final board state first
-  movedPairs.forEach(({f,t,type,color})=>animatePieceMove(f,t,type,color,true,()=>{},type==='knight'?260:180));
-  setTimeout(()=>finishBlackTurn(),260);
-}else{render();finishBlackTurn();}}
-
-function strategy_pawn_troops(bKi,cands,bp){if(bp.pawns.length<6&&cands.length){bSpawn(bKi,cands);return;}bAdvance(['pawn']);}
-function strategy_knight_attack(bKi,cands,bp){if(bMerge('pawn','pawn','knight',3))return;if(bp.pawns.length<4&&cands.length){bSpawn(bKi,cands);return;}bAdvance(['knight','pawn']);}
-function strategy_pawn_knight(bKi,cands,bp){if(bp.pawns.length>=2&&bMerge('pawn','pawn','knight',2))return;if(bp.pawns.length<4&&cands.length){bSpawn(bKi,cands);return;}bAdvance(['pawn','knight']);}
-function strategy_bishop_pawn(bKi,cands,bp){if(bMerge('pawn','knight','bishop',2))return;if(bMerge('pawn','pawn','knight',2))return;if(bp.pawns.length<4&&cands.length){bSpawn(bKi,cands);return;}bAdvance(['bishop','pawn']);}
-function strategy_rook_pawn(bKi,cands,bp){if(bMergeQueen(1))return;if(bMerge('knight','knight','rook',1))return;if(bMerge('pawn','knight','bishop',1))return;if(bMerge('pawn','pawn','knight',2))return;if(bp.pawns.length<5&&cands.length){bSpawn(bKi,cands);return;}bAdvance(['rook','bishop','pawn']);}
-
-// Easy AI: spawn 2 pawns, merge into knight, merge into bishop, merge into rook, then charge
-function strategy_easy_rook_rush(bKi,cands,bp){
-  // Phase 1: spawn 2 pawns -> merge to knight
-  if(bp.rooks.length===0&&bp.bishops.length===0&&bp.knights.length===0){
-    if(bp.pawns.length<2&&cands.length){bSpawn(bKi,cands);return;}
-    if(bMerge('pawn','pawn','knight',1))return;
-    // pawns exist but can't merge yet (not adjacent) — advance them toward each other
-    bAdvance(['pawn']);return;
-  }
-  // Phase 2: have a knight, need another knight to merge into rook
-  if(bp.rooks.length===0&&bp.knights.length<2){
-    if(bp.pawns.length<2&&cands.length){bSpawn(bKi,cands);return;}
-    if(bMerge('pawn','pawn','knight',2))return;
-    if(bp.pawns.length<2&&cands.length){bSpawn(bKi,cands);return;}
-    bAdvance(['knight','pawn']);return;
-  }
-  // Phase 3: two knights — merge into rook
-  if(bp.rooks.length===0){
-    if(bMerge('knight','knight','rook',1))return;
-    bAdvance(['knight','pawn']);return;
-  }
-  // Phase 4: have a rook — charge!
-  bAdvance(['rook','pawn','knight']);
-}
-
-function hardTacticalAI(bKi,cands,bp){
-  const wKi=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='king');
-  // 1. ATTACK: target white king first, then lowest-HP piece
-  const allB=[];for(let i=0;i<ROWS*COLS;i++){const p=pieces[i];if(p&&p.color==='b'&&p.type!=='king')allB.push(i);}
-  for(const bi of allB){
-    const p=pieces[bi];
-    const range=p.type==='queen'?queenRange(bi):p.type==='siege'?siegeRange(bi):p.type==='rook'?rookRange(bi):p.type==='knight'?kJumps(bi):p.type==='bishop'?bishopRange(bi):adj8(bi);
-    const wTargets=range.filter(j=>pieces[j]&&pieces[j].color==='w');
-    if(!wTargets.length)continue;
-    // prefer king target, then lowest HP
-    wTargets.sort((a,b2)=>{
-      if(pieces[a].type==='king')return -1;if(pieces[b2].type==='king')return 1;
-      return pieces[a].hp-pieces[b2].hp;
-    });
-    // already handled by computeActions auto-attack — skip, just advance
-    break;
-  }
-  // 2. MERGE if possible (fastest path to stronger pieces)
-  if(bMergeQueen(1))return;
-  if(bMerge('knight','knight','rook',1))return;
-  if(bMerge('pawn','knight','bishop',2))return;
-  if(bMerge('pawn','pawn','knight',3))return;
-  // 3. SPAWN if we have few pieces and budget
-  const total=bp.pawns.length+bp.knights.length+bp.bishops.length+bp.rooks.length;
-  if(cands.length>=2&&bp.pawns.length<3&&Math.random()<0.4){bSpawn(bKi,cands,2);return;}
-  if(total<5&&cands.length){bSpawn(bKi,cands);return;}
-  // 4. ADVANCE toward white king aggressively
-  // pick the black piece closest to white king and advance it specifically
-  if(wKi>=0&&allB.length){
-    // sort: prefer pieces already near white king, and those that can attack
-    const scored=allB.map(bi=>{
-      const p=pieces[bi];
-      const dist=cheb(bi,wKi);
-      const canAtk=(p.type==='queen'?queenRange(bi):p.type==='siege'?siegeRange(bi):p.type==='rook'?rookRange(bi):p.type==='knight'?kJumps(bi):adj8(bi))
-        .some(j=>pieces[j]&&pieces[j].color==='w');
-      return{bi,score:(canAtk?0:1)*100+dist};
-    });
-    scored.sort((a,b)=>a.score-b.score);
-    // advance closest/most threatening piece toward white king
-    const lead=scored[0].bi;
-    const lp=pieces[lead];
-    const dr=ROW(wKi)>ROW(lead)?1:ROW(wKi)<ROW(lead)?-1:0;
-    const dc=COL(wKi)>COL(lead)?1:COL(wKi)<COL(lead)?-1:0;
-    const dn={'-10':'N','10':'S','01':'E','0-1':'W','-11':'NE','-1-1':'NW','11':'SE','1-1':'SW'}[dr+''+dc]||'S';
-    // move only that piece
-    const M={N:[-1,0],S:[1,0],E:[0,1],W:[0,-1],NE:[-1,1],NW:[-1,-1],SE:[1,1],SW:[1,-1]};
-    const[mdr,mdc]=M[dn]||[1,0];
-    let moved=false,movedFrom=lead,movedTo=-1;
-    if(lp.type==='pawn'){
-      // try direct step, fall back to BFS detour
-      const nr=ROW(lead)+mdr,nc=COL(lead)+mdc;
-      let dest=-1;
-      if(inB(nr,nc)&&!pieces[idx(nr,nc)]&&!isTileBlocked(idx(nr,nc))) dest=idx(nr,nc);
-      else dest=stepToward(lead,wKi,'b');
-      if(dest>=0&&!pieces[dest]&&!isTileBlocked(dest)){pieces[dest]=lp;pieces[lead]=null;moved=true;movedTo=dest;}
-    }
-    else if(lp.type==='knight'){const dests=kJumps(lead).filter(j=>!pieces[j]&&!isTileBlocked(j));if(dests.length){const best=dests.reduce((a,b)=>cheb(a,wKi)<cheb(b,wKi)?a:b);pieces[best]=lp;pieces[lead]=null;moved=true;movedTo=best;}}
-    else if(lp.type==='bishop'||lp.type==='queen'||lp.type==='rook'){
-      // sliding: try direct direction, fall back to BFS for detour
-      const maxS=lp.type==='bishop'?2:lp.type==='queen'?2:2;
-      let slid=false;
-      for(let s=maxS;s>=1;s--){
-        const nr=ROW(lead)+mdr*s,nc=COL(lead)+mdc*s;if(!inB(nr,nc))continue;
-        const ti=idx(nr,nc);if(isTileBlocked(ti))break;
-        if(s===2){const mr=ROW(lead)+mdr,mc2=COL(lead)+mdc;if(!inB(mr,mc2)||isTileBlocked(idx(mr,mc2)))break;}
-        if(!pieces[ti]){pieces[ti]=lp;pieces[lead]=null;moved=true;movedTo=ti;slid=true;break;}
-      }
-      // if direct slide failed, try BFS step
-      if(!slid){
-        const det=stepToward(lead,wKi,'b');
-        if(det>=0&&!pieces[det]&&!isTileBlocked(det)){pieces[det]=lp;pieces[lead]=null;moved=true;movedTo=det;}
-      }
-    }
-    if(moved){
-      addLog('Black advances');
-      render();
-      if(movedTo>=0&&movedFrom>=0)
-        animatePieceMove(movedFrom,movedTo,lp.type,'b',true,()=>finishBlackTurn(),lp.type==='knight'?260:180);
-      else finishBlackTurn();
-      return;
-    }
-  }
-  // fallback
-  bAdvance(null);
-}
-
-function fallbackAI(){
-  const bKi=pieces.findIndex(p=>p&&p.color==='b'&&p.type==='king');
-  const cands=bKi>=0?adj8(bKi).filter(i=>!pieces[i]&&!isTileBlocked(i)):[];
-  const bp=bPieces();
-  if(difficulty==='easy'){strategy_easy_rook_rush(bKi,cands,bp);return;}
-  hardTacticalAI(bKi,cands,bp);
-}
-
-function buildStateDesc(){
-  let s='BOARD:\n';for(let i=0;i<ROWS*COLS;i++){const p=pieces[i];if(p)s+=sqName(i)+': '+(p.color==='b'?'B':'W')+' '+p.type+' HP='+p.hp+'/'+p.maxHp+'\n';}
-  const bKi=pieces.findIndex(p=>p&&p.color==='b'&&p.type==='king');const bp=bPieces();const adjE=bKi>=0?adj8(bKi).filter(i=>!pieces[i]):[];
-  const stratDesc={pawn_troops:'Spam pawns, rush.',knight_attack:'Build knights, attack.',pawn_knight:'2 knights + pawn shields.',bishop_pawn:'Build bishops for healing+advance.',rook_pawn:'Full merge chain to rook.'}[aiStrategy]||'';
-  s+='\nSTRATEGY: '+stratDesc+'\nACTIONS (one only):\n1. PRODUCE <sq> available: '+(adjE.map(sqName).join(',')||'none')+'\n2. MOVE_ALL <DIR> N/S/E/W/NE/NW/SE/SW\n3. MERGE <sq1> <sq2> pawn+pawn=knight, pawn+knight=bishop, knight+bishop=rook\n   pairs: ';
-  const pairs=[];for(let a=0;a<bp.pawns.length;a++){for(let b=a+1;b<bp.pawns.length;b++)if(adj8(bp.pawns[a]).includes(bp.pawns[b]))pairs.push('pp:'+sqName(bp.pawns[a])+','+sqName(bp.pawns[b]));bp.knights.forEach(k=>{if(adj8(bp.pawns[a]).includes(k))pairs.push('pk:'+sqName(bp.pawns[a])+','+sqName(k));});}bp.knights.forEach((k,ki)=>bp.knights.forEach((k2,ki2)=>{if(ki2>ki&&adj8(k).includes(k2))pairs.push('kk:'+sqName(k)+','+sqName(k2));}));
-  s+=pairs.join('|')||'none';return s;
-}
-
-async function askClaude(){
-  const key=document.getElementById('api-key').value.trim();
-  if(!key||difficulty==='easy'){fallbackAI();return;}
-  try{
-    const h={'Content-Type':'application/json'};h['x-api-key']=key;
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:h,body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:48,system:'You play Black in a 12x12 strategy game. Files a-l, ranks 1-12. Follow your strategy. Reply ONE action only.',messages:[{role:'user',content:buildStateDesc()}]})});
-    const d=await r.json();applyBlackMove((d.content?.[0]?.text||'').trim());
-  }catch(e){fallbackAI();}
-}
-
-function isTutorialActive(){return document.getElementById('tutorial-overlay')?.classList.contains('show');}
-function aiAct(){if(isTutorialActive()){finishBlackTurn();return;}askClaude();}
-
-function applyBlackMove(text){
-  const up=text.toUpperCase();const coords=text.match(/[a-lA-L](?:1[0-2]|[1-9])/g)||[];
-  const bKi=pieces.findIndex(p=>p&&p.color==='b'&&p.type==='king');
-  if(up.startsWith('MERGE')&&coords.length>=2){const a=sqFrom(coords[0]),b=sqFrom(coords[1]),pa=pieces[a],pb=pieces[b];if(a>=0&&b>=0&&pa?.color==='b'&&pb?.color==='b'&&adj8(a).includes(b)){let nt=null;if(pa.type==='pawn'&&pb.type==='pawn')nt='knight';else if((pa.type==='pawn'&&pb.type==='knight')||(pa.type==='knight'&&pb.type==='pawn'))nt='bishop';else if((pa.type==='knight'&&pb.type==='bishop')||(pa.type==='bishop'&&pb.type==='knight'))nt='rook';if(nt){const nb2={type:nt,color:'b',hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};if(nt==='bishop')nb2.mana=1;pieces[a]=null;pieces[b]=nb2;addLog('Black merges->'+nt);render();mergeFlash(b);finishBlackTurn();return;}}}
-  if(up.startsWith('MOVE_ALL')){const dm=up.match(/\b(NE|NW|SE|SW|N|S|E|W)\b/);if(dm){bMoveAll(dm[1]);return;}}
-  if(up.startsWith('PRODUCE')&&coords.length>=1){const sq=sqFrom(coords[0]);if(sq>=0&&!pieces[sq]&&bKi>=0&&adj8(bKi).includes(sq)){pieces[sq]={type:'pawn',color:'b',hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp};addLog('Black spawns@'+sqName(sq));spawnFlash(sq);finishBlackTurn();return;}}
-  fallbackAI();
-}
-
-// ── RESIZE ───────────────────────────────────────────────────────────────────
-function resizeBoard(){
-  const vw=window.innerWidth,vh=window.innerHeight;
-  const topH=document.getElementById('top-bar').offsetHeight;
-  const botH=document.getElementById('bottom-bar').offsetHeight;
-  const hOverhead=32;
-  const base=Math.max(90,Math.min(150,Math.floor(vw*.13)));
-  const panelWL=Math.floor(base*1.5),panelWR=Math.floor(base*2.0);
-  const availW=vw-panelWL-panelWR-hOverhead;
-  const availH=vh-topH-botH-20;
-  const boardPx=Math.floor(Math.min(availW,availH)/COLS)*COLS;
-  sqPx=boardPx/COLS;
-  const wrap=document.getElementById('board-wrap');
-  const thBorder=(THEMES[mapTheme]||THEMES.jungle).border;
-  wrap.style.borderColor=thBorder;
-  wrap.style.width=boardPx+'px';wrap.style.height=boardPx+'px';
-  document.getElementById('board').style.width=boardPx+'px';document.getElementById('board').style.height=boardPx+'px';
-  const ph=boardPx+6;
-  const lp=document.getElementById('left-panel'),rp=document.getElementById('right-panel');
-  lp.style.width=panelWL+'px';lp.style.height=ph+'px';
-  rp.style.width=panelWR+'px';rp.style.height=ph+'px';
-  const gs=Math.max(12,Math.floor(sqPx*.62));
-  document.documentElement.style.setProperty('--glyph-size',gs+'px');
-  const pp=Math.max(2,Math.floor(sqPx*.10));
-  document.querySelectorAll('.hp-pip').forEach(el=>{el.style.width=pp+'px';el.style.height=Math.max(2,Math.floor(sqPx*.07))+'px';});
-  document.getElementById('ghost').style.fontSize=Math.floor(sqPx*.72)+'px';
-  const pf=Math.floor(ph/20*.512);lastPf=pf;window.lastPf=pf;
-  renderPcCards();
-  lp.querySelectorAll('.panel-label').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.9))+'px');
-  lp.querySelectorAll('.pc-glyph').forEach(el=>el.style.fontSize=Math.max(11,Math.floor(pf*1.8))+'px');
-  lp.querySelectorAll('.pc-name').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.92))+'px');
-  lp.querySelectorAll('.pc-stats').forEach(el=>el.style.fontSize=Math.max(5,Math.floor(pf*.65))+'px');
-  lp.querySelectorAll('.merge-guide').forEach(el=>el.style.fontSize=Math.max(10,Math.floor(pf*1.4))+'px');
-  const btnPad=Math.max(2,Math.floor(pf*.25));
-  const btnSize=Math.floor((panelWR-btnPad*2-2)/3);const btnPx=btnSize+'px';
-  rp.querySelectorAll('.dir-btn').forEach(el=>{el.style.width=btnPx;el.style.height=btnPx;el.style.fontSize=Math.max(9,Math.floor(btnSize*.42))+'px';});
-  const dg=document.getElementById('dir-grid');if(dg){dg.style.gridTemplateColumns='repeat(3,'+btnPx+')';dg.style.gap=btnPad+'px';}
-  rp.querySelectorAll('.panel-label').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.9))+'px');
-  rp.querySelectorAll('.act-btn').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.9))+'px');
-  rp.querySelectorAll('.pvp-id-box:not(#room-id-display)').forEach(el=>el.style.fontSize=Math.max(6,Math.floor(pf*.8))+'px');
-  rp.querySelectorAll('.room-entry').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.9))+'px');
-  const rid=document.getElementById('room-id-display');if(rid)rid.style.fontSize=Math.max(7,Math.floor(pf*.9))+'px';
-  const inp=document.getElementById('pvp-input');if(inp)inp.style.fontSize=Math.max(7,Math.floor(pf*.88))+'px';
-  const hb2=document.getElementById('hint-box');if(hb2)hb2.style.fontSize=Math.max(8,Math.floor(pf*.88))+"px";
-  // ── tutorial card scaling ──
-  const tc2=document.getElementById('tut-card');
-  if(tc2){
-    const tpf=Math.max(9,Math.floor(pf*1.05));
-    tc2.style.fontSize=tpf+'px';
-    const h3el=tc2.querySelector('h3');if(h3el)h3el.style.fontSize=Math.max(11,Math.floor(pf*1.3))+'px';
-    tc2.querySelectorAll('.tut-btn').forEach(b=>b.style.fontSize=tpf+'px');
-    // clamp card within viewport
-    const cr=tc2.getBoundingClientRect();
-    if(cr.right>window.innerWidth-8)tc2.style.left=Math.max(8,window.innerWidth-cr.width-8)+'px';
-    if(cr.bottom>window.innerHeight-8)tc2.style.top=Math.max(8,window.innerHeight-cr.height-8)+'px';
-  }
-  // ── top bar scaling — same pf base ──
-  const tbf=Math.max(9,Math.floor(pf*1.05));  // slightly larger than panel labels
-  const tb=document.getElementById('top-bar');
-  if(tb){
-    const h1el=tb.querySelector('h1');if(h1el)h1el.style.fontSize=Math.max(10,Math.floor(pf*1.2))+'px';
-    const lbl=document.getElementById('api-wrap')?.querySelector('label');if(lbl)lbl.style.fontSize=tbf+'px';
-    const akey=document.getElementById('api-key');if(akey){akey.style.fontSize=tbf+'px';akey.style.width=Math.max(80,Math.floor(pf*8))+'px';}
-    const stat=document.getElementById('status');if(stat)stat.style.fontSize=tbf+'px';
-    const tc=document.getElementById('turn-counter');if(tc)tc.style.fontSize=tbf+'px';
-    const bset=document.getElementById('btn-settings');if(bset)bset.style.fontSize=tbf+'px';
-  }
-}
-window.addEventListener('resize',()=>{resizeBoard();if(!over||pieces.some(p=>p))render();resizeBoard();});
-
-document.addEventListener('keydown',e=>{
-  if(over||thinking||!isMyTurn())return;
-  const dm={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]};
-  if(dm[e.key]){e.preventDefault();moveAll(...dm[e.key]);}
-  if(e.key==='Escape'){targetMode=false;targetSrc=-1;kingSelected=false;selectedPieces=new Set();syncUI();render();setStatus('Your turn');}
-});
-
-window.addEventListener('load',()=>{
-  document.body.className='theme-jungle';
-  resizeBoard();resizeBoard();
-  // start BGM on any first user interaction (browser autoplay policy)
-  const startOnce=()=>{if(!bgmPaused)startBgm();document.removeEventListener('pointerdown',startOnce);document.removeEventListener('keydown',startOnce);};
-  document.addEventListener('pointerdown',startOnce);
-  document.addEventListener('keydown',startOnce);
-});
-</script>
+<script src="js/constants.js"></script>
+<script src="js/state.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/movement.js"></script>
+<script src="js/themes.js"></script>
+<script src="js/render.js"></script>
+<script src="js/combat.js"></script>
+<script src="js/animals.js"></script>
+<script src="js/actions.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/tutorial.js"></script>
+<script src="js/campaign.js"></script>
+<script src="js/pvp.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/game.js"></script>
+<script src="js/drag.js"></script>
+<script src="js/resize.js"></script>
 </body>
 </html>

@@ -122,7 +122,11 @@ document.getElementById('board').addEventListener('touchstart',e=>{
   }
 },{passive:false});
 document.addEventListener('touchmove',e=>{
-  if(mouseDownI<0)return;const{x,y}=touchXY(e);const p=pieces[mouseDownI];
+  if(mouseDownI<0)return;
+  // CRITICAL: prevent default IMMEDIATELY so iOS Safari doesn't hijack the gesture for scrolling.
+  // If this is called too late (after heavy computation), iOS stops sending touchmove events.
+  e.preventDefault();
+  const{x,y}=touchXY(e);const p=pieces[mouseDownI];
   const yOff=isMobile()?-20:0;
   if(!dragging&&p&&p.color===myColor()&&Math.hypot(x-mouseDownX,y-mouseDownY)>6){
     dragging=true;dragSrc=mouseDownI;dragDests=getDragDests(dragSrc);
@@ -131,14 +135,12 @@ document.addEventListener('touchmove',e=>{
     else{g.innerHTML='';g.textContent=GLYPH[p.type+'_'+p.color];g.style.color=p.color==='w'?'#fff':'#1a0e04';}
     g.style.left=x+'px';g.style.top=(y+yOff)+'px';
     g.style.display='block';
-    // defer render to next frame — calling it synchronously in touchmove can cause
-    // iOS Safari to lose the touch gesture (DOM rebuild kills the touch target)
-    requestAnimationFrame(()=>render());
+    // defer render to next frame so the touch gesture isn't interrupted by DOM rebuild
+    requestAnimationFrame(()=>{if(dragging)render();});
   }
   if(dragging){
     const g=document.getElementById('ghost');
     g.style.left=x+'px';g.style.top=(y+yOff)+'px';
-    e.preventDefault();
   }
 },{passive:false});
 document.addEventListener('touchend',e=>{

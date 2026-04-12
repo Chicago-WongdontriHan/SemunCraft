@@ -123,7 +123,7 @@ document.getElementById('board').addEventListener('touchstart',e=>{
 },{passive:false});
 document.addEventListener('touchmove',e=>{
   if(mouseDownI<0)return;const{x,y}=touchXY(e);const p=pieces[mouseDownI];
-  if(!dragging&&p&&p.color===myColor()&&Math.hypot(x-mouseDownX,y-mouseDownY)>12){
+  if(!dragging&&p&&p.color===myColor()&&Math.hypot(x-mouseDownX,y-mouseDownY)>6){
     dragging=true;dragSrc=mouseDownI;dragDests=getDragDests(dragSrc);
     const g=document.getElementById('ghost');
     if(p.type==='siege'){g.textContent='';g.innerHTML=buildWhiteSiegeSVG(Math.floor(sqPx*.72));}
@@ -132,8 +132,8 @@ document.addEventListener('touchmove',e=>{
   }
   if(dragging){
     const g=document.getElementById('ghost');
-    // on mobile, offset the ghost above the finger so the tile underneath is visible
-    const yOff=isMobile()?-50:0;
+    // small offset so finger doesn't fully cover the ghost
+    const yOff=isMobile()?-20:0;
     g.style.left=x+'px';g.style.top=(y+yOff)+'px';
     e.preventDefault();
   }

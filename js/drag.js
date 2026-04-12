@@ -128,19 +128,26 @@ document.addEventListener('touchmove',e=>{
     const g=document.getElementById('ghost');
     if(p.type==='siege'){g.textContent='';g.innerHTML=buildWhiteSiegeSVG(Math.floor(sqPx*.72));}
     else{g.innerHTML='';g.textContent=GLYPH[p.type+'_'+p.color];g.style.color=p.color==='w'?'#fff':'#1a0e04';}
-    g.style.display='block';render();
-  }
-  if(dragging){
-    const g=document.getElementById('ghost');
-    // small offset so finger doesn't fully cover the ghost
+    // set ghost position BEFORE showing it and rendering, so it appears at the finger immediately
     const yOff=isMobile()?-20:0;
     g.style.left=x+'px';g.style.top=(y+yOff)+'px';
-    e.preventDefault();
+    g.style.display='block';
+    render(); // render shows drag destination highlights
+  }else if(dragging){
+    const g=document.getElementById('ghost');
+    const yOff=isMobile()?-20:0;
+    g.style.left=x+'px';g.style.top=(y+yOff)+'px';
   }
+  if(dragging)e.preventDefault();
 },{passive:false});
 document.addEventListener('touchend',e=>{
   document.getElementById('ghost').style.display='none';const{x,y}=touchXY(e);
-  if(dragging){const dropI=sqIdxFromPoint(x,y),src=dragSrc,dests=dragDests;dragging=false;dragSrc=-1;dragDests=null;if(dropI>=0&&src>=0)executeDrop(src,dropI,dests);else render();}
-  else if(mouseDownI>=0&&!over&&!thinking&&isMyTurn())handleClick(mouseDownI);
+  if(dragging){
+    // drop at the finger position (sqIdxFromPoint uses board-relative coords)
+    const dropI=sqIdxFromPoint(x,y);
+    const src=dragSrc,dests=dragDests;
+    dragging=false;dragSrc=-1;dragDests=null;
+    if(dropI>=0&&src>=0)executeDrop(src,dropI,dests);else render();
+  }else if(mouseDownI>=0&&!over&&!thinking&&isMyTurn())handleClick(mouseDownI);
   mouseDownI=-1;
 });

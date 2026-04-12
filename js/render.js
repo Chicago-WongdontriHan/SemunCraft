@@ -94,10 +94,14 @@ function render(){
 
       if(dragging&&dragDests){
         if(i===dragSrc)sq.style.opacity='0.28';
-        else if(dragDests.merge.has(i))sq.classList.add('drop-mrg');
-        else if(dragDests.attack.has(i))sq.classList.add('drop-atk');
-        else if(dragDests.heal.has(i))sq.classList.add('drop-heal');
-        else if(dragDests.move.has(i))sq.classList.add('drop-ok');
+        else{
+          let dcls='';
+          if(dragDests.merge.has(i)){sq.classList.add('drop-mrg');dcls='sel-move-ov';}
+          else if(dragDests.attack.has(i)){sq.classList.add('drop-atk');dcls='sel-atk-ov';}
+          else if(dragDests.heal.has(i)){sq.classList.add('drop-heal');dcls='sel-heal-ov';}
+          else if(dragDests.move.has(i)){sq.classList.add('drop-ok');dcls='sel-move-ov';}
+          if(dcls){const ov=document.createElement('div');ov.className='sel-overlay '+dcls;sq.appendChild(ov);}
+        }
       }else if(targetMode&&targetSrc>=0&&pieces[targetSrc]){
         const p=pieces[targetSrc];
         if(p.type==='bishop'){

@@ -3,8 +3,11 @@ function sqIdxFromPoint(x,y){const rect=document.getElementById('board').getBoun
 
 // ── box selection state ───────────────────────────────────────────────────────
 let boxSelecting=false,boxX0=0,boxY0=0,boxX1=0,boxY1=0,boxMouseDownOnEmpty=false;
+// track whether the current interaction is touch-based; if so, ignore mouse events
+let isTouchInteraction=false;
 
 document.getElementById('board').addEventListener('mousedown',e=>{
+  if(isTouchInteraction)return; // ignore synthetic mouse events from touch
   if(over||thinking||!isMyTurn())return;
   const i=sqIdxFromPoint(e.clientX,e.clientY);if(i<0)return;
   if(e.button===2){e.preventDefault();handleRightClick(i,e);return;}
@@ -23,6 +26,7 @@ document.getElementById('board').addEventListener('mousedown',e=>{
 document.getElementById('board').addEventListener('contextmenu',e=>e.preventDefault());
 
 document.addEventListener('mousemove',e=>{
+  if(isTouchInteraction)return;
   if(boxMouseDownOnEmpty){
     const moved=Math.hypot(e.clientX-boxX0,e.clientY-boxY0)>6;
     if(moved){
@@ -45,6 +49,7 @@ document.addEventListener('mousemove',e=>{
 });
 
 document.addEventListener('mouseup',e=>{
+  if(isTouchInteraction)return;
   document.getElementById('ghost').style.display='none';
   if(boxSelecting){
     boxX1=e.clientX;boxY1=e.clientY;
@@ -99,16 +104,12 @@ function applyBoxSelect(){
   setStatus(selectedPieces.size>0?selectedPieces.size+' piece(s) selected — use arrows to move':'Your turn');
 }
 
-// touch — prevent iOS rubber-band scroll on the game page
-document.body.addEventListener('touchmove',e=>{
-  if(e.target.closest('#board')||dragging)e.preventDefault();
-},{passive:false});
-
 // detect mobile for ghost offset
 function isMobile(){return window.innerWidth<=768||window.innerHeight<=500;}
 
 function touchXY(e){const t=e.touches[0]||e.changedTouches[0];return{x:t.clientX,y:t.clientY};}
 document.getElementById('board').addEventListener('touchstart',e=>{
+  isTouchInteraction=true; // block synthetic mouse events for this gesture
   if(over||thinking||!isMyTurn())return;
   const{x,y}=touchXY(e);const i=sqIdxFromPoint(x,y);if(i<0)return;
   const p=pieces[i];
@@ -144,7 +145,10 @@ document.addEventListener('touchmove',e=>{
   }
 },{passive:false});
 document.addEventListener('touchend',e=>{
-  document.getElementById('ghost').style.display='none';const{x,y}=touchXY(e);
+  document.getElementById('ghost').style.display='none';
+  // clear touch flag after a short delay so any trailing synthetic mouse events are still blocked
+  setTimeout(()=>{isTouchInteraction=false;},300);
+  const{x,y}=touchXY(e);
   if(dragging){
     // drop at the finger position (sqIdxFromPoint uses board-relative coords)
     const dropI=sqIdxFromPoint(x,y);

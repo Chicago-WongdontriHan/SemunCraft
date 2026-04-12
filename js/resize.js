@@ -3,8 +3,11 @@ function resizeBoard(){
   const vw=window.innerWidth,vh=window.innerHeight;
   const topH=document.getElementById('top-bar').offsetHeight;
   const botH=document.getElementById('bottom-bar').offsetHeight;
-  const isPortrait=vw<=768&&vh>vw;
-  const isLandscapeMobile=vh<=500&&vw>vh;
+  // detect mobile: portrait if narrow or if desktop layout would squeeze the board
+  const desktopBase=Math.max(90,Math.min(150,Math.floor(vw*.13)));
+  const desktopAvailW=vw-Math.floor(desktopBase*1.5)-Math.floor(desktopBase*2.0)-32;
+  const isPortrait=(vw<=1024&&vh>vw)||(desktopAvailW<vw*0.4);
+  const isLandscapeMobile=!isPortrait&&vh<=500&&vw>vh;
 
   let availW,availH,panelWL,panelWR;
   if(isPortrait){

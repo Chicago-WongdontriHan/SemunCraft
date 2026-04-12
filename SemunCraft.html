@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Kingdom — Jungle War</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -392,6 +392,79 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
 .map-btn{padding:8px 16px;font-size:13px;font-family:Georgia,serif;font-variant:small-caps;background:#0e1a08;border:1px solid #3a5820;color:#8ab840;border-radius:5px;cursor:pointer;transition:all .2s;}
 .map-btn:hover{background:#162a10;color:#c8e860;}
 .map-btn.sel-map{border-color:#c8a840;color:#c8a840;background:#1a1808;}
+
+/* ── MOBILE: PORTRAIT (vertical stack) ──────────────────────────────────── */
+@media (max-width: 768px) and (orientation: portrait){
+  body{padding:2px 4px;gap:2px;}
+  #top-bar{padding:2px 4px;gap:4px;flex-wrap:wrap;justify-content:center;}
+  #top-bar h1{font-size:12px;}
+  #api-wrap{display:none;} /* hide API key on mobile */
+  #main{flex-direction:column;align-items:center;gap:4px;}
+  /* left panel → top compact strip */
+  #left-panel{width:100% !important;height:auto !important;flex-direction:row;flex-wrap:wrap;
+    padding:4px 8px;gap:4px;justify-content:center;align-items:center;order:0;}
+  #left-panel .merge-guide{font-size:11px;line-height:1.4;white-space:nowrap;}
+  #left-panel .panel-label{font-size:7px;}
+  #left-panel .tier-divider{display:none;}
+  #pc-cards-wrap{display:none !important;} /* hide unit cards in portrait */
+  #pc-prev,#pc-next{display:none;}
+  /* board fills width */
+  #board-wrap{order:1;align-self:center;flex-shrink:0;}
+  /* right panel → bottom compact strip */
+  #right-panel{width:100% !important;height:auto !important;flex-direction:row;flex-wrap:wrap;
+    padding:4px 8px;gap:4px;justify-content:center;align-items:center;order:2;}
+  #right-panel .panel-label{font-size:7px;width:auto;}
+  #right-panel .tier-divider{display:none;}
+  #actions{flex-direction:row;flex-wrap:wrap;gap:3px;width:auto;}
+  #actions .act-btn{width:auto;padding:4px 8px;font-size:9px;}
+  #minimap{display:none !important;} /* hide minimap in portrait */
+  #hint-box{display:none !important;}
+  #pvp-section{display:none !important;}
+  #pvp-label{display:none !important;}
+  /* zoom buttons inline */
+  #btn-zoom-in,#btn-zoom-out{padding:3px 8px;font-size:9px;}
+  #btn-mapcheat{padding:3px 8px;font-size:9px;}
+  /* pan arrows smaller */
+  .pan-arrow{width:32px;height:32px;font-size:22px;line-height:30px;}
+  #pan-n,#pan-s{width:90px;height:28px;line-height:26px;}
+  #pan-w,#pan-e{width:28px;height:90px;line-height:90px;}
+  #pan-n{top:-32px;}#pan-s{bottom:-32px;}
+  #pan-w{left:-32px;}#pan-e{right:-32px;}
+  /* bottom bar */
+  #bottom-bar{padding:1px 4px;}
+  #log{font-size:8px;}
+  /* ghost: offset above finger */
+  #ghost{transform:translate(-50%,-120%) scale(1.4) !important;}
+}
+
+/* ── MOBILE: LANDSCAPE (side panels narrow) ─────────────────────────────── */
+@media (max-height: 500px) and (orientation: landscape){
+  body{padding:2px 4px;gap:2px;}
+  #top-bar{padding:1px 4px;gap:4px;}
+  #top-bar h1{font-size:11px;}
+  #api-wrap{display:none;}
+  /* shrink panels to minimum */
+  #left-panel{max-width:80px !important;padding:3px 2px;}
+  #left-panel .merge-guide{font-size:9px;line-height:1.5;}
+  #pc-cards-wrap{display:none !important;}
+  #pc-prev,#pc-next{display:none;}
+  #right-panel{max-width:100px !important;padding:3px 2px;}
+  #actions .act-btn{padding:3px 4px;font-size:8px;}
+  #minimap{display:none !important;}
+  #hint-box{display:none !important;}
+  #pvp-section{display:none !important;}
+  #pvp-label{display:none !important;}
+  /* pan arrows smaller */
+  .pan-arrow{width:28px;height:28px;font-size:18px;line-height:26px;}
+  #pan-n,#pan-s{width:80px;height:24px;line-height:22px;}
+  #pan-w,#pan-e{width:24px;height:80px;line-height:80px;}
+  #pan-n{top:-28px;}#pan-s{bottom:-28px;}
+  #pan-w{left:-28px;}#pan-e{right:-28px;}
+  #bottom-bar{padding:1px 4px;}
+  #log{font-size:8px;}
+  /* ghost: offset above finger */
+  #ghost{transform:translate(-50%,-120%) scale(1.3) !important;}
+}
 
 </style>
 </head>

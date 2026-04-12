@@ -3,20 +3,34 @@ function resizeBoard(){
   const vw=window.innerWidth,vh=window.innerHeight;
   const topH=document.getElementById('top-bar').offsetHeight;
   const botH=document.getElementById('bottom-bar').offsetHeight;
-  const hOverhead=32;
-  const base=Math.max(90,Math.min(150,Math.floor(vw*.13)));
-  const panelWL=Math.floor(base*1.5),panelWR=Math.floor(base*2.0);
-  const availW=vw-panelWL-panelWR-hOverhead;
-  const availH=vh-topH-botH-20;
+  const isPortrait=vw<=768&&vh>vw;
+  const isLandscapeMobile=vh<=500&&vw>vh;
+
+  let availW,availH,panelWL,panelWR;
+  if(isPortrait){
+    // portrait mobile: panels are top/bottom strips, board gets full width
+    const lpH=document.getElementById('left-panel').offsetHeight||40;
+    const rpH=document.getElementById('right-panel').offsetHeight||40;
+    availW=vw-16; // small horizontal padding
+    availH=vh-topH-botH-lpH-rpH-24;
+    panelWL=0;panelWR=0;
+  }else{
+    // desktop / landscape: panels are side columns
+    const hOverhead=32;
+    const base=Math.max(isLandscapeMobile?60:90,Math.min(150,Math.floor(vw*.13)));
+    panelWL=Math.floor(base*(isLandscapeMobile?1.0:1.5));
+    panelWR=Math.floor(base*(isLandscapeMobile?1.2:2.0));
+    availW=vw-panelWL-panelWR-hOverhead;
+    availH=vh-topH-botH-20;
+  }
+
   const vRows=viewRowsN(),vCols=viewColsN();
   let boardW,boardH;
   if(vRows===vCols){
-    // square viewport: pixel-perfect
     const boardPx=Math.floor(Math.min(availW,availH)/vCols)*vCols;
     sqPx=boardPx/vCols;
     boardW=boardPx;boardH=boardPx;
   }else{
-    // non-square viewport (campaign): fit both dimensions
     sqPx=Math.floor(Math.min(availW/vCols,availH/vRows));
     boardW=sqPx*vCols;boardH=sqPx*vRows;
   }
@@ -27,8 +41,14 @@ function resizeBoard(){
   document.getElementById('board').style.width=boardW+'px';document.getElementById('board').style.height=boardH+'px';
   const ph=boardH+6;
   const lp=document.getElementById('left-panel'),rp=document.getElementById('right-panel');
-  lp.style.width=panelWL+'px';lp.style.height=ph+'px';
-  rp.style.width=panelWR+'px';rp.style.height=ph+'px';
+  if(isPortrait){
+    // portrait: panels are full-width strips, height is auto (set by CSS)
+    lp.style.width='100%';lp.style.height='auto';
+    rp.style.width='100%';rp.style.height='auto';
+  }else{
+    lp.style.width=panelWL+'px';lp.style.height=ph+'px';
+    rp.style.width=panelWR+'px';rp.style.height=ph+'px';
+  }
   const gs=Math.max(12,Math.floor(sqPx*.62));
   document.documentElement.style.setProperty('--glyph-size',gs+'px');
   const pp=Math.max(2,Math.floor(sqPx*.10));

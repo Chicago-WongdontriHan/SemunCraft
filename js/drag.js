@@ -99,7 +99,14 @@ function applyBoxSelect(){
   setStatus(selectedPieces.size>0?selectedPieces.size+' piece(s) selected — use arrows to move':'Your turn');
 }
 
-// touch
+// touch — prevent iOS rubber-band scroll on the game page
+document.body.addEventListener('touchmove',e=>{
+  if(e.target.closest('#board')||dragging)e.preventDefault();
+},{passive:false});
+
+// detect mobile for ghost offset
+function isMobile(){return window.innerWidth<=768||window.innerHeight<=500;}
+
 function touchXY(e){const t=e.touches[0]||e.changedTouches[0];return{x:t.clientX,y:t.clientY};}
 document.getElementById('board').addEventListener('touchstart',e=>{
   if(over||thinking||!isMyTurn())return;
@@ -108,11 +115,28 @@ document.getElementById('board').addEventListener('touchstart',e=>{
   if(targetMode){handleTargetClick(i);e.preventDefault();return;}
   if(p&&p.color===myColor()){mouseDownI=i;mouseDownX=x;mouseDownY=y;e.preventDefault();}
   else if(!p&&kingSelected){mouseDownI=i;mouseDownX=x;mouseDownY=y;e.preventDefault();}
+  // on mobile, also handle click-to-select immediately (short tap = select, drag = drag)
+  else if(!p&&selectedPieces.size===1&&!kingSelected){
+    // tapped empty tile with a piece selected — handle as click-to-move
+    handleClick(i);e.preventDefault();return;
+  }
 },{passive:false});
 document.addEventListener('touchmove',e=>{
   if(mouseDownI<0)return;const{x,y}=touchXY(e);const p=pieces[mouseDownI];
-  if(!dragging&&p&&p.color===myColor()&&Math.hypot(x-mouseDownX,y-mouseDownY)>8){dragging=true;dragSrc=mouseDownI;dragDests=getDragDests(dragSrc);const g=document.getElementById('ghost');if(p.type==='siege'){g.textContent='';g.innerHTML=buildWhiteSiegeSVG(Math.floor(sqPx*.72));}else{g.innerHTML='';g.textContent=GLYPH[p.type+'_'+p.color];g.style.color=p.color==='w'?'#fff':'#1a0e04';}g.style.display='block';render();}
-  if(dragging){const g=document.getElementById('ghost');g.style.left=x+'px';g.style.top=y+'px';e.preventDefault();}
+  if(!dragging&&p&&p.color===myColor()&&Math.hypot(x-mouseDownX,y-mouseDownY)>12){
+    dragging=true;dragSrc=mouseDownI;dragDests=getDragDests(dragSrc);
+    const g=document.getElementById('ghost');
+    if(p.type==='siege'){g.textContent='';g.innerHTML=buildWhiteSiegeSVG(Math.floor(sqPx*.72));}
+    else{g.innerHTML='';g.textContent=GLYPH[p.type+'_'+p.color];g.style.color=p.color==='w'?'#fff':'#1a0e04';}
+    g.style.display='block';render();
+  }
+  if(dragging){
+    const g=document.getElementById('ghost');
+    // on mobile, offset the ghost above the finger so the tile underneath is visible
+    const yOff=isMobile()?-50:0;
+    g.style.left=x+'px';g.style.top=(y+yOff)+'px';
+    e.preventDefault();
+  }
 },{passive:false});
 document.addEventListener('touchend',e=>{
   document.getElementById('ghost').style.display='none';const{x,y}=touchXY(e);

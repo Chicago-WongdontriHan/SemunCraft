@@ -108,53 +108,65 @@ function applyBoxSelect(){
 function isMobile(){return window.innerWidth<=768||window.innerHeight<=500;}
 
 function touchXY(e){const t=e.touches[0]||e.changedTouches[0];return{x:t.clientX,y:t.clientY};}
+
+// on mobile, start drag IMMEDIATELY on touchstart (not on touchmove)
+// because iOS Safari may delay or suppress touchmove events
 document.getElementById('board').addEventListener('touchstart',e=>{
-  isTouchInteraction=true; // block synthetic mouse events for this gesture
+  isTouchInteraction=true;
   if(over||thinking||!isMyTurn())return;
+  e.preventDefault(); // always prevent default to block iOS gesture takeover
   const{x,y}=touchXY(e);const i=sqIdxFromPoint(x,y);if(i<0)return;
   const p=pieces[i];
-  if(targetMode){handleTargetClick(i);e.preventDefault();return;}
-  if(p&&p.color===myColor()){mouseDownI=i;mouseDownX=x;mouseDownY=y;e.preventDefault();}
-  else if(!p&&kingSelected){mouseDownI=i;mouseDownX=x;mouseDownY=y;e.preventDefault();}
-  // on mobile, also handle click-to-select immediately (short tap = select, drag = drag)
-  else if(!p&&selectedPieces.size===1&&!kingSelected){
-    // tapped empty tile with a piece selected — handle as click-to-move
-    handleClick(i);e.preventDefault();return;
+  if(targetMode){handleTargetClick(i);return;}
+  // tapped empty tile with a piece selected → click-to-move
+  if(!p&&selectedPieces.size===1&&!kingSelected){
+    handleClick(i);return;
   }
-},{passive:false});
-document.addEventListener('touchmove',e=>{
-  if(mouseDownI<0)return;
-  // CRITICAL: prevent default IMMEDIATELY so iOS Safari doesn't hijack the gesture for scrolling.
-  // If this is called too late (after heavy computation), iOS stops sending touchmove events.
-  e.preventDefault();
-  const{x,y}=touchXY(e);const p=pieces[mouseDownI];
-  const yOff=isMobile()?-20:0;
-  if(!dragging&&p&&p.color===myColor()&&Math.hypot(x-mouseDownX,y-mouseDownY)>6){
-    dragging=true;dragSrc=mouseDownI;dragDests=getDragDests(dragSrc);
+  if(!p&&kingSelected){
+    mouseDownI=i;mouseDownX=x;mouseDownY=y;
+    handleClick(i); // spawn immediately on tap
+    return;
+  }
+  if(p&&p.color===myColor()){
+    mouseDownI=i;mouseDownX=x;mouseDownY=y;
+    // start drag immediately — show ghost at finger, compute destinations
+    dragging=true;dragSrc=i;dragDests=getDragDests(i);
     const g=document.getElementById('ghost');
     if(p.type==='siege'){g.textContent='';g.innerHTML=buildWhiteSiegeSVG(Math.floor(sqPx*.72));}
     else{g.innerHTML='';g.textContent=GLYPH[p.type+'_'+p.color];g.style.color=p.color==='w'?'#fff':'#1a0e04';}
+    const yOff=isMobile()?-20:0;
     g.style.left=x+'px';g.style.top=(y+yOff)+'px';
     g.style.display='block';
-    // defer render to next frame so the touch gesture isn't interrupted by DOM rebuild
+    // defer render to next frame so DOM rebuild doesn't block the touch
     requestAnimationFrame(()=>{if(dragging)render();});
   }
-  if(dragging){
-    const g=document.getElementById('ghost');
-    g.style.left=x+'px';g.style.top=(y+yOff)+'px';
-  }
 },{passive:false});
+
+document.addEventListener('touchmove',e=>{
+  if(!dragging)return;
+  e.preventDefault();
+  const{x,y}=touchXY(e);
+  const g=document.getElementById('ghost');
+  const yOff=isMobile()?-20:0;
+  g.style.left=x+'px';g.style.top=(y+yOff)+'px';
+},{passive:false});
+
 document.addEventListener('touchend',e=>{
   document.getElementById('ghost').style.display='none';
-  // clear touch flag after a short delay so any trailing synthetic mouse events are still blocked
   setTimeout(()=>{isTouchInteraction=false;},300);
   const{x,y}=touchXY(e);
   if(dragging){
-    // drop at the finger position (sqIdxFromPoint uses board-relative coords)
     const dropI=sqIdxFromPoint(x,y);
     const src=dragSrc,dests=dragDests;
     dragging=false;dragSrc=-1;dragDests=null;
-    if(dropI>=0&&src>=0)executeDrop(src,dropI,dests);else render();
-  }else if(mouseDownI>=0&&!over&&!thinking&&isMyTurn())handleClick(mouseDownI);
+    // if dropped on the same tile (tap without moving), treat as click/select
+    if(dropI===src){
+      handleClick(src);
+    }else if(dropI>=0&&src>=0){
+      executeDrop(src,dropI,dests);
+    }else{
+      render();
+    }
+  }
   mouseDownI=-1;
 });

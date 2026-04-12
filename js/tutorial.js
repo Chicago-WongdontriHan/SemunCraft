@@ -331,10 +331,13 @@ function tutHighlightPiece(i){
 function tutPositionCard(){
   const card=document.getElementById('tut-card');
   if(!card)return;
-  card.style.top='12px';
-  card.style.left='12px';
-  card.style.bottom='';
-  card.style.right='';
+  // on mobile portrait, CSS positions the card at the bottom — don't override
+  const isMobilePortrait=window.innerWidth<=1024&&window.innerHeight>window.innerWidth;
+  if(isMobilePortrait){
+    card.style.top='';card.style.left='';card.style.bottom='';card.style.right='';
+  }else{
+    card.style.top='12px';card.style.left='12px';card.style.bottom='';card.style.right='';
+  }
 }
 
 function tutApplyStep(){

@@ -332,8 +332,14 @@ function handleClick(i){
     }
   }
   if(p&&p.color===mc&&p.type==='siege'){
-    selectedPieces=new Set([i]);render();
-    setStatus('Siege tower selected — right-click to unsiege into 2 rooks');return;
+    if(selectedPieces.has(i)){
+      // second tap on selected siege → unsiege it
+      unsiegePiece(i);
+    }else{
+      selectedPieces=new Set([i]);render();
+      setStatus('Siege tower selected — tap again (or right-click) to unsiege');
+    }
+    return;
   }
   if(p&&p.color===mc&&p.type==='king'){
     selectedPieces=new Set();kingSelected=!kingSelected;render();

@@ -11,12 +11,10 @@ function resizeBoard(){
 
   let availW,availH,panelWL,panelWR;
   if(isPortrait){
-    // portrait mobile: panels are top/bottom strips, board gets full width
-    // cap panel heights so they don't squeeze the board
-    const lpH=Math.min(document.getElementById('left-panel').offsetHeight||40,60);
-    const rpH=Math.min(document.getElementById('right-panel').offsetHeight||40,80);
+    // portrait mobile: board gets full width, ~60% of viewport height
+    // don't measure panel heights (unreliable on mobile) — use fixed viewport fractions
     availW=vw-8;
-    availH=vh-topH-botH-lpH-rpH-12;
+    availH=Math.floor(vh*0.6);
     panelWL=0;panelWR=0;
   }else{
     // desktop / landscape: panels are side columns

@@ -401,9 +401,9 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
   #api-wrap{display:none;} /* hide API key on mobile */
   #main{flex-direction:column;align-items:center;gap:4px;}
   /* left panel → top compact strip */
-  #left-panel{width:100% !important;height:auto !important;flex-direction:row;flex-wrap:wrap;
-    padding:4px 8px;gap:4px;justify-content:center;align-items:center;order:0;}
-  #left-panel .merge-guide{font-size:11px;line-height:1.4;white-space:nowrap;}
+  #left-panel{width:100% !important;height:auto !important;max-height:50px !important;flex-direction:row;flex-wrap:nowrap;
+    padding:2px 8px;gap:4px;justify-content:center;align-items:center;order:0;overflow:hidden;}
+  #left-panel .merge-guide{font-size:10px;line-height:1.2;white-space:nowrap;}
   #left-panel .panel-label{font-size:7px;}
   #left-panel .tier-divider{display:none;}
   #pc-cards-wrap{display:none !important;} /* hide unit cards in portrait */
@@ -411,12 +411,12 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
   /* board fills width */
   #board-wrap{order:1;align-self:center;flex-shrink:0;}
   /* right panel → bottom compact strip */
-  #right-panel{width:100% !important;height:auto !important;flex-direction:row;flex-wrap:wrap;
-    padding:4px 8px;gap:4px;justify-content:center;align-items:center;order:2;}
-  #right-panel .panel-label{font-size:7px;width:auto;}
+  #right-panel{width:100% !important;height:auto !important;max-height:70px !important;flex-direction:row;flex-wrap:nowrap;
+    padding:2px 8px;gap:3px;justify-content:center;align-items:center;order:2;overflow:hidden;}
+  #right-panel .panel-label{display:none;}
   #right-panel .tier-divider{display:none;}
-  #actions{flex-direction:row;flex-wrap:wrap;gap:3px;width:auto;}
-  #actions .act-btn{width:auto;padding:4px 8px;font-size:9px;}
+  #actions{flex-direction:row;flex-wrap:nowrap;gap:2px;width:auto;}
+  #actions .act-btn{width:auto;padding:3px 6px;font-size:8px;white-space:nowrap;}
   #minimap{display:none !important;} /* hide minimap in portrait */
   #hint-box{display:none !important;}
   #pvp-section{display:none !important;}

@@ -9,10 +9,11 @@ function resizeBoard(){
   let availW,availH,panelWL,panelWR;
   if(isPortrait){
     // portrait mobile: panels are top/bottom strips, board gets full width
-    const lpH=document.getElementById('left-panel').offsetHeight||40;
-    const rpH=document.getElementById('right-panel').offsetHeight||40;
-    availW=vw-16; // small horizontal padding
-    availH=vh-topH-botH-lpH-rpH-24;
+    // cap panel heights so they don't squeeze the board
+    const lpH=Math.min(document.getElementById('left-panel').offsetHeight||40,60);
+    const rpH=Math.min(document.getElementById('right-panel').offsetHeight||40,80);
+    availW=vw-8;
+    availH=vh-topH-botH-lpH-rpH-12;
     panelWL=0;panelWR=0;
   }else{
     // desktop / landscape: panels are side columns

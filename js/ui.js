@@ -79,7 +79,7 @@ function renderPcCards(){
     if(i>0){const div=document.createElement('div');div.className='tier-divider';wrap.appendChild(div);}
     const card=document.createElement('div');card.className='piece-card';
     const px=Math.max(18,Math.floor((window.lastPf||10)*2.2)),type=d.name.toLowerCase();
-    card.innerHTML='<div class="piece-card-row">'+pieceSVG(type,'w',mapTheme,px)+pieceSVG(type,'b',mapTheme,px)+'</div>'
+    card.innerHTML='<div class="piece-card-row">'+pieceSVG(type,'w',mapTheme,px,true)+pieceSVG(type,'b',mapTheme,px,true)+'</div>'
       +'<div class="pc-name">'+d.name+'</div><div class="pc-stats">'+d.stats+'</div>';
     wrap.appendChild(card);
   });
@@ -96,6 +96,15 @@ function renderPcCards(){
     lp.querySelectorAll('.pc-name').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.92))+'px');
     lp.querySelectorAll('.pc-stats').forEach(el=>el.style.fontSize=Math.max(5,Math.floor(pf*.65))+'px');
   }
+}
+
+// merge chart, drawn with the same piece art as the board
+const MERGE_RECIPES=[['pawn','pawn','knight'],['pawn','knight','bishop'],['knight','bishop','queen'],['knight','knight','rook'],['rook','rook','siege']];
+function renderMergeGuide(){
+  const el=document.querySelector('.merge-guide');if(!el)return;
+  const px=Math.max(14,Math.round(parseFloat(getComputedStyle(el).fontSize)*1.3));
+  const icon=t=>`<span class="mg-icon">${pieceSVG(t,'w',mapTheme,px,true)}</span>`;
+  el.innerHTML=MERGE_RECIPES.map(([a,b,r])=>`<span class="mg-row">${icon(a)}+${icon(b)}→${icon(r)}</span>`).join('');
 }
 
 function pcPage(dir){

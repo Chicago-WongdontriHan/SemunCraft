@@ -95,8 +95,9 @@ function pieceFace(shape,team){
   return s;
 }
 
-// type: pawn|knight|bishop|rook|queen|king|siege, color: 'w'|'b', theme: a PIECE_SETS key, size in px
-function pieceSVG(type,color,theme,size){
+// type: pawn|knight|bishop|rook|queen|king|siege, color: 'w'|'b', theme: a PIECE_SETS key, size in px,
+// plain: leave out the theme's ground decoration (for small icons like the merge chart)
+function pieceSVG(type,color,theme,size,plain){
   const shape=PIECE_SHAPES[type];if(!shape)return '';
   const set=PIECE_SETS[theme]||PIECE_SETS.jungle||{colors:{}};
   const tint=(PIECE_TINTS[color]||PIECE_TINTS.w)[type];
@@ -106,7 +107,7 @@ function pieceSVG(type,color,theme,size){
   return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible">`
     +`<ellipse cx="50" cy="91" rx="${shape.ring+6}" ry="5" fill="rgba(0,0,0,.3)"/>`
     +(shape.noRing?'':`<ellipse cx="50" cy="86" rx="${shape.ring}" ry="7" fill="${team.ring}" stroke="${team.line}" stroke-width="3.5"/>`)
-    +fill(set.base?set.base(shape.ring):'')
+    +fill(!plain&&set.base?set.base(shape.ring):'')
     +fill(shape.back)
     +`<g fill="none" stroke="${team.halo}" stroke-width="11" stroke-linejoin="round">${shape.body}</g>`
     +`<g fill="${team.body}" stroke="${team.line}" stroke-width="4" stroke-linejoin="round">${shape.body}</g>`

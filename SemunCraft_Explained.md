@@ -173,7 +173,7 @@ Three selectable themes that change visuals, obstacles, ambient wildlife, and ba
 
 ## Audio
 
-- **Medieval BGM** (`js/music.js`): each map theme has its own dance tune in a medieval mode -- a lively D Dorian estampie (jungle), a slow E Phrygian lament on shawm (desert) and a lilting 6/8 A Aeolian carol (ocean). They're played on synthesized recorder/shawm, lute, drone and frame drum with the Web Audio API, in an AA'BB' dance form with random grace-note ornaments. No audio files needed.
+- **Medieval BGM** (`js/music.js`): each map theme has its own dance tune in a medieval mode -- a lively D Dorian estampie (jungle), a slow E Phrygian lament with a darbuka-style groove (desert) and a lilting 6/8 A Aeolian carol (ocean). A small synthesized band plays it: recorder, shawm, fiddle and harp take turns on the melody over lute chords or harp arpeggios, a bass, a drone and bells, with a drum groove (frame drum, rim clicks, woodblock, tambourine, finger cymbals) and fills at phrase ends. The dance's two sections trade instruments each time the tune repeats, and repeats add ornaments and a second voice a fifth below. No audio files needed.
 - **SFX**: All sound effects are synthesized in real-time (spawn, move, attack, hit, kill, merge, heal, win, lose, etc.).
 - Volume controls for BGM and SFX are available in the settings modal.
 
@@ -200,7 +200,7 @@ An interactive 7-step tutorial:
 - **Center**: The game board with piece range auras, HP pips, bishop mana pips, coordinate labels, and pan arrows when zoomed in.
 - **Right panel**: Move hint (Easy mode), action buttons (Spawn, Merge, Skip, Menu), and Map View (minimap, zoom, Map Cheat).
 - **Bottom bar**: Game log and an AI "thinking" indicator dot.
-- **Mobile**: In portrait, the side panels become compact strips above and below the board (unit cards, minimap and hint are hidden). On short landscape screens the side panels shrink.
+- **Mobile**: In portrait, the merge chart becomes a strip above the board and the buttons wrap into finger-sized rows below it (unit cards, minimap and hint are hidden). The status line wraps, and when zoomed in the board leaves room around it for the pan arrows. On short landscape screens the side panels shrink and the layout is centered. Touch devices get touch wording (tap a siege tower twice instead of right-clicking).
 
 ### Controls
 
@@ -236,8 +236,9 @@ SemunCraft/
                            state, viewport, fog of war, campaign, PvP and AI state, piece cards
     audio.js            -- Web Audio API: audio context, all SFX (spawn, attack, merge,
                            heal, etc.), volume controls
-    music.js            -- Medieval background music: per-theme modal tunes on synthesized
-                           recorder/shawm, lute, drone and drum (startBgm, stopBgm)
+    music.js            -- Medieval background music: per-theme tunes played by a synthesized
+                           band (recorder, shawm, fiddle, harp, lute, bass, drone, bells)
+                           over a drum groove (startBgm, stopBgm)
     movement.js         -- isTileBlocked(), getDragDests() (valid moves/merges/attacks/heals
                            per piece), BFS pathfinding (stepToward, getPath), queenRange()
     themes.js           -- THEMES object (jungle/desert/ocean tile types, colors, animals),
@@ -306,6 +307,9 @@ The scripts are loaded in a specific order in `SemunCraft.html` because later fi
 ## Other Technical Details
 
 - No build step, no frameworks. Works offline via `file://`, except multiplayer (PeerJS servers) and the optional Claude opponent.
+- **Web hosting (GitHub Pages)**: every path is relative, so the game runs under the `/SemunCraft/` subfolder; all external resources use HTTPS; `index.html` forwards the site root to `SemunCraft.html`.
+- **Releases**: the local `<script>` tags in `SemunCraft.html` end in `?v=<version>`. Bump it on every release -- GitHub Pages lets browsers cache files for 10 minutes, and the version keeps a returning visitor from mixing old cached scripts with new ones.
+- **Browser support**: current Chrome, Edge, Firefox and Safari. The layout needs at least Chrome/Edge 87, Firefox 66 or Safari 14.1 (iOS 14.5). Hiding the game controls behind the mobile title screen needs Chrome 105, Firefox 121 or Safari 15.4 and is simply skipped on older versions. On iPhones, the ring/silent switch mutes the game's Web Audio sound.
 - All rendering is **DOM-based** (no canvas) -- each square is a grid cell with CSS classes for highlighting.
 - Drag-and-drop is implemented via mouse/touch events with a floating ghost element; on touch screens the drag starts on touchstart so iOS doesn't cancel the gesture.
 - Attack animations use flying emoji projectiles, SVG spears and cannonballs, and SVG arrow overlays.

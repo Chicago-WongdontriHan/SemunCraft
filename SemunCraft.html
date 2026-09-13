@@ -7,7 +7,7 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{width:100%;height:100%;overflow:hidden;}
-body{font-family:Georgia,serif;background:#0c1a08;color:#c8d4a0;display:flex;flex-direction:column;align-items:center;height:100vh;padding:6px 10px 4px;gap:5px;background-image:radial-gradient(ellipse at 20% 10%,rgba(30,60,10,.6) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(10,40,5,.7) 0%,transparent 50%);}
+body{font-family:Georgia,serif;background:#0c1a08;color:#c8d4a0;display:flex;flex-direction:column;align-items:center;height:100vh;height:100dvh;padding:6px 10px 4px;gap:5px;background-image:radial-gradient(ellipse at 20% 10%,rgba(30,60,10,.6) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(10,40,5,.7) 0%,transparent 50%);}
 
 /* ── INTRO ── */
 #intro{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;background:linear-gradient(160deg,#091505 0%,#0e2208 50%,#091505 100%);background-image:radial-gradient(ellipse at 30% 20%,rgba(40,80,10,.7) 0%,transparent 55%),radial-gradient(ellipse at 70% 80%,rgba(20,60,5,.8) 0%,transparent 55%);}
@@ -25,9 +25,13 @@ body{font-family:Georgia,serif;background:#0c1a08;color:#c8d4a0;display:flex;fle
 .diff-btn{padding:10px 28px;font-size:14px;font-family:Georgia,serif;font-variant:small-caps;letter-spacing:.06em;background:#0e1a08;border:1px solid #3a5820;color:#8ab840;border-radius:6px;cursor:pointer;transition:all .2s;}
 .diff-btn:hover{background:#162a10;color:#c8e860;border-color:#6a9830;}
 #intro-tip{font-size:11px;color:#2a4818;font-family:monospace;text-align:center;max-width:340px;line-height:1.6;}
+/* touch screens have no right-click: show touch wording instead */
+.tip-touch{display:none;}
+@media (hover:none) and (pointer:coarse){.tip-mouse{display:none;}.tip-touch{display:inline;}}
 
 /* ── TOP BAR ── */
-#top-bar{display:flex;align-items:center;gap:12px;width:100%;flex-shrink:0;padding:4px 8px;}
+/* right padding leaves room for the fixed ⚙ Audio button so it doesn't cover the turn counter */
+#top-bar{display:flex;align-items:center;gap:12px;width:100%;flex-shrink:0;padding:4px 96px 4px 8px;}
 h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-variant:small-caps;white-space:nowrap;}
 #api-wrap{display:flex;gap:5px;align-items:center;}
 #api-wrap label{font-size:10px;color:#5a7030;font-family:monospace;}
@@ -49,6 +53,8 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 .pc-name{font-size:8px;color:#90c840;font-family:monospace;font-variant:small-caps;font-weight:bold;}
 .pc-stats{font-size:6px;color:#6a8848;font-family:monospace;text-align:center;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .merge-guide{font-size:13px;color:#c8d860;text-align:center;line-height:2;font-family:monospace;letter-spacing:.04em;font-weight:bold;}
+.mg-row{display:flex;align-items:center;justify-content:center;gap:1px;}
+.mg-icon svg{display:block;}
 
 /* ── BOARD ── */
 #board-wrap{position:relative;flex-shrink:0;align-self:flex-start;border:3px solid #3a2810;border-radius:3px;box-shadow:0 0 0 1px #1a1008,0 6px 24px rgba(0,0,0,.7),inset 0 0 0 1px #5a4020;}
@@ -207,7 +213,7 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 #go-title.lose{color:#e05030;}
 #go-title.draw{color:#c8a040;}
 #go-sub{font-size:clamp(13px,2vw,20px);color:#a0b880;font-family:monospace;letter-spacing:.08em;opacity:.85;}
-#go-buttons{display:flex;gap:14px;}
+#go-buttons{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;padding:0 12px;}
 .go-btn{padding:10px 30px;font-size:15px;font-family:Georgia,serif;font-variant:small-caps;letter-spacing:.06em;border-radius:5px;cursor:pointer;transition:all .18s;}
 .go-btn.primary{background:#1a3010;border:2px solid #6ab830;color:#a0e040;}
 .go-btn.primary:hover{background:#244818;color:#c8f060;border-color:#90d040;}
@@ -396,34 +402,37 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
 /* ── MOBILE: PORTRAIT (vertical stack) ──────────────────────────────────── */
 @media (max-width: 1024px) and (orientation: portrait){
   body{padding:2px 4px;gap:2px;}
-  #top-bar{padding:2px 4px;gap:4px;flex-wrap:wrap;justify-content:center;}
+  #top-bar{padding:2px 76px 2px 4px;gap:4px;flex-wrap:wrap;justify-content:center;}
   #top-bar h1{font-size:12px;}
   #api-wrap{display:none;} /* hide API key on mobile */
+  /* status gets its own line and wraps, so long campaign descriptions stay readable */
+  #status{order:5;flex:1 1 100%;margin-left:0;white-space:normal;text-align:center;}
   #main{flex-direction:column;align-items:center;gap:4px;}
   /* left panel → top compact strip */
-  #left-panel{width:100% !important;height:auto !important;max-height:50px !important;flex-direction:row;flex-wrap:nowrap;
+  #left-panel{width:100% !important;height:auto !important;max-height:none !important;flex-direction:row;flex-wrap:nowrap;
     padding:2px 8px;gap:4px;justify-content:center;align-items:center;order:0;overflow:hidden;}
-  #left-panel .merge-guide{font-size:10px;line-height:1.2;white-space:nowrap;}
-  #left-panel .panel-label{font-size:7px;}
+  /* merge chart as a row of recipes (wraps to two rows on narrow phones) */
+  #left-panel .merge-guide{display:flex;flex-wrap:wrap;gap:2px 8px;justify-content:center;line-height:1;white-space:nowrap;}
+  #left-panel .panel-label{display:none;}
   #left-panel .tier-divider{display:none;}
   #pc-cards-wrap{display:none !important;} /* hide unit cards in portrait */
   #pc-prev,#pc-next{display:none;}
   /* board fills width */
   #board-wrap{order:1;align-self:center;flex-shrink:0;}
   /* right panel → bottom compact strip */
-  #right-panel{width:100% !important;height:auto !important;max-height:70px !important;flex-direction:row;flex-wrap:nowrap;
-    padding:2px 8px;gap:3px;justify-content:center;align-items:center;order:2;overflow:hidden;}
+  #right-panel{width:100% !important;height:auto !important;max-height:none !important;flex-direction:row;flex-wrap:wrap;
+    padding:4px 8px;gap:6px;justify-content:center;align-items:center;order:2;overflow:hidden;}
   #right-panel .panel-label{display:none;}
   #right-panel .tier-divider{display:none;}
-  #actions{flex-direction:row;flex-wrap:nowrap;gap:2px;width:auto;}
-  #actions .act-btn{width:auto;padding:3px 6px;font-size:8px;white-space:nowrap;}
+  #actions{flex-direction:row;flex-wrap:wrap;justify-content:center;gap:6px;width:auto;}
+  /* finger-sized buttons */
+  #actions .act-btn,#btn-zoom-in,#btn-zoom-out,#btn-mapcheat{width:auto;min-height:36px;padding:6px 12px;font-size:12px !important;white-space:nowrap;}
   #minimap{display:none !important;} /* hide minimap in portrait */
   #hint-box{display:none !important;}
   #pvp-section{display:none !important;}
   #pvp-label{display:none !important;}
   /* zoom buttons inline */
-  #btn-zoom-in,#btn-zoom-out{padding:3px 8px;font-size:9px;}
-  #btn-mapcheat{padding:3px 8px;font-size:9px;}
+  #btn-zoom-in,#btn-zoom-out{min-width:48px;}
   /* pan arrows smaller */
   .pan-arrow{width:32px;height:32px;font-size:22px;line-height:30px;}
   #pan-n,#pan-s{width:90px;height:28px;line-height:26px;}
@@ -432,11 +441,13 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
   #pan-w{left:-32px;}#pan-e{right:-32px;}
   /* bottom bar */
   #bottom-bar{padding:1px 4px;}
-  #log{font-size:8px;}
+  #log{font-size:10px;}
+  /* title screen: hide the game controls behind the menu (the board preview and ⚙ Audio stay) */
+  body:has(#intro:not(.hidden)) :is(#left-panel,#right-panel,#bottom-bar,#top-bar > :not(#btn-settings)){visibility:hidden;}
   /* ghost: slight offset above finger so the target tile is visible */
   #ghost{transform:translate(-50%,-80%) scale(1.3) !important;}
   /* tutorial card: move to bottom, compact */
-  #tut-card{top:auto !important;left:4px !important;right:4px !important;bottom:60px !important;
+  #tut-card{top:auto !important;left:4px !important;right:4px !important;bottom:20px !important;
     width:auto !important;max-width:none !important;padding:10px 14px;font-size:12px;
     max-height:35vh;overflow-y:auto;}
   #tut-card h3{font-size:13px !important;margin-bottom:3px;}
@@ -451,7 +462,8 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
 /* ── MOBILE: LANDSCAPE (side panels narrow) ─────────────────────────────── */
 @media (max-height: 500px) and (orientation: landscape){
   body{padding:2px 4px;gap:2px;}
-  #top-bar{padding:1px 4px;gap:4px;}
+  #top-bar{padding:1px 76px 1px 4px;gap:4px;}
+  #main{justify-content:center;}
   #top-bar h1{font-size:11px;}
   #api-wrap{display:none;}
   /* shrink panels to minimum */
@@ -472,7 +484,8 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
   #pan-n{top:-28px;}#pan-s{bottom:-28px;}
   #pan-w{left:-28px;}#pan-e{right:-28px;}
   #bottom-bar{padding:1px 4px;}
-  #log{font-size:8px;}
+  #log{font-size:9px;}
+  body:has(#intro:not(.hidden)) :is(#left-panel,#right-panel,#bottom-bar,#top-bar > :not(#btn-settings)){visibility:hidden;}
   /* ghost: offset above finger */
   #ghost{transform:translate(-50%,-80%) scale(1.3) !important;}
 }
@@ -503,7 +516,7 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
       <button class="map-btn" id="mbtn-ocean" onclick="selectMap('ocean')">🌊 Ocean</button>
     </div>
   </div>
-  <div id="intro-tip">drag a piece to move it · drop on ally to merge<br>right-click to set attack / heal target<br>attacks fire automatically each turn</div>
+  <div id="intro-tip">drag a piece to move it · drop on ally to merge<br><span class="tip-mouse">right-click to set attack / heal target</span><span class="tip-touch">drop on an enemy to target it · tap a siege tower twice to un-siege</span><br>attacks fire automatically each turn</div>
 </div>
 
 <!-- ── TUTORIAL OVERLAY ── -->
@@ -586,7 +599,7 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
 <div id="main">
   <div id="left-panel">
     <div class="panel-label">Merges</div>
-    <div class="merge-guide">♙+♙→♘<br>♙+♘→♗<br>♘+♗→♛<br>♘+♘→♖<br>♖+♖→<svg viewBox="0 0 100 100" width="16" height="16" style="vertical-align:middle;display:inline-block;" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="55" width="60" height="35" rx="3" fill="#d0d0e0" stroke="#888" stroke-width="2"/><rect x="20" y="42" width="14" height="18" rx="2" fill="#c8c8d8" stroke="#888" stroke-width="1.5"/><rect x="43" y="42" width="14" height="18" rx="2" fill="#c8c8d8" stroke="#888" stroke-width="1.5"/><rect x="66" y="42" width="14" height="18" rx="2" fill="#c8c8d8" stroke="#888" stroke-width="1.5"/><rect x="18" y="50" width="64" height="6" rx="1" fill="#b0b0c8"/><line x1="32" y1="68" x2="68" y2="88" stroke="#c8a040" stroke-width="4" stroke-linecap="round"/><line x1="68" y1="68" x2="32" y2="88" stroke="#c8a040" stroke-width="4" stroke-linecap="round"/><circle cx="32" cy="68" r="3" fill="#e8c060"/><circle cx="68" cy="68" r="3" fill="#e8c060"/></svg></div>
+    <div class="merge-guide"><!-- filled by renderMergeGuide() with the piece art --></div>
     <div class="tier-divider"></div>
     <div class="panel-label">Units <span id="pc-page-label" style="color:#3a5828;font-size:7px;">1/2</span></div>
     <div id="pc-cards-wrap" style="display:flex;flex-direction:column;gap:3px;flex:1;min-height:0;justify-content:space-evenly;"></div>
@@ -671,28 +684,30 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
 </div>
 
 <!-- ── SCRIPTS ── -->
+<!-- ?v= is the release version: bump it on every release so browsers (GitHub Pages lets them
+     cache files for 10 minutes) never mix old cached scripts with new ones -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-<script src="js/constants.js"></script>
-<script src="js/state.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/music.js"></script>
-<script src="pieces/pieces.js"></script>
-<script src="pieces/jungle.js"></script>
-<script src="pieces/desert.js"></script>
-<script src="pieces/ocean.js"></script>
-<script src="js/movement.js"></script>
-<script src="js/themes.js"></script>
-<script src="js/render.js"></script>
-<script src="js/combat.js"></script>
-<script src="js/animals.js"></script>
-<script src="js/actions.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/tutorial.js"></script>
-<script src="js/campaign.js"></script>
-<script src="js/pvp.js"></script>
-<script src="js/ai.js"></script>
-<script src="js/game.js"></script>
-<script src="js/drag.js"></script>
-<script src="js/resize.js"></script>
+<script src="js/constants.js?v=20260913"></script>
+<script src="js/state.js?v=20260913"></script>
+<script src="js/audio.js?v=20260913"></script>
+<script src="js/music.js?v=20260913"></script>
+<script src="pieces/pieces.js?v=20260913"></script>
+<script src="pieces/jungle.js?v=20260913"></script>
+<script src="pieces/desert.js?v=20260913"></script>
+<script src="pieces/ocean.js?v=20260913"></script>
+<script src="js/movement.js?v=20260913"></script>
+<script src="js/themes.js?v=20260913"></script>
+<script src="js/render.js?v=20260913"></script>
+<script src="js/combat.js?v=20260913"></script>
+<script src="js/animals.js?v=20260913"></script>
+<script src="js/actions.js?v=20260913"></script>
+<script src="js/ui.js?v=20260913"></script>
+<script src="js/tutorial.js?v=20260913"></script>
+<script src="js/campaign.js?v=20260913"></script>
+<script src="js/pvp.js?v=20260913"></script>
+<script src="js/ai.js?v=20260913"></script>
+<script src="js/game.js?v=20260913"></script>
+<script src="js/drag.js?v=20260913"></script>
+<script src="js/resize.js?v=20260913"></script>
 </body>
 </html>

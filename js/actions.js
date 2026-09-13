@@ -185,6 +185,10 @@ function executeDrop(from,to,dests){
       };
       box.appendChild(mergeBtn);
       document.body.appendChild(box);
+      // keep the popup on screen next to board edges (small phones)
+      const bw=box.offsetWidth,bh=box.offsetHeight;
+      box.style.left=Math.min(Math.max(rect.left+rect.width/2,bw/2+6),innerWidth-bw/2-6)+'px';
+      if(rect.bottom+6+bh>innerHeight-6)box.style.top=Math.max(6,rect.top-6-bh)+'px';
       setTimeout(()=>document.addEventListener('mousedown',function h(e){if(!box.contains(e.target)){box.remove();document.removeEventListener('mousedown',h);}},true),10);
     }
     render();return;

@@ -10,11 +10,14 @@ function resizeBoard(){
   const isLandscapeMobile=!isPortrait&&vh<=500&&vw>vh;
 
   let availW,availH,panelWL,panelWR;
+  // portrait: when zoomed in, leave a gutter around the board so the pan arrows sit beside it
+  // (otherwise they hang off the screen edges and cover the buttons)
+  const gutter=isPortrait&&(viewRowsN()<ROWS||viewColsN()<COLS)?32:0;
   if(isPortrait){
     // portrait mobile: board gets full width, ~60% of viewport height
     // don't measure panel heights (unreliable on mobile) — use fixed viewport fractions
-    availW=vw-8;
-    availH=Math.floor(vh*0.6);
+    availW=vw-8-gutter*2;
+    availH=Math.floor(vh*0.6)-gutter*2;
     panelWL=0;panelWR=0;
   }else{
     // desktop / landscape: panels are side columns
@@ -39,7 +42,7 @@ function resizeBoard(){
   const wrap=document.getElementById('board-wrap');
   const thBorder=(THEMES[mapTheme]||THEMES.jungle).border;
   wrap.style.borderColor=thBorder;
-  wrap.style.width=boardW+'px';wrap.style.height=boardH+'px';
+  wrap.style.width=boardW+'px';wrap.style.height=boardH+'px';wrap.style.margin=gutter?gutter+'px':'';
   document.getElementById('board').style.width=boardW+'px';document.getElementById('board').style.height=boardH+'px';
   const ph=boardH+6;
   const lp=document.getElementById('left-panel'),rp=document.getElementById('right-panel');
@@ -63,6 +66,7 @@ function resizeBoard(){
   lp.querySelectorAll('.pc-name').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.92))+'px');
   lp.querySelectorAll('.pc-stats').forEach(el=>el.style.fontSize=Math.max(5,Math.floor(pf*.65))+'px');
   lp.querySelectorAll('.merge-guide').forEach(el=>el.style.fontSize=Math.max(10,Math.floor(pf*1.4))+'px');
+  renderMergeGuide();
   const btnPad=Math.max(2,Math.floor(pf*.25));
   const btnSize=Math.floor((panelWR-btnPad*2-2)/3);const btnPx=btnSize+'px';
   rp.querySelectorAll('.dir-btn').forEach(el=>{el.style.width=btnPx;el.style.height=btnPx;el.style.fontSize=Math.max(9,Math.floor(btnSize*.42))+'px';});

@@ -248,8 +248,8 @@ const TUTORIAL_STEPS=[
   // ── SIEGE ─────────────────────────────────────────────────────────────────
   {
     title:'Siege Tower 🏰',
-    desc:'The Siege Tower cannot move, but attacks 4 tiles cardinally — now within range of the enemy queen. Wait for the siege tower to fire at the queen, then right-click the siege tower to unsiege it back into two rooks.',
-    hint:'Let the siege tower attack the queen, then right-click to unsiege.',
+    desc:'The Siege Tower cannot move, but attacks 4 tiles cardinally — now within range of the enemy queen. Wait for the siege tower to fire at the queen, then right-click (or tap twice) the siege tower to unsiege it back into two rooks.',
+    hint:'Let the siege tower attack the queen, then right-click (or tap twice) to unsiege.',
     action:'unsiege',
     setup(){},
     fromMerge:true,

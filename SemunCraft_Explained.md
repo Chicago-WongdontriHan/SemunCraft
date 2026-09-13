@@ -276,7 +276,35 @@ SemunCraft/
                            box selection (multi-select pieces), ghost element
     resize.js           -- resizeBoard() (responsive desktop/mobile layout), window
                            resize/load/keydown event listeners
+    engine.js           -- Headless rules engine (not loaded by the game yet): the same
+                           rules with no DOM or timers and seeded randomness, for AI
+                           training and tests (see Headless Engine below)
+  tests/                -- Node.js tests for the engine
+    original-game.js    -- loads the game's rule scripts in Node with a fake DOM and a
+                           virtual clock
+    parity.test.js      -- plays identical games through the original code and the
+                           engine and compares the state after every action
+    engine.test.js      -- determinism, rule invariants and speed of the engine
 ```
+
+### Headless Engine
+
+`js/engine.js` holds the game rules without the browser: no DOM, no timers, and all randomness drawn from a seed stored in the game state, so games can be simulated fast and replayed exactly. It loads as a classic script (global `SemunEngine`) or in Node (`require('./js/engine.js')`). The browser game doesn't use it yet; until it does, the parity tests keep the two in step.
+
+```js
+const E = require('./js/engine.js');
+const s = E.newGame({ seed: 42, mode: 'pvp' }); // also: difficulty, theme, level, fog, maxTurns
+const actions = E.legalActions(s);              // [{ type, from, to }, ...]
+E.step(s, actions[0]);                          // applies it plus any end-of-turn attacks; returns events
+E.botTurn(s);                                   // classic mode only: Black's turn by the built-in AI
+const copy = E.clone(s);
+```
+
+- **Modes:** `classic` is the single-player order (White acts, White fires, Black fires, Black acts). In `pvp`, each side acts and then its own pieces fire, the same for both colors, which suits self-play.
+- **Actions:** `move`, `merge`, `target` (lock onto an enemy), `heal`, `healLock` (a bishop dropped on a wounded adjacent knight, choosing Heal), `spawn`, `unsiege` and `skip`. After a knight's L-jump merge the same side moves again.
+- **Built-in AI:** Easy, the five Hard strategies and the campaign AI are ported with their quirks and draw random numbers in the same order as `ai.js`.
+- **Not modelled yet:** animals, group moves and free right-click targeting. The engine also refuses spawns in campaign levels; the game only disables the Spawn button there, so clicking the King still spawns.
+- **Tests** (need Node.js, not the game): `node tests/parity.test.js [seeds] [section]` and `node tests/engine.test.js [games]`. Random self-play runs at about 90,000 actions per second on one CPU core.
 
 ### Script Load Order
 

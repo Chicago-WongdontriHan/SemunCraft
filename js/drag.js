@@ -101,7 +101,9 @@ function applyBoxSelect(){
   }
   selectedPieces=newSel;
   render();
-  setStatus(selectedPieces.size>0?selectedPieces.size+' piece(s) selected — use arrows to move':'Your turn');
+  const gSz=selectedPieces.size;
+  const gCan=gSz>=2&&gSz<=3&&[...selectedPieces].every(si=>{const sp=pieces[si];return sp&&(sp.type==='pawn'||sp.type==='knight');});
+  setStatus(gSz>0?(gCan?gSz+' pcs — drag any to move group':gSz+' selected'):'Your turn');
 }
 
 // detect mobile for ghost offset

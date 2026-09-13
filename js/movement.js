@@ -88,9 +88,11 @@ function getDragDests(i){
       for(let s=1;s<=2;s++){
         const nr=ROW(i)+dr*s,nc=COL(i)+dc*s;if(!inB(nr,nc))break;
         const j=idx(nr,nc);if(isTileBlocked(j))break;
-        const t=pieces[j];if(!t)move.add(j);else{if(t.color===ec)attack.add(j);break;}
+        const t=pieces[j];if(!t)move.add(j);else break;
       }
     });
+    // attack: same range as its auto-attack (2 squares in any of the 8 directions, not blocked)
+    queenRange(i).filter(j=>pieces[j]&&pieces[j].color===ec).forEach(j=>attack.add(j));
   }else if(p.type==='king'){
     adj8(i).forEach(j=>{
       const t=pieces[j];
@@ -105,8 +107,8 @@ function getDragDests(i){
   }
   // remove blocked tiles from move destinations
   for(const j of [...move]){if(isTileBlocked(j)||neutralPieces[j+''])move.delete(j);}
-  // fog of war: can't attack or heal targets on non-visible tiles (applies to white pieces only)
-  if(p.color==='w'&&!mapCheat){
+  // fog of war: can't attack or heal targets on non-visible tiles (applies to the local player's pieces only)
+  if(p.color===myColor()&&!mapCheat){
     for(const j of [...attack]){if(!isTileVisible(j))attack.delete(j);}
     for(const j of [...heal]){if(!isTileVisible(j))heal.delete(j);}
   }

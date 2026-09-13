@@ -113,6 +113,9 @@ function showGameOver(result){
   const title=document.getElementById('go-title');
   const sub=document.getElementById('go-sub');
   if(!el)return;
+  // campaign results swap in their own buttons; put the standard pair back
+  const btns=document.getElementById('go-buttons');
+  if(btns)btns.innerHTML='<button class="go-btn primary" onclick="doRematch()">⚔ Rematch</button><button class="go-btn secondary" onclick="goIntro()">↺ Main Menu</button>';
   title.className='';
   if(result==='win'){title.textContent='You Win!';title.classList.add('win');sub.textContent='Victory — your kingdom prevails';}
   else if(result==='lose'){title.textContent='You Lose';title.classList.add('lose');sub.textContent='Defeat — your king has fallen';}
@@ -127,11 +130,19 @@ function hideGameOver(){
 
 function doRematch(){
   hideGameOver();
+  // PvP: the host deals the new board; a guest asks the host for one
+  if(pvpActive){
+    if(pvpRole==='host'){initGame();broadcastState(null);}
+    else if(conn&&conn.open)conn.send(JSON.stringify({type:'rematch'}));
+    return;
+  }
   initGame();
 }
 
 function goIntro(){
   hideGameOver();
+  // leaving to the menu ends a multiplayer match
+  if(pvpActive){pvpActive=false;try{if(conn)conn.close();}catch(e){}}
   // reset board size if coming from campaign
   campaignLevel=null; campaignLevelId=-1;
   COLS=9; ROWS=9;

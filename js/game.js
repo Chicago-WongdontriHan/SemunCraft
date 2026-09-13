@@ -1,7 +1,7 @@
 // ── GAME ─────────────────────────────────────────────────────────────────────
 function startGame(mode){
   gameMode=mode;
-  difficulty=mode==='hard'?'hard':'easy';
+  difficulty=mode==='hard'?'hard':mode==='pvp'?'pvp':'easy';
   // reset board size and campaign state for non-campaign modes
   campaignLevel=null; campaignLevelId=-1;
   COLS=9; ROWS=9;
@@ -28,6 +28,9 @@ function initGame(){
   whiteTargets={}; blackTargets={};
   spawnHistory=[]; blackSpawnHistory=[]; whiteTurnCount=0; blackTurnCount=0; movedThisTurn=-1;
   exploredTiles=new Set();
+  // regular games start fogged (the tutorial and campaign set their own default)
+  mapCheat=false;
+  const mcBtn=document.getElementById('btn-mapcheat');if(mcBtn)mcBtn.textContent='🗺 Map Cheat: OFF';
   const tc=document.getElementById('turn-counter');if(tc)tc.textContent='Turn 0';
   animalDivs.forEach(el=>el.remove());animalDivs.clear();
   // single-player: reuse title-screen map; PvP always regenerates
@@ -53,6 +56,8 @@ function initGame(){
     generateMap();
   }
   titleTileData=null; titleAnimals=null;
+  // PvP: animals roam on each client's own clock and can't be kept in sync, so multiplayer has none
+  if(gameMode==='pvp'){animals=[];stopAnimalLoop();}
   blackLastFrom=-1; blackLastTo=-1;
   targetMode=false; targetSrc=-1;
   dragSrc=-1; dragging=false;
@@ -103,12 +108,21 @@ function startWhiteTurn(){
       }
     }
   }
+  turnUpkeep();
+  syncUI(); render();
+  showMoveHint();
+  setStatus("White's turn");
+}
+
+// start-of-turn upkeep; in PvP each client only touches its own pieces
+function turnUpkeep(){
+  const own=pvpActive?myColor():null;
   // clear newborn aura from previous turn
-  for(let i=0;i<ROWS*COLS;i++){if(pieces[i]?.newborn)pieces[i].newborn=false;}
+  for(let i=0;i<ROWS*COLS;i++){if(pieces[i]?.newborn&&(!own||pieces[i].color===own))pieces[i].newborn=false;}
   // bishop mana: +1 mana every 3 turns after the bishop last healed
   for(let i=0;i<ROWS*COLS;i++){
     const p=pieces[i];
-    if(p&&p.type==='bishop'&&(p.mana||0)<2){
+    if(p&&p.type==='bishop'&&(!own||p.color===own)&&(p.mana||0)<2){
       const lastHeal=p.lastHealTurn||0;
       if(whiteTurnCount-lastHeal>=3&&whiteTurnCount>0){
         p.mana=Math.min(2,(p.mana||0)+1);
@@ -117,9 +131,6 @@ function startWhiteTurn(){
       }
     }
   }
-  syncUI(); render();
-  showMoveHint();
-  setStatus("White's turn");
 }
 
 function endTurn(){
@@ -130,9 +141,29 @@ function endTurn(){
   targetMode=false;targetSrc=-1;kingSelected=false;selectedPieces=new Set();boxSelecting=false;boxMouseDownOnEmpty=false;clearBoxSelect();
 
   if(pvpActive){
-    turn=turn==='w'?'b':'w';
-    broadcastState(null);syncUI();render();
-    setStatus(isMyTurn()?'Your turn':'Opponent turn...');
+    // PvP: the player who just acted fires their own side's auto-attacks, then passes the turn
+    const mover=turn;
+    const justMoved=movedThisTurn;
+    movedThisTurn=-1;
+    const actions=computeActions(mover).filter(a=>a.attacker!==justMoved);
+    const passTurn=()=>{
+      thinking=false;
+      if(over){
+        setStatus(mover==='w'?'White wins! ♔':'Black wins! ♚');SFX.win();syncUI();render();
+        broadcastState(mover);
+        setTimeout(()=>showGameOver(myColor()===mover?'win':'lose'),600);
+        return;
+      }
+      turn=mover==='w'?'b':'w';
+      broadcastState(null);syncUI();render();
+      setStatus(isMyTurn()?'Your turn':'Opponent turn...');
+    };
+    if(actions.length){
+      thinking=true;syncUI();setStatus('Attacking...');
+      setTimeout(()=>executeActions(actions,mover,passTurn),100);
+    }else{
+      passTurn();
+    }
   }else{
     const justMoved=movedThisTurn;
     movedThisTurn=-1;

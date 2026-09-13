@@ -11,7 +11,7 @@ const CAMPAIGN_LEVELS=[
     white:[{type:'pawn',r:4,c:0},{type:'pawn',r:4,c:2},{type:'pawn',r:4,c:4}],
     black:[{type:'rook',r:0,c:2}],
   },
-  // ── LEVEL 2: Narrow Pass (7x3) ─────────────────────────────────────────────
+  // ── LEVEL 2: Narrow Pass (3x7) ─────────────────────────────────────────────
   {
     id:1, name:'Narrow Pass', desc:'Push through the corridor and destroy all enemies.',
     cols:3, rows:7, theme:'jungle',
@@ -21,7 +21,7 @@ const CAMPAIGN_LEVELS=[
     white:[{type:'pawn',r:6,c:0},{type:'pawn',r:6,c:2},{type:'knight',r:6,c:1}],
     black:[{type:'rook',r:0,c:1},{type:'pawn',r:1,c:0},{type:'pawn',r:1,c:2}],
   },
-  // ── LEVEL 3: Forest Ambush (7x7) ───────────────────────────────────────────
+  // ── LEVEL 3: Clash in the Dunes (11x8) ───────────────────────────────────────────
   {
     id:2, name:'Clash in the Dunes', desc:'A massive desert battle! Full chess-style armies with twin queens clash on an open field. Destroy the enemy king to win — but protect yours! No merging allowed.',
     cols:11, rows:8, theme:'desert',

@@ -86,11 +86,14 @@ function bMoveAll(dirStr){
   render();finishBlackTurn();
 }
 
-function strategy_pawn_troops(bKi,cands,bp){if(bp.pawns.length<6&&cands.length){if(bSpawn(bKi,cands))return;}bAdvance(['pawn']);}
-function strategy_knight_attack(bKi,cands,bp){if(bMerge('pawn','pawn','knight',3))return;if(bp.pawns.length<4&&cands.length){if(bSpawn(bKi,cands))return;}bAdvance(['knight','pawn']);}
-function strategy_pawn_knight(bKi,cands,bp){if(bp.pawns.length>=2&&bMerge('pawn','pawn','knight',2))return;if(bp.pawns.length<4&&cands.length){if(bSpawn(bKi,cands))return;}bAdvance(['pawn','knight']);}
-function strategy_bishop_pawn(bKi,cands,bp){if(bMerge('pawn','knight','bishop',2))return;if(bMerge('pawn','pawn','knight',2))return;if(bp.pawns.length<4&&cands.length){if(bSpawn(bKi,cands))return;}bAdvance(['bishop','pawn']);}
-function strategy_rook_pawn(bKi,cands,bp){if(bMergeQueen(1))return;if(bMerge('knight','knight','rook',1))return;if(bMerge('pawn','knight','bishop',1))return;if(bMerge('pawn','pawn','knight',2))return;if(bp.pawns.length<5&&cands.length){if(bSpawn(bKi,cands))return;}bAdvance(['rook','bishop','pawn']);}
+// Hard-mode build orders: merge/spawn per the strategy picked at game start; true if that used the turn
+// (hardTacticalAI moves pieces when the strategy has nothing to build)
+function strategy_pawn_troops(bKi,cands,bp){return bp.pawns.length<6&&cands.length>0&&bSpawn(bKi,cands);}
+function strategy_knight_attack(bKi,cands,bp){if(bMerge('pawn','pawn','knight',3))return true;return bp.pawns.length<4&&cands.length>0&&bSpawn(bKi,cands);}
+function strategy_pawn_knight(bKi,cands,bp){if(bp.pawns.length>=2&&bMerge('pawn','pawn','knight',2))return true;return bp.pawns.length<4&&cands.length>0&&bSpawn(bKi,cands);}
+function strategy_bishop_pawn(bKi,cands,bp){if(bMerge('pawn','knight','bishop',2))return true;if(bMerge('pawn','pawn','knight',2))return true;return bp.pawns.length<4&&cands.length>0&&bSpawn(bKi,cands);}
+function strategy_rook_pawn(bKi,cands,bp){if(bMergeQueen(1))return true;if(bMerge('knight','knight','rook',1))return true;if(bMerge('pawn','knight','bishop',1))return true;if(bMerge('pawn','pawn','knight',2))return true;return bp.pawns.length<5&&cands.length>0&&bSpawn(bKi,cands);}
+const HARD_BUILDS={pawn_troops:strategy_pawn_troops,knight_attack:strategy_knight_attack,pawn_knight:strategy_pawn_knight,bishop_pawn:strategy_bishop_pawn,rook_pawn:strategy_rook_pawn};
 
 function strategy_easy_rook_rush(bKi,cands,bp){
   if(bp.rooks.length===0&&bp.bishops.length===0&&bp.knights.length===0){
@@ -176,15 +179,8 @@ function movePieceToward(bi,wKi){
 
 function hardTacticalAI(bKi,cands,bp){
   const wKi=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='king');
-  // 1. try merges first
-  if(bMergeQueen(1))return;
-  if(bMerge('knight','knight','rook',1))return;
-  if(bMerge('pawn','knight','bishop',2))return;
-  if(bMerge('pawn','pawn','knight',3))return;
-  // 2. spawn if low on pieces
-  const total=bp.pawns.length+bp.knights.length+bp.bishops.length+bp.rooks.length;
-  if(cands.length>=2&&bp.pawns.length<3&&Math.random()<0.4){if(bSpawn(bKi,cands,2))return;}
-  if(total<5&&cands.length){if(bSpawn(bKi,cands))return;}
+  // 1-2. merge and spawn following the strategy picked at game start
+  if((HARD_BUILDS[aiStrategy]||strategy_rook_pawn)(bKi,cands,bp))return;
   // 3. coordinated wave: move pieces so they arrive at the white king at the same time
   if(wKi<0){bAdvance(null);return;}
   const allB=[];
@@ -535,31 +531,57 @@ function fallbackAI(){
 }
 
 function buildStateDesc(){
-  let s='BOARD:\n';for(let i=0;i<ROWS*COLS;i++){const p=pieces[i];if(p)s+=sqName(i)+': '+(p.color==='b'?'B':'W')+' '+p.type+' HP='+p.hp+'/'+p.maxHp+'\n';}
-  const bKi=pieces.findIndex(p=>p&&p.color==='b'&&p.type==='king');const bp=bPieces();const adjE=bKi>=0?adj8(bKi).filter(i=>!pieces[i]):[];
-  const stratDesc={pawn_troops:'Spam pawns, rush.',knight_attack:'Build knights, attack.',pawn_knight:'2 knights + pawn shields.',bishop_pawn:'Build bishops for healing+advance.',rook_pawn:'Full merge chain to rook.'}[aiStrategy]||'';
-  s+='\nSTRATEGY: '+stratDesc+'\nACTIONS (one only):\n1. PRODUCE <sq> available: '+(adjE.map(sqName).join(',')||'none')+'\n2. MOVE_ALL <DIR> N/S/E/W/NE/NW/SE/SW\n3. MERGE <sq1> <sq2> pawn+pawn=knight, pawn+knight=bishop, knight+bishop=rook\n   pairs: ';
-  const pairs=[];for(let a=0;a<bp.pawns.length;a++){for(let b=a+1;b<bp.pawns.length;b++)if(adj8(bp.pawns[a]).includes(bp.pawns[b]))pairs.push('pp:'+sqName(bp.pawns[a])+','+sqName(bp.pawns[b]));bp.knights.forEach(k=>{if(adj8(bp.pawns[a]).includes(k))pairs.push('pk:'+sqName(bp.pawns[a])+','+sqName(k));});}bp.knights.forEach((k,ki)=>bp.knights.forEach((k2,ki2)=>{if(ki2>ki&&adj8(k).includes(k2))pairs.push('kk:'+sqName(k)+','+sqName(k2));}));
+  let s='BOARD ('+COLS+'x'+ROWS+', files a-'+FILES[COLS-1]+', ranks 1-'+ROWS+'):\n';for(let i=0;i<ROWS*COLS;i++){const p=pieces[i];if(p)s+=sqName(i)+': '+(p.color==='b'?'B':'W')+' '+p.type+' HP='+p.hp+'/'+p.maxHp+'\n';}
+  const obstacles=[];for(let i=0;i<ROWS*COLS;i++){if(isTileBlocked(i))obstacles.push(sqName(i));}
+  s+='OBSTACLES: '+(obstacles.join(',')||'none')+'\n';
+  const bKi=pieces.findIndex(p=>p&&p.color==='b'&&p.type==='king');const bp=bPieces();const adjE=bKi>=0&&blackSpawnRemaining()>0?adj8(bKi).filter(i=>!pieces[i]&&!isTileBlocked(i)):[];
+  const stratDesc={pawn_troops:'Spam pawns, rush.',knight_attack:'Build knights, attack.',pawn_knight:'2 knights + pawn shields.',bishop_pawn:'Build bishops for healing+advance.',rook_pawn:'Climb the merge chain to rook and queen.'}[aiStrategy]||'';
+  s+='\nSTRATEGY: '+stratDesc+'\nACTIONS (one only):\n1. PRODUCE <sq> spawn a pawn next to your king; available: '+(adjE.map(sqName).join(',')||'none')+'\n2. MOVE_ALL <DIR> advance one pawn or knight toward N/S/E/W/NE/NW/SE/SW\n3. MERGE <sq1> <sq2> two adjacent pieces: pawn+pawn=knight, pawn+knight=bishop, knight+knight=rook, knight+bishop=queen, rook+rook=siege\n   pairs: ';
+  const pairs=[];
+  const addPairs=(tag,as,bs,same)=>as.forEach((a,ai)=>bs.forEach((b,bi)=>{if((!same||bi>ai)&&adj8(a).includes(b))pairs.push(tag+':'+sqName(a)+','+sqName(b));}));
+  addPairs('pp',bp.pawns,bp.pawns,true);addPairs('pk',bp.pawns,bp.knights);addPairs('kk',bp.knights,bp.knights,true);addPairs('kb',bp.knights,bp.bishops);addPairs('rr',bp.rooks,bp.rooks,true);
   s+=pairs.join('|')||'none';return s;
 }
 
+// Optional: with an API key entered, Claude picks Black's action on Hard. Any failure falls back to the built-in AI.
+const ANTHROPIC_SDK_URL='https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.125.0/+esm';
+let Anthropic=null;
 async function askClaude(){
   const key=document.getElementById('api-key').value.trim();
-  if(!key||difficulty==='easy'){fallbackAI();return;}
+  if(!key||difficulty!=='hard'){fallbackAI();return;}
+  // being hit is answered first, same as the built-in AI
+  if(reactiveAI())return;
+  let text='';
   try{
-    const h={'Content-Type':'application/json'};h['x-api-key']=key;
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:h,body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:48,system:'You play Black in a 12x12 strategy game. Files a-l, ranks 1-12. Follow your strategy. Reply ONE action only.',messages:[{role:'user',content:buildStateDesc()}]})});
-    const d=await r.json();applyBlackMove((d.content?.[0]?.text||'').trim());
-  }catch(e){fallbackAI();}
+    if(!Anthropic)Anthropic=(await import(ANTHROPIC_SDK_URL)).default;
+    const client=new Anthropic({apiKey:key,dangerouslyAllowBrowser:true,maxRetries:0,timeout:30000});
+    const response=await client.beta.messages.create({
+      model:'claude-opus-5',
+      max_tokens:2048,
+      output_config:{effort:'low'},
+      betas:['server-side-fallback-2026-07-01'],
+      fallbacks:'default',
+      system:'You play Black in a chess-like strategy game. Pieces auto-attack enemies in range at the end of each turn; destroy the White king. Follow your strategy. Latency-sensitive; begin your visible answer immediately. Reply with ONE action line only.',
+      messages:[{role:'user',content:buildStateDesc()}],
+    });
+    if(response.stop_reason==='refusal'){fallbackAI();return;}
+    text=response.content.filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+  }catch(e){
+    if(Anthropic&&e instanceof Anthropic.AuthenticationError)addLog('API key rejected — built-in AI plays');
+    fallbackAI();return;
+  }
+  applyBlackMove(text);
 }
 
 function aiAct(){if(isTutorialActive()){tutMoveEnemyOnce();setTimeout(()=>finishBlackTurn(),220);return;}askClaude();}
 
 function applyBlackMove(text){
+  // tolerate a short preamble before the action keyword
+  text=text.slice(Math.max(0,text.toUpperCase().search(/MERGE|MOVE_ALL|PRODUCE/)));
   const up=text.toUpperCase();const coords=text.match(/[a-lA-L](?:1[0-2]|[1-9])/g)||[];
   const bKi=pieces.findIndex(p=>p&&p.color==='b'&&p.type==='king');
-  if(up.startsWith('MERGE')&&coords.length>=2){const a=sqFrom(coords[0]),b=sqFrom(coords[1]),pa=pieces[a],pb=pieces[b];if(a>=0&&b>=0&&pa?.color==='b'&&pb?.color==='b'&&adj8(a).includes(b)){let nt=null;if(pa.type==='pawn'&&pb.type==='pawn')nt='knight';else if((pa.type==='pawn'&&pb.type==='knight')||(pa.type==='knight'&&pb.type==='pawn'))nt='bishop';else if((pa.type==='knight'&&pb.type==='bishop')||(pa.type==='bishop'&&pb.type==='knight'))nt='rook';if(nt){const nb2={type:nt,color:'b',hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};if(nt==='bishop')nb2.mana=1;pieces[a]=null;pieces[b]=nb2;addLog('Black merges->'+nt);render();mergeFlash(b);finishBlackTurn();return;}}}
+  if(up.startsWith('MERGE')&&coords.length>=2){const a=sqFrom(coords[0]),b=sqFrom(coords[1]),pa=pieces[a],pb=pieces[b];if(a>=0&&b>=0&&pa?.color==='b'&&pb?.color==='b'&&adj8(a).includes(b)){const nt={'pawn+pawn':'knight','knight+pawn':'bishop','knight+knight':'rook','bishop+knight':'queen','rook+rook':'siege'}[[pa.type,pb.type].sort().join('+')];if(nt){const nb2={type:nt,color:'b',hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};if(nt==='bishop')nb2.mana=1;if(nt==='siege')nb2.sieged=true;pieces[a]=null;pieces[b]=nb2;addLog('Black merges->'+nt);render();mergeFlash(b);finishBlackTurn();return;}}}
   if(up.startsWith('MOVE_ALL')){const dm=up.match(/\b(NE|NW|SE|SW|N|S|E|W)\b/);if(dm){bMoveAll(dm[1]);return;}}
-  if(up.startsWith('PRODUCE')&&coords.length>=1){const sq=sqFrom(coords[0]);if(sq>=0&&!pieces[sq]&&bKi>=0&&adj8(bKi).includes(sq)){pieces[sq]={type:'pawn',color:'b',hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp};addLog('Black spawns@'+sqName(sq));spawnFlash(sq);finishBlackTurn();return;}}
+  if(up.startsWith('PRODUCE')&&coords.length>=1){const sq=sqFrom(coords[0]);if(sq>=0&&!pieces[sq]&&!isTileBlocked(sq)&&blackSpawnRemaining()>0&&bKi>=0&&adj8(bKi).includes(sq)){pieces[sq]={type:'pawn',color:'b',hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,firstMove:true};blackSpawnHistory.push(blackTurnCount);addLog('Black spawns@'+sqName(sq));render();spawnFlash(sq);finishBlackTurn();return;}}
   fallbackAI();
 }

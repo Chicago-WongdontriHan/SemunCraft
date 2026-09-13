@@ -97,6 +97,7 @@ function handleTargetClick(i){
 function executeDrop(from,to,dests){
   if(!dests){render();return;}
   const p=pieces[from];
+  const tgts=myColor()==='w'?whiteTargets:blackTargets;
 
   // block merging if the current campaign level disallows it
   if(campaignLevel&&campaignLevel.noMerge&&dests.merge&&dests.merge.has(to)){
@@ -174,7 +175,7 @@ function executeDrop(from,to,dests){
         healBtn.style.cssText='padding:5px 12px;background:#0a2008;border:1px solid #3a7820;color:#80e040;border-radius:4px;cursor:pointer;font-size:12px;';
         healBtn.onclick=()=>{
           box.remove();
-          whiteTargets[from]=to;
+          tgts[from]=to;
           addLog('Bishop will heal '+pieces[to].type+'@'+sqName(to));
           setStatus('Bishop locked on heal target — fires at turn end.');
           SFX.select();tutCheckAction('heal');render();endTurn();
@@ -208,7 +209,7 @@ function executeDrop(from,to,dests){
       p.mana=Math.max(0,(p.mana||0)-1);
       p.lastHealTurn=whiteTurnCount;
       addLog('Bishop heals '+t.type+'@'+sqName(to)+' ('+p.mana+' mana left)');SFX.heal();
-      delete whiteTargets[from];
+      delete tgts[from];
       movedThisTurn=from;
       render();
       attackAnim(from,to,'heal',()=>{
@@ -228,7 +229,7 @@ function executeDrop(from,to,dests){
     else if(p.type==='rook'&&t.type==='rook')nt='siege';
     else if(p.type==='knight'&&t.type==='knight')nt='rook';
     if(nt){
-      delete whiteTargets[from]; delete whiteTargets[to];
+      delete tgts[from]; delete tgts[to];
       const newPiece={type:nt,color:p.color,hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};
       if(nt==='bishop')newPiece.mana=1;
       if(nt==='siege')newPiece.sieged=true;
@@ -284,14 +285,13 @@ function executeDrop(from,to,dests){
   }
   // if dropped on any enemy piece: set as priority target; if in range also attack now
   if(pieces[to]&&pieces[to].color!==myColor()&&!dests.attack.has(to)){
-    whiteTargets[from]=to;
-    whiteTargets[from]=to;
+    tgts[from]=to;
     addLog(p.type+' targets '+pieces[to].type+'@'+sqName(to));
     setStatus(p.type+' will fire at '+pieces[to].type+' when in range.');
     render();endTurn();return;
   }
   if(dests.attack.has(to)){
-    whiteTargets[from]=to;
+    tgts[from]=to;
     tutCheckAction('attack');
     addLog(p.type+' locked on '+pieces[to].type+'@'+sqName(to)+' (fires at turn end)');
     setStatus(p.type+' locked — attack fires at end of turn.');
@@ -299,7 +299,7 @@ function executeDrop(from,to,dests){
     render();endTurn();return;
   }
   if(dests.move.has(to)){
-    delete whiteTargets[from];
+    delete tgts[from];
     addLog(p.type+' moves to '+sqName(to));SFX.move();tutCheckAction('move');
     const _mv=pieces[from];
     if(_mv.type==='pawn')_mv.firstMove=false;
@@ -381,7 +381,7 @@ function handleClick(i){
 function doSpawn(){
   if(over||thinking||!isMyTurn())return;
   const mc=myColor();
-  if(spawnRemaining()<=0){setStatus('No spawn charges (next at turn '+(spawnUsed()-8)*4+4+')');return;}
+  if(spawnRemaining()<=0){setStatus('No spawn charges left (+1 in '+(6-whiteTurnCount%6)+' turns)');return;}
   const ki=pieces.findIndex(p=>p&&p.color===mc&&p.type==='king');
   const bKi=pieces.findIndex(p=>p&&p.color!==mc&&p.type==='king');
   if(ki<0)return;
@@ -392,21 +392,10 @@ function doSpawn(){
   addLog('Spawned pawn ('+spawnRemaining()+' left)');spawnFlash(best);SFX.spawn();tutCheckAction('spawn');endTurn();
 }
 
+// arrow keys: pieces only move by drag or tap, so point the player there
 function moveAll(dr,dc){
   if(over||thinking||!isMyTurn())return;
-  setStatus('Drag a piece to move it');return;
-  const mc=myColor();let all=[];
-  all.sort((a,b)=>dr>0?b-a:dr<0?a-b:dc>0?b-a:a-b);
-  let moved=0;
-  all.forEach(from=>{
-    if(!pieces[from])return;const p=pieces[from];
-    if(p.type==='pawn'){const nr=ROW(from)+dr,nc=COL(from)+dc;if(inB(nr,nc)&&!pieces[idx(nr,nc)]&&!isTileBlocked(idx(nr,nc))){pieces[idx(nr,nc)]=p;pieces[from]=null;moved++;}}
-    else if(p.type==='bishop'){for(let s=2;s>=1;s--){const nr=ROW(from)+dr*s,nc=COL(from)+dc*s;if(!inB(nr,nc))continue;if(s===2){const mr=ROW(from)+dr,mc2=COL(from)+dc;if(!inB(mr,mc2)||pieces[idx(mr,mc2)])continue;}const ti=idx(nr,nc);if(!pieces[ti]){pieces[ti]=p;pieces[from]=null;moved++;break;}}}
-    else if(p.type==='knight'){const dests=kJumps(from).filter(j=>!pieces[j]&&!isTileBlocked(j));if(!dests.length)return;const best=dests.reduce((a,b)=>{const sa=(ROW(b)-ROW(from))*dr+(COL(b)-COL(from))*dc,sb=(ROW(a)-ROW(from))*dr+(COL(a)-ROW(from))*dc;return sa>sb?b:a;});if((ROW(best)-ROW(from))*dr+(COL(best)-COL(from))*dc>0){pieces[best]=p;pieces[from]=null;moved++;}}
-    else if(p.type==='rook'){const dirs=[[-1,0],[1,0],[0,-1],[0,1]];const bd=dirs.reduce((a,b)=>a[0]*dr+a[1]*dc>b[0]*dr+b[1]*dc?a:b);const[rd,rc]=bd;if(rd*dr+rc*dc>0){for(let s=3;s>=1;s--){const nr=ROW(from)+rd*s,nc=COL(from)+rc*s;if(!inB(nr,nc))continue;const ti=idx(nr,nc);if(!pieces[ti]){pieces[ti]=p;pieces[from]=null;moved++;break;}}}}
-  });
-  const dn={'-10':'N','10':'S','01':'E','0-1':'W','-11':'NE','-1-1':'NW','11':'SE','1-1':'SW'}[dr+''+dc]||'';
-  addLog('Marches '+dn+' ('+moved+')');endTurn();
+  setStatus('Drag a piece to move it');
 }
 
 function doMergeAll(){

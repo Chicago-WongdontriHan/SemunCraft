@@ -177,10 +177,10 @@ const TUTORIAL_STEPS=[
       const wKn=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='knight');
       if(wKn>=0){render();tutHighlightPiece(wKn);}
       if(manaLeft>0){
-        document.getElementById('tut-desc').textContent='The knight gained 2 HP! Bishop still has '+manaLeft+' mana — you can heal again, or attack the enemy knight with your knight.';
+        document.getElementById('tut-desc').textContent='The knight is healed! Bishop still has '+manaLeft+' mana — you can heal again, or attack the enemy knight with your knight.';
         document.getElementById('tut-hint').textContent='Heal again or attack the enemy knight!';
       }else{
-        document.getElementById('tut-desc').textContent='The knight is healed by 1 HP! The bishop is now out of mana — it will recover 1 mana every 3 turns. Now attack the enemy knight with your knight to finish the fight!';
+        document.getElementById('tut-desc').textContent='The knight is healed! The bishop is now out of mana — it will recover 1 mana every 3 turns. Now attack the enemy knight with your knight to finish the fight!';
         document.getElementById('tut-hint').textContent='Drag your knight onto the enemy knight to attack!';
       }
       document.getElementById('tut-title').textContent='Bishop Heals \u2657 \u2192 Knight Fights!';

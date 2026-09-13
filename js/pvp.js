@@ -33,7 +33,7 @@ function newPeerWithTurn(id){
 
 function myColor(){ if(!pvpActive)return 'w'; return pvpRole==='host'?'w':'b'; }
 function isMyTurn(){ return turn===myColor(); }
-function broadcastState(winner){ if(!pvpActive||!conn||!conn.open)return; conn.send(JSON.stringify({type:'state',pieces,turn,over,winner:winner||null,wt:whiteTargets,bt:blackTargets,blf:blackLastFrom,blt:blackLastTo})); }
+function broadcastState(winner){ if(!pvpActive||!conn||!conn.open)return; conn.send(JSON.stringify({type:'state',pieces,turn,over,winner:winner||null,wt:whiteTargets,bt:blackTargets,blf:blackLastFrom,blt:blackLastTo,tiles:tileData,theme:mapTheme,log:logLines})); }
 
 function initBC(){ try{bc=new BroadcastChannel('kingdom-pvp-lobby');}catch(e){bc=null;return;} bc.onmessage=e=>{ const msg=e.data; if(msg.type==='list?'&&myPeerId&&!pvpActive) bc.postMessage({type:'room',id:myPeerId,name:bcRoomName||'Room '+myPeerId.slice(0,6)}); if(msg.type==='room'&&collectingRooms&&!document.querySelector('.room-entry[data-id="'+msg.id+'"]')) addRoomEntry(msg.id,msg.name);
       if(msg.type==='room'&&collectingRooms) addPvpLobbyRoom(msg.id,msg.name); }; }
@@ -42,7 +42,28 @@ function addRoomEntry(id,name){ const list=document.getElementById('room-list');
 function hostGame(){ if(peer)peer.destroy(); pvpActive=false; myPeerId=null; if(!bc)initBC(); bcRoomName='Room '+Math.random().toString(36).slice(2,6).toUpperCase(); peer=newPeerWithTurn(); peer.on('open',id=>{ myPeerId=id; document.getElementById('room-id-display').textContent=bcRoomName+' ('+id.slice(0,8)+')'; setPvpStatus('waiting...','#a8c050'); if(bc)bc.postMessage({type:'room',id,name:bcRoomName}); const ann=setInterval(()=>{ if(!myPeerId||pvpActive){clearInterval(ann);return;} if(bc)bc.postMessage({type:'room',id,name:bcRoomName}); },2000); peer.on('connection',c=>{ clearInterval(ann); conn=c; pvpRole='host'; pvpActive=true; conn.on('data',onPeerData); conn.on('close',()=>{pvpActive=false;setPvpStatus('disconnected','#c05030');}); setPvpStatus('connected','#90e040'); initGame(); }); }); peer.on('error',e=>setPvpStatus('error','#c05030')); }
 function refreshRooms(){ if(!bc)initBC(); if(!bc){setPvpStatus('not supported','#c05030');return;} collectingRooms=true; setPvpStatus('scanning...','#a8c050'); const list=document.getElementById('room-list'); list.innerHTML='<div class="room-entry empty">scanning...</div>'; bc.postMessage({type:'list?'}); setTimeout(()=>{ collectingRooms=false; if(!list.querySelectorAll('.room-entry:not(.empty)').length) list.innerHTML='<div class="room-entry empty">no rooms found</div>'; setPvpStatus('done','#8ab840'); },1500); }
 function joinRoom(roomId){ if(peer)peer.destroy(); peer=newPeerWithTurn(); peer.on('open',()=>{ conn=peer.connect(roomId); pvpRole='guest'; setPvpStatus('connecting...','#a8c050'); conn.on('open',()=>{ pvpActive=true; conn.on('data',onPeerData); conn.on('close',()=>{pvpActive=false;setPvpStatus('disconnected','#c05030');}); setPvpStatus('connected','#90e040'); initGame(); }); conn.on('error',()=>setPvpStatus('join failed','#c05030')); }); peer.on('error',()=>setPvpStatus('peer error','#c05030')); }
-function onPeerData(raw){ const msg=JSON.parse(raw); if(msg.type==='state'){ pieces=msg.pieces.map(p=>p?{...p}:null); turn=msg.turn; over=msg.over; whiteTargets=msg.wt||{}; blackTargets=msg.bt||{}; blackLastFrom=msg.blf||-1; blackLastTo=msg.blt||-1; render(); syncUI(); if(over)setStatus(msg.winner==='w'?'White wins! ♔':'Black wins! ♚'); else setStatus(isMyTurn()?'Your turn':'Opponent turn...'); } }
+function onPeerData(raw){
+  const msg=JSON.parse(raw);
+  // guest pressed Rematch: the host deals a fresh board
+  if(msg.type==='rematch'){ if(pvpRole==='host'){hideGameOver();initGame();broadcastState(null);} return; }
+  if(msg.type!=='state')return;
+  const wasOver=over;
+  pieces=msg.pieces.map(p=>p?{...p}:null); turn=msg.turn; over=msg.over; whiteTargets=msg.wt||{}; blackTargets=msg.bt||{}; blackLastFrom=msg.blf||-1; blackLastTo=msg.blt||-1;
+  // the host owns the map: adopt its terrain and theme
+  if(msg.tiles)tileData=msg.tiles.slice();
+  if(msg.theme&&msg.theme!==mapTheme){mapTheme=msg.theme;document.body.className='theme-'+mapTheme;resizeBoard();}
+  if(msg.log){logLines=msg.log.slice(-4);document.getElementById('log').textContent=logLines.join(' · ');}
+  if(over){
+    render(); syncUI();
+    setStatus(msg.winner==='w'?'White wins! ♔':'Black wins! ♚');
+    if(!wasOver){const won=msg.winner===myColor();if(won)SFX.win();else SFX.lose();setTimeout(()=>showGameOver(won?'win':'lose'),600);}
+    return;
+  }
+  hideGameOver(); // a new board (rematch) closes the result screen
+  if(isMyTurn())turnUpkeep();
+  render(); syncUI();
+  setStatus(isMyTurn()?'Your turn':'Opponent turn...');
+}
 
 // ── PVP LOBBY ────────────────────────────────────────────────────────────────
 function showPvpLobby(){
@@ -85,6 +106,8 @@ function pvpLobbyHost(){
       setPvpLobbyStatus('Connected!','#90e040');
       document.getElementById('pvp-lobby').classList.remove('show');
       startGame('pvp');
+      // send the host's board (pieces, terrain, theme) to the guest once the channel is open
+      if(conn.open)broadcastState(null);else conn.on('open',()=>broadcastState(null));
     });
   });
   peer.on('error',()=>setPvpLobbyStatus('error','#c05030'));

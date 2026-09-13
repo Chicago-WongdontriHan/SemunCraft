@@ -27,7 +27,7 @@ function render(){
     else if(pp.type==='bishop'){const d=getDragDests(pi);zone=[...d.move,...d.attack];}
     else if(pp.type==='rook')zone=rookRange(pi);
     else if(pp.type==='siege')zone=siegeRange(pi);
-    else if(pp.type==='queen'){const d=getDragDests(pi);zone=[...d.move,...d.attack];}
+    else if(pp.type==='queen')zone=queenRange(pi);
     else if(pp.type==='king')zone=adj8(pi);
     zone.forEach(j=>{
       if(!auraMap.has(j)) auraMap.set(j,{cls:pp.type+'-'+pp.color,count:1});

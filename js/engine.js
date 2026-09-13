@@ -989,7 +989,7 @@ const SemunEngine={
   // playing
   newGame,legalActions,step,botTurn,clone,isLegal,
   // rule queries
-  getDests,computeActions,spawnRemaining,visible,campaignResult,
+  getDests,computeActions,spawnRemaining,visible,fogFor,campaignResult,
   // helpers and data
   generateMap,makeRandom,nextRandom,sqName,cheb,geo,STATS,STRATEGIES,THEME_OBSTACLE,
 };

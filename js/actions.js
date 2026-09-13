@@ -4,22 +4,11 @@ function animatePieceMove(fromIdx,toIdx,pieceType,pieceColor,isBlack,cb,dur){
   const board=document.getElementById('board');
   if(!board){cb();return;}
   const fc=sqCenter(fromIdx), tc=sqCenter(toIdx);
-  const sz=Math.max(14,Math.floor(sqPx*.72));
+  const sz=Math.max(14,Math.floor(sqPx*.86));
   const el=document.createElement('div');
   el.style.cssText='position:fixed;pointer-events:none;z-index:350;transform:translate(-50%,-50%);'
-    +'left:'+fc.x+'px;top:'+fc.y+'px;'
-    +'font-size:'+sz+'px;line-height:1;'
-    +(isBlack?'width:'+sz+'px;height:'+sz+'px;':'');
-  if(isBlack){
-    el.innerHTML=buildBlackPieceSVG(pieceType,sz);
-  }else if(pieceType==='siege'){
-    el.style.width=sz+'px';el.style.height=sz+'px';
-    el.innerHTML=buildWhiteSiegeSVG(sz);
-  }else{
-    el.textContent=GLYPH[pieceType+'_'+pieceColor]||'?';
-    el.style.color=pieceColor==='w'?'#fff':'#1a0e04';
-    el.style.textShadow='0 0 6px rgba(0,0,0,.8)';
-  }
+    +'left:'+fc.x+'px;top:'+fc.y+'px;width:'+sz+'px;height:'+sz+'px;';
+  el.innerHTML=pieceSVG(pieceType,pieceColor,mapTheme,sz);
   document.body.appendChild(el);
 
   // knight: arc trajectory via Web Animations

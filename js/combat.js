@@ -285,12 +285,7 @@ function showDeath(sqIdx, color, type){
   const d=document.createElement('div');
   d.className='death-piece';
   d.style.cssText='position:fixed;pointer-events:none;z-index:800;left:'+cx+'px;top:'+cy+'px;font-size:'+fs+';color:'+(color==='w'?'#fff':'#1a0e04')+';text-shadow:0 0 8px '+(color==='w'?'rgba(255,255,200,.9)':'rgba(255,100,30,.9)')+';';
-  if(type==='siege'){
-    const sz=Math.max(16,Math.floor(sqPx*.65));
-    d.innerHTML=color==='w'?buildWhiteSiegeSVG(sz):buildBlackPieceSVG('siege',sz);
-  }else{
-    d.textContent=GLYPH[type+'_'+color]||'✕';
-  }
+  d.innerHTML=pieceSVG(type,color,mapTheme,Math.max(16,Math.floor(sqPx*.86)));
   document.body.appendChild(d);
   setTimeout(()=>{burst.remove();d.remove();},700);
 }

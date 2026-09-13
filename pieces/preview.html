@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SemunCraft piece sets</title>
+<style>
+body{margin:0;padding:20px;background:#1b1712;color:#f3e6c8;font-family:Georgia,serif;}
+h1{margin:0 0 4px;font-variant:small-caps;letter-spacing:.06em;}
+p{margin:0 0 18px;color:#bba986;font-size:14px;max-width:760px;}
+section{margin-bottom:26px;}
+h2{margin:0 0 8px;font-variant:small-caps;letter-spacing:.05em;}
+.row{display:flex;}
+.cell{width:96px;height:96px;display:flex;align-items:center;justify-content:center;}
+.labels{display:flex;margin-top:4px;}
+.labels span{width:96px;text-align:center;font-size:12px;color:#bba986;}
+.small .cell{width:40px;height:40px;}
+.silhouette .cell{background:#efe6d2;}
+.silhouette svg{filter:brightness(0);}
+</style>
+</head>
+<body>
+<h1>Piece sets</h1>
+<p>Each piece type has its own shape and size, the same in every set; a theme only changes colours and the ground a piece stands on.
+The silhouette row shows the pieces as solid shapes — every type should still be recognisable there.
+Designs live in pieces/pieces.js (shapes) and pieces/&lt;theme&gt;.js — edit and reload this page.</p>
+<div id="sets"></div>
+<script src="pieces.js"></script>
+<script src="jungle.js"></script>
+<script src="desert.js"></script>
+<script src="ocean.js"></script>
+<script>
+const TILES={jungle:['#7a9e4c','#4a6e28'],desert:['#c8a84a','#a07828'],ocean:['#4a80c8','#2a5898']};
+const TYPES=['pawn','knight','bishop','rook','queen','king','siege'];
+const labels=`<div class="labels">${TYPES.map(t=>`<span>${t}</span>`).join('')}</div>`;
+const rows=(theme,px,cls)=>['w','b'].map((c,ci)=>`<div class="row ${cls}">`
+  +TYPES.map((t,ti)=>`<div class="cell" style="background:${TILES[theme][(ti+ci)%2]}">${pieceSVG(t,c,theme,px)}</div>`).join('')+'</div>').join('');
+document.getElementById('sets').innerHTML=
+  `<section><h2>silhouettes</h2><div class="row silhouette">${TYPES.map(t=>`<div class="cell">${pieceSVG(t,'w','jungle',80)}</div>`).join('')}</div>${labels}</section>`
+  +Object.keys(TILES).map(theme=>`<section><h2>${theme}</h2>${rows(theme,80,'')}${labels}`
+    +`<div style="margin-top:8px">${rows(theme,34,'small')}</div></section>`).join('');
+</script>
+</body>
+</html>

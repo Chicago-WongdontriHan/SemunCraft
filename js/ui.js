@@ -78,7 +78,8 @@ function renderPcCards(){
   slice.forEach((d,i)=>{
     if(i>0){const div=document.createElement('div');div.className='tier-divider';wrap.appendChild(div);}
     const card=document.createElement('div');card.className='piece-card';
-    card.innerHTML='<div class="piece-card-row"><span class="pc-glyph pc-glyph-w">'+d.gw+'</span><span class="pc-glyph pc-glyph-b">'+d.gb+'</span></div>'
+    const px=Math.max(18,Math.floor((window.lastPf||10)*2.2)),type=d.name.toLowerCase();
+    card.innerHTML='<div class="piece-card-row">'+pieceSVG(type,'w',mapTheme,px)+pieceSVG(type,'b',mapTheme,px)+'</div>'
       +'<div class="pc-name">'+d.name+'</div><div class="pc-stats">'+d.stats+'</div>';
     wrap.appendChild(card);
   });

@@ -149,26 +149,16 @@ function render(){
       const p=(dragging&&i===dragSrc)?null:pieces[i];
       if(!p&&prodTgts.has(i)){
         const div=document.createElement('div');div.className='piece piece-ghost';
-        const gl=document.createElement('span');gl.className='glyph glyph-'+mc;gl.textContent='♙';
-        div.appendChild(gl);sq.appendChild(div);
+        div.innerHTML=pieceSVG('pawn',mc,mapTheme,Math.floor(sqPx*.86));
+        sq.appendChild(div);
       }else if(p){
         const div=document.createElement('div');div.className='piece';
         if(p.newborn){const aura=document.createElement('div');aura.className='newborn-aura';div.appendChild(aura);}
-        if(p.color==='b'){
-          const svgWrap=document.createElement('div');
-          svgWrap.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:1;';
-          svgWrap.innerHTML=buildBlackPieceSVG(p.type,sqPx);
-          div.appendChild(svgWrap);
-        }else if(p.type==='siege'){
-          const sz=Math.floor(sqPx*.82);
-          const svgWrap=document.createElement('div');
-          svgWrap.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:1;';
-          svgWrap.innerHTML=buildWhiteSiegeSVG(sz);
-          div.appendChild(svgWrap);
-        }else{
-          const gl=document.createElement('span');gl.className='glyph glyph-'+p.color;
-          gl.textContent=GLYPH[p.type+'_'+p.color]||'?';div.appendChild(gl);
-        }
+        // piece artwork comes from the map theme's set in pieces/
+        const svgWrap=document.createElement('div');
+        svgWrap.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:1;';
+        svgWrap.innerHTML=pieceSVG(p.type,p.color,mapTheme,Math.floor(sqPx*.86));
+        div.appendChild(svgWrap);
         const bar=document.createElement('div');bar.className='hp-bar';
 
         for(let h=0;h<p.maxHp;h++){const pip=document.createElement('div');pip.className='hp-pip '+(h<p.hp?'full-':'empty-')+p.color;pip.style.width=pipW;pip.style.height=pipH;bar.appendChild(pip);}

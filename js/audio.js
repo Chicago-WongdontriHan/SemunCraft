@@ -20,48 +20,7 @@ function toggleBgm(){
 }
 
 // ── BGM: procedural ambient loop ──────────────────────────────────────────────
-const BGM_SCALES={
-  jungle:[220,246,261,293,329,349,392],
-  desert:[196,220,247,262,294,330,349],
-  ocean: [174,196,220,246,261,293,330],
-};
-let bgmTimeout=null;
-
-function startBgm(){
-  if(bgmPlaying)return;
-  bgmPlaying=true;
-  const ctx=getAudioCtx();
-  function playNote(){
-    if(!bgmPlaying)return;
-    const scale=BGM_SCALES[mapTheme]||BGM_SCALES.jungle;
-    const freq=scale[Math.floor(Math.random()*scale.length)]*(Math.random()<.3?2:1);
-    const dur=1.2+Math.random()*1.8;
-    const osc=ctx.createOscillator();
-    const env=ctx.createGain();
-    osc.type=Math.random()<.5?'sine':'triangle';
-    osc.frequency.value=freq;
-    env.gain.setValueAtTime(0,ctx.currentTime);
-    env.gain.linearRampToValueAtTime(bgmVol*0.18,ctx.currentTime+0.3);
-    env.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);
-    osc.connect(env);env.connect(bgmGain);
-    osc.start(ctx.currentTime);osc.stop(ctx.currentTime+dur+.1);
-    bgmNodes.push({osc,env});
-    // cleanup
-    setTimeout(()=>{bgmNodes=bgmNodes.filter(n=>n.osc!==osc);},((dur+.2)*1000)|0);
-    // schedule next note
-    const gap=400+Math.random()*900;
-    bgmTimeout=setTimeout(playNote,gap);
-  }
-  playNote();
-}
-
-function stopBgm(){
-  bgmPlaying=false;
-  if(bgmTimeout){clearTimeout(bgmTimeout);bgmTimeout=null;}
-  const ctx=audioCtx;
-  if(ctx)bgmNodes.forEach(n=>{try{n.osc.stop(ctx.currentTime+.1);}catch(e){}});
-  bgmNodes=[];
-}
+// startBgm() / stopBgm() live in music.js (medieval dance tunes per map theme)
 
 // ── SFX ──────────────────────────────────────────────────────────────────────
 function playTone(freq,dur,type='square',vol=1){

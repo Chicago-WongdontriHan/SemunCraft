@@ -173,7 +173,7 @@ Three selectable themes that change visuals, obstacles, ambient wildlife, and ba
 
 ## Audio
 
-- **Procedural BGM**: Randomly plays notes from a theme-specific musical scale using the Web Audio API (oscillators + envelopes). No audio files needed.
+- **Medieval BGM** (`js/music.js`): each map theme has its own dance tune in a medieval mode -- a lively D Dorian estampie (jungle), a slow E Phrygian lament on shawm (desert) and a lilting 6/8 A Aeolian carol (ocean). They're played on synthesized recorder/shawm, lute, drone and frame drum with the Web Audio API, in an AA'BB' dance form with random grace-note ornaments. No audio files needed.
 - **SFX**: All sound effects are synthesized in real-time (spawn, move, attack, hit, kill, merge, heal, win, lose, etc.).
 - Volume controls for BGM and SFX are available in the settings modal.
 
@@ -222,18 +222,25 @@ SemunCraft/
   SemunCraft_Explained.md
   arXiv/
     SemunCraft_old.html -- Original single-file version (untracked backup)
+  pieces/               -- Piece artwork, one set per map theme
+    pieces.js           -- pieceSVG(): piece silhouettes, team colours with per-type tints,
+                           outline/halo, faces
+    jungle.js           -- jungle colours and ground (grass, flower)
+    desert.js           -- desert colours and ground (sand, cactus)
+    ocean.js            -- ocean colours and ground (ripples, bubbles)
+    preview.html        -- gallery of every set plus a solid-silhouette check
   js/
     constants.js        -- Board dimensions (COLS/ROWS, 9x9 by default), coordinate helpers
                            (idx, ROW, COL, adj8, kJumps), range functions, piece glyphs & stats
     state.js            -- Global state: game state (pieces, turn, over), spawn quotas, drag
                            state, viewport, fog of war, campaign, PvP and AI state, piece cards
-    audio.js            -- Web Audio API: procedural BGM synthesis (theme-specific
-                           scales), all SFX (spawn, attack, merge, heal, etc.),
-                           volume controls
+    audio.js            -- Web Audio API: audio context, all SFX (spawn, attack, merge,
+                           heal, etc.), volume controls
+    music.js            -- Medieval background music: per-theme modal tunes on synthesized
+                           recorder/shawm, lute, drone and drum (startBgm, stopBgm)
     movement.js         -- isTileBlocked(), getDragDests() (valid moves/merges/attacks/heals
                            per piece), BFS pathfinding (stepToward, getPath), queenRange()
     themes.js           -- THEMES object (jungle/desert/ocean tile types, colors, animals),
-                           THEME_SVG_DECOS (themed enemy piece art), buildBlackPieceSVG(),
                            selectMap(), generateMap()
     render.js           -- render() (rebuilds the visible board DOM: fog, auras, highlights),
                            sqElAt(), flashSq(), spawnFlash(), mergeFlash()
@@ -276,21 +283,23 @@ The scripts are loaded in a specific order in `SemunCraft.html` because later fi
 
 1. `constants.js` -- everything depends on `idx`, `adj8`, `ROWS`, `COLS`
 2. `state.js` -- declares all globals (`pieces`, `turn`, `animals`, etc.)
-3. `audio.js` -- `SFX` object used by many modules
-4. `movement.js` -- `isTileBlocked`, `getDragDests` needed by render/combat
-5. `themes.js` -- `THEMES`, `generateMap` needed by game init
-6. `render.js` -- `render()`, `flashSq()` needed by combat/actions
-7. `combat.js` -- `computeActions`, `executeActions` needed by game turn flow
-8. `animals.js` -- animal loop functions needed by game init
-9. `actions.js` -- `executeDrop`, `handleClick` needed by drag handlers
-10. `ui.js` -- `syncUI`, `setStatus` needed by game/tutorial
-11. `tutorial.js` -- tutorial system (calls render, actions, UI)
-12. `campaign.js` -- level data and campaign flow (calls render, UI)
-13. `pvp.js` -- `myColor`, `isMyTurn` needed by game/drag
-14. `ai.js` -- AI strategies (calls combat, movement, render)
-15. `game.js` -- `initGame`, `endTurn` (orchestrates everything)
-16. `drag.js` -- event listeners (calls executeDrop, handleClick)
-17. `resize.js` -- window listeners (calls resizeBoard, render)
+3. `audio.js` -- `SFX` object and the audio context used by many modules
+4. `music.js` -- `startBgm` / `stopBgm` (uses the audio context from audio.js)
+5. `pieces/pieces.js`, then `pieces/jungle.js`, `desert.js`, `ocean.js` -- `pieceSVG` used by render, drag, actions, combat and ui
+6. `movement.js` -- `isTileBlocked`, `getDragDests` needed by render/combat
+7. `themes.js` -- `THEMES`, `generateMap` needed by game init
+8. `render.js` -- `render()`, `flashSq()` needed by combat/actions
+9. `combat.js` -- `computeActions`, `executeActions` needed by game turn flow
+10. `animals.js` -- animal loop functions needed by game init
+11. `actions.js` -- `executeDrop`, `handleClick` needed by drag handlers
+12. `ui.js` -- `syncUI`, `setStatus` needed by game/tutorial
+13. `tutorial.js` -- tutorial system (calls render, actions, UI)
+14. `campaign.js` -- level data and campaign flow (calls render, UI)
+15. `pvp.js` -- `myColor`, `isMyTurn` needed by game/drag
+16. `ai.js` -- AI strategies (calls combat, movement, render)
+17. `game.js` -- `initGame`, `endTurn` (orchestrates everything)
+18. `drag.js` -- event listeners (calls executeDrop, handleClick)
+19. `resize.js` -- window listeners (calls resizeBoard, render)
 
 ---
 
@@ -301,4 +310,4 @@ The scripts are loaded in a specific order in `SemunCraft.html` because later fi
 - Drag-and-drop is implemented via mouse/touch events with a floating ghost element; on touch screens the drag starts on touchstart so iOS doesn't cancel the gesture.
 - Attack animations use flying emoji projectiles, SVG spears and cannonballs, and SVG arrow overlays.
 - Board auto-resizes to fit the viewport, with separate portrait and landscape mobile layouts.
-- Black pieces get **theme-specific SVG decorations** (vines for jungle, scarabs for desert, tentacles for ocean).
+- Pieces are drawn as SVG from the `pieces/` folder. Each type has its own cute silhouette and size: a small round pawn, a horse-head knight, a mitred bishop with a green healing cross and a staff, a castle rook, a queen in a wide gown with a spiked crown, a broad bearded king with a cross-topped crown, and a cannon cart for the siege tower. Bodies use the team colour (light White, dark Black) with a slight tint per type -- knights bluish, bishops greenish, rooks brick, queens pink, kings gold, siege towers stone. A dark outline plus a contrasting halo keeps them readable on any tile. Map themes only change crown/gem colours and the ground under each piece: grass and a flower (jungle), sand and a cactus (desert), ripples and bubbles (ocean). Open `pieces/preview.html` to see every set, including a solid-silhouette check.

@@ -41,8 +41,7 @@ document.addEventListener('mousemove',e=>{
   if(!dragging&&p&&p.color===myColor()&&Math.hypot(e.clientX-mouseDownX,e.clientY-mouseDownY)>5){
     dragging=true;dragSrc=mouseDownI;dragDests=getDragDests(dragSrc);
     const g=document.getElementById('ghost');
-    if(p.type==='siege'){g.textContent='';g.innerHTML=buildWhiteSiegeSVG(Math.floor(sqPx*.72));}
-    else{g.innerHTML='';g.textContent=GLYPH[p.type+'_'+p.color];g.style.color=p.color==='w'?'#fff':'#1a0e04';}
+    g.textContent='';g.innerHTML=pieceSVG(p.type,p.color,mapTheme,Math.floor(sqPx*.86));
     g.style.display='block';render();
   }
   if(dragging){const g=document.getElementById('ghost');g.style.left=e.clientX+'px';g.style.top=e.clientY+'px';}
@@ -134,8 +133,7 @@ document.getElementById('board').addEventListener('touchstart',e=>{
     // start drag immediately — show ghost at finger, compute destinations
     dragging=true;dragSrc=i;dragDests=getDragDests(i);
     const g=document.getElementById('ghost');
-    if(p.type==='siege'){g.textContent='';g.innerHTML=buildWhiteSiegeSVG(Math.floor(sqPx*.72));}
-    else{g.innerHTML='';g.textContent=GLYPH[p.type+'_'+p.color];g.style.color=p.color==='w'?'#fff':'#1a0e04';}
+    g.textContent='';g.innerHTML=pieceSVG(p.type,p.color,mapTheme,Math.floor(sqPx*.86));
     const yOff=isMobile()?-20:0;
     g.style.left=x+'px';g.style.top=(y+yOff)+'px';
     g.style.display='block';

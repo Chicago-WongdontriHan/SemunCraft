@@ -107,17 +107,21 @@ The core progression mechanic. Drag one piece onto an adjacent ally to merge the
 
 ## AI
 
-- **Easy mode** (`easy_rook_rush`): Spawns pawns, merges to knights, merges to a rook, then charges.
-- **Hard mode** picks one strategy at random at game start (shown in the log). The strategy decides what to merge and when to spawn:
+- **Single Player** (🌿 Easy, ⚔ Medium, 🔥 Hard): Black is a neural network trained by reinforcement learning (see Trained AI Opponents below). Easy and Medium are early checkpoints of the first training run; Hard is the network from the end of an 8-hour continuation.
+  - **Easy** (update 100): beats the built-in Easy AI in about 90% of games but loses to the built-in Hard AI.
+  - **Medium** (update 400): beats the built-in Hard AI in about 75% of games.
+  - **Hard** (update 10,547): beats the built-in Hard AI in 99.7% of games, and the network it continued from (update 929) in 98.7%.
+- **Built-in AI** (`ai.js`): the scripted opponents. They play the campaign, and Single Player turns if the trained network can't load. Easy (`easy_rook_rush`) spawns pawns, merges to knights, merges to a rook, then charges.
+- **Built-in Hard AI** picks one strategy at random at game start. The strategy decides what to merge and when to spawn:
   - `pawn_troops` -- Swarm with pawns (up to 6), no merging.
   - `knight_attack` -- Merge pawns into up to 3 knights.
   - `pawn_knight` -- Up to 2 knights with pawn support.
   - `bishop_pawn` -- Build up to 2 bishops (and the knights to make them).
   - `rook_pawn` -- Climb the merge chain to a rook and a queen.
-- When its strategy has nothing to merge or spawn, Hard mode moves with `hardTacticalAI`: one piece per turn, farthest from your King first so the army arrives together; pieces already in attack range hold position.
+- When its strategy has nothing to merge or spawn, the built-in Hard AI moves with `hardTacticalAI`: one piece per turn, farthest from your King first so the army arrives together; pieces already in attack range hold position.
 - **Campaign** uses `campaignAI`: no spawning; it repositions threatened pieces (to counter-attack or retreat), otherwise advances toward your King (or your nearest piece if there's no King).
-- **Reactive behavior** (all modes except the tutorial): When a black piece is hit and the AI cannot attack back from its current position, it either moves a piece that can counter-attack the attacker, or flees from the position under attack. The choice is random, but if the attacking piece's HP is no higher than the victim's, the AI prefers attacking.
-- **Claude (optional)**: On Hard, enter an Anthropic API key in the top bar and Claude (`claude-opus-5`, via the Anthropic SDK loaded from a CDN) picks Black's action each turn, guided by the chosen strategy. The reactive behavior still runs first. Refusals fall back server-side (`fallbacks: "default"`); if the key is rejected or a request fails, the built-in Hard AI plays that turn.
+- **Reactive behavior** (the built-in AI and Claude): When a black piece is hit and the AI cannot attack back from its current position, it either moves a piece that can counter-attack the attacker, or flees from the position under attack. The choice is random, but if the attacking piece's HP is no higher than the victim's, the AI prefers attacking.
+- **Claude (optional)**: On Hard, enter an Anthropic API key in the top bar and Claude (`claude-opus-5`, via the Anthropic SDK loaded from a CDN) picks Black's action each turn instead of the trained network, guided by a strategy picked at game start (shown in the log). The reactive behavior still runs first. Refusals fall back server-side (`fallbacks: "default"`); if the key is rejected, a request fails or the reply isn't a usable action, the trained network plays that turn.
 
 ---
 
@@ -265,9 +269,10 @@ SemunCraft/
     pvp.js              -- PeerJS multiplayer: myColor(), isMyTurn(), broadcastState(),
                            onPeerData(), lobby (host / find rooms / join by ID),
                            BroadcastChannel discovery
-    ai.js               -- Black AI: pickStrategy(), Hard build orders (strategy_*),
-                           easy_rook_rush, hardTacticalAI(), reactiveAI(), campaignAI(),
-                           fallbackAI(), optional Claude opponent (askClaude, applyBlackMove)
+    ai.js               -- Black AI: aiAct() (who plays Black's turn), pickStrategy(), the
+                           built-in AI (Hard build orders strategy_*, easy_rook_rush,
+                           hardTacticalAI(), reactiveAI(), campaignAI(), fallbackAI()) and
+                           the optional Claude opponent (askClaude, applyBlackMove)
     game.js             -- Core game flow: startGame(), initGame(), startWhiteTurn(),
                            turnUpkeep(), endTurn() (single-player: white attacks -> black
                            attacks -> AI turn; PvP: mover's attacks -> send state),
@@ -277,14 +282,17 @@ SemunCraft/
     resize.js           -- resizeBoard() (responsive desktop/mobile layout), window
                            resize/load/keydown event listeners
     engine.js           -- Headless rules engine: the same rules with no DOM or timers and
-                           seeded randomness, for AI training, tests and AI vs AI (see
+                           seeded randomness, for AI training, tests and the trained AI (see
                            Headless Engine below)
     nn.js               -- the trained policy network in plain JavaScript; runs the weights
                            in models/
+    netai.js            -- trained AI: loads the engine, network and weights when needed and
+                           plays Black's turn in Single Player (see Trained AI Opponents below)
     aivsai.js           -- AI vs AI mode: watch the two most-trained networks play (see
                            AI vs AI below)
   models/               -- trained networks for the browser, written by rl/export_web.py
-    ai-1.js, ai-2.js    -- the two most-trained networks (half-precision weights)
+    easy.js, medium.js  -- early checkpoints, played by the Easy and Medium difficulties
+    ai-1.js, ai-2.js    -- the two most-trained networks (Hard plays ai-1)
   rl/                   -- Reinforcement learning environment (see Reinforcement Learning
                            Environment below)
     encoding.js         -- board -> network input planes and network output -> engine
@@ -305,6 +313,8 @@ SemunCraft/
                            virtual clock
     parity.test.js      -- plays identical games through the original code and the
                            engine and compares the state after every action
+    netai.test.js       -- Single Player games with Black's moves applied by js/netai.js,
+                           compared with the engine after every turn
     engine.test.js      -- determinism, rule invariants and speed of the engine
     encoding.test.js    -- action indices, the rotated view for Black, observation
                            planes and the worker protocol
@@ -313,7 +323,7 @@ SemunCraft/
 
 ### Headless Engine
 
-`js/engine.js` holds the game rules without the browser: no DOM, no timers, and all randomness drawn from a seed stored in the game state, so games can be simulated fast and replayed exactly. It loads as a classic script (global `SemunEngine`) or in Node (`require('./js/engine.js')`). The regular game modes don't use it yet (only AI vs AI does); until they do, the parity tests keep the two in step.
+`js/engine.js` holds the game rules without the browser: no DOM, no timers, and all randomness drawn from a seed stored in the game state, so games can be simulated fast and replayed exactly. It loads as a classic script (global `SemunEngine`) or in Node (`require('./js/engine.js')`). The regular game still runs its own rules: the engine runs AI vs AI and applies the trained AI's moves in Single Player, and the parity tests keep the two in step.
 
 ```js
 const E = require('./js/engine.js');
@@ -322,13 +332,17 @@ const actions = E.legalActions(s);              // [{ type, from, to }, ...]
 E.step(s, actions[0]);                          // applies it plus any end-of-turn attacks; returns events
 E.botTurn(s);                                   // classic mode only: Black's turn by the built-in AI
 const copy = E.clone(s);
+// a state rebuilt from the browser game's variables (js/netai.js), and one action applied without
+// the attacks that follow it; continues is true when the same side moves again (knight L-jump merge)
+const t = E.fromSnapshot({ cols: 9, rows: 9, board, tiles, turn: 'b', turnCount, spawns, targets, hitBy, acted });
+const { events, continues } = E.act(t, E.legalActions(t)[0]);
 ```
 
 - **Modes:** `classic` is the single-player order (White acts, White fires, Black fires, Black acts). In `pvp`, each side acts and then its own pieces fire, the same for both colors, which suits self-play.
 - **Actions:** `move`, `merge`, `target` (lock onto an enemy), `heal`, `healLock` (a bishop dropped on a wounded adjacent knight, choosing Heal), `spawn`, `unsiege` and `skip`. After a knight's L-jump merge the same side moves again.
 - **Built-in AI:** Easy, the five Hard strategies and the campaign AI are ported with their quirks and draw random numbers in the same order as `ai.js`.
 - **Not modelled yet:** animals, group moves and free right-click targeting. The engine also refuses spawns in campaign levels; the game only disables the Spawn button there, so clicking the King still spawns.
-- **Tests** (need Node.js, not the game): `node tests/parity.test.js [seeds] [section]` and `node tests/engine.test.js [games]`. Random self-play runs at about 90,000 actions per second on one CPU core.
+- **Tests** (need Node.js, not the game): `node tests/parity.test.js [seeds] [section]`, `node tests/netai.test.js [games]` and `node tests/engine.test.js [games]`. Random self-play runs at about 90,000 actions per second on one CPU core.
 
 ### Reinforcement Learning Environment
 
@@ -359,18 +373,30 @@ with SemunCraftVecEnv(num_envs=64, config={"mode": "classic", "levels": [0, 1]})
 
 1. **Easy:** White against the Easy AI, until it wins 90% of its last 400 games.
 2. **Hard:** White against the Hard AI (a random strategy each game), with a quarter of the games still against Easy, until it wins 75%.
-3. **League:** half the games are self-play in the single-player turn order, with the agent on either color against its current network or one of its 10 most recent snapshots; the rest stay against Easy (10%) and Hard (40%). The game's AI plays Black in that order, so this is where the agent learns to play Black.
+3. **League:** most games are self-play in the single-player turn order, with the agent on either color; the rest stay against Easy (`--league-easy`, 10%) and Hard (`--league-hard`, 40%). The game's AI plays Black in that order, so this is where the agent learns to play Black. A self-play opponent is the current network (`--latest-prob`, half the games), one of the last `--pool` (10) snapshots, or, with `--hall-every N`, a hall of fame of snapshots from every N-th update that are never dropped (`--hall-prob`). Only 4 recent snapshots and 1 hall-of-fame network are in play at a time, swapped every 10 updates (`--active-opponents`, `--refresh-opponents`), so each step runs only a handful of networks.
 
-A stage also ends after 400 updates without reaching its win rate. Shaping starts at 0.5 and fades to 0 over the first 400 league updates, leaving only win/loss rewards. The network has 6 residual blocks of 96 channels (about a million parameters) and plays 192 games at a time.
+A stage also ends after 400 updates without reaching its win rate. Shaping starts at 0.5 and fades to 0 over the first 400 league updates, leaving only win/loss rewards. The network has 6 residual blocks of 96 channels (about a million parameters) and plays 192 games at a time. On CUDA it trains in bfloat16 mixed precision with channels-last tensors, about 2.7× faster per minibatch than float32 on an RTX 4080. `--lr-end` and `--entropy-end` lower the learning rate and the entropy bonus linearly over the run's `--minutes`.
 
 ```bash
 python rl/train.py --minutes 60
 python rl/train.py --resume <run folder>/latest.pt --minutes 60
+# the 8-hour continuation behind the Hard AI
+python rl/train.py --resume <run folder>/latest.pt --minutes 480 --lr-end 5e-5 --entropy-end 0.002 --league-easy 0.05 --league-hard 0.15 --pool 20 --snapshot-every 100 --latest-prob 0.4 --hall-every 1000 --hall-prob 0.2 --eval-every 500
 ```
 
-- **Output:** a new folder under `%LOCALAPPDATA%\semuncraft-rl\runs` (outside Google Drive) with `log.csv` (win rates by opponent, entropy, speed), `eval.csv`, `snapshots/` (every 50 updates, plus `league_start.pt`), `latest.pt` (everything needed to resume) and `final.pt` (the network's weights).
-- **Evaluation:** every 200 updates, 100 games from the same seeds each time against Easy and against Hard (with win rates by strategy); in the league stage also against the network from the start of the league and from the previous evaluation, by color.
-- **Stopping:** a run ends after `--minutes`. `latest.pt` is saved with every snapshot, so killing the process loses at most 50 updates.
+- **Output:** a new folder under `%LOCALAPPDATA%\semuncraft-rl\runs` (outside Google Drive) with `log.csv` (win rates by opponent, entropy, learning rate, speed), `eval.csv`, `snapshots/` (every `--snapshot-every` updates, 50 by default, plus `league_start.pt` and `run_start_<update>.pt`), `latest.pt` (everything needed to resume) and `final.pt` (the network's weights).
+- **Evaluation:** every 200 updates (`--eval-every`), 100 games from the same seeds each time against Easy and against Hard (with win rates by strategy); in the league stage also, by color, against the network from the start of the league, the network from the start of this run (twice: sampling moves as in training, and with the trained network always playing its most likely move) and the network from the previous evaluation.
+- **Stopping:** a run ends after `--minutes`. `latest.pt` is saved with every snapshot, so killing the process loses at most one snapshot interval.
+- **The runs behind the browser AIs:** the first run (60 minutes) passed the Easy stage at update 99 and the Hard stage at 365, then played the league until update 929 (11.4M training moves); Easy and Medium are its updates 100 and 400. The 8-hour continuation started from its last network and reached update 10,547 (129.6M training moves, 3.05M games, about 4,200 moves per second). From update 1,500 on, it won 93–100% of its evaluation games against the built-in Hard AI and 90–100% against the network it started from; at its last two evaluations it won every game against Easy and Hard and 98–100% against its starting network.
+
+### Trained AI Opponents
+
+In Single Player a trained network plays Black. **Easy** plays `models/easy.js` (update 100 of the first training run) and **Medium** `models/medium.js` (update 400); both pick moves by sampling their policy, as in training. **Hard** plays `models/ai-1.js`, the last network of the 8-hour run (update 10,547), at temperature 0.25: it leans toward its most likely moves but keeps some variety. Over 1,000 games each against itself playing normally, temperatures 0, 0.05, 0.25, 0.5 and 1 scored within a few points of each other, and 0.25 scored best (53%, counting draws as half); at every temperature it beat the built-in Hard AI in 99.5–99.7% of games. It beats the network the run started from (update 929) in 98.7% of games, Medium and Easy in 99.8–99.9%, and its own checkpoints from updates 10,000, 9,000, 8,000 and 6,000 by 54–36, 57–30, 64–22 and 80–9 (wins–losses per 100 games; the rest were draws).
+
+- **How a turn works:** `js/netai.js` turns the game's variables (pieces, terrain, turn counters, spawns, target locks) into an engine state with `SemunEngine.fromSnapshot`, the network picks a legal move, and `SemunEngine.act` applies just that move. The board and target locks are copied back into the game, the move is animated and logged, and the game's own `finishBlackTurn()` carries on, so attacks and upkeep still run through the original code. After a knight's L-jump merge the network moves again. `tests/netai.test.js` plays games through this path (random moves stand in for the network) and checks the game against the engine after every turn.
+- **Who plays Black** (`aiAct()` in `ai.js`): the scripted enemy in the tutorial, the built-in campaign AI in the campaign, Claude on Hard when an API key is entered, and the trained network otherwise. If a network can't load, the built-in AI plays the turn.
+- **Loading:** starting a game loads the engine, `rl/encoding.js`, `js/nn.js` and that difficulty's weights (2.8 MB) in the background; if Black's first turn comes first, the status shows "Loading the AI…" until they arrive. A move takes about 100 ms. The network sees the whole board, as in training (no fog of war), and doesn't see animals.
+- **Changing the models:** the difficulty → model table is `NETAI_LEVELS` at the top of `js/netai.js`. `python rl/export_web.py --checkpoints <run folder>/snapshots/update_000100.pt <run folder>/snapshots/update_000400.pt --names easy medium` writes Easy and Medium; `--run <run folder>` writes `ai-1` and `ai-2` (see below).
 
 ### AI vs AI
 
@@ -378,8 +404,8 @@ python rl/train.py --resume <run folder>/latest.pt --minutes 60
 
 - **How it runs:** matches are simulated by `js/engine.js` (the game's rules, checked by the parity tests) and drawn on the normal board: pieces slide, hits flash and the log lists every move. Both AIs play in the single-player turn order and pick moves by sampling their policy, as in training. There's no fog of war and there are no animals.
 - **Controls:** Pause, Speed (1×, 2×, 4× or 8×; at 4× and faster, animations and sounds are skipped) and New Match take the place of Spawn, Merge and Skip. Menu ends the match.
-- **Files:** `js/aivsai.js` is the mode. The first time it starts, it loads `js/engine.js`, `rl/encoding.js`, `js/nn.js` (the network in plain JavaScript, about 100 ms per move) and the weights in `models/ai-1.js` and `models/ai-2.js` (half precision, 2.8 MB each). This works on GitHub Pages and from a double-clicked `SemunCraft.html`.
-- **Updating the AIs:** `python rl/export_web.py --run <run folder>` exports a run's two most-trained networks to `models/` (AI #1 is the newer one) and checks `js/nn.js` against PyTorch on real positions. Bump the `?v=` version in `SemunCraft.html` when you publish new weights.
+- **Files:** `js/aivsai.js` is the mode. The first time it starts, it loads (through `js/netai.js`) `js/engine.js`, `rl/encoding.js`, `js/nn.js` (the network in plain JavaScript, about 100 ms per move) and the weights in `models/ai-1.js` and `models/ai-2.js` (half precision, 2.8 MB each). This works on GitHub Pages and from a double-clicked `SemunCraft.html`.
+- **Updating the AIs:** `python rl/export_web.py --run <run folder>` exports a run's two most-trained networks to `models/` (AI #1 is the newer one, and also plays Hard) and checks `js/nn.js` against PyTorch on real positions. Bump the `?v=` version in `SemunCraft.html` when you publish new weights.
 
 ### Script Load Order
 
@@ -404,7 +430,8 @@ The scripts are loaded in a specific order in `SemunCraft.html` because later fi
 17. `game.js` -- `initGame`, `endTurn` (orchestrates everything)
 18. `drag.js` -- event listeners (calls executeDrop, handleClick)
 19. `resize.js` -- window listeners (calls resizeBoard, render)
-20. `aivsai.js` -- AI vs AI mode (calls render, UI and animation helpers; loads `engine.js`, `rl/encoding.js`, `nn.js` and the trained weights only when started)
+20. `netai.js` -- trained AI (called by `ai.js` and `game.js` during play; loads `engine.js`, `rl/encoding.js`, `nn.js` and the trained weights only when a game needs them)
+21. `aivsai.js` -- AI vs AI mode (calls render, UI and animation helpers; gets the networks from `netai.js`)
 
 ---
 

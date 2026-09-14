@@ -1,8 +1,11 @@
 // ── AI ────────────────────────────────────────────────────────────────────────
 function pickStrategy(){
-  if(difficulty==='easy'){ aiStrategy='easy_rook_rush'; addLog('Enemy: rook rush'); return; }
-  aiStrategy=STRATEGIES[Math.floor(Math.random()*STRATEGIES.length)];
-  addLog('Enemy: '+aiStrategy.replace(/_/g,' '));
+  if(difficulty==='easy')aiStrategy='easy_rook_rush';
+  else aiStrategy=STRATEGIES[Math.floor(Math.random()*STRATEGIES.length)];
+  // the strategy guides the built-in AI and Claude; the trained network (js/netai.js) doesn't use one
+  const claude=difficulty==='hard'&&document.getElementById('api-key').value.trim();
+  if(!claude&&typeof NETAI_LEVELS!=='undefined'&&NETAI_LEVELS[difficulty])addLog('Enemy: trained AI · '+difficulty[0].toUpperCase()+difficulty.slice(1));
+  else addLog('Enemy: '+(claude?'Claude · ':'')+(difficulty==='easy'?'rook rush':aiStrategy.replace(/_/g,' ')));
 }
 
 function bPieces(){const r={pawns:[],knights:[],bishops:[],rooks:[],queens:[]};for(let i=0;i<ROWS*COLS;i++){const p=pieces[i];if(!p||p.color!=='b')continue;if(p.type==='pawn')r.pawns.push(i);if(p.type==='knight')r.knights.push(i);if(p.type==='bishop')r.bishops.push(i);if(p.type==='rook')r.rooks.push(i);if(p.type==='queen')r.queens.push(i);}return r;}
@@ -564,16 +567,29 @@ async function askClaude(){
       system:'You play Black in a chess-like strategy game. Pieces auto-attack enemies in range at the end of each turn; destroy the White king. Follow your strategy. Latency-sensitive; begin your visible answer immediately. Reply with ONE action line only.',
       messages:[{role:'user',content:buildStateDesc()}],
     });
-    if(response.stop_reason==='refusal'){fallbackAI();return;}
+    if(response.stop_reason==='refusal'){aiFallback();return;}
     text=response.content.filter(b=>b.type==='text').map(b=>b.text).join('').trim();
   }catch(e){
-    if(Anthropic&&e instanceof Anthropic.AuthenticationError)addLog('API key rejected — built-in AI plays');
-    fallbackAI();return;
+    if(Anthropic&&e instanceof Anthropic.AuthenticationError)addLog('API key rejected — the trained AI plays');
+    aiFallback();return;
   }
   applyBlackMove(text);
 }
 
-function aiAct(){if(isTutorialActive()){tutMoveEnemyOnce();setTimeout(()=>finishBlackTurn(),220);return;}askClaude();}
+// Black's turn: the tutorial's scripted enemy, the campaign AI, Claude on Hard when an API key is
+// entered, and otherwise the trained network for the chosen difficulty (js/netai.js)
+function aiAct(){
+  if(isTutorialActive()){tutMoveEnemyOnce();setTimeout(()=>finishBlackTurn(),220);return;}
+  const claude=difficulty==='hard'&&document.getElementById('api-key').value.trim();
+  if(!campaignLevel&&!claude&&typeof netAiTurn==='function'){netAiTurn();return;}
+  askClaude();
+}
+
+// when Claude can't play: the trained network if it's loaded on this page, otherwise the built-in AI
+function aiFallback(){
+  if(!campaignLevel&&typeof netAiTurn==='function')netAiTurn();
+  else fallbackAI();
+}
 
 function applyBlackMove(text){
   // tolerate a short preamble before the action keyword
@@ -583,5 +599,5 @@ function applyBlackMove(text){
   if(up.startsWith('MERGE')&&coords.length>=2){const a=sqFrom(coords[0]),b=sqFrom(coords[1]),pa=pieces[a],pb=pieces[b];if(a>=0&&b>=0&&pa?.color==='b'&&pb?.color==='b'&&adj8(a).includes(b)){const nt={'pawn+pawn':'knight','knight+pawn':'bishop','knight+knight':'rook','bishop+knight':'queen','rook+rook':'siege'}[[pa.type,pb.type].sort().join('+')];if(nt){const nb2={type:nt,color:'b',hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};if(nt==='bishop')nb2.mana=1;if(nt==='siege')nb2.sieged=true;pieces[a]=null;pieces[b]=nb2;addLog('Black merges->'+nt);render();mergeFlash(b);finishBlackTurn();return;}}}
   if(up.startsWith('MOVE_ALL')){const dm=up.match(/\b(NE|NW|SE|SW|N|S|E|W)\b/);if(dm){bMoveAll(dm[1]);return;}}
   if(up.startsWith('PRODUCE')&&coords.length>=1){const sq=sqFrom(coords[0]);if(sq>=0&&!pieces[sq]&&!isTileBlocked(sq)&&blackSpawnRemaining()>0&&bKi>=0&&adj8(bKi).includes(sq)){pieces[sq]={type:'pawn',color:'b',hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,firstMove:true};blackSpawnHistory.push(blackTurnCount);addLog('Black spawns@'+sqName(sq));render();spawnFlash(sq);finishBlackTurn();return;}}
-  fallbackAI();
+  aiFallback();
 }

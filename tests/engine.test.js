@@ -89,6 +89,30 @@ section('illegal actions are rejected',()=>{
   for(const a of bad){let threw=false;try{E.step(E.clone(s),a);}catch(e){threw=true;}if(!threw)fail('accepted '+JSON.stringify(a));}
 });
 
+section('fromSnapshot rebuilds a state, and act() applies just the action',()=>{
+  const pick=E.makeRandom(21);
+  let checked=0,kept=0;
+  for(let n=0;n<40;n++){
+    const s=E.newGame({seed:900+n,mode:n%2?'pvp':'classic',theme:['jungle','desert','ocean'][n%3],maxTurns:200});
+    while(!s.over){
+      if(s.mode==='classic'&&s.turn==='b'&&n%4===0){E.botTurn(s);continue;}
+      const r=E.fromSnapshot({cols:s.cols,rows:s.rows,theme:s.theme,mode:s.mode,board:s.board,tiles:s.tiles,turn:s.turn,
+        turnCount:s.turnCount,spawns:s.spawns,targets:s.targets,hitBy:s.hitBy,acted:s.acted,fog:s.fog,maxTurns:s.maxTurns});
+      for(const k of ['board','tiles','blocked','turn','turnCount','spawns','targets','mode','fog'])
+        if(JSON.stringify(r[k])!==JSON.stringify(s[k])){fail('fromSnapshot differs in '+k);return;}
+      const acts=E.legalActions(s),a=acts[Math.floor(pick()*acts.length)];
+      const lJump=a.type==='merge'&&s.board[a.from].type==='knight'&&E.geo(s).kj[a.from].includes(a.to);
+      const res=E.act(r,a),events=E.step(s,a);
+      if(res.continues!==lJump)fail('continues should be '+lJump+' after '+JSON.stringify(a));
+      if(JSON.stringify(res.events[0])!==JSON.stringify(events[0]))fail('act and step describe '+JSON.stringify(a)+' differently');
+      // a merge that keeps the turn has no end-of-turn work, so both must leave the same board
+      if(lJump){kept++;if(JSON.stringify(r.board)!==JSON.stringify(s.board))fail('boards differ after an L-jump merge');}
+      checked++;
+    }
+  }
+  return checked+' actions, '+kept+' kept the turn';
+});
+
 section('speed',()=>{
   const pick=E.makeRandom(1);
   let steps=0,games=0;const t0=Date.now();

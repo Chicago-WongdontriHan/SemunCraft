@@ -985,9 +985,36 @@ function botTurn(s){
   return events;
 }
 
+// fromSnapshot(data) builds a state from plain data, such as the browser game's own variables:
+// {cols, rows, theme, mode, board, tiles, turn, turnCount, spawns, targets, hitBy, acted, level, fog, maxTurns}
+function fromSnapshot(o){
+  const s={cols:o.cols,rows:o.rows,theme:o.theme||'jungle',mode:o.mode==='pvp'?'pvp':'classic',difficulty:o.difficulty||'hard',
+    board:o.board.map(p=>p&&Object.assign({},p)),tiles:null,blocked:null,turn:o.turn||'w',over:false,winner:null,
+    turnCount:{w:o.turnCount.w,b:o.turnCount.b},spawns:{w:o.spawns.w,b:o.spawns.b},
+    targets:{w:Object.assign({},o.targets.w),b:Object.assign({},o.targets.b)},moved:-1,
+    hitBy:(o.hitBy||[]).map(h=>({target:h.target,attacker:h.attacker})),acted:(o.acted||[]).slice(),
+    level:o.level||null,fog:!!o.fog,maxTurns:o.maxTurns||0,strategy:o.strategy||null,animals:[],rng:o.seed|0};
+  const n=s.cols*s.rows;
+  s.tiles=new Array(n).fill('');
+  s.blocked=new Array(n).fill(false);
+  for(let i=0;i<n;i++)if(o.tiles&&o.tiles[i])setTile(s,i,o.tiles[i]);
+  return s;
+}
+
+// act(state, action) applies one action for the side to move without the end-of-turn attacks and
+// upkeep, for a game loop that runs those itself (the browser's trained AI). Returns {events,
+// continues}: continues is true when the same side acts again (a knight's L-jump merge).
+function act(s,a,opts){
+  if(s.over)throw new Error('the game is over');
+  if(!(opts&&opts.trusted)&&!isLegal(s,a))throw new Error('illegal action '+JSON.stringify(a));
+  const events=[];
+  const continues=applyAction(s,a,events);
+  return{events,continues};
+}
+
 const SemunEngine={
   // playing
-  newGame,legalActions,step,botTurn,clone,isLegal,
+  newGame,legalActions,step,botTurn,clone,isLegal,fromSnapshot,act,
   // rule queries
   getDests,computeActions,spawnRemaining,visible,fogFor,campaignResult,
   // helpers and data

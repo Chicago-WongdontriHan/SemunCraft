@@ -2,36 +2,18 @@
 // Watch the two most-trained networks (models/ai-1.js and models/ai-2.js, written by
 // rl/export_web.py) play each other. Matches run in the headless engine (js/engine.js:
 // the game's rules, checked against this game by tests/parity.test.js) and are drawn
-// on the normal board. The engine, network and weights (about 6 MB) load the first time.
-const AIVSAI_VERSION=((document.currentScript&&/[?&]v=([^&]+)/.exec(document.currentScript.src))||[])[1]||'';
-const AIVSAI_FILES=[
-  ['js/engine.js',()=>window.SemunEngine],
-  ['rl/encoding.js',()=>window.SemunEncoding],
-  ['js/nn.js',()=>window.SemunNet],
-  ['models/ai-1.js',()=>window.SemunModels&&window.SemunModels['ai-1']],
-  ['models/ai-2.js',()=>window.SemunModels&&window.SemunModels['ai-2']],
-];
+// on the normal board. The code and weights (about 6 MB) load through js/netai.js the first time.
 const AIVSAI_SPEEDS=[1,2,4,8];
 const AIVSAI_DELAY=700; // ms between moves at 1× speed
 let aiVsAi=null;        // the match being watched
 let aiVsAiNets=null,aiVsAiEncoder=null;
 let aiVsAiSpeed=1,aiVsAiMatches=0,aiVsAiScore={1:0,2:0,draw:0};
 
-function aiVsAiLoadScript(src){
-  return new Promise((resolve,reject)=>{
-    const el=document.createElement('script');
-    el.src=src+(AIVSAI_VERSION?'?v='+AIVSAI_VERSION:'');
-    el.onload=resolve;
-    el.onerror=()=>reject(new Error('could not load '+src));
-    document.head.appendChild(el);
-  });
-}
-
 async function aiVsAiLoad(){
   if(aiVsAiNets)return;
-  for(const[src,loaded]of AIVSAI_FILES)if(!loaded())await aiVsAiLoadScript(src);
-  aiVsAiEncoder=SemunEncoding.createEncoder({grid:11});
-  aiVsAiNets={1:SemunNet.load(SemunModels['ai-1']),2:SemunNet.load(SemunModels['ai-2'])};
+  const[first,second]=await Promise.all([netAiLoadModel('ai-1'),netAiLoadModel('ai-2')]);
+  aiVsAiEncoder=netAiEncoder;
+  aiVsAiNets={1:first,2:second};
 }
 
 async function startAiVsAi(){

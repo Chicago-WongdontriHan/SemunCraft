@@ -1,7 +1,9 @@
 // ── GAME ─────────────────────────────────────────────────────────────────────
 function startGame(mode){
   gameMode=mode;
-  difficulty=mode==='hard'?'hard':mode==='pvp'?'pvp':'easy';
+  difficulty=mode==='hard'?'hard':mode==='medium'?'medium':mode==='pvp'?'pvp':'easy';
+  // start loading this difficulty's trained network (js/netai.js)
+  if(mode!=='pvp'&&typeof netAiPreload==='function')netAiPreload();
   // reset board size and campaign state for non-campaign modes
   campaignLevel=null; campaignLevelId=-1;
   COLS=9; ROWS=9;

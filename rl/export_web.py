@@ -1,12 +1,12 @@
 """Export trained SemunCraft networks for the browser game.
 
-Takes the two most-trained networks of a training run (or two checkpoint files), writes
-their policy weights as half-precision JavaScript files that the game loads on demand
-(models/ai-1.js is the most trained, models/ai-2.js the next), then checks js/nn.js
-against PyTorch on real positions.
+Writes networks' policy weights as half-precision JavaScript files that the game loads on
+demand, then checks js/nn.js against PyTorch on real positions. --run takes a training run's
+two most-trained networks (models/ai-1.js is the most trained, models/ai-2.js the next);
+--checkpoints takes any files, named with --names (ai-1, ai-2, ... by default).
 
     python rl/export_web.py --run %LOCALAPPDATA%/semuncraft-rl/runs/step3-run
-    python rl/export_web.py --checkpoints newest.pt older.pt
+    python rl/export_web.py --checkpoints run/snapshots/update_000100.pt run/snapshots/update_000400.pt --names easy medium
 """
 import argparse
 import base64
@@ -60,14 +60,13 @@ def architecture(state):
     return {"channels": state["stem.weight"].shape[1], "width": state["stem.weight"].shape[0], "blocks": blocks}
 
 
-def export(state, info, name, label, source, out_dir):
+def export(state, info, name, source, out_dir):
     tensors, chunks = [], []
     for key, value in state.items():
         if key.startswith(POLICY):
             tensors.append([key, list(value.shape)])
-            chunks.append(value.detach().cpu().to(torch.float16).numpy().astype("<f2").tobytes())
-    meta = dict(info, name=name, label=label, source=source, grid=11,
-                exported=datetime.date.today().isoformat(), **architecture(state))
+            chunks.append(value.detach().cpu().contiguous().to(torch.float16).numpy().astype("<f2").tobytes())
+    meta = dict(info, name=name, source=source, grid=11, exported=datetime.date.today().isoformat(), **architecture(state))
     body = {"meta": meta, "dtype": "float16", "tensors": tensors, "data": base64.b64encode(b"".join(chunks)).decode()}
     path = os.path.join(out_dir, name + ".js")
     with open(path, "w", newline="\n") as f:
@@ -112,22 +111,25 @@ def check(exported, workdir):
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     group = p.add_mutually_exclusive_group(required=True)
-    group.add_argument("--run", help="training run folder: export its two most-trained networks")
-    group.add_argument("--checkpoints", nargs=2, metavar="PT", help="two checkpoint files, most trained first")
+    group.add_argument("--run", help="training run folder: export its two most-trained networks as ai-1 and ai-2")
+    group.add_argument("--checkpoints", nargs="+", metavar="PT", help="checkpoint files to export")
+    p.add_argument("--names", nargs="+", help="model names for --checkpoints (default ai-1, ai-2, ...)")
     p.add_argument("--out", default=os.path.join(ROOT, "models"))
     args = p.parse_args()
 
     paths = newest_two(args.run) if args.run else args.checkpoints
+    names = args.names or ["ai-%d" % i for i in range(1, len(paths) + 1)]
+    if len(names) != len(paths):
+        raise SystemExit("give one name per checkpoint")
     os.makedirs(args.out, exist_ok=True)
     exported = []
-    for rank, path in enumerate(paths, 1):
+    for name, path in zip(names, paths):
         state, info = load_checkpoint(path)
-        source = os.path.join(os.path.basename(os.path.dirname(os.path.abspath(path))), os.path.basename(path))
-        if args.run:
-            source = os.path.basename(os.path.abspath(args.run)) + "/" + os.path.relpath(path, args.run).replace(os.sep, "/")
-        out, meta = export(state, info, "ai-%d" % rank, "AI #%d" % rank, source, args.out)
+        folder = os.path.abspath(args.run) if args.run else os.path.dirname(os.path.dirname(os.path.abspath(path)))
+        source = os.path.basename(folder) + "/" + os.path.relpath(os.path.abspath(path), folder).replace(os.sep, "/")
+        out, meta = export(state, info, name, source, args.out)
         exported.append((out, state))
-        print("%s: %s, update %s, %.1f MB" % (out, source, meta.get("update", "?"), os.path.getsize(out) / 1e6))
+        print("%s: %s, update %s, %.1f MB" % (out, source, meta.get("update", "?"), os.path.getsize(out) / 1e6), flush=True)
     with tempfile.TemporaryDirectory() as workdir:
         sys.exit(check(exported, workdir))
 

@@ -48,6 +48,8 @@ class PolicyValueNet(nn.Module):
         self.value_head = nn.Sequential(nn.Linear(width, width), nn.ReLU(), nn.Linear(width, 1))
 
     def forward(self, obs):
+        if self.stem.weight.is_contiguous(memory_format=torch.channels_last):
+            obs = obs.contiguous(memory_format=torch.channels_last)
         x = self.body(F.relu(self.stem(obs)))
         board = obs[:, ON_BOARD:ON_BOARD + 1]
         pooled = (x * board).sum((2, 3)) / board.sum((2, 3)).clamp(min=1.0)
@@ -56,15 +58,19 @@ class PolicyValueNet(nn.Module):
         return torch.cat([logits, self.skip_logit(pooled)], 1), self.value_head(pooled).squeeze(1)
 
 
+def autocast(device, enabled):
+    """bfloat16 mixed precision on CUDA when enabled; no effect on the CPU."""
+    return torch.autocast(device_type=device.type, dtype=torch.bfloat16, enabled=bool(enabled) and device.type == "cuda")
+
+
 def masked_dist(logits, masks):
     """Distribution over all actions with the illegal ones masked out."""
     return torch.distributions.Categorical(logits=logits.masked_fill(~masks, -1e9))
 
 
 def legal_dist(logits, legal, counts):
-    """The same distribution restricted to each row's legal actions, which is far cheaper than a softmax
-    over all 9,923: legal is (batch, k) action indices whose first counts[i] entries are valid, and the
-    distribution's outcomes are positions in that list."""
+    """The same distribution restricted to each row's legal actions: legal is (batch, k) action indices
+    whose first counts[i] entries are valid, and the distribution's outcomes are positions in that list."""
     valid = torch.arange(legal.shape[1], device=legal.device)[None, :] < counts[:, None]
     return torch.distributions.Categorical(logits=logits.gather(1, legal).masked_fill(~valid, -1e9))
 
@@ -86,8 +92,8 @@ class Rollout:
 class Runner:
     """Plays the current policy in a vector env and fills rollouts."""
 
-    def __init__(self, env, device):
-        self.env, self.device = env, device
+    def __init__(self, env, device, amp=False):
+        self.env, self.device, self.amp = env, device, amp
         self.obs = torch.as_tensor(env.reset(), device=device)
         self.done = torch.zeros(env.num_envs, device=device)
 
@@ -97,12 +103,13 @@ class Runner:
         for t in range(rollout.steps):
             legal, counts = (torch.as_tensor(x, device=device) for x in env.legal_actions())
             with torch.no_grad():
-                logits, value = net(self.obs)
-                dist = legal_dist(logits, legal, counts)
+                with autocast(device, self.amp):
+                    logits, value = net(self.obs)
+                dist = legal_dist(logits.float(), legal, counts)
                 pick = dist.sample()
                 action = legal.gather(1, pick[:, None]).squeeze(1)
             rollout.obs[t], rollout.legal[t], rollout.counts[t], rollout.picks[t] = self.obs, legal, counts, pick
-            rollout.logp[t], rollout.values[t], rollout.dones[t] = dist.log_prob(pick), value, self.done
+            rollout.logp[t], rollout.values[t], rollout.dones[t] = dist.log_prob(pick), value.float(), self.done
             obs, reward, done, infos = env.step(action.cpu().numpy())
             rollout.rewards[t] = torch.as_tensor(reward, device=device)
             if on_game_end is not None:
@@ -110,14 +117,15 @@ class Runner:
                     on_game_end(i, infos[i])
             self.obs = torch.as_tensor(obs, device=device)
             self.done = torch.as_tensor(done, dtype=torch.float32, device=device)
-        with torch.no_grad():
-            rollout.next_value = net(self.obs)[1]
+        with torch.no_grad(), autocast(device, self.amp):
+            rollout.next_value = net(self.obs)[1].float()
         rollout.next_done = self.done
 
 
 def ppo_update(net, opt, rollout, gamma=0.99, lam=0.95, clip=0.2, epochs=4, minibatch=1024,
-               entropy_coef=0.01, value_coef=0.5, max_grad_norm=0.5):
+               entropy_coef=0.01, value_coef=0.5, max_grad_norm=0.5, amp=False):
     """One clipped PPO update from a filled rollout; returns averaged training statistics."""
+    device = rollout.obs.device
     with torch.no_grad():
         advantages = torch.zeros_like(rollout.rewards)
         last = torch.zeros_like(rollout.next_value)
@@ -142,8 +150,9 @@ def ppo_update(net, opt, rollout, gamma=0.99, lam=0.95, clip=0.2, epochs=4, mini
             idx = order[k:k + minibatch]
             if len(idx) < 2:
                 continue
-            logits, value = net(obs[idx])
-            c = counts[idx]
+            with autocast(device, amp):
+                logits, value = net(obs[idx])
+            logits, value, c = logits.float(), value.float(), counts[idx]
             dist = legal_dist(logits, legal[idx, :int(c.max())], c)
             log_ratio = dist.log_prob(picks[idx]) - old_logp[idx]
             ratio = log_ratio.exp()
@@ -171,8 +180,10 @@ def rate(outcomes, value):
 
 def train(args, env, device):
     net = PolicyValueNet(env.channels, args.width, args.blocks).to(device)
+    if args.channels_last and device.type == "cuda":
+        net = net.to(memory_format=torch.channels_last)
     opt = torch.optim.Adam(net.parameters(), lr=args.lr, eps=1e-5)
-    rollout, runner = Rollout(args.steps, env, device), Runner(env, device)
+    rollout, runner = Rollout(args.steps, env, device), Runner(env, device, amp=args.amp)
     outcomes, lengths = [], collections.deque(maxlen=200)
 
     def game_end(i, info):
@@ -186,7 +197,8 @@ def train(args, env, device):
         update += 1
         runner.collect(net, rollout, game_end)
         steps += env.num_envs * args.steps
-        stats = ppo_update(net, opt, rollout, args.gamma, args.lam, args.clip, args.epochs, args.minibatch, args.entropy)
+        stats = ppo_update(net, opt, rollout, args.gamma, args.lam, args.clip, args.epochs, args.minibatch,
+                           args.entropy, amp=args.amp)
         if update % 10 == 0:
             recent = outcomes[-200:]
             print("update %4d | %8d steps | %5.0f steps/s | %5d games | last 200: win %.2f loss %.2f draw %.2f"
@@ -219,6 +231,8 @@ def main():
     p.add_argument("--max-turns", type=int, default=300)
     p.add_argument("--width", type=int, default=64)
     p.add_argument("--blocks", type=int, default=4)
+    p.add_argument("--amp", action=argparse.BooleanOptionalAction, default=True, help="bfloat16 mixed precision on CUDA")
+    p.add_argument("--channels-last", action=argparse.BooleanOptionalAction, default=True)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--save", help="file to write the trained weights to")
     args = p.parse_args()

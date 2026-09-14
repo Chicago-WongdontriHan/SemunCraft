@@ -78,7 +78,7 @@ function loadOriginalGame(opts){
   vm.createContext(ctx);
   const run=(code,filename)=>vm.runInContext(code,ctx,{filename:filename||'harness'});
   run(PRELUDE,'prelude');
-  for(const f of SCRIPTS)run(fs.readFileSync(path.join(ROOT,f),'utf8'),f);
+  for(const f of SCRIPTS.concat(opts.extraScripts||[]))run(fs.readFileSync(path.join(ROOT,f),'utf8'),f);
   run(POSTLUDE,'postlude');
   const game={
     ctx,run,created,

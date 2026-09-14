@@ -276,9 +276,15 @@ SemunCraft/
                            box selection (multi-select pieces), ghost element
     resize.js           -- resizeBoard() (responsive desktop/mobile layout), window
                            resize/load/keydown event listeners
-    engine.js           -- Headless rules engine (not loaded by the game yet): the same
-                           rules with no DOM or timers and seeded randomness, for AI
-                           training and tests (see Headless Engine below)
+    engine.js           -- Headless rules engine: the same rules with no DOM or timers and
+                           seeded randomness, for AI training, tests and AI vs AI (see
+                           Headless Engine below)
+    nn.js               -- the trained policy network in plain JavaScript; runs the weights
+                           in models/
+    aivsai.js           -- AI vs AI mode: watch the two most-trained networks play (see
+                           AI vs AI below)
+  models/               -- trained networks for the browser, written by rl/export_web.py
+    ai-1.js, ai-2.js    -- the two most-trained networks (half-precision weights)
   rl/                   -- Reinforcement learning environment (see Reinforcement Learning
                            Environment below)
     encoding.js         -- board -> network input planes and network output -> engine
@@ -286,9 +292,15 @@ SemunCraft/
     worker.js           -- Node process running games for Python (JSON lines on stdin/stdout)
     levels.js           -- reads the campaign levels from js/campaign.js for Node tools
     semuncraft_env.py   -- SemunCraftVecEnv: many games stepped at once across workers
-    ppo.py              -- masked PPO trainer (PyTorch), used as a learning check
+    ppo.py              -- policy/value network and masked PPO (PyTorch); also a quick
+                           learning check
+    train.py            -- curriculum and self-play training with checkpoints and
+                           evaluation games (see Training below)
+    export_web.py       -- exports trained networks to models/ and checks js/nn.js against
+                           PyTorch (see AI vs AI below)
     test_env.py         -- Python tests and speed benchmark for the environment
-  tests/                -- Node.js tests for the engine and the RL encoding
+    test_ppo.py         -- PPO tests and a policy-head speed benchmark
+  tests/                -- Node.js tests for the engine, the RL encoding and the network
     original-game.js    -- loads the game's rule scripts in Node with a fake DOM and a
                            virtual clock
     parity.test.js      -- plays identical games through the original code and the
@@ -296,11 +308,12 @@ SemunCraft/
     engine.test.js      -- determinism, rule invariants and speed of the engine
     encoding.test.js    -- action indices, the rotated view for Black, observation
                            planes and the worker protocol
+    nn.test.js          -- js/nn.js against PyTorch, run by rl/export_web.py
 ```
 
 ### Headless Engine
 
-`js/engine.js` holds the game rules without the browser: no DOM, no timers, and all randomness drawn from a seed stored in the game state, so games can be simulated fast and replayed exactly. It loads as a classic script (global `SemunEngine`) or in Node (`require('./js/engine.js')`). The browser game doesn't use it yet; until it does, the parity tests keep the two in step.
+`js/engine.js` holds the game rules without the browser: no DOM, no timers, and all randomness drawn from a seed stored in the game state, so games can be simulated fast and replayed exactly. It loads as a classic script (global `SemunEngine`) or in Node (`require('./js/engine.js')`). The regular game modes don't use it yet (only AI vs AI does); until they do, the parity tests keep the two in step.
 
 ```js
 const E = require('./js/engine.js');
@@ -327,18 +340,46 @@ from semuncraft_env import SemunCraftVecEnv, sample_legal
 
 rng = np.random.default_rng()
 with SemunCraftVecEnv(num_envs=64, config={"mode": "classic", "levels": [0, 1]}) as env:
-    obs = env.reset()                    # (64, 31, 11, 11) float32 in [0, 1]
+    obs = env.reset()                    # (64, 32, 11, 11) float32 in [0, 1]
     masks = env.action_masks()           # (64, 9923) bool, True = legal
     obs, rewards, dones, infos = env.step(sample_legal(masks, rng))
 ```
 
-- **Opponents:** `mode: "classic"` puts the agent on White against the built-in AI (set `difficulty`, or campaign `levels`). `mode: "pvp"` uses the symmetric turn order against a random player, or against an `"external"` opponent: a Python function that picks the other side's moves, such as an earlier copy of the network for self-play. `agentColor` picks the agent's side (random by default).
+- **Turn order and opponents:** `mode` picks the turn order: `"classic"` is the single-player order (White acts and fires, Black fires, Black acts) and `"pvp"` the symmetric one. `opponent` is `"bot"` (the built-in AI; classic only, with the agent on White; set `difficulty` or campaign `levels`), `"random"`, or `"external"`: a Python function `(obs, masks, env_ids) -> actions` that picks the other side's moves, such as a copy of the network for self-play. `on_new_game(env_index)` runs whenever a game starts, for example to choose its opponent. Against a random or external opponent, `agentColor` picks the agent's side (random by default). Classic games default to the bot, pvp games to a random player.
 - **View:** the agent always sees the board from its own side. For Black the board is rotated 180° and own and enemy swap, so one network can play both colors. Boards sit in the top-left corner of an 11×11 grid, so every campaign level fits.
-- **Observation** (31 channels): own and enemy pieces by type (14); HP as a fraction and out of 5; bishop mana; pawns that can still double-step; obstacles; board cells; cells the agent can see (all of them without fog; fog hides enemy pieces); own and enemy target locks (the locking piece and the locked square); own and enemy spawns left; turns taken out of the cap; whether merging and spawning are allowed; and whether the turn order is classic.
+- **Observation** (32 channels): own and enemy pieces by type (14); HP as a fraction and out of 5; bishop mana; pawns that can still double-step; obstacles; board cells; cells the agent can see (all of them without fog; fog hides enemy pieces); own and enemy target locks (the locking piece and the locked square); own and enemy spawns left; turns taken out of the cap; whether merging and spawning are allowed; whether the turn order is classic; and whether the agent moves first each round (White in the classic order, where the two sides don't take their turns the same way).
 - **Actions** (11×11×82 + 1 = 9,923): each cell has 81 slots for "act on the square up to 4 rows and 4 columns away" and one slot for "spawn a pawn here", and one last index means skip. What a slot does depends on the target square: move onto an empty tile, merge with a friendly piece, lock onto an enemy, heal a wounded ally, or unsiege when the target is the tower's own square. A bishop on a wounded adjacent knight means heal; to get a Queen, merge the knight onto the bishop. Mask out illegal actions.
 - **Rewards:** +1 for a win, −1 for a loss, 0 for a draw at `maxTurns` (both sides' turns together, 300 by default). `shaping` adds a potential-based bonus for gains in material (merge cost × health) and King health; with `gamma` set to the learner's discount it doesn't change which play is best.
 - **Tests:** `node tests/encoding.test.js` checks that every legal action gets an index that decodes back to it, that Black's rotated view matches White's view of the mirrored board, and the worker protocol. `python rl/test_env.py` tests the Python side and measures speed: 15,000–18,000 agent moves per second with random actions (64 games on 16 workers).
 - **Learning check:** `python rl/ppo.py --levels 0 --minutes 5` trains a small convolutional network (4 residual blocks, about 320,000 parameters) with masked PPO and prints its win rate as it goes. With 64 games in parallel on an RTX 4080 it trains at about 8,000 moves per second. On Pawn School the win rate went from 4% to 100% in about 40 seconds. In the standard game against the Easy AI (`--difficulty easy --shaping 0.5 --minutes 10`) it went from 2% to over 90% in under 2 minutes, and from about 4½ minutes on it won 99–100% of games, in about 19 moves each. The Easy AI is a simple scripted rush with little defense, so this shows the setup learns, not that the agent is strong.
+
+### Training
+
+`rl/train.py` trains one network in three stages, moving on once it wins often enough:
+
+1. **Easy:** White against the Easy AI, until it wins 90% of its last 400 games.
+2. **Hard:** White against the Hard AI (a random strategy each game), with a quarter of the games still against Easy, until it wins 75%.
+3. **League:** half the games are self-play in the single-player turn order, with the agent on either color against its current network or one of its 10 most recent snapshots; the rest stay against Easy (10%) and Hard (40%). The game's AI plays Black in that order, so this is where the agent learns to play Black.
+
+A stage also ends after 400 updates without reaching its win rate. Shaping starts at 0.5 and fades to 0 over the first 400 league updates, leaving only win/loss rewards. The network has 6 residual blocks of 96 channels (about a million parameters) and plays 192 games at a time.
+
+```bash
+python rl/train.py --minutes 60
+python rl/train.py --resume <run folder>/latest.pt --minutes 60
+```
+
+- **Output:** a new folder under `%LOCALAPPDATA%\semuncraft-rl\runs` (outside Google Drive) with `log.csv` (win rates by opponent, entropy, speed), `eval.csv`, `snapshots/` (every 50 updates, plus `league_start.pt`), `latest.pt` (everything needed to resume) and `final.pt` (the network's weights).
+- **Evaluation:** every 200 updates, 100 games from the same seeds each time against Easy and against Hard (with win rates by strategy); in the league stage also against the network from the start of the league and from the previous evaluation, by color.
+- **Stopping:** a run ends after `--minutes`. `latest.pt` is saved with every snapshot, so killing the process loses at most 50 updates.
+
+### AI vs AI
+
+**🤖 AI vs AI** on the main menu shows the two most-trained networks playing each other on the selected map theme. They swap colors every match, and the result screen keeps a running score.
+
+- **How it runs:** matches are simulated by `js/engine.js` (the game's rules, checked by the parity tests) and drawn on the normal board: pieces slide, hits flash and the log lists every move. Both AIs play in the single-player turn order and pick moves by sampling their policy, as in training. There's no fog of war and there are no animals.
+- **Controls:** Pause, Speed (1×, 2×, 4× or 8×; at 4× and faster, animations and sounds are skipped) and New Match take the place of Spawn, Merge and Skip. Menu ends the match.
+- **Files:** `js/aivsai.js` is the mode. The first time it starts, it loads `js/engine.js`, `rl/encoding.js`, `js/nn.js` (the network in plain JavaScript, about 100 ms per move) and the weights in `models/ai-1.js` and `models/ai-2.js` (half precision, 2.8 MB each). This works on GitHub Pages and from a double-clicked `SemunCraft.html`.
+- **Updating the AIs:** `python rl/export_web.py --run <run folder>` exports a run's two most-trained networks to `models/` (AI #1 is the newer one) and checks `js/nn.js` against PyTorch on real positions. Bump the `?v=` version in `SemunCraft.html` when you publish new weights.
 
 ### Script Load Order
 
@@ -363,6 +404,7 @@ The scripts are loaded in a specific order in `SemunCraft.html` because later fi
 17. `game.js` -- `initGame`, `endTurn` (orchestrates everything)
 18. `drag.js` -- event listeners (calls executeDrop, handleClick)
 19. `resize.js` -- window listeners (calls resizeBoard, render)
+20. `aivsai.js` -- AI vs AI mode (calls render, UI and animation helpers; loads `engine.js`, `rl/encoding.js`, `nn.js` and the trained weights only when started)
 
 ---
 

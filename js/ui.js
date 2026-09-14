@@ -151,6 +151,7 @@ function doRematch(){
 
 function goIntro(){
   hideGameOver();
+  if(typeof stopAiVsAi==='function')stopAiVsAi();
   // leaving to the menu ends a multiplayer match
   if(pvpActive){pvpActive=false;try{if(conn)conn.close();}catch(e){}}
   // reset board size if coming from campaign

@@ -507,6 +507,7 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
     <button class="intro-btn" onclick="showCampaignSelect()" style="border-color:#7a5830;color:#e0a840;">🏰 Campaign</button>
     <button class="intro-btn gold" onclick="showPvpLobby()">⚡ Multiplayer</button>
     <button class="intro-btn" onclick="startTutorial()" style="border-color:#5a7830;color:#a0c860;">📖 Tutorial</button>
+    <button class="intro-btn" onclick="startAiVsAi()" style="border-color:#3a6878;color:#80c8d8;">🤖 AI vs AI</button>
   </div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
     <div class="panel-label" style="font-size:12px;color:#6a8840;letter-spacing:.1em;font-variant:small-caps;">Map Theme</div>
@@ -687,27 +688,29 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
 <!-- ?v= is the release version: bump it on every release so browsers (GitHub Pages lets them
      cache files for 10 minutes) never mix old cached scripts with new ones -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-<script src="js/constants.js?v=20260913"></script>
-<script src="js/state.js?v=20260913"></script>
-<script src="js/audio.js?v=20260913"></script>
-<script src="js/music.js?v=20260913"></script>
-<script src="pieces/pieces.js?v=20260913"></script>
-<script src="pieces/jungle.js?v=20260913"></script>
-<script src="pieces/desert.js?v=20260913"></script>
-<script src="pieces/ocean.js?v=20260913"></script>
-<script src="js/movement.js?v=20260913"></script>
-<script src="js/themes.js?v=20260913"></script>
-<script src="js/render.js?v=20260913"></script>
-<script src="js/combat.js?v=20260913"></script>
-<script src="js/animals.js?v=20260913"></script>
-<script src="js/actions.js?v=20260913"></script>
-<script src="js/ui.js?v=20260913"></script>
-<script src="js/tutorial.js?v=20260913"></script>
-<script src="js/campaign.js?v=20260913"></script>
-<script src="js/pvp.js?v=20260913"></script>
-<script src="js/ai.js?v=20260913"></script>
-<script src="js/game.js?v=20260913"></script>
-<script src="js/drag.js?v=20260913"></script>
-<script src="js/resize.js?v=20260913"></script>
+<script src="js/constants.js?v=20260913b"></script>
+<script src="js/state.js?v=20260913b"></script>
+<script src="js/audio.js?v=20260913b"></script>
+<script src="js/music.js?v=20260913b"></script>
+<script src="pieces/pieces.js?v=20260913b"></script>
+<script src="pieces/jungle.js?v=20260913b"></script>
+<script src="pieces/desert.js?v=20260913b"></script>
+<script src="pieces/ocean.js?v=20260913b"></script>
+<script src="js/movement.js?v=20260913b"></script>
+<script src="js/themes.js?v=20260913b"></script>
+<script src="js/render.js?v=20260913b"></script>
+<script src="js/combat.js?v=20260913b"></script>
+<script src="js/animals.js?v=20260913b"></script>
+<script src="js/actions.js?v=20260913b"></script>
+<script src="js/ui.js?v=20260913b"></script>
+<script src="js/tutorial.js?v=20260913b"></script>
+<script src="js/campaign.js?v=20260913b"></script>
+<script src="js/pvp.js?v=20260913b"></script>
+<script src="js/ai.js?v=20260913b"></script>
+<script src="js/game.js?v=20260913b"></script>
+<script src="js/drag.js?v=20260913b"></script>
+<script src="js/resize.js?v=20260913b"></script>
+<!-- AI vs AI; loads the engine, network and trained weights only when started -->
+<script src="js/aivsai.js?v=20260913b"></script>
 </body>
 </html>

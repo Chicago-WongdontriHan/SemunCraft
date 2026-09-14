@@ -21,12 +21,13 @@ const campaignLevels=require('./levels.js');
 const THEMES=['jungle','desert','ocean'];
 const DEFAULTS={
   seed:0,
-  mode:'classic',       // 'classic': the agent plays White against the built-in AI; 'pvp': symmetric turn order
-  opponent:'random',    // pvp: 'random' (chosen here) or 'external' (chosen by Python)
-  agentColor:'random',  // pvp: 'w', 'b' or 'random' each game
-  difficulty:'random',  // classic: 'easy', 'hard' or 'random' each game
+  mode:'classic',       // turn order: 'classic' (single-player: White acts and fires, Black fires, Black acts) or 'pvp'
+  opponent:'auto',      // 'bot' (the built-in AI; classic only, the agent plays White), 'random' (chosen here),
+                        // 'external' (chosen by Python), or 'auto' (bot in classic, random in pvp)
+  agentColor:'random',  // 'w', 'b' or 'random' each game (always White against the bot)
+  difficulty:'random',  // the bot's level: 'easy', 'hard' or 'random' each game
   theme:'random',       // 'jungle', 'desert', 'ocean' or 'random' each game
-  levels:null,          // classic: campaign level indices to draw from each game (null in the list = standard game)
+  levels:null,          // classic only: campaign level indices to draw from each game (null in the list = standard game)
   fog:false,
   maxTurns:300,         // both sides' turns together; reaching it is a draw
   shaping:0,            // weight of the potential-based shaping reward (0 = win/loss only)
@@ -37,7 +38,8 @@ function withDefaults(base,config){
   const c=Object.assign({},base,config);
   for(const k of Object.keys(c))if(!(k in DEFAULTS))throw new Error('unknown config key '+k);
   if(c.mode!=='classic'&&c.mode!=='pvp')throw new Error('mode must be classic or pvp');
-  if(c.mode==='pvp'&&c.opponent!=='random'&&c.opponent!=='external')throw new Error('opponent must be random or external');
+  if(!['auto','bot','random','external'].includes(c.opponent))throw new Error('opponent must be auto, bot, random or external');
+  if(c.opponent==='bot'&&c.mode!=='classic')throw new Error('the bot opponent needs mode classic');
   if(!['w','b','random'].includes(c.agentColor))throw new Error('agentColor must be w, b or random');
   if(!['easy','hard','random'].includes(c.difficulty))throw new Error('difficulty must be easy, hard or random');
   if(!THEMES.includes(c.theme)&&c.theme!=='random')throw new Error('unknown theme '+c.theme);
@@ -64,24 +66,24 @@ class Env{
     const c=this.config,pick=list=>list[Math.floor(this.rand()*list.length)];
     const seed=Math.floor(this.rand()*2147483647);
     const theme=c.theme==='random'?pick(THEMES):c.theme;
+    const opponent=c.opponent==='auto'?(c.mode==='classic'?'bot':'random'):c.opponent;
     let level=c.levels&&c.levels.length?pick(c.levels):null;
     if(level===undefined)level=null;
     if(c.mode==='pvp'){
       this.s=E.newGame({seed,mode:'pvp',theme,fog:c.fog,maxTurns:c.maxTurns});
-      this.agent=c.agentColor==='random'?pick(['w','b']):c.agentColor;
     }else if(level!==null){
       const lv=campaignLevels()[level];
       if(!lv)throw new Error('no campaign level '+level);
       this.s=E.newGame({seed,level:lv,fog:c.fog,maxTurns:c.maxTurns});
-      this.agent='w';
     }else{
       const difficulty=c.difficulty==='random'?pick(['easy','hard']):c.difficulty;
       this.s=E.newGame({seed,mode:'classic',difficulty,theme,fog:c.fog,maxTurns:c.maxTurns});
-      this.agent='w';
     }
-    const s=this.s;
-    this.scenario={mode:c.mode,level,difficulty:c.mode==='classic'&&level===null?s.difficulty:null,
-      strategy:s.strategy,theme:s.theme,seed};
+    const s=this.s,bot=opponent==='bot';
+    this.opponent=opponent;
+    this.agent=bot?'w':c.agentColor==='random'?pick(['w','b']):c.agentColor;
+    this.scenario={mode:c.mode,opponent,level,difficulty:bot&&level===null?s.difficulty:null,
+      strategy:bot&&level===null?s.strategy:null,theme:s.theme,seed};
     this.opponentRand=E.makeRandom(seed^0x5bd1e995);
     this.length=0;this.return=0;this.phi=null;
     return this.advance();
@@ -100,8 +102,8 @@ class Env{
   advance(){
     const s=this.s,c=this.config;
     while(!s.over&&s.turn!==this.agent){
-      if(c.mode==='classic')E.botTurn(s);
-      else if(c.opponent==='random'){
+      if(this.opponent==='bot')E.botTurn(s);
+      else if(this.opponent==='random'){
         const acts=E.legalActions(s);
         E.step(s,acts[Math.floor(this.opponentRand()*acts.length)],{trusted:true});
       }else break;

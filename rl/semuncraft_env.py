@@ -6,7 +6,7 @@ lock-step. Only NumPy is required.
 
     from semuncraft_env import SemunCraftVecEnv, sample_legal
     with SemunCraftVecEnv(num_envs=16, config={"mode": "classic"}) as env:
-        obs = env.reset()                    # (16, 31, 11, 11) float32 in [0, 1]
+        obs = env.reset()                    # (16, 32, 11, 11) float32 in [0, 1]
         masks = env.action_masks()           # (16, 9923) bool, True = legal
         obs, rewards, dones, infos = env.step(sample_legal(masks, rng))
 
@@ -59,7 +59,11 @@ class _Worker:
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.stderr = collections.deque(maxlen=40)
         threading.Thread(target=self._drain_stderr, daemon=True).start()
-        self.info = self.call({"cmd": "init", "grid": grid, "envs": configs})
+        try:
+            self.info = self.call({"cmd": "init", "grid": grid, "envs": configs})
+        except BaseException:
+            self.proc.kill()
+            raise
 
     def _drain_stderr(self):
         for line in self.proc.stderr:
@@ -102,17 +106,21 @@ class SemunCraftVecEnv:
     """num_envs SemunCraft games spread over num_workers Node processes.
 
     config: a dict for every env, or a list with one dict per env. Keys (see
-        rl/worker.js): mode ("classic" vs the built-in AI, or "pvp"), opponent
-        ("random" or "external", pvp only), agentColor, difficulty, theme,
-        levels, fog, maxTurns, shaping, gamma.
-    opponent: for pvp envs with opponent "external", a function
-        (obs, masks) -> actions choosing the opponent's moves; the default
-        picks random legal moves.
+        rl/worker.js): mode ("classic" or "pvp" turn order), opponent ("bot",
+        "random", "external" or "auto"), agentColor, difficulty, theme, levels,
+        fog, maxTurns, shaping, gamma.
+    opponent: for envs with opponent "external", a function
+        (obs, masks, env_ids) -> actions choosing the opponent's moves; the
+        default picks random legal moves.
+    on_new_game: optional function(env_index), called whenever an env starts a
+        game and before any opponent move in it (for example to pick that
+        game's opponent).
     Finished games restart automatically; infos[i] then describes the finished
     game, including its "terminal_observation".
     """
 
-    def __init__(self, num_envs=8, config=None, num_workers=None, seed=0, grid=11, opponent=None, node=None):
+    def __init__(self, num_envs=8, config=None, num_workers=None, seed=0, grid=11, opponent=None,
+                 on_new_game=None, node=None):
         if isinstance(config, (list, tuple)):
             configs = [dict(c) for c in config]
             if len(configs) != num_envs:
@@ -124,6 +132,7 @@ class SemunCraftVecEnv:
             c.setdefault("seed", int(s))
         self.num_envs = num_envs
         self.opponent = opponent
+        self.on_new_game = on_new_game
         self._rng = np.random.default_rng(seed)
         self._workers = []
         self._slots = []  # env index -> (worker index, index inside that worker)
@@ -143,11 +152,16 @@ class SemunCraftVecEnv:
         self.observation_shape = (self.channels, self.grid, self.grid)
         self._obs = np.zeros((num_envs,) + self.observation_shape, np.uint8)
         self._masks = np.zeros((num_envs, self.num_actions), bool)
+        self._legal = [[] for _ in range(num_envs)]
 
     # ── public API ──────────────────────────────────────────────────────────
     def reset(self):
         envs = list(range(self.num_envs))
-        self._resolve(envs, self._call("reset", envs))
+        results = self._call("reset", envs)
+        if self.on_new_game is not None:
+            for i in envs:
+                self.on_new_game(i)
+        self._resolve(envs, results)
         return self.observations()
 
     def step(self, actions):
@@ -161,6 +175,15 @@ class SemunCraftVecEnv:
 
     def action_masks(self):
         return self._masks.copy()
+
+    def legal_actions(self, pad=0):
+        """Legal action indices of every env: (indices, counts), where indices is (num_envs, most legal
+        actions) int64 and row i's first counts[i] entries are valid; the rest are `pad`."""
+        counts = np.array([len(legal) for legal in self._legal], np.int64)
+        indices = np.full((self.num_envs, counts.max()), pad, np.int64)
+        for i, legal in enumerate(self._legal):
+            indices[i, :len(legal)] = legal
+        return indices, counts
 
     def configure(self, config, envs=None):
         """Updates config keys for the given envs (default: all) from each env's next game."""
@@ -204,6 +227,7 @@ class SemunCraftVecEnv:
         self._obs[i] = np.frombuffer(base64.b64decode(res["obs"]), np.uint8).reshape(self.observation_shape)
         self._masks[i] = False
         self._masks[i, res["legal"]] = True
+        self._legal[i] = res["legal"]
 
     def _resolve(self, envs, results):
         """Stores results and plays external opponents' moves until every env waits on the agent."""
@@ -218,6 +242,8 @@ class SemunCraftVecEnv:
                 if res["done"]:
                     dones[pos] = True
                     infos[pos] = self._finished(res["info"])
+                    if self.on_new_game is not None:
+                        self.on_new_game(envs[pos])
                 self._store(envs[pos], res)
                 if res["seat"] == "opponent":
                     waiting.append(pos)
@@ -228,7 +254,8 @@ class SemunCraftVecEnv:
             if self.opponent is None:
                 actions = sample_legal(masks, self._rng)
             else:
-                actions = np.asarray(self.opponent(self._obs[ids].astype(np.float32) / 255.0, masks)).reshape(len(ids))
+                obs = self._obs[ids].astype(np.float32) / 255.0
+                actions = np.asarray(self.opponent(obs, masks, np.asarray(ids))).reshape(len(ids))
             results = self._call("step", ids, actions)
             positions = waiting
 

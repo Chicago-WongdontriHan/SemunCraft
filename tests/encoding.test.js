@@ -10,6 +10,7 @@ const LEVELS=require('../rl/levels.js')();
 
 const enc=createEncoder({grid:11});
 const P=enc.grid*enc.grid;
+const FIRST=31; // channel: moves first each round (White in the classic turn order)
 let failures=0;
 function fail(msg){failures++;if(failures<=10)console.log('  FAIL '+msg);}
 async function section(name,fn){
@@ -18,18 +19,21 @@ async function section(name,fn){
   console.log((failures===before?'ok  ':'FAIL')+' '+name+' ('+(Date.now()-t0)+' ms)'+(info?' — '+info:''));
 }
 
-// positions from random games: pvp, classic against the built-in AI, campaign levels, some with fog
+// positions from random games: pvp; classic against the built-in AI; campaign levels; classic
+// with both sides picked at random (so Black is to move as well); some with fog
 function* positions(count){
   const pick=E.makeRandom(12345);
   let n=0;
   for(let g=0;n<count;g++){
-    const kind=g%4,seed=g+1;
-    const s=kind===0?E.newGame({seed,mode:'pvp',fog:g%8===0,maxTurns:200})
-      :kind===1?E.newGame({seed,mode:'classic',difficulty:g%3?'hard':'easy',fog:g%8===1,maxTurns:200})
-      :kind===2?E.newGame({seed,level:LEVELS[(g>>2)%LEVELS.length],maxTurns:200})
-      :E.newGame({seed,mode:'pvp',theme:'desert',maxTurns:200});
+    const kind=g%5,seed=g+1;
+    const s=kind===0?E.newGame({seed,mode:'pvp',fog:g%10===0,maxTurns:200})
+      :kind===1?E.newGame({seed,mode:'classic',difficulty:g%3?'hard':'easy',fog:g%10===1,maxTurns:200})
+      :kind===2?E.newGame({seed,level:LEVELS[Math.floor(g/5)%LEVELS.length],maxTurns:200})
+      :kind===3?E.newGame({seed,mode:'pvp',theme:'desert',maxTurns:200})
+      :E.newGame({seed,mode:'classic',fog:g%10===4,maxTurns:200});
+    const bot=kind===1||kind===2;
     while(!s.over&&n<count){
-      if(s.mode==='classic'&&s.turn==='b'){E.botTurn(s);continue;}
+      if(bot&&s.turn==='b'){E.botTurn(s);continue;}
       yield s;
       n++;
       // half the time prefer anything but a plain move or skip, so merges, heals and sieges appear
@@ -123,7 +127,8 @@ function startWorker(){
   });
 
   await section('observation planes',()=>{
-    if(CHANNEL_NAMES.length!==CHANNELS||enc.channels!==CHANNELS)fail('channel count');
+    if(CHANNEL_NAMES.length!==CHANNELS||enc.channels!==CHANNELS||CHANNELS!==32)fail('channel count '+CHANNELS);
+    let classicBlack=0;
     for(const s of positions(1500)){
       const o=enc.observe(s),count=ch=>{let t=0;for(let g=ch*P;g<(ch+1)*P;g++)t+=o[g]>0;return t;};
       if(o.length!==CHANNELS*P)fail('observation length '+o.length);
@@ -137,7 +142,11 @@ function startWorker(){
       const k=s.board.findIndex(p=>p&&p.color===s.turn&&p.type==='king');
       if(k>=0&&o[5*P+enc.cell(s,k,s.turn)]!==255)fail('own King is not on its cell');
       if(!fog&&count(20)!==s.rows*s.cols)fail('without fog every board cell is visible');
+      const first=s.mode==='classic'&&s.turn==='w';
+      if(s.mode==='classic'&&s.turn==='b')classicBlack++;
+      if(count(FIRST)!==(first?P:0))fail('moves-first channel should be '+(first?'on':'off')+' ('+s.mode+', '+s.turn+' to move)');
     }
+    return classicBlack+' positions with Black to move in the classic order';
   });
 
   await section('the shaping potential is zero-sum',()=>{
@@ -150,28 +159,36 @@ function startWorker(){
       {seed:1,mode:'classic'},
       {seed:2,mode:'pvp',opponent:'external',agentColor:'b'},
       {seed:3,levels:[0,1],shaping:0.1},
+      {seed:4,mode:'classic',opponent:'external',agentColor:'b'},
     ]});
-    if(init.grid!==11||init.channels!==CHANNELS||init.actions!==enc.numActions||init.envs!==3)fail('init reply '+JSON.stringify(init));
+    if(init.grid!==11||init.channels!==CHANNELS||init.actions!==enc.numActions||init.envs!==4)fail('init reply '+JSON.stringify(init));
     let res=(await w.call({cmd:'reset'})).results;
-    if(res[1].seat!=='opponent')fail('with the agent as Black the external opponent should move first');
+    if(res[1].seat!=='opponent')fail('pvp: with the agent as Black the external opponent should move first');
+    if(res[3].seat!=='opponent')fail('classic: with the agent as Black the external opponent should move first');
     let games=0,opponentMoves=0;
     for(let n=0;n<3000;n++){
-      for(const r of res){
-        if(Buffer.from(r.obs,'base64').length!==CHANNELS*P)fail('observation size');
+      res.forEach((r,k)=>{
+        const obs=Buffer.from(r.obs,'base64');
+        if(obs.length!==CHANNELS*P)fail('observation size');
         if(!r.legal.length)fail('no legal actions');
+        // White in the classic order moves first: envs 0 and 2 (agent vs bot) and env 3's opponent
+        const first=k===1?0:k===3&&r.seat==='agent'?0:255;
+        if(obs[FIRST*P]!==first)fail('env '+k+' ('+r.seat+'): moves-first channel is '+obs[FIRST*P]);
         if(r.done){
           games++;
           if(![-1,0,1].includes(r.info.outcome))fail('outcome '+r.info.outcome);
           if(Buffer.from(r.info.terminal_obs,'base64').length!==CHANNELS*P)fail('terminal observation size');
         }
         if(r.seat==='opponent')opponentMoves++;
-      }
+      });
       res=(await w.call({cmd:'step',actions:res.map(r=>r.legal[Math.floor(pick()*r.legal.length)])})).results;
     }
     const illegal=await w.call({cmd:'step',envs:[0],actions:[-5]});
     if(!String(illegal.error).includes('not legal'))fail('illegal action not reported: '+JSON.stringify(illegal));
     const badKey=await w.call({cmd:'configure',envs:[0],config:{colour:'w'}});
     if(!badKey.error)fail('unknown config key accepted');
+    const botInPvp=await w.call({cmd:'configure',envs:[0],config:{mode:'pvp',opponent:'bot'}});
+    if(!String(botInPvp.error).includes('classic'))fail('bot opponent accepted in pvp: '+JSON.stringify(botInPvp));
     await w.call({cmd:'close'});
     if(!await Promise.race([w.exited,new Promise(r=>setTimeout(()=>r(false),5000))])){fail('worker did not exit');w.proc.kill();}
     return games+' games finished, '+opponentMoves+' external opponent moves';

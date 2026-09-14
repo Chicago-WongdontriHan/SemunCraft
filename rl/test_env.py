@@ -9,6 +9,8 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from semuncraft_env import SemunCraftVecEnv, sample_legal  # noqa: E402
 
+CHANNELS = 32
+FIRST = 31  # observation channel: moves first each round (White in the classic turn order)
 failures = 0
 
 
@@ -31,7 +33,7 @@ def classic_vs_bot():
     rng = np.random.default_rng(0)
     with SemunCraftVecEnv(16, {"mode": "classic"}, num_workers=4, seed=1) as env:
         obs = env.reset()
-        check(obs.shape == (16, 31, 11, 11) and obs.dtype == np.float32, "observation shape %s" % (obs.shape,))
+        check(obs.shape == (16, CHANNELS, 11, 11) and obs.dtype == np.float32, "observation shape %s" % (obs.shape,))
         check(env.num_actions == 11 * 11 * 82 + 1, "action count %d" % env.num_actions)
         winners, games = collections.Counter(), 0
         for _ in range(2000):
@@ -39,10 +41,11 @@ def classic_vs_bot():
             check(masks.any(axis=1).all(), "an env has no legal action")
             obs, rewards, dones, infos = env.step(sample_legal(masks, rng))
             check(np.isin(rewards, (-1.0, 0.0, 1.0)).all(), "unexpected rewards %s" % rewards)
+            check(np.all(obs[:, FIRST] == 1.0), "White against the bot should see the moves-first channel set")
             for i in np.flatnonzero(dones):
                 info = infos[i]
                 check(info["outcome"] == rewards[i], "reward %s but outcome %s" % (rewards[i], info["outcome"]))
-                check(info["agent"] == "w", "agent played %s in classic mode" % info["agent"])
+                check(info["agent"] == "w" and info["scenario"]["opponent"] == "bot", "classic default should be White vs the bot")
                 check(info["terminal_observation"].shape == env.observation_shape, "terminal observation shape")
                 winners[info["winner"]] += 1
                 games += 1
@@ -67,9 +70,10 @@ def external_opponent():
     rng = np.random.default_rng(3)
     asked = [0]
 
-    def opponent(obs, masks):
+    def opponent(obs, masks, ids):
         asked[0] += len(masks)
-        check(obs.shape[1:] == (31, 11, 11) and masks.any(axis=1).all(), "bad opponent input")
+        check(obs.shape[1:] == (CHANNELS, 11, 11) and masks.any(axis=1).all(), "bad opponent input")
+        check(len(ids) == len(masks) and ids.min() >= 0 and ids.max() < 8, "bad env ids %s" % ids)
         return sample_legal(masks, rng)
 
     config = {"mode": "pvp", "opponent": "external", "agentColor": "random"}
@@ -84,6 +88,36 @@ def external_opponent():
         check(asked[0] > 0, "the opponent was never asked to move")
         check(colors["w"] > 0 and colors["b"] > 0, "the agent played only one color: %s" % dict(colors))
         return "opponent moves %d, agent colors %s, outcomes %s" % (asked[0], dict(colors), dict(outcomes))
+
+
+def classic_self_play():
+    rng = np.random.default_rng(6)
+    started, asked = [0], [0]
+
+    def opponent(obs, masks, ids):
+        asked[0] += len(ids)
+        return sample_legal(masks, rng)
+
+    def new_game(i):
+        started[0] += 1
+
+    config = {"mode": "classic", "opponent": "external", "agentColor": "random", "maxTurns": 120}
+    with SemunCraftVecEnv(8, config, num_workers=2, seed=11, opponent=opponent, on_new_game=new_game) as env:
+        env.reset()
+        check(started[0] == 8, "on_new_game ran %d times at reset" % started[0])
+        finished, colors = 0, collections.Counter()
+        for _ in range(1000):
+            _, _, dones, infos = env.step(sample_legal(env.action_masks(), rng))
+            for i in np.flatnonzero(dones):
+                finished += 1
+                info = infos[i]
+                colors[info["agent"]] += 1
+                expected = 1.0 if info["agent"] == "w" else 0.0
+                check(np.all(info["terminal_observation"][FIRST] == expected),
+                      "moves-first channel wrong for the agent as %s" % info["agent"])
+        check(started[0] == 8 + finished, "on_new_game ran %d times for %d finished games" % (started[0], finished))
+        check(asked[0] > 0 and colors["w"] > 0 and colors["b"] > 0, "agent colors %s" % dict(colors))
+        return "%d games, agent colors %s, opponent moves %d" % (finished, dict(colors), asked[0])
 
 
 def campaign_with_shaping():
@@ -111,6 +145,14 @@ def configure_switches_mode():
             _, _, dones, infos = env.step(sample_legal(env.action_masks(), rng))
             modes += [infos[i]["scenario"]["mode"] for i in np.flatnonzero(dones)]
         check(modes[:4].count("classic") == 4 and "pvp" in modes[4:], "modes of finished games: %s" % modes[:8])
+
+
+def bad_config_rejected():
+    try:
+        SemunCraftVecEnv(1, {"mode": "pvp", "opponent": "bot"}, num_workers=1).close()
+        check(False, "a bot opponent was accepted in pvp mode")
+    except RuntimeError as err:
+        check("classic" in str(err), "unexpected error: %s" % err)
 
 
 def illegal_action_rejected():
@@ -143,8 +185,10 @@ if __name__ == "__main__":
     section("classic games against the built-in AI", classic_vs_bot)
     section("same seeds give the same games on any worker count", same_seed_same_games)
     section("pvp with an external opponent", external_opponent)
+    section("classic self-play with an external opponent and a new-game hook", classic_self_play)
     section("campaign levels with reward shaping", campaign_with_shaping)
     section("configure applies from the next game", configure_switches_mode)
+    section("invalid configs are rejected", bad_config_rejected)
     section("illegal actions are rejected", illegal_action_rejected)
     section("throughput", throughput)
     print("\n" + ("%d failure(s)" % failures if failures else "all environment tests passed"))

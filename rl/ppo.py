@@ -1,11 +1,12 @@
 """Masked PPO for SemunCraft, in PyTorch.
 
-A compact trainer for checking that an agent learns in the environment: it plays
-White against the built-in AI (or on campaign levels) and prints how often it
-wins as training goes on. Nothing is saved unless you pass --save.
+The policy/value network and PPO pieces used by rl/train.py, plus a quick
+command-line check that an agent learns: it plays White against the built-in
+AI (or on campaign levels) and prints its win rate as training goes on.
+Nothing is saved unless you pass --save.
 
     python rl/ppo.py --levels 0 --minutes 5
-    python rl/ppo.py --difficulty easy --minutes 20
+    python rl/ppo.py --difficulty easy --shaping 0.5 --minutes 10
 """
 import argparse
 import collections
@@ -56,7 +57,112 @@ class PolicyValueNet(nn.Module):
 
 
 def masked_dist(logits, masks):
+    """Distribution over all actions with the illegal ones masked out."""
     return torch.distributions.Categorical(logits=logits.masked_fill(~masks, -1e9))
+
+
+def legal_dist(logits, legal, counts):
+    """The same distribution restricted to each row's legal actions, which is far cheaper than a softmax
+    over all 9,923: legal is (batch, k) action indices whose first counts[i] entries are valid, and the
+    distribution's outcomes are positions in that list."""
+    valid = torch.arange(legal.shape[1], device=legal.device)[None, :] < counts[:, None]
+    return torch.distributions.Categorical(logits=logits.gather(1, legal).masked_fill(~valid, -1e9))
+
+
+class Rollout:
+    """Buffers for `steps` steps of every env, on the training device."""
+
+    def __init__(self, steps, env, device):
+        n, shape = env.num_envs, env.observation_shape
+        self.steps = steps
+        self.obs = torch.zeros((steps, n) + shape, device=device)
+        self.legal = [None] * steps  # per step: (n, most legal actions) action indices, padded with 0
+        self.counts = torch.zeros((steps, n), dtype=torch.long, device=device)
+        self.picks = torch.zeros((steps, n), dtype=torch.long, device=device)  # chosen position in legal
+        self.logp, self.values, self.rewards, self.dones = (torch.zeros((steps, n), device=device) for _ in range(4))
+        self.next_value = self.next_done = None
+
+
+class Runner:
+    """Plays the current policy in a vector env and fills rollouts."""
+
+    def __init__(self, env, device):
+        self.env, self.device = env, device
+        self.obs = torch.as_tensor(env.reset(), device=device)
+        self.done = torch.zeros(env.num_envs, device=device)
+
+    def collect(self, net, rollout, on_game_end=None):
+        """Fills `rollout`; on_game_end(env_index, info) is called for every finished game."""
+        env, device = self.env, self.device
+        for t in range(rollout.steps):
+            legal, counts = (torch.as_tensor(x, device=device) for x in env.legal_actions())
+            with torch.no_grad():
+                logits, value = net(self.obs)
+                dist = legal_dist(logits, legal, counts)
+                pick = dist.sample()
+                action = legal.gather(1, pick[:, None]).squeeze(1)
+            rollout.obs[t], rollout.legal[t], rollout.counts[t], rollout.picks[t] = self.obs, legal, counts, pick
+            rollout.logp[t], rollout.values[t], rollout.dones[t] = dist.log_prob(pick), value, self.done
+            obs, reward, done, infos = env.step(action.cpu().numpy())
+            rollout.rewards[t] = torch.as_tensor(reward, device=device)
+            if on_game_end is not None:
+                for i in np.flatnonzero(done):
+                    on_game_end(i, infos[i])
+            self.obs = torch.as_tensor(obs, device=device)
+            self.done = torch.as_tensor(done, dtype=torch.float32, device=device)
+        with torch.no_grad():
+            rollout.next_value = net(self.obs)[1]
+        rollout.next_done = self.done
+
+
+def ppo_update(net, opt, rollout, gamma=0.99, lam=0.95, clip=0.2, epochs=4, minibatch=1024,
+               entropy_coef=0.01, value_coef=0.5, max_grad_norm=0.5):
+    """One clipped PPO update from a filled rollout; returns averaged training statistics."""
+    with torch.no_grad():
+        advantages = torch.zeros_like(rollout.rewards)
+        last = torch.zeros_like(rollout.next_value)
+        for t in reversed(range(rollout.steps)):
+            if t == rollout.steps - 1:
+                nonterminal, following = 1.0 - rollout.next_done, rollout.next_value
+            else:
+                nonterminal, following = 1.0 - rollout.dones[t + 1], rollout.values[t + 1]
+            delta = rollout.rewards[t] + gamma * following * nonterminal - rollout.values[t]
+            last = delta + gamma * lam * nonterminal * last
+            advantages[t] = last
+        returns = advantages + rollout.values
+    obs = rollout.obs.reshape((-1,) + tuple(rollout.obs.shape[2:]))
+    width = max(legal.shape[1] for legal in rollout.legal)
+    legal = torch.cat([F.pad(step, (0, width - step.shape[1])) for step in rollout.legal])  # rows in obs order
+    counts, picks, old_logp, advantages, returns = (
+        x.reshape(-1) for x in (rollout.counts, rollout.picks, rollout.logp, advantages, returns))
+    stats = collections.defaultdict(list)
+    for _ in range(epochs):
+        order = torch.randperm(picks.shape[0], device=picks.device)
+        for k in range(0, picks.shape[0], minibatch):
+            idx = order[k:k + minibatch]
+            if len(idx) < 2:
+                continue
+            logits, value = net(obs[idx])
+            c = counts[idx]
+            dist = legal_dist(logits, legal[idx, :int(c.max())], c)
+            log_ratio = dist.log_prob(picks[idx]) - old_logp[idx]
+            ratio = log_ratio.exp()
+            adv = advantages[idx]
+            adv = (adv - adv.mean()) / (adv.std() + 1e-8)
+            policy_loss = torch.max(-adv * ratio, -adv * ratio.clamp(1 - clip, 1 + clip)).mean()
+            value_loss = 0.5 * (value - returns[idx]).pow(2).mean()
+            entropy = dist.entropy().mean()
+            opt.zero_grad()
+            (policy_loss + value_coef * value_loss - entropy_coef * entropy).backward()
+            nn.utils.clip_grad_norm_(net.parameters(), max_grad_norm)
+            opt.step()
+            with torch.no_grad():
+                stats["policy_loss"].append(policy_loss.item())
+                stats["value_loss"].append(value_loss.item())
+                stats["entropy"].append(entropy.item())
+                stats["approx_kl"].append(((ratio - 1) - log_ratio).mean().item())
+                stats["clip_frac"].append(((ratio - 1).abs() > clip).float().mean().item())
+    return {k: float(np.mean(v)) for k, v in stats.items()}
 
 
 def rate(outcomes, value):
@@ -66,79 +172,27 @@ def rate(outcomes, value):
 def train(args, env, device):
     net = PolicyValueNet(env.channels, args.width, args.blocks).to(device)
     opt = torch.optim.Adam(net.parameters(), lr=args.lr, eps=1e-5)
-    n, t_max, shape, num_actions = env.num_envs, args.steps, env.observation_shape, env.num_actions
-    obs_buf = torch.zeros((t_max, n) + shape, device=device)
-    mask_buf = torch.zeros((t_max, n, num_actions), dtype=torch.bool, device=device)
-    act_buf = torch.zeros((t_max, n), dtype=torch.long, device=device)
-    logp_buf, val_buf, rew_buf, done_buf = (torch.zeros((t_max, n), device=device) for _ in range(4))
-
-    obs = torch.as_tensor(env.reset(), device=device)
-    masks = torch.as_tensor(env.action_masks(), device=device)
-    done = torch.zeros(n, device=device)
+    rollout, runner = Rollout(args.steps, env, device), Runner(env, device)
     outcomes, lengths = [], collections.deque(maxlen=200)
+
+    def game_end(i, info):
+        outcomes.append(info["outcome"])
+        lengths.append(info["episode"]["l"])
+
     print("device %s | %d envs x %d steps per update | %s parameters"
-          % (device, n, t_max, format(sum(p.numel() for p in net.parameters()), ",")))
+          % (device, env.num_envs, args.steps, format(sum(p.numel() for p in net.parameters()), ",")))
     start, steps, update = time.time(), 0, 0
     while time.time() - start < args.minutes * 60:
         update += 1
-        # collect experience
-        for t in range(t_max):
-            with torch.no_grad():
-                logits, value = net(obs)
-                dist = masked_dist(logits, masks)
-                action = dist.sample()
-            obs_buf[t], mask_buf[t], act_buf[t] = obs, masks, action
-            logp_buf[t], val_buf[t], done_buf[t] = dist.log_prob(action), value, done
-            next_obs, reward, next_done, infos = env.step(action.cpu().numpy())
-            rew_buf[t] = torch.as_tensor(reward, device=device)
-            for i in np.flatnonzero(next_done):
-                outcomes.append(infos[i]["outcome"])
-                lengths.append(infos[i]["episode"]["l"])
-            obs = torch.as_tensor(next_obs, device=device)
-            masks = torch.as_tensor(env.action_masks(), device=device)
-            done = torch.as_tensor(next_done, dtype=torch.float32, device=device)
-        steps += n * t_max
-
-        # generalized advantage estimation
-        with torch.no_grad():
-            next_value = net(obs)[1]
-            adv = torch.zeros_like(rew_buf)
-            last = torch.zeros(n, device=device)
-            for t in reversed(range(t_max)):
-                nonterminal = 1.0 - (done if t == t_max - 1 else done_buf[t + 1])
-                following = next_value if t == t_max - 1 else val_buf[t + 1]
-                delta = rew_buf[t] + args.gamma * following * nonterminal - val_buf[t]
-                last = delta + args.gamma * args.lam * nonterminal * last
-                adv[t] = last
-            ret = adv + val_buf
-
-        # clipped policy update
-        b_obs, b_mask = obs_buf.reshape((-1,) + shape), mask_buf.reshape(-1, num_actions)
-        b_act, b_logp, b_adv, b_ret = act_buf.reshape(-1), logp_buf.reshape(-1), adv.reshape(-1), ret.reshape(-1)
-        for _ in range(args.epochs):
-            order = torch.randperm(n * t_max, device=device)
-            for k in range(0, n * t_max, args.minibatch):
-                idx = order[k:k + args.minibatch]
-                logits, value = net(b_obs[idx])
-                dist = masked_dist(logits, b_mask[idx])
-                ratio = (dist.log_prob(b_act[idx]) - b_logp[idx]).exp()
-                a = b_adv[idx]
-                a = (a - a.mean()) / (a.std() + 1e-8)
-                policy_loss = torch.max(-a * ratio, -a * ratio.clamp(1 - args.clip, 1 + args.clip)).mean()
-                value_loss = 0.5 * (value - b_ret[idx]).pow(2).mean()
-                entropy = dist.entropy().mean()
-                loss = policy_loss + 0.5 * value_loss - args.entropy * entropy
-                opt.zero_grad()
-                loss.backward()
-                nn.utils.clip_grad_norm_(net.parameters(), 0.5)
-                opt.step()
-
+        runner.collect(net, rollout, game_end)
+        steps += env.num_envs * args.steps
+        stats = ppo_update(net, opt, rollout, args.gamma, args.lam, args.clip, args.epochs, args.minibatch, args.entropy)
         if update % 10 == 0:
             recent = outcomes[-200:]
             print("update %4d | %8d steps | %5.0f steps/s | %5d games | last 200: win %.2f loss %.2f draw %.2f"
                   " | moves/game %.1f | entropy %.2f"
                   % (update, steps, steps / (time.time() - start), len(outcomes), rate(recent, 1),
-                     rate(recent, -1), rate(recent, 0), np.mean(lengths) if lengths else 0, entropy.item()), flush=True)
+                     rate(recent, -1), rate(recent, 0), np.mean(lengths) if lengths else 0, stats["entropy"]), flush=True)
 
     first, last = outcomes[:200], outcomes[-200:]
     print("\n%d games in %.1f minutes. Win rate: first %d games %.2f, last %d games %.2f"

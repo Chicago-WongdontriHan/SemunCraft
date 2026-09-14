@@ -18,10 +18,12 @@ const CHANNEL_NAMES=[
   'enemy piece with a target lock','square locked by an enemy piece',
   'own spawns left / 16','enemy spawns left / 16','turns taken / turn cap',
   'merging allowed','spawning allowed','classic turn order',
+  // the classic order isn't symmetric: White's pieces fire right after it acts, Black's just before
+  'moves first each round (White in the classic order)',
 ];
 const CH={own:0,enemy:7,hp:14,hp5:15,mana:16,firstMove:17,obstacle:18,onBoard:19,visible:20,
   ownLock:21,ownLocked:22,enemyLock:23,enemyLocked:24,ownSpawns:25,enemySpawns:26,turns:27,
-  merge:28,spawn:29,classic:30};
+  merge:28,spawn:29,classic:30,first:31};
 const CHANNELS=CHANNEL_NAMES.length;
 // actions: for each grid cell, 81 slots meaning "act on the square dr,dc away" (-4..4, enough
 // for a siege tower's range) and one slot meaning "spawn a pawn here"; the last index is skip
@@ -80,6 +82,7 @@ function createEncoder(opts){
     fill(CH.merge,s.level&&s.level.noMerge?0:1);
     fill(CH.spawn,s.level&&s.level.allowSpawn===false?0:1);
     fill(CH.classic,s.mode==='classic'?1:0);
+    fill(CH.first,s.mode==='classic'&&side==='w'?1:0);
     return out;
   }
 

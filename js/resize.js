@@ -61,23 +61,23 @@ function resizeBoard(){
   document.getElementById('ghost').style.fontSize=Math.floor(sqPx*.72)+'px';
   const pf=Math.floor(ph/20*.512);lastPf=pf;window.lastPf=pf;
   renderPcCards();
-  lp.querySelectorAll('.panel-label').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.9))+'px');
+  lp.querySelectorAll('.panel-label').forEach(el=>el.style.fontSize=Math.max(9,Math.floor(pf*1.0))+'px');
   lp.querySelectorAll('.pc-glyph').forEach(el=>el.style.fontSize=Math.max(11,Math.floor(pf*1.8))+'px');
-  lp.querySelectorAll('.pc-name').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.92))+'px');
-  lp.querySelectorAll('.pc-stats').forEach(el=>el.style.fontSize=Math.max(5,Math.floor(pf*.65))+'px');
+  lp.querySelectorAll('.pc-name').forEach(el=>el.style.fontSize=Math.max(9,Math.floor(pf*1.02))+'px');
+  lp.querySelectorAll('.pc-stats').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.75))+'px');
   lp.querySelectorAll('.merge-guide').forEach(el=>el.style.fontSize=Math.max(10,Math.floor(pf*1.4))+'px');
   renderMergeGuide();
   const btnPad=Math.max(2,Math.floor(pf*.25));
   const btnSize=Math.floor((panelWR-btnPad*2-2)/3);const btnPx=btnSize+'px';
   rp.querySelectorAll('.dir-btn').forEach(el=>{el.style.width=btnPx;el.style.height=btnPx;el.style.fontSize=Math.max(9,Math.floor(btnSize*.42))+'px';});
   const dg=document.getElementById('dir-grid');if(dg){dg.style.gridTemplateColumns='repeat(3,'+btnPx+')';dg.style.gap=btnPad+'px';}
-  rp.querySelectorAll('.panel-label').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.9))+'px');
-  rp.querySelectorAll('.act-btn').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.9))+'px');
+  rp.querySelectorAll('.panel-label').forEach(el=>el.style.fontSize=Math.max(9,Math.floor(pf*1.0))+'px');
+  rp.querySelectorAll('.act-btn').forEach(el=>el.style.fontSize=Math.max(9,Math.floor(pf*1.0))+'px');
   rp.querySelectorAll('.pvp-id-box:not(#room-id-display)').forEach(el=>el.style.fontSize=Math.max(6,Math.floor(pf*.8))+'px');
   rp.querySelectorAll('.room-entry').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.9))+'px');
   const rid=document.getElementById('room-id-display');if(rid)rid.style.fontSize=Math.max(7,Math.floor(pf*.9))+'px';
   const inp=document.getElementById('pvp-input');if(inp)inp.style.fontSize=Math.max(7,Math.floor(pf*.88))+'px';
-  const hb2=document.getElementById('hint-box');if(hb2)hb2.style.fontSize=Math.max(8,Math.floor(pf*.88))+"px";
+  const hb2=document.getElementById('hint-box');if(hb2)hb2.style.fontSize=Math.max(9,Math.floor(pf*.95))+"px";
   // ── tutorial card scaling ──
   const tc2=document.getElementById('tut-card');
   if(tc2){
@@ -90,10 +90,10 @@ function resizeBoard(){
     if(cr.bottom>window.innerHeight-8)tc2.style.top=Math.max(8,window.innerHeight-cr.height-8)+'px';
   }
   // ── top bar scaling ──
-  const tbf=Math.max(9,Math.floor(pf*1.05));
+  const tbf=Math.max(10,Math.floor(pf*1.1));
   const tb=document.getElementById('top-bar');
   if(tb){
-    const h1el=tb.querySelector('h1');if(h1el)h1el.style.fontSize=Math.max(10,Math.floor(pf*1.2))+'px';
+    const h1el=tb.querySelector('h1');if(h1el)h1el.style.fontSize=Math.max(13,Math.floor(pf*1.4))+'px';
     const lbl=document.getElementById('api-wrap')?.querySelector('label');if(lbl)lbl.style.fontSize=tbf+'px';
     const akey=document.getElementById('api-key');if(akey){akey.style.fontSize=tbf+'px';akey.style.width=Math.max(80,Math.floor(pf*8))+'px';}
     const stat=document.getElementById('status');if(stat)stat.style.fontSize=tbf+'px';

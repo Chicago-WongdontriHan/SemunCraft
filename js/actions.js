@@ -158,7 +158,7 @@ function executeDrop(from,to,dests){
       if(existing)existing.remove();
       const box=document.createElement('div');
       box.id='bishop-choice';
-      box.style.cssText='position:fixed;z-index:900;background:#0e1f08;border:2px solid #4a8020;border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;box-shadow:0 6px 20px rgba(0,0,0,.8);font-family:Georgia,serif;font-size:12px;';
+      box.style.cssText='position:fixed;z-index:900;background:#0e1f08;border:2px solid #4a8020;border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;box-shadow:0 6px 20px rgba(0,0,0,.8);font-family:var(--ui-font);font-size:13px;';
       const rect=sq.getBoundingClientRect();
       box.style.left=(rect.left+rect.width/2)+'px';
       box.style.top=(rect.bottom+6)+'px';

@@ -3,56 +3,67 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Kingdom — Jungle War</title>
+<title>SemunCraft</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+/* the game's one UI font (Lilita One, as on the title screen); ids and keys stay monospace */
+:root{--ui-font:'Lilita One',Georgia,serif;}
+button,select,textarea{font-family:inherit;}
 html,body{width:100%;height:100%;overflow:hidden;}
-body{font-family:Georgia,serif;background:#0c1a08;color:#c8d4a0;display:flex;flex-direction:column;align-items:center;height:100vh;height:100dvh;padding:6px 10px 4px;gap:5px;background-image:radial-gradient(ellipse at 20% 10%,rgba(30,60,10,.6) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(10,40,5,.7) 0%,transparent 50%);}
+body{font-family:var(--ui-font);background:#0c1a08;color:#c8d4a0;display:flex;flex-direction:column;align-items:center;height:100vh;height:100dvh;padding:6px 10px 4px;gap:5px;background-image:radial-gradient(ellipse at 20% 10%,rgba(30,60,10,.6) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(10,40,5,.7) 0%,transparent 50%);}
 
 /* ── INTRO ── */
-#intro{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;background:linear-gradient(160deg,#091505 0%,#0e2208 50%,#091505 100%);background-image:radial-gradient(ellipse at 30% 20%,rgba(40,80,10,.7) 0%,transparent 55%),radial-gradient(ellipse at 70% 80%,rgba(20,60,5,.8) 0%,transparent 55%);}
+@font-face{font-family:'Lilita One';src:url(fonts/LilitaOne.woff2?v=20260916j) format('woff2');font-display:swap;}
+/* the title screen: a war scene behind (Battle Lines on wide screens, The Clash on tall ones, from
+   img/make-title-wallpapers.js), the SemunCraft title, and the menu on a translucent card. Every
+   size follows --tw, the title's width, so the whole menu scales with the screen and still fits. */
+#intro{--tw:min(92vw,640px,60vh);position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;gap:calc(var(--tw)*.02);padding:12px 8px;overflow-y:auto;
+  background:#8ED6F2 url(img/title-wide.svg?v=20260916j) center bottom/cover no-repeat;}
+@media (orientation:portrait){#intro{background-image:url(img/title-tall.svg?v=20260916j);}}
+#intro-title{width:var(--tw);height:auto;display:block;flex-shrink:0;overflow:visible;}
+#intro-title text{font-family:'Lilita One',Georgia,serif;font-size:120px;text-anchor:middle;stroke-linejoin:round;}
+#intro-title .title-shadow{fill:#2A1706;stroke:#2A1706;stroke-width:20px;}
+#intro-title .title-main{fill:url(#intro-gold);stroke:#2A1706;stroke-width:15px;paint-order:stroke;}
+#intro-card{display:flex;flex-direction:column;align-items:center;gap:calc(var(--tw)*.03);padding:calc(var(--tw)*.04) calc(var(--tw)*.05);
+  background:rgba(11,22,9,.62);border:1.5px solid rgba(255,255,255,.16);border-radius:22px;box-shadow:0 10px 30px rgba(0,0,0,.25);}
+#btn-settings{position:fixed;top:6px;right:10px;z-index:110;padding:.12em .7em .18em;font-size:15px;font-family:'Lilita One',Georgia,serif;letter-spacing:.02em;background:#0e1a08;border:2px solid #4a7820;color:#90c840;border-radius:.35em;cursor:pointer;white-space:nowrap;}
+#btn-settings:hover{background:#1a3010;color:#c8e860;border-color:#8ab840;}
+.intro-label{font-family:'Lilita One',Georgia,serif;font-size:calc(var(--tw)*.042);color:#d7ecb0;letter-spacing:.04em;}
 #intro.hidden{display:none;}
-#intro h1{font-size:clamp(28px,5vw,52px);font-weight:700;letter-spacing:.12em;color:#c8a840;text-shadow:0 0 30px rgba(200,168,64,.5),0 2px 8px rgba(0,0,0,.8);font-variant:small-caps;animation:titleGlow 3s ease-in-out infinite;}
-@keyframes titleGlow{0%,100%{text-shadow:0 0 20px rgba(200,168,64,.4),0 2px 8px rgba(0,0,0,.8);}50%{text-shadow:0 0 40px rgba(200,168,64,.8),0 2px 8px rgba(0,0,0,.8);}}
-#intro .sub{font-size:14px;color:#4a7830;letter-spacing:.15em;font-variant:small-caps;}
-#intro-buttons{display:flex;flex-direction:column;align-items:center;gap:12px;}
-.intro-btn{padding:12px 40px;font-size:16px;font-family:Georgia,serif;font-variant:small-caps;letter-spacing:.08em;background:#0e1a08;border:1px solid #4a7820;color:#90c840;border-radius:6px;cursor:pointer;transition:all .2s;min-width:200px;text-align:center;}
+#intro-buttons{display:flex;flex-direction:column;align-items:center;gap:calc(var(--tw)*.018);}
+.intro-btn{padding:.14em 1em .2em;font-size:calc(var(--tw)*.078);font-family:'Lilita One',Georgia,serif;letter-spacing:.02em;line-height:1.15;background:#0e1a08;border:2px solid #4a7820;color:#90c840;border-radius:.3em;cursor:pointer;transition:all .2s;min-width:calc(var(--tw)*.66);text-align:center;}
 .intro-btn:hover{background:#1a3010;color:#c8e860;border-color:#8ab840;box-shadow:0 0 16px rgba(140,200,60,.2);}
 .intro-btn.gold{color:#c8a840;border-color:#7a6020;}
 .intro-btn.gold:hover{background:#1a1808;color:#e8c860;border-color:#c8a840;}
-#diff-row{display:flex;gap:12px;animation:fadeIn .3s ease;}
+#diff-row{display:flex;flex-wrap:wrap;justify-content:center;gap:calc(var(--tw)*.015);animation:fadeIn .3s ease;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:none;}}
-.diff-btn{padding:10px 28px;font-size:14px;font-family:Georgia,serif;font-variant:small-caps;letter-spacing:.06em;background:#0e1a08;border:1px solid #3a5820;color:#8ab840;border-radius:6px;cursor:pointer;transition:all .2s;}
+.diff-btn{padding:.12em .8em .18em;font-size:calc(var(--tw)*.058);font-family:'Lilita One',Georgia,serif;letter-spacing:.02em;background:#0e1a08;border:2px solid #3a5820;color:#8ab840;border-radius:.3em;cursor:pointer;transition:all .2s;}
 .diff-btn:hover{background:#162a10;color:#c8e860;border-color:#6a9830;}
-#intro-tip{font-size:11px;color:#2a4818;font-family:monospace;text-align:center;max-width:340px;line-height:1.6;}
-/* touch screens have no right-click: show touch wording instead */
-.tip-touch{display:none;}
-@media (hover:none) and (pointer:coarse){.tip-mouse{display:none;}.tip-touch{display:inline;}}
 
 /* ── TOP BAR ── */
 /* right padding leaves room for the fixed ⚙ Audio button so it doesn't cover the turn counter */
 #top-bar{display:flex;align-items:center;gap:12px;width:100%;flex-shrink:0;padding:4px 96px 4px 8px;}
-h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-variant:small-caps;white-space:nowrap;}
+h1{font-size:18px;font-weight:400;font-family:'Lilita One',Georgia,serif;letter-spacing:.02em;color:#FFCB3A;white-space:nowrap;text-shadow:0 1px 0 #2A1706,1px 0 0 #2A1706,-1px 0 0 #2A1706,0 -1px 0 #2A1706,0 2px 3px rgba(0,0,0,.45);}
 #api-wrap{display:flex;gap:5px;align-items:center;}
-#api-wrap label{font-size:10px;color:#5a7030;font-family:monospace;}
+#api-wrap label{font-size:10px;color:#5a7030;font-family:var(--ui-font);}
 #api-key{width:150px;padding:3px 7px;font-size:10px;font-family:monospace;background:#0a1606;border:1px solid #3a5820;border-radius:3px;color:#a0c060;outline:none;}
-#status{font-size:11px;color:#a8c078;padding:3px 10px;background:#0e1f08;border-radius:3px;border:1px solid #2a4818;font-family:monospace;white-space:nowrap;margin-left:auto;flex-shrink:0;}
+#status{font-size:13px;color:#a8c078;padding:3px 10px;background:#0e1f08;border-radius:3px;border:1px solid #2a4818;font-family:var(--ui-font);white-space:nowrap;margin-left:auto;flex-shrink:0;}
 
 /* ── MAIN ── */
 #main{display:flex;gap:8px;align-items:stretch;flex:1;min-height:0;width:100%;}
 
 /* ── LEFT PANEL ── */
 #left-panel{flex-shrink:0;background:#0e1a08;border:1px solid #2a4018;border-radius:4px;padding:6px 4px;display:flex;flex-direction:column;gap:3px;justify-content:space-evenly;overflow:hidden;}
-.panel-label{font-size:8px;color:#4a6828;text-align:center;letter-spacing:.1em;font-family:monospace;font-variant:small-caps;}
+.panel-label{font-size:10px;color:#4a6828;text-align:center;letter-spacing:.1em;font-family:var(--ui-font);}
 .tier-divider{height:1px;background:#1e3010;}
 .piece-card{display:flex;flex-direction:column;align-items:center;padding:3px 2px;border:1px solid #1e3010;border-radius:3px;background:#0c1608;gap:1px;}
 .piece-card-row{display:flex;align-items:center;justify-content:center;gap:6px;}
 .pc-glyph{font-size:18px;line-height:1;}
 .pc-glyph-w{color:#ffffff;text-shadow:0 0 6px rgba(0,0,0,1),0 1px 3px #000,0 0 2px #888;}
 .pc-glyph-b{color:#ffe090;text-shadow:0 0 5px rgba(0,0,0,.9),0 1px 2px #000;}
-.pc-name{font-size:8px;color:#90c840;font-family:monospace;font-variant:small-caps;font-weight:bold;}
-.pc-stats{font-size:6px;color:#6a8848;font-family:monospace;text-align:center;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.merge-guide{font-size:13px;color:#c8d860;text-align:center;line-height:2;font-family:monospace;letter-spacing:.04em;font-weight:bold;}
+.pc-name{font-size:10px;color:#90c840;font-family:var(--ui-font);font-weight:400;}
+.pc-stats{font-size:7.5px;color:#6a8848;font-family:var(--ui-font);text-align:center;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.merge-guide{font-size:13px;color:#c8d860;text-align:center;line-height:2;font-family:var(--ui-font);letter-spacing:.04em;font-weight:400;}
 .mg-row{display:flex;align-items:center;justify-content:center;gap:1px;}
 .mg-icon svg{display:block;}
 
@@ -61,8 +72,11 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 #board{display:grid;background:var(--tile-frame,#3c5a1e);grid-template-columns:repeat(9,1fr);overflow:hidden;user-select:none;touch-action:none;}
 #atk-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
 
-.sq{position:relative;cursor:grab;overflow:hidden;border-radius:12%;box-shadow:inset 0 0 0 var(--tile-ring,1.5px) var(--tile-frame,#3c5a1e);}
-.tile-art{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;}
+.sq{position:relative;cursor:grab;border-radius:12%;box-shadow:inset 0 0 0 var(--tile-ring,1.5px) var(--tile-frame,#3c5a1e);}
+/* a square no longer clips what it holds, so a piece can pop or hop past its edge; the layers that
+   must keep the rounded corners clip themselves */
+.tile-art{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;border-radius:inherit;overflow:hidden;}
+.fog-cover{border-radius:inherit;}
 /* undergrowth: leaves in front of a piece standing in it (under its pips); a hidden enemy under Map Cheat */
 .tile-front{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;}
 .piece-concealed{opacity:.45;}
@@ -92,7 +106,7 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 @keyframes guideBeat{0%,100%{transform:scale(.9)}50%{transform:scale(1)}}
 /* the selected king's Spawn / Move chooser (actions.js) */
 #king-choice{position:fixed;z-index:800;display:flex;gap:6px;padding:5px;background:#0e1f08;border:2px solid #4a8020;border-radius:9px;box-shadow:0 6px 18px rgba(0,0,0,.7);}
-.king-choice-btn{padding:7px 14px;font:600 14px Georgia,serif;font-variant:small-caps;color:#9ac860;background:#0a1606;border:1px solid #3a6020;border-radius:6px;cursor:pointer;touch-action:manipulation;}
+.king-choice-btn{padding:7px 14px;font:600 14px Georgia,serif;color:#9ac860;background:#0a1606;border:1px solid #3a6020;border-radius:6px;cursor:pointer;touch-action:manipulation;}
 .king-choice-btn.on{color:#1a1204;background:#ffc93a;border-color:#ffe08a;}
 .king-choice-btn:disabled{opacity:.4;cursor:default;}
 .sq.drop-heal{background:#40d870 !important;}
@@ -129,7 +143,7 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 .mana-pip{border-radius:50%;flex-shrink:0;background:#4090e8;}
 .mana-pip.empty{background:rgba(40,80,200,.2);}
 .hp-pip.empty-b{background:rgba(255,255,255,.12);}
-.coord{position:absolute;font-size:7px;font-weight:700;font-family:monospace;opacity:.38;pointer-events:none;line-height:1;}
+.coord{position:absolute;font-size:9px;font-weight:400;font-family:var(--ui-font);opacity:.38;pointer-events:none;line-height:1;}
 .coord-rank{top:1px;left:2px;}
 .coord-file{bottom:1px;right:2px;}
 .sq.lt .coord{color:#3a5820;}
@@ -138,12 +152,12 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 /* ── RIGHT PANEL ── */
 #right-panel{flex-shrink:0;background:#0e1a08;border:1px solid #2a4018;border-radius:4px;padding:6px 4px;display:flex;flex-direction:column;gap:5px;align-items:center;justify-content:space-evenly;overflow:hidden;}
 #dir-grid{display:grid;grid-template-columns:repeat(3,28px);gap:3px;}
-.dir-btn{width:28px;height:28px;font-size:13px;background:#162208;border:1px solid #2e4a18;color:#8ab840;border-radius:3px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:monospace;transition:background .1s,transform .08s;}
+.dir-btn{width:28px;height:28px;font-size:13px;background:#162208;border:1px solid #2e4a18;color:#8ab840;border-radius:3px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:var(--ui-font);transition:background .1s,transform .08s;}
 .dir-btn:hover:not(:disabled){background:#1e3210;color:#c8e860;}
 .dir-btn:active:not(:disabled){transform:scale(.86);}
 .dir-btn:disabled{opacity:.2;cursor:default;}
 #actions{display:flex;flex-direction:column;gap:4px;align-items:stretch;width:100%;}
-.act-btn{padding:5px 7px;font-size:10px;font-family:monospace;background:#162208;border:1px solid #2e4a18;color:#8ab840;border-radius:3px;cursor:pointer;text-align:center;width:100%;transition:background .12s,color .12s;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.act-btn{padding:5px 7px;font-size:12px;font-family:var(--ui-font);background:#162208;border:1px solid #2e4a18;color:#8ab840;border-radius:3px;cursor:pointer;text-align:center;width:100%;transition:background .12s,color .12s;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .act-btn:hover:not(:disabled){background:#1e3210;color:#c8e860;}
 .act-btn:disabled{opacity:.2;cursor:default;}
 .act-btn.gold{color:#c8a840;border-color:#5a4820;}
@@ -158,7 +172,7 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 
 #ghost{display:none;position:fixed;pointer-events:none;z-index:999;transform:translate(-50%,-52%) scale(1.2);filter:drop-shadow(0 4px 14px rgba(0,0,0,.85));}
 #bottom-bar{display:flex;align-items:center;gap:10px;flex-shrink:0;width:100%;padding:2px 8px;}
-#log{font-size:10px;color:#5a7830;font-family:monospace;line-height:1.6;min-height:14px;flex:1;}
+#log{font-size:12px;color:#5a7830;font-family:var(--ui-font);line-height:1.6;min-height:14px;flex:1;}
 #thinking-dot{display:none;width:6px;height:6px;border-radius:50%;background:#8ab840;animation:pulse .9s ease-in-out infinite;flex-shrink:0;}
 #thinking-dot.on{display:inline-block;}
 @keyframes pulse{0%,100%{opacity:.12}50%{opacity:1}}
@@ -174,29 +188,29 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
   pointer-events:none;transition:all .28s ease;}
 #tut-card{position:absolute;background:#0e1f08;border:2px solid #4a8020;border-radius:8px;
   padding:16px 22px;width:clamp(240px,36vw,480px);max-width:calc(100vw - 24px);pointer-events:all;
-  box-shadow:0 8px 24px rgba(0,0,0,.8);font-family:Georgia,serif;box-sizing:border-box;}
-#tut-card h3{color:#c8f040;font-variant:small-caps;letter-spacing:.08em;margin-bottom:6px;}
+  box-shadow:0 8px 24px rgba(0,0,0,.8);font-family:var(--ui-font);box-sizing:border-box;}
+#tut-card h3{color:#c8f040;letter-spacing:.08em;margin-bottom:6px;}
 #tut-card p{color:#90c070;line-height:1.6;margin-bottom:12px;}
-#tut-card .tut-hint{color:#c8a040;font-family:monospace;font-style:italic;margin-bottom:10px;}
+#tut-card .tut-hint{color:#c8a040;font-family:var(--ui-font);font-style:italic;margin-bottom:10px;}
 #tut-card .tut-btns{display:flex;gap:8px;flex-wrap:wrap;}
-.tut-btn{padding:5px 14px;font-family:monospace;border-radius:4px;cursor:pointer;border:1px solid #3a6018;background:#162208;color:#80b040;transition:all .15s;}
+.tut-btn{padding:5px 14px;font-family:var(--ui-font);border-radius:4px;cursor:pointer;border:1px solid #3a6018;background:#162208;color:#80b040;transition:all .15s;}
 .tut-btn:hover{background:#1e3010;color:#b0d060;}
 .tut-btn.tut-primary{border-color:#6ab030;color:#a0d040;}
-#tut-step{position:absolute;top:12px;right:14px;font-size:10px;color:#4a7020;font-family:monospace;}
+#tut-step{position:absolute;top:12px;right:14px;font-size:11px;color:#4a7020;font-family:var(--ui-font);}
 
 /* ── PVP LOBBY OVERLAY ── */
 #pvp-lobby{display:none;position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.65);align-items:center;justify-content:center;}
 #pvp-lobby.show{display:flex;}
 #pvp-lobby-box{background:#0e1f08;border:2px solid #4a8020;border-radius:10px;padding:28px 32px;width:clamp(280px,40vw,460px);display:flex;flex-direction:column;gap:12px;box-shadow:0 12px 40px rgba(0,0,0,.9);}
-#pvp-lobby-box h2{font-size:16px;color:#c8a840;font-variant:small-caps;letter-spacing:.1em;text-align:center;margin-bottom:4px;}
-.pvp-lbl{font-size:10px;color:#4a6828;font-family:monospace;font-variant:small-caps;letter-spacing:.1em;}
+#pvp-lobby-box h2{font-size:16px;color:#c8a840;letter-spacing:.1em;text-align:center;margin-bottom:4px;}
+.pvp-lbl{font-size:10px;color:#4a6828;font-family:var(--ui-font);letter-spacing:.1em;}
 #pvp-room-id{font-size:11px;color:#90e050;font-family:monospace;padding:4px 8px;background:#0a1406;border:1px solid #2a4018;border-radius:3px;text-align:center;}
 #pvp-rooms{display:flex;flex-direction:column;gap:3px;max-height:120px;overflow-y:auto;}
 .pvp-room-entry{font-size:11px;font-family:monospace;color:#7ab830;background:#0c1608;border:1px solid #2a4018;border-radius:3px;padding:5px 8px;cursor:pointer;transition:background .1s;}
 .pvp-room-entry:hover{background:#142008;color:#c8e840;}
 .pvp-room-entry.empty{color:#3a5020;cursor:default;pointer-events:none;}
-#pvp-lobby-status{font-size:10px;font-family:monospace;text-align:center;}
-.pvp-lobby-btn{padding:8px 20px;font-size:12px;font-family:Georgia,serif;font-variant:small-caps;letter-spacing:.06em;background:#0e1a08;border:1px solid #3a6020;color:#80b840;border-radius:5px;cursor:pointer;transition:all .18s;text-align:center;}
+#pvp-lobby-status{font-size:10px;font-family:var(--ui-font);text-align:center;}
+.pvp-lobby-btn{padding:8px 20px;font-size:12px;font-family:var(--ui-font);letter-spacing:.06em;background:#0e1a08;border:1px solid #3a6020;color:#80b840;border-radius:5px;cursor:pointer;transition:all .18s;text-align:center;}
 .pvp-lobby-btn:hover{background:#162a10;color:#c8e860;border-color:#6ab030;}
 .pvp-lobby-btn.gold{color:#c8a840;border-color:#7a6020;}
 .pvp-lobby-btn.gold:hover{color:#e8c860;border-color:#c8a840;}
@@ -206,13 +220,13 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 #game-over{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.72);align-items:center;justify-content:center;flex-direction:column;gap:22px;animation:goFadeIn .5s ease;}
 #game-over.show{display:flex;}
 @keyframes goFadeIn{from{opacity:0;transform:scale(.92);}to{opacity:1;transform:scale(1);}}
-#go-title{font-size:clamp(36px,7vw,72px);font-weight:700;font-family:Georgia,serif;letter-spacing:.1em;font-variant:small-caps;text-shadow:0 0 40px currentColor,0 3px 12px rgba(0,0,0,.9);}
+#go-title{font-size:clamp(36px,7vw,72px);font-weight:400;font-family:var(--ui-font);letter-spacing:.1em;text-shadow:0 0 40px currentColor,0 3px 12px rgba(0,0,0,.9);}
 #go-title.win {color:#c8f040;}
 #go-title.lose{color:#e05030;}
 #go-title.draw{color:#c8a040;}
-#go-sub{font-size:clamp(13px,2vw,20px);color:#a0b880;font-family:monospace;letter-spacing:.08em;opacity:.85;}
+#go-sub{font-size:clamp(13px,2vw,20px);color:#a0b880;font-family:var(--ui-font);letter-spacing:.08em;opacity:.85;}
 #go-buttons{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;padding:0 12px;}
-.go-btn{padding:10px 30px;font-size:15px;font-family:Georgia,serif;font-variant:small-caps;letter-spacing:.06em;border-radius:5px;cursor:pointer;transition:all .18s;}
+.go-btn{padding:10px 30px;font-size:15px;font-family:var(--ui-font);letter-spacing:.06em;border-radius:5px;cursor:pointer;transition:all .18s;}
 .go-btn.primary{background:#1a3010;border:2px solid #6ab830;color:#a0e040;}
 .go-btn.primary:hover{background:#244818;color:#c8f060;border-color:#90d040;}
 .go-btn.secondary{background:#0e1a08;border:1px solid #3a5020;color:#6a8840;}
@@ -316,15 +330,15 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 #campaign-select{display:none;position:fixed;inset:0;z-index:160;background:rgba(0,0,0,.72);align-items:center;justify-content:center;}
 #campaign-select.show{display:flex;}
 #campaign-select-box{background:#0e1f08;border:2px solid #7a5830;border-radius:10px;padding:24px 28px;width:clamp(300px,45vw,520px);max-height:80vh;display:flex;flex-direction:column;gap:12px;box-shadow:0 12px 40px rgba(0,0,0,.9);overflow-y:auto;}
-#campaign-select-box h2{font-size:18px;color:#e0a840;font-variant:small-caps;letter-spacing:.1em;text-align:center;margin-bottom:4px;font-family:Georgia,serif;}
+#campaign-select-box h2{font-size:18px;color:#e0a840;letter-spacing:.1em;text-align:center;margin-bottom:4px;font-family:var(--ui-font);}
 #campaign-level-list{display:flex;flex-direction:column;gap:6px;}
-.campaign-level-btn{display:flex;align-items:center;gap:12px;padding:10px 14px;background:#162208;border:1px solid #3a5820;border-radius:6px;cursor:pointer;transition:all .15s;font-family:Georgia,serif;}
+.campaign-level-btn{display:flex;align-items:center;gap:12px;padding:10px 14px;background:#162208;border:1px solid #3a5820;border-radius:6px;cursor:pointer;transition:all .15s;font-family:var(--ui-font);}
 .campaign-level-btn:hover{background:#1e3210;border-color:#6a9830;}
 .campaign-level-btn.locked{opacity:.35;cursor:default;pointer-events:none;}
 .clb-num{font-size:20px;font-weight:700;color:#e0a840;min-width:28px;text-align:center;}
 .clb-info{display:flex;flex-direction:column;gap:2px;}
-.clb-name{font-size:13px;color:#c8e860;font-variant:small-caps;letter-spacing:.05em;}
-.clb-size{font-size:10px;color:#6a8840;font-family:monospace;}
+.clb-name{font-size:13px;color:#c8e860;letter-spacing:.05em;}
+.clb-size{font-size:10px;color:#6a8840;font-family:var(--ui-font);}
 .clb-stars{font-size:14px;color:#e0a840;}
 
 /* ── PAN ARROWS + MINIMAP ── */
@@ -371,7 +385,7 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 #map-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
 /* four maps: two by two on a phone rather than three and one */
 @media (max-width: 480px){#map-row{display:grid;grid-template-columns:repeat(2,1fr);}}
-.map-btn{padding:8px 16px;font-size:13px;font-family:Georgia,serif;font-variant:small-caps;background:#0e1a08;border:1px solid #3a5820;color:#8ab840;border-radius:5px;cursor:pointer;transition:all .2s;}
+.map-btn{padding:.2em .7em .26em;font-size:calc(var(--tw,640px)*.045);font-family:'Lilita One',Georgia,serif;letter-spacing:.02em;background:#0e1a08;border:2px solid #3a5820;color:#8ab840;border-radius:.35em;cursor:pointer;transition:all .2s;}
 .map-btn:hover{background:#162a10;color:#c8e860;}
 .map-btn.sel-map{border-color:#c8a840;color:#c8a840;background:#1a1808;}
 
@@ -379,7 +393,7 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 @media (max-width: 1024px) and (orientation: portrait){
   body{padding:2px 4px;gap:2px;}
   #top-bar{padding:2px 76px 2px 4px;gap:4px;flex-wrap:wrap;justify-content:center;}
-  #top-bar h1{font-size:12px;}
+  #top-bar h1{font-size:15px;}
   #api-wrap{display:none;} /* hide API key on mobile */
   /* status gets its own line and wraps, so long campaign descriptions stay readable */
   #status{order:5;flex:1 1 100%;margin-left:0;white-space:normal;text-align:center;}
@@ -440,7 +454,7 @@ body.theme-ocean{--tile-frame:#1e3c74;}
   body{padding:2px 4px;gap:2px;}
   #top-bar{padding:1px 76px 1px 4px;gap:4px;}
   #main{justify-content:center;}
-  #top-bar h1{font-size:11px;}
+  #top-bar h1{font-size:14px;}
   #api-wrap{display:none;}
   /* shrink panels to minimum */
   #left-panel{max-width:80px !important;padding:3px 2px;}
@@ -472,8 +486,12 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 
 <!-- ── INTRO PAGE ── -->
 <div id="intro">
-  <div class="sub">♜ ♞ ♝ ♟ &nbsp;&nbsp;Jungle War&nbsp;&nbsp; ♙ ♗ ♘ ♖</div>
-  <h1>⚔ Kingdom</h1>
+  <svg id="intro-title" viewBox="0 0 760 170" role="img" aria-label="SemunCraft">
+    <defs><linearGradient id="intro-gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF3B0"/><stop offset=".5" stop-color="#FFCB3A"/><stop offset="1" stop-color="#E8912A"/></linearGradient></defs>
+    <text class="title-shadow" x="380" y="132">SemunCraft</text>
+    <text class="title-main" x="380" y="122">SemunCraft</text>
+  </svg>
+  <div id="intro-card">
   <div id="intro-buttons">
     <button class="intro-btn" onclick="showDiff()">Single Player</button>
     <div id="diff-row" style="display:none">
@@ -486,8 +504,8 @@ body.theme-ocean{--tile-frame:#1e3c74;}
     <button class="intro-btn" onclick="startTutorial()" style="border-color:#5a7830;color:#a0c860;">📖 Tutorial</button>
     <button class="intro-btn" onclick="startAiVsAi()" style="border-color:#3a6878;color:#80c8d8;">🤖 AI vs AI</button>
   </div>
-  <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
-    <div class="panel-label" style="font-size:12px;color:#6a8840;letter-spacing:.1em;font-variant:small-caps;">Map Theme</div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:calc(var(--tw)*.012);">
+    <div class="intro-label">Map Theme</div>
     <div id="map-row">
       <button class="map-btn sel-map" id="mbtn-forest" onclick="selectMap('forest')">🌲 Forest</button>
       <button class="map-btn" id="mbtn-jungle" onclick="selectMap('jungle')">🌴 Jungle</button>
@@ -495,7 +513,7 @@ body.theme-ocean{--tile-frame:#1e3c74;}
       <button class="map-btn" id="mbtn-ocean" onclick="selectMap('ocean')">🌊 Ocean</button>
     </div>
   </div>
-  <div id="intro-tip">drag a piece to move it · drop on ally to merge<br><span class="tip-mouse">right-click to set attack / heal target</span><span class="tip-touch">drop on an enemy to target it · tap a siege tower twice to un-siege</span><br>attacks fire automatically each turn</div>
+  </div>
 </div>
 
 <!-- ── TUTORIAL OVERLAY ── -->
@@ -565,14 +583,14 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 
 <!-- ── GAME UI ── -->
 <div id="top-bar">
-  <h1>⚔ Kingdom</h1>
+  <h1>SemunCraft</h1>
   <div id="api-wrap">
     <label>API KEY</label>
     <input type="password" id="api-key" placeholder="sk-ant-..." spellcheck="false" title="Optional: with an Anthropic API key, Claude plays Black on Hard">
   </div>
   <div id="status">—</div>
-  <div id="turn-counter" style="font-size:11px;color:#6a8840;padding:3px 8px;background:#0e1f08;border-radius:3px;border:1px solid #2a4818;font-family:monospace;white-space:nowrap;flex-shrink:0;">Turn 0</div>
-  <button id="btn-settings" onclick="toggleSettings()" style="position:fixed;top:6px;right:10px;z-index:110;padding:3px 8px;font-size:10px;font-family:monospace;background:#162208;border:1px solid #2e4a18;color:#8ab840;border-radius:3px;cursor:pointer;white-space:nowrap;">⚙ Audio</button>
+  <div id="turn-counter" style="font-size:13px;color:#6a8840;padding:3px 8px;background:#0e1f08;border-radius:3px;border:1px solid #2a4818;font-family:var(--ui-font);white-space:nowrap;flex-shrink:0;">Turn 0</div>
+  <button id="btn-settings" onclick="toggleSettings()">⚙ Audio</button>
 </div>
 
 <div id="main">
@@ -583,8 +601,8 @@ body.theme-ocean{--tile-frame:#1e3c74;}
     <div class="panel-label">Units <span id="pc-page-label" style="color:#3a5828;font-size:7px;">1/2</span></div>
     <div id="pc-cards-wrap" style="display:flex;flex-direction:column;gap:3px;flex:1;min-height:0;justify-content:space-evenly;"></div>
     <div style="display:flex;gap:4px;justify-content:center;margin-top:2px;">
-      <button id="pc-prev" onclick="pcPage(-1)" style="padding:2px 8px;font-size:10px;font-family:monospace;background:#0e1a08;border:1px solid #2a4018;color:#6a8840;border-radius:3px;cursor:pointer;">◀</button>
-      <button id="pc-next" onclick="pcPage(1)"  style="padding:2px 8px;font-size:10px;font-family:monospace;background:#0e1a08;border:1px solid #2a4018;color:#6a8840;border-radius:3px;cursor:pointer;">▶</button>
+      <button id="pc-prev" onclick="pcPage(-1)" style="padding:2px 8px;font-size:10px;font-family:var(--ui-font);background:#0e1a08;border:1px solid #2a4018;color:#6a8840;border-radius:3px;cursor:pointer;">◀</button>
+      <button id="pc-next" onclick="pcPage(1)"  style="padding:2px 8px;font-size:10px;font-family:var(--ui-font);background:#0e1a08;border:1px solid #2a4018;color:#6a8840;border-radius:3px;cursor:pointer;">▶</button>
     </div>
   </div>
 
@@ -603,7 +621,7 @@ body.theme-ocean{--tile-frame:#1e3c74;}
   </div>
 
   <div id="right-panel">
-    <div id="hint-box" style="display:none;font-size:10px;color:#90e050;font-family:monospace;background:#0a1606;border:1px solid #2a4018;border-radius:3px;padding:4px 6px;margin-bottom:2px;line-height:1.5;"></div>
+    <div id="hint-box" style="display:none;font-size:12px;color:#90e050;font-family:var(--ui-font);background:#0a1606;border:1px solid #2a4018;border-radius:3px;padding:4px 6px;margin-bottom:2px;line-height:1.5;"></div>
 
     <div class="panel-label">Actions</div>
     <div id="actions">
@@ -642,22 +660,22 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 <!-- ── SETTINGS MODAL ── -->
 <div id="settings-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.7);align-items:center;justify-content:center;">
   <div style="background:#0e1a08;border:2px solid #4a7820;border-radius:8px;padding:24px 32px;min-width:260px;display:flex;flex-direction:column;gap:16px;">
-    <div style="font-size:14px;color:#c8a840;font-variant:small-caps;letter-spacing:.1em;text-align:center;">⚙ Audio Settings</div>
+    <div style="font-size:14px;color:#c8a840;letter-spacing:.1em;text-align:center;">⚙ Audio Settings</div>
     <div style="display:flex;flex-direction:column;gap:8px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <label style="font-size:11px;color:#8ab840;font-family:monospace;white-space:nowrap;">🎵 Music</label>
+        <label style="font-size:11px;color:#8ab840;font-family:var(--ui-font);white-space:nowrap;">🎵 Music</label>
         <input type="range" id="bgm-vol" min="0" max="100" value="35" oninput="setBgmVol(this.value)" style="flex:1;accent-color:#8ab840;">
-        <span id="bgm-val" style="font-size:10px;color:#6a8840;font-family:monospace;width:28px;text-align:right;">35</span>
+        <span id="bgm-val" style="font-size:10px;color:#6a8840;font-family:var(--ui-font);width:28px;text-align:right;">35</span>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <label style="font-size:11px;color:#8ab840;font-family:monospace;white-space:nowrap;">🔊 Effects</label>
+        <label style="font-size:11px;color:#8ab840;font-family:var(--ui-font);white-space:nowrap;">🔊 Effects</label>
         <input type="range" id="sfx-vol" min="0" max="100" value="70" oninput="setSfxVol(this.value)" style="flex:1;accent-color:#8ab840;">
-        <span id="sfx-val" style="font-size:10px;color:#6a8840;font-family:monospace;width:28px;text-align:right;">70</span>
+        <span id="sfx-val" style="font-size:10px;color:#6a8840;font-family:var(--ui-font);width:28px;text-align:right;">70</span>
       </div>
     </div>
     <div style="display:flex;gap:8px;justify-content:center;">
-      <button onclick="toggleBgm()" id="btn-bgm-toggle" style="padding:6px 16px;font-size:11px;font-family:monospace;background:#162208;border:1px solid #2e4a18;color:#8ab840;border-radius:4px;cursor:pointer;">⏸ Pause BGM</button>
-      <button onclick="toggleSettings()" style="padding:6px 16px;font-size:11px;font-family:monospace;background:#162208;border:1px solid #2e4a18;color:#8ab840;border-radius:4px;cursor:pointer;">Close</button>
+      <button onclick="toggleBgm()" id="btn-bgm-toggle" style="padding:6px 16px;font-size:11px;font-family:var(--ui-font);background:#162208;border:1px solid #2e4a18;color:#8ab840;border-radius:4px;cursor:pointer;">⏸ Pause BGM</button>
+      <button onclick="toggleSettings()" style="padding:6px 16px;font-size:11px;font-family:var(--ui-font);background:#162208;border:1px solid #2e4a18;color:#8ab840;border-radius:4px;cursor:pointer;">Close</button>
     </div>
   </div>
 </div>
@@ -666,32 +684,32 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 <!-- ?v= is the release version: bump it on every release so browsers (GitHub Pages lets them
      cache files for 10 minutes) never mix old cached scripts with new ones -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-<script src="js/constants.js?v=20260916f"></script>
-<script src="js/state.js?v=20260916f"></script>
-<script src="js/audio.js?v=20260916f"></script>
-<script src="js/music.js?v=20260916f"></script>
-<script src="pieces/pieces.js?v=20260916f"></script>
-<script src="pieces/forest.js?v=20260916f"></script>
-<script src="pieces/jungle.js?v=20260916f"></script>
-<script src="pieces/desert.js?v=20260916f"></script>
-<script src="pieces/ocean.js?v=20260916f"></script>
-<script src="js/movement.js?v=20260916f"></script>
-<script src="js/themes.js?v=20260916f"></script>
-<script src="js/scenery.js?v=20260916f"></script>
-<script src="js/render.js?v=20260916f"></script>
-<script src="js/combat.js?v=20260916f"></script>
-<script src="js/animals.js?v=20260916f"></script>
-<script src="js/actions.js?v=20260916f"></script>
-<script src="js/ui.js?v=20260916f"></script>
-<script src="js/tutorial.js?v=20260916f"></script>
-<script src="js/campaign.js?v=20260916f"></script>
-<script src="js/pvp.js?v=20260916f"></script>
-<script src="js/ai.js?v=20260916f"></script>
-<script src="js/game.js?v=20260916f"></script>
-<script src="js/drag.js?v=20260916f"></script>
-<script src="js/resize.js?v=20260916f"></script>
+<script src="js/constants.js?v=20260916j"></script>
+<script src="js/state.js?v=20260916j"></script>
+<script src="js/audio.js?v=20260916j"></script>
+<script src="js/music.js?v=20260916j"></script>
+<script src="pieces/pieces.js?v=20260916j"></script>
+<script src="pieces/forest.js?v=20260916j"></script>
+<script src="pieces/jungle.js?v=20260916j"></script>
+<script src="pieces/desert.js?v=20260916j"></script>
+<script src="pieces/ocean.js?v=20260916j"></script>
+<script src="js/movement.js?v=20260916j"></script>
+<script src="js/themes.js?v=20260916j"></script>
+<script src="js/scenery.js?v=20260916j"></script>
+<script src="js/render.js?v=20260916j"></script>
+<script src="js/combat.js?v=20260916j"></script>
+<script src="js/animals.js?v=20260916j"></script>
+<script src="js/actions.js?v=20260916j"></script>
+<script src="js/ui.js?v=20260916j"></script>
+<script src="js/tutorial.js?v=20260916j"></script>
+<script src="js/campaign.js?v=20260916j"></script>
+<script src="js/pvp.js?v=20260916j"></script>
+<script src="js/ai.js?v=20260916j"></script>
+<script src="js/game.js?v=20260916j"></script>
+<script src="js/drag.js?v=20260916j"></script>
+<script src="js/resize.js?v=20260916j"></script>
 <!-- trained AI (Single Player difficulties, AI vs AI); the engine, network and weights load only when needed -->
-<script src="js/netai.js?v=20260916f"></script>
-<script src="js/aivsai.js?v=20260916f"></script>
+<script src="js/netai.js?v=20260916j"></script>
+<script src="js/aivsai.js?v=20260916j"></script>
 </body>
 </html>

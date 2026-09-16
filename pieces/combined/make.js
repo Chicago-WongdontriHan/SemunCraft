@@ -11,10 +11,12 @@
 const fs=require('fs'),path=require('path'),vm=require('vm');
 const ROOT=path.join(__dirname,'..','..'),OUT=__dirname;
 const ctx={console};vm.createContext(ctx);
-for(const f of ['pieces/pieces.js','pieces/jungle.js','pieces/desert.js','pieces/ocean.js'])
+for(const f of ['pieces/pieces.js','pieces/forest.js','pieces/jungle.js','pieces/desert.js','pieces/ocean.js'])
   vm.runInContext(fs.readFileSync(path.join(ROOT,f),'utf8'),ctx,{filename:f});
 const pieceSVG=ctx.pieceSVG;
 const inner=s=>s.replace(/^<svg[^>]*>/,'').replace(/<\/svg>$/,'');
+// the piece set the units are drawn in (the default Forest map's)
+let THEME='forest';
 let defs=[],seen=new Set();
 const reset=()=>{defs=[];seen=new Set();};
 
@@ -86,7 +88,7 @@ function haloAlpha(color){
 }
 
 function slices(type,color){
-  const art=inner(pieceSVG(type,color,'jungle',100));
+  const art=inner(pieceSVG(type,color,THEME,100));
   const h=art.indexOf('<g fill="none" stroke="'),e=art.indexOf('</g>',h)+4;
   let ground=art.slice(0,h),held='';
   for(const mark of ['<path d="M79 86 V33"','<g transform="rotate(-28 50 50)"']){ // bishop's staff, cannon's barrel
@@ -100,7 +102,7 @@ function use(id,at,flip,build){
   return '<use href="#'+id+'" transform="translate('+at.x.toFixed(2)+','+at.y.toFixed(2)+') scale('
     +at.k.toFixed(3)+')'+(flip?' translate(100,0) scale(-1,1)':'')+'"/>';
 }
-const piece=(type,color,at,flip)=>use(type+'-'+color,at,flip,()=>inner(pieceSVG(type,color,'jungle',100)));
+const piece=(type,color,at,flip)=>use(type+'-'+color,at,flip,()=>inner(pieceSVG(type,color,THEME,100)));
 const part=(type,color,at,which)=>use(type+'-'+color+'-'+which,at,false,()=>{
   const s=slices(type,color);
   return which==='halo'?halo(s.body,haloColor(color),haloWidth(color)):s[which];
@@ -189,6 +191,19 @@ function inspectSvg(color){
   return wrap(211,'Combined units, large','The four combined units drawn large.',b);
 }
 
-const files={'units-white.svg':inspectSvg('w'),'units-black.svg':inspectSvg('b'),
-  'units.svg':unitsSvg(),'units-on-board.svg':stripSvg()};
-for(const [f,s] of Object.entries(files)){fs.writeFileSync(path.join(OUT,f),s);console.log(f,s.length,'chars');}
+// one unit's drawing for other generators (the title-screen wallpapers): self-contained, with its ids
+// prefixed so several units can share a document; it sits in the 120-unit square with its feet at FEET
+function unitMarkup(name,color,theme){
+  THEME=theme||'forest';reset();
+  const u=UNITS.find(v=>v.name===name),p=name.toLowerCase()+'-'+color+'-';
+  const body=u.draw(color);                      // drawing fills defs, so draw first
+  const all='<defs>'+defs.join('')+'</defs>'+body;
+  return all.replace(/id="/g,'id="'+p).replace(/href="#/g,'href="#'+p);
+}
+module.exports={unitMarkup,BOX:{mid:MID,feet:FEET,scale:S}};
+
+if(require.main===module){
+  const files={'units-white.svg':inspectSvg('w'),'units-black.svg':inspectSvg('b'),
+    'units.svg':unitsSvg(),'units-on-board.svg':stripSvg()};
+  for(const [f,s] of Object.entries(files)){fs.writeFileSync(path.join(OUT,f),s);console.log(f,s.length,'chars');}
+}

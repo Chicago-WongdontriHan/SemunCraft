@@ -93,8 +93,8 @@ function renderPcCards(){
   if(lp&&window.lastPf){
     const pf=window.lastPf;
     lp.querySelectorAll('.pc-glyph').forEach(el=>el.style.fontSize=Math.max(11,Math.floor(pf*1.8))+'px');
-    lp.querySelectorAll('.pc-name').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.92))+'px');
-    lp.querySelectorAll('.pc-stats').forEach(el=>el.style.fontSize=Math.max(5,Math.floor(pf*.65))+'px');
+    lp.querySelectorAll('.pc-name').forEach(el=>el.style.fontSize=Math.max(9,Math.floor(pf*1.02))+'px');
+    lp.querySelectorAll('.pc-stats').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.75))+'px');
   }
 }
 
@@ -189,7 +189,7 @@ function showFloatingMessage(text,tileIdx,opts){
   msg.style.cssText='position:fixed;pointer-events:none;z-index:900;left:'+cx+'px;top:'+cy+'px;'
     +'transform:translate(-50%,-50%);'
     +'padding:6px 14px;background:rgba(20,10,5,.92);border:2px solid #e05020;border-radius:6px;'
-    +'color:#ffe8c0;font-family:Georgia,serif;font-size:13px;font-variant:small-caps;letter-spacing:.05em;'
+    +'color:#ffe8c0;font-family:var(--ui-font);font-size:14px;letter-spacing:.05em;'
     +'box-shadow:0 4px 14px rgba(0,0,0,.75),0 0 12px rgba(255,100,40,.4);'
     +'white-space:nowrap;'
     +'animation:floatMsg 1.6s ease-out forwards;';

@@ -1,4 +1,4 @@
-# SemunCraft: Kingdom - Jungle War
+# SemunCraft
 
 ## Overview
 
@@ -202,6 +202,8 @@ An interactive 7-step tutorial:
 
 ## UI Layout
 
+- **Title screen**: the SemunCraft title over a war scene drawn from the game's own pieces, including the combined-unit designs (Guardian, Paladin, Mage) and cannons: *Battle Lines* on wide screens (two armies on a rolling checkerboard field, each king on its castle roof) and *The Clash* on tall ones (the armies meeting with spears, cannonballs and smoke). The scenes are `img/title-wide.svg` and `img/title-tall.svg`, drawn by `node img/make-title-wallpapers.js`. The menu sits on a translucent card and scales with the screen.
+- **Font**: all UI text uses Lilita One (`fonts/LilitaOne.woff2`, SIL Open Font License in `fonts/OFL.txt`) through the `--ui-font` variable; room/peer IDs and the API key field stay monospace so similar characters stay distinct.
 - **Top bar**: Game title, optional Anthropic API key (Claude plays Black on Hard), status text, turn counter, and ⚙ Audio settings.
 - **Left panel**: Merge guide chart and paginated unit reference cards.
 - **Center**: The game board with HP pips, bishop mana pips, coordinate labels, and pan arrows when zoomed in.

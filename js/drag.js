@@ -1,70 +1,91 @@
-// ── DRAG ─────────────────────────────────────────────────────────────────────
+// ── BOARD INPUT: mouse, touch and pen ────────────────────────────────────────
+// One set of Pointer Events handles every input. A drag redraws the board to show where the
+// piece can go, which throws away the square the finger went down on; with touch events the
+// rest of the gesture then went to that removed square and never arrived, so a drag needed a
+// second touch. The pointer is captured on #board instead, which is never replaced, so every
+// move and the release come here however the board is redrawn.
 function sqIdxFromPoint(x,y){const rect=document.getElementById('board').getBoundingClientRect();const c=Math.floor((x-rect.left)/sqPx)+viewCol0,r=Math.floor((y-rect.top)/sqPx)+viewRow0;return(r>=viewRow0&&r<viewRow0+viewRowsN()&&c>=viewCol0&&c<viewCol0+viewColsN())?idx(r,c):-1;}
 
 // ── box selection state ───────────────────────────────────────────────────────
 let boxSelecting=false,boxX0=0,boxY0=0,boxX1=0,boxY1=0,boxMouseDownOnEmpty=false;
-// track whether the current interaction is touch-based; if so, ignore mouse events
-let isTouchInteraction=false;
 
-document.getElementById('board').addEventListener('mousedown',e=>{
-  if(isTouchInteraction)return; // ignore synthetic mouse events from touch
+// the pointer that went down on the board: {id, type, x, y, i, canDrag, canBox, box}
+let press=null;
+// how far a pointer travels before a press becomes a drag (a finger wobbles more than a mouse)
+const DRAG_START_PX={mouse:5,pen:6,touch:8};
+
+// the dragged piece follows the pointer; on touch it rides above the finger so it stays in sight
+function moveGhost(x,y,type){
+  const g=document.getElementById('ghost');
+  g.style.left=x+'px';g.style.top=(y+(type==='mouse'?0:-20))+'px';
+}
+function startDrag(i,x,y,type){
+  const p=pieces[i];
+  dragging=true;dragSrc=i;dragDests=getDragDests(i);
+  const g=document.getElementById('ghost');
+  g.textContent='';g.innerHTML=pieceSVG(p.type,p.color,mapTheme,Math.floor(sqPx*.86));
+  moveGhost(x,y,type);g.style.display='block';
+  render();
+}
+function endDrag(){
+  document.getElementById('ghost').style.display='none';
+  dragging=false;dragSrc=-1;dragDests=null;
+}
+
+const boardInput=document.getElementById('board');
+
+boardInput.addEventListener('pointerdown',e=>{
+  if(press)return;                                  // a second finger while one is already down
   if(over||thinking||!isMyTurn())return;
   const i=sqIdxFromPoint(e.clientX,e.clientY);if(i<0)return;
-  if(e.button===2){e.preventDefault();handleRightClick(i,e);return;}
-  const p=pieces[i];
+  if(e.pointerType==='mouse'&&e.button===2){e.preventDefault();handleRightClick(i,e);return;}
+  if(e.button!==0)return;
+  e.preventDefault();
   if(targetMode){handleTargetClick(i);return;}
-  if(p&&p.color===myColor()){
-    mouseDownI=i;mouseDownX=e.clientX;mouseDownY=e.clientY;e.preventDefault();
-  }else if(!p&&kingSelected){
-    mouseDownI=i;mouseDownX=e.clientX;mouseDownY=e.clientY;e.preventDefault();
-  }else if(!p&&!kingSelected&&!targetMode){
-    boxSelecting=false;boxMouseDownOnEmpty=true;
-    boxX0=e.clientX;boxY0=e.clientY;boxX1=e.clientX;boxY1=e.clientY;
-    e.preventDefault();
-  }
-});
-document.getElementById('board').addEventListener('contextmenu',e=>e.preventDefault());
-
-document.addEventListener('mousemove',e=>{
-  if(isTouchInteraction)return;
-  if(boxMouseDownOnEmpty){
-    const moved=Math.hypot(e.clientX-boxX0,e.clientY-boxY0)>6;
-    if(moved){
-      boxSelecting=true;
-      boxX1=e.clientX;boxY1=e.clientY;
-      drawBoxSelect();
-    }
-    return;
-  }
-  if(mouseDownI<0)return;
-  const p=pieces[mouseDownI];
-  if(!dragging&&p&&p.color===myColor()&&Math.hypot(e.clientX-mouseDownX,e.clientY-mouseDownY)>5){
-    dragging=true;dragSrc=mouseDownI;dragDests=getDragDests(dragSrc);
-    const g=document.getElementById('ghost');
-    g.textContent='';g.innerHTML=pieceSVG(p.type,p.color,mapTheme,Math.floor(sqPx*.86));
-    g.style.display='block';render();
-  }
-  if(dragging){const g=document.getElementById('ghost');g.style.left=e.clientX+'px';g.style.top=e.clientY+'px';}
+  const p=pieces[i];
+  press={id:e.pointerId,type:e.pointerType,x:e.clientX,y:e.clientY,i,
+    canDrag:!!(p&&p.color===myColor()),
+    // dragging the mouse across empty squares draws a box that selects a group
+    canBox:e.pointerType==='mouse'&&!p&&!kingSelected,box:false};
+  try{boardInput.setPointerCapture(e.pointerId);}catch(err){}
 });
 
-document.addEventListener('mouseup',e=>{
-  if(isTouchInteraction)return;
-  document.getElementById('ghost').style.display='none';
-  if(boxSelecting){
-    boxX1=e.clientX;boxY1=e.clientY;
-    applyBoxSelect();
-    boxSelecting=false;boxMouseDownOnEmpty=false;
-    clearBoxSelect();
-    return;
+boardInput.addEventListener('pointermove',e=>{
+  if(!press||e.pointerId!==press.id)return;
+  if(!dragging&&!press.box&&Math.hypot(e.clientX-press.x,e.clientY-press.y)>(DRAG_START_PX[press.type]||6)){
+    if(press.canDrag&&!over&&!thinking&&isMyTurn())startDrag(press.i,e.clientX,e.clientY,press.type);
+    else if(press.canBox){press.box=true;boxSelecting=true;boxX0=press.x;boxY0=press.y;}
   }
-  boxMouseDownOnEmpty=false;
+  if(dragging)moveGhost(e.clientX,e.clientY,press.type);
+  else if(press.box){boxX1=e.clientX;boxY1=e.clientY;drawBoxSelect();}
+});
+
+boardInput.addEventListener('pointerup',e=>{
+  if(!press||e.pointerId!==press.id)return;
+  const pr=press;press=null;
   if(dragging){
     const dropI=sqIdxFromPoint(e.clientX,e.clientY),src=dragSrc,dests=dragDests;
-    dragging=false;dragSrc=-1;dragDests=null;
-    if(dropI>=0&&src>=0)executeDrop(src,dropI,dests);else render();
-  }else if(mouseDownI>=0&&!over&&!thinking&&isMyTurn())handleClick(mouseDownI);
-  mouseDownI=-1;
+    endDrag();
+    if(dropI>=0&&dropI!==src)executeDrop(src,dropI,dests);else render();
+    return;
+  }
+  if(pr.box){
+    boxX1=e.clientX;boxY1=e.clientY;
+    applyBoxSelect();boxSelecting=false;clearBoxSelect();
+    return;
+  }
+  // a tap or a click: select a piece and show its action guide, or take an action the guide offers
+  if(!over&&!thinking&&isMyTurn())handleClick(pr.i,e.shiftKey||e.ctrlKey||e.metaKey);
 });
+
+boardInput.addEventListener('pointercancel',e=>{
+  if(!press||e.pointerId!==press.id)return;
+  const pr=press;press=null;
+  if(pr.box){boxSelecting=false;clearBoxSelect();}
+  if(dragging){endDrag();render();}
+});
+
+boardInput.addEventListener('contextmenu',e=>e.preventDefault());
 
 function drawBoxSelect(){
   let el=document.getElementById('box-select-rect');
@@ -102,71 +123,5 @@ function applyBoxSelect(){
   render();
   const gSz=selectedPieces.size;
   const gCan=gSz>=2&&gSz<=3&&[...selectedPieces].every(si=>{const sp=pieces[si];return sp&&(sp.type==='pawn'||sp.type==='knight');});
-  setStatus(gSz>0?(gCan?gSz+' pcs — drag any to move group':gSz+' selected'):'Your turn');
+  setStatus(gSz===1?'Click a marker to act, or drag the piece':gSz>0?(gCan?gSz+' pcs — drag any to move group':gSz+' selected'):'Your turn');
 }
-
-// detect mobile for ghost offset
-function isMobile(){return window.innerWidth<=768||window.innerHeight<=500;}
-
-function touchXY(e){const t=e.touches[0]||e.changedTouches[0];return{x:t.clientX,y:t.clientY};}
-
-// on mobile, start drag IMMEDIATELY on touchstart (not on touchmove)
-// because iOS Safari may delay or suppress touchmove events
-document.getElementById('board').addEventListener('touchstart',e=>{
-  isTouchInteraction=true;
-  if(over||thinking||!isMyTurn())return;
-  e.preventDefault(); // always prevent default to block iOS gesture takeover
-  const{x,y}=touchXY(e);const i=sqIdxFromPoint(x,y);if(i<0)return;
-  const p=pieces[i];
-  if(targetMode){handleTargetClick(i);return;}
-  // tapped empty tile with a piece selected → click-to-move
-  if(!p&&selectedPieces.size===1&&!kingSelected){
-    handleClick(i);return;
-  }
-  if(!p&&kingSelected){
-    mouseDownI=i;mouseDownX=x;mouseDownY=y;
-    handleClick(i); // spawn immediately on tap
-    return;
-  }
-  if(p&&p.color===myColor()){
-    mouseDownI=i;mouseDownX=x;mouseDownY=y;
-    // start drag immediately — show ghost at finger, compute destinations
-    dragging=true;dragSrc=i;dragDests=getDragDests(i);
-    const g=document.getElementById('ghost');
-    g.textContent='';g.innerHTML=pieceSVG(p.type,p.color,mapTheme,Math.floor(sqPx*.86));
-    const yOff=isMobile()?-20:0;
-    g.style.left=x+'px';g.style.top=(y+yOff)+'px';
-    g.style.display='block';
-    // defer render to next frame so DOM rebuild doesn't block the touch
-    requestAnimationFrame(()=>{if(dragging)render();});
-  }
-},{passive:false});
-
-document.addEventListener('touchmove',e=>{
-  if(!dragging)return;
-  e.preventDefault();
-  const{x,y}=touchXY(e);
-  const g=document.getElementById('ghost');
-  const yOff=isMobile()?-20:0;
-  g.style.left=x+'px';g.style.top=(y+yOff)+'px';
-},{passive:false});
-
-document.addEventListener('touchend',e=>{
-  document.getElementById('ghost').style.display='none';
-  setTimeout(()=>{isTouchInteraction=false;},300);
-  const{x,y}=touchXY(e);
-  if(dragging){
-    const dropI=sqIdxFromPoint(x,y);
-    const src=dragSrc,dests=dragDests;
-    dragging=false;dragSrc=-1;dragDests=null;
-    // if dropped on the same tile (tap without moving), treat as click/select
-    if(dropI===src){
-      handleClick(src);
-    }else if(dropI>=0&&src>=0){
-      executeDrop(src,dropI,dests);
-    }else{
-      render();
-    }
-  }
-  mouseDownI=-1;
-});

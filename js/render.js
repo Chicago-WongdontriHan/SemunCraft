@@ -38,6 +38,8 @@ function render(){
       else auraMap.get(j).count++;
     });
   }
+  // the piece the action guide is for: the one being dragged, else the one selected
+  const guideSrc=dragging&&dragDests?dragSrc:selDests?[...selectedPieces][0]:-1;
   const pipW=Math.max(2,Math.floor(sqPx*.10))+'px';
   const pipH=Math.max(2,Math.floor(sqPx*.07))+'px';
 
@@ -98,16 +100,11 @@ function render(){
         }
       }
 
+      // action guide: what the tapped or dragged piece can do on this square (drawn over the piece below)
+      let guide=null;
       if(dragging&&dragDests){
         if(i===dragSrc)sq.style.opacity='0.28';
-        else{
-          let dcls='';
-          if(dragDests.merge.has(i)){sq.classList.add('drop-mrg');dcls='sel-move-ov';}
-          else if(dragDests.attack.has(i)){sq.classList.add('drop-atk');dcls='sel-atk-ov';}
-          else if(dragDests.heal.has(i)){sq.classList.add('drop-heal');dcls='sel-heal-ov';}
-          else if(dragDests.move.has(i)){sq.classList.add('drop-ok');dcls='sel-move-ov';}
-          if(dcls){const ov=document.createElement('div');ov.className='sel-overlay '+dcls;sq.appendChild(ov);}
-        }
+        else guide=guideAt(dragDests,i);
       }else if(targetMode&&targetSrc>=0&&pieces[targetSrc]){
         const p=pieces[targetSrc];
         if(p.type==='bishop'){
@@ -127,19 +124,7 @@ function render(){
           else if(count>=3)sq.classList.add('aura-depth-3');
           else if(count>=2)sq.classList.add('aura-depth-2');
         }
-        // selection overlay — clear solid highlight for move/attack/heal
-        if(selDests){
-          let cls='';
-          if(selDests.attack&&selDests.attack.has(i))cls='sel-atk';
-          else if(selDests.heal&&selDests.heal.has(i))cls='sel-heal';
-          else if(selDests.move&&selDests.move.has(i))cls='sel-move';
-          if(cls){
-            sq.classList.add(cls);
-            const ov=document.createElement('div');
-            ov.className='sel-overlay '+cls+'-ov';
-            sq.appendChild(ov);
-          }
-        }
+        if(selDests)guide=guideAt(selDests,i);
         if(!dragging&&i===blackLastFrom)sq.classList.add('last-from');
         if(!dragging&&i===blackLastTo&&!isConcealedFrom(i,mc))sq.classList.add('last-to');
       }
@@ -186,6 +171,10 @@ function render(){
         }
         sq.appendChild(div);
       }
+      if(guide){
+        if(guide!=='move'&&guide!=='attack'&&guide!=='heal')sq.classList.add('guide-merge-tile');
+        sq.appendChild(guideEl(guide,guideSrc,i));
+      }
 
       // animals rendered in separate overlay by renderAnimalOverlay()
       if(c===viewCol0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
@@ -193,6 +182,49 @@ function render(){
       boardEl.appendChild(sq);
     }
   }
+}
+
+// ── ACTION GUIDE ─────────────────────────────────────────────────────────────
+// A tapped or dragged piece shows what it can do: a see-through copy of itself where it can move,
+// a red target on enemies it can attack, and on friendly pieces in reach the piece a merge would
+// make (with a blue +) and/or a green heart for a heal. Tapping a marker takes that action.
+function guideAt(d,i){
+  if(d.attack.has(i))return 'attack';
+  const merge=d.merge.has(i),heal=d.heal.has(i);
+  if(merge&&heal)return 'merge-heal';
+  if(merge)return 'merge';
+  if(heal)return 'heal';
+  return d.move.has(i)?'move':null;
+}
+const GUIDE_TARGET='<svg class="guide-mark" viewBox="0 0 100 100"><g fill="none" stroke-linecap="round">'
+  +'<circle cx="50" cy="50" r="33" stroke="rgba(50,6,2,.6)" stroke-width="12"/>'
+  +'<path d="M50 6 V24 M50 76 V94 M6 50 H24 M76 50 H94" stroke="rgba(50,6,2,.6)" stroke-width="12"/>'
+  +'<circle cx="50" cy="50" r="33" stroke="#FF4A36" stroke-width="6"/>'
+  +'<path d="M50 6 V24 M50 76 V94 M6 50 H24 M76 50 H94" stroke="#FF4A36" stroke-width="6"/></g></svg>';
+const GUIDE_RING=(fill,stroke,dash)=>'<svg class="guide-mark" viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="'+fill
+  +'" stroke="'+stroke+'" stroke-width="5"'+(dash?' stroke-dasharray="11 7"':'')+'/></svg>';
+const GUIDE_MERGE_BADGE='<svg class="guide-badge guide-badge-l" viewBox="-20 -20 40 40"><circle r="16" fill="#2E8FE0" stroke="#0B2A4A" stroke-width="3.5"/>'
+  +'<path d="M-8 0 H8 M0 -8 V8" stroke="#fff" stroke-width="5" stroke-linecap="round"/></svg>';
+const GUIDE_HEAL_BADGE='<svg class="guide-badge guide-badge-r" viewBox="-20 -20 40 40"><circle r="16" fill="#2FBF5A" stroke="#0E3A1A" stroke-width="3.5"/>'
+  +'<path d="M0 9 C-14 -1 -9 -13 0 -6 C9 -13 14 -1 0 9 Z" fill="#fff"/></svg>';
+function guideEl(kind,src,i){
+  const el=document.createElement('div');el.className='guide guide-'+kind;
+  const sp=pieces[src];if(!sp)return el;
+  const size=Math.floor(sqPx*.86);
+  if(kind==='move'){
+    el.innerHTML='<div class="guide-piece">'+pieceSVG(sp.type,sp.color,mapTheme,size)+'</div>';
+  }else if(kind==='attack'){
+    el.innerHTML=GUIDE_TARGET;
+  }else if(kind==='heal'){
+    el.innerHTML=GUIDE_RING('rgba(67,211,107,.16)','#43D36B')+GUIDE_HEAL_BADGE;
+  }else{
+    // a merge shows the piece it makes over the faded ally (a bishop on a wounded knight can also heal)
+    const t=pieces[i],nt=t?mergeResultType(sp.type,t.type):null;
+    el.innerHTML=GUIDE_RING('rgba(58,160,240,.16)','#3AA0F0',true)
+      +(nt?'<div class="guide-piece">'+pieceSVG(nt,sp.color,mapTheme,size)+'</div>':'')
+      +GUIDE_MERGE_BADGE+(kind==='merge-heal'?GUIDE_HEAL_BADGE:'');
+  }
+  return el;
 }
 
 function sqElAt(i){

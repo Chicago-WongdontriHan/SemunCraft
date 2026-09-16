@@ -83,6 +83,16 @@ function handleTargetClick(i){
 }
 
 // ── DROP / EXECUTE ───────────────────────────────────────────────────────────
+// what a piece dropped on a friendly piece merges into (null when the two don't merge)
+function mergeResultType(a,b){
+  if(a==='pawn'&&b==='pawn')return 'knight';
+  if((a==='pawn'&&b==='knight')||(a==='knight'&&b==='pawn'))return 'bishop';
+  if((a==='knight'&&b==='bishop')||(a==='bishop'&&b==='knight'))return 'queen';
+  if(a==='rook'&&b==='rook')return 'siege';
+  if(a==='knight'&&b==='knight')return 'rook';
+  return null;
+}
+
 function executeDrop(from,to,dests){
   if(!dests){render();return;}
   const p=pieces[from];
@@ -189,7 +199,8 @@ function executeDrop(from,to,dests){
       const bw=box.offsetWidth,bh=box.offsetHeight;
       box.style.left=Math.min(Math.max(rect.left+rect.width/2,bw/2+6),innerWidth-bw/2-6)+'px';
       if(rect.bottom+6+bh>innerHeight-6)box.style.top=Math.max(6,rect.top-6-bh)+'px';
-      setTimeout(()=>document.addEventListener('mousedown',function h(e){if(!box.contains(e.target)){box.remove();document.removeEventListener('mousedown',h);}},true),10);
+      // a tap or click anywhere else closes it (pointerdown covers touch as well as the mouse)
+      setTimeout(()=>document.addEventListener('pointerdown',function h(e){if(!box.contains(e.target)){box.remove();document.removeEventListener('pointerdown',h,true);}},true),10);
     }
     render();return;
   }
@@ -215,12 +226,7 @@ function executeDrop(from,to,dests){
     return;
   }
   if(dests.merge.has(to)){
-    const t=pieces[to];let nt=null;
-    if(p.type==='pawn'&&t.type==='pawn')nt='knight';
-    else if((p.type==='pawn'&&t.type==='knight')||(p.type==='knight'&&t.type==='pawn'))nt='bishop';
-    else if((p.type==='knight'&&t.type==='bishop')||(p.type==='bishop'&&t.type==='knight'))nt='queen';
-    else if(p.type==='rook'&&t.type==='rook')nt='siege';
-    else if(p.type==='knight'&&t.type==='knight')nt='rook';
+    const t=pieces[to],nt=mergeResultType(p.type,t.type);
     if(nt){
       delete tgts[from]; delete tgts[to];
       const newPiece={type:nt,color:p.color,hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};
@@ -308,7 +314,7 @@ function executeDrop(from,to,dests){
   render();
 }
 
-function handleClick(i){
+function handleClick(i,additive){
   const p=pieces[i];const mc=myColor();
   const ki=pieces.findIndex(q=>q&&q.color===mc&&q.type==='king');
   // click-to-move: if exactly one friendly piece is selected and the clicked tile is
@@ -355,17 +361,20 @@ function handleClick(i){
     if(selectedPieces.has(i)){
       selectedPieces.delete(i);
     }else{
-      const pp2=pieces[i];
-      if(pp2&&(pp2.type==='pawn'||pp2.type==='knight')){
-        const grp=[...selectedPieces].filter(si=>{const sp=pieces[si];return sp&&(sp.type==='pawn'||sp.type==='knight');});
-        if(grp.length>=3){setStatus('Max 3 pieces in group');render();return;}
-      }
-      selectedPieces.add(i);SFX.select();
+      // a tap or click selects this piece alone and the action guide shows what it can do;
+      // Shift/Ctrl-click adds a pawn or knight to a group of up to 3 that moves together
+      const groupable=t=>t==='pawn'||t==='knight';
+      const joins=additive&&groupable(p.type)&&selectedPieces.size>0&&[...selectedPieces].every(si=>pieces[si]&&groupable(pieces[si].type));
+      if(joins){
+        if(selectedPieces.size>=3){setStatus('Max 3 pieces in group');render();return;}
+        selectedPieces.add(i);
+      }else selectedPieces=new Set([i]);
+      SFX.select();
     }
     render();
     const gSz=selectedPieces.size;
     const gCan=gSz>=2&&[...selectedPieces].every(si=>{const sp=pieces[si];return sp&&(sp.type==='pawn'||sp.type==='knight');});
-    setStatus(gSz>0?(gCan?gSz+' pcs — drag any to move group':gSz+' selected'):'Your turn');
+    setStatus(gSz===1?'Tap a marker to act, or drag the piece':gSz>0?(gCan?gSz+' pcs — drag any to move group':gSz+' selected'):'Your turn');
     return;
   }
   kingSelected=false;selectedPieces=new Set();render();

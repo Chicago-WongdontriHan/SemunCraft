@@ -194,7 +194,7 @@ const TUTORIAL_STEPS=[
       for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&(pieces[i].color==='b'||pieces[i].type==='knight'||pieces[i].type==='bishop'))pieces[i]=null;}
       pieces[idx(7,1)]={type:'king',color:'w',hp:5,maxHp:5};
       tileData=new Array(ROWS*COLS).fill('');
-      for(let r=0;r<4;r++)for(let c=0;c<3;c++){const o=mapTheme==='desert'?'sandstone':mapTheme==='ocean'?'rocks':'tree';tileData[idx(r,c)]=o;}
+      for(let r=0;r<4;r++)for(let c=0;c<3;c++){const o=themeObstacle(mapTheme);tileData[idx(r,c)]=o;}
       pieces[idx(4,4)]={type:'knight',color:'w',hp:4,maxHp:4};
       pieces[idx(4,3)]={type:'knight',color:'w',hp:4,maxHp:4};
       render();tutHighlightPiece(idx(4,3));
@@ -301,7 +301,7 @@ const TUTORIAL_STEPS=[
 function tutBoard(setup){
   pieces=new Array(ROWS*COLS).fill(null);
   tileData=new Array(ROWS*COLS).fill('');
-  for(let r=0;r<4;r++)for(let c=0;c<3;c++){const obsType=mapTheme==='desert'?'sandstone':mapTheme==='ocean'?'rocks':'tree';tileData[idx(r,c)]=obsType;}
+  for(let r=0;r<4;r++)for(let c=0;c<3;c++){const obsType=themeObstacle(mapTheme);tileData[idx(r,c)]=obsType;}
   pieces[idx(7,1)]={type:'king',color:'w',hp:5,maxHp:5};
   const types=['pawn','knight','bishop','rook','queen','king'];
   ['w','b'].forEach(col=>{
@@ -406,7 +406,7 @@ function tutWaitForNext(cb){
 function startTutorial(){
   document.getElementById('intro').classList.add('hidden');
   document.getElementById('tutorial-overlay').classList.add('show');
-  mapTheme='jungle'; document.body.className='theme-jungle';
+  mapTheme='forest'; document.body.className='theme-forest';
   // tutorial always runs with full map visibility
   mapCheat=true;
   const mcBtn=document.getElementById('btn-mapcheat');

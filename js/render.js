@@ -43,7 +43,7 @@ function render(){
     for(let c=viewCol0;c<viewCol0+vCols;c++){
       const i=idx(r,c);
       const sq=document.createElement('div');
-      const thm=THEMES[mapTheme]||THEMES.jungle;
+      const thm=THEMES[mapTheme]||THEMES.forest;
       sq.className='sq '+((r+c)%2===0?'lt':'dk');
       sq.style.background=(r+c)%2===0?thm.lt:thm.dk;
       sq.style.width=sqPx+'px'; sq.style.height=sqPx+'px';

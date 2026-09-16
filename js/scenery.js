@@ -13,32 +13,84 @@ const scShape=(d,fill,ink,w)=>'<path d="'+d+'" fill="'+fill+'" stroke="'+ink+'" 
   +'" stroke-linejoin="round"/>';
 const scDot=(x,y,r,fill,ink,w)=>'<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="'+fill+'" stroke="'+ink
   +'" stroke-width="'+(w||1.6)+'"/>';
+const scR=v=>+v.toFixed(2);
+// a lens-shaped leaf from (x,y), len long and 2w wide, pointing ang degrees round
+const scLeaf=(x,y,len,w,ang,fill,ink,sw)=>'<path d="M0 0 C'+scR(len*.3)+' '+(-w)+' '+scR(len*.7)+' '+(-w)+' '+len
+  +' 0 C'+scR(len*.7)+' '+w+' '+scR(len*.3)+' '+w+' 0 0 Z" transform="translate('+x+','+y+') rotate('+ang+')" fill="'
+  +fill+'" stroke="'+ink+'" stroke-width="'+(sw||1.4)+'" stroke-linejoin="round"/>';
+// five round petals d away from (x,y), and a centre
+const scFlower=(x,y,d,r,petal,center,ink,sw)=>[-90,-18,54,126,198].map(a=>{
+    const t=a*Math.PI/180;return scDot(scR(x+d*Math.cos(t)),scR(y+d*Math.sin(t)),r,petal,ink,sw);}).join('')
+  +scDot(x,y,scR(r*.55),center,ink,scR(sw*.8));
 
-const SC_JI='rgba(20,40,8,.55)', SC_DI='rgba(72,44,8,.5)', SC_OI='rgba(6,26,60,.5)';
+const SC_FI='rgba(20,40,8,.55)', SC_JI='rgba(8,36,18,.55)', SC_DI='rgba(72,44,8,.5)', SC_OI='rgba(6,26,60,.5)';
+const SC_CLEAR='rgba(0,0,0,0)';
 
 // scenery is drawn in a 40x40 tile-local box; quiet ground textures first, then features
 const SCENERY={
-  jungle:{
+  forest:{
     quiet:[
-      scStroke('M8 33 L6 25 M13 33 L13 23 M18 33 L20 25','#6CC04A',2.6,SC_JI),
-      scStroke('M6 34 L4 28 M11 34 L10 26 M16 34 L18 28 M21 34 L23 29','#5FB03F',2.4,SC_JI),
-      scShape('M6 30 C10 24 18 24 21 29 C17 34 9 35 6 30 Z','#7FC258',SC_JI)
+      scStroke('M8 33 L6 25 M13 33 L13 23 M18 33 L20 25','#6CC04A',2.6,SC_FI),
+      scStroke('M6 34 L4 28 M11 34 L10 26 M16 34 L18 28 M21 34 L23 29','#5FB03F',2.4,SC_FI),
+      scShape('M6 30 C10 24 18 24 21 29 C17 34 9 35 6 30 Z','#7FC258',SC_FI)
         +scStroke('M7 30 C12 29 17 29 20 29','#4E8C33',1.2,'rgba(0,0,0,0)'),
     ],
     feature:[
       // the same little flower the pieces stand by
-      scStroke('M13 33 V22','#4E8C33',2.2,SC_JI)+scShape('M13 26 C8 24 6 28 11 29 Z','#6CC04A',SC_JI,1.4)
-        +scDot(13,18,5,'#FF9EC4',SC_JI,1.8)+scDot(13,18,2,'#FFD84D',SC_JI,1.2),
+      scStroke('M13 33 V22','#4E8C33',2.2,SC_FI)+scShape('M13 26 C8 24 6 28 11 29 Z','#6CC04A',SC_FI,1.4)
+        +scDot(13,18,5,'#FF9EC4',SC_FI,1.8)+scDot(13,18,2,'#FFD84D',SC_FI,1.2),
       // mushroom
-      scShape('M10 33 C10 27 16 27 16 33 Z','#FFF0B8',SC_JI,1.5)
-        +scShape('M4 26 C4 15 22 15 22 26 Z','#E4533D',SC_JI,1.8)
+      scShape('M10 33 C10 27 16 27 16 33 Z','#FFF0B8',SC_FI,1.5)
+        +scShape('M4 26 C4 15 22 15 22 26 Z','#E4533D',SC_FI,1.8)
         +scDot(9,22,1.8,'#FFF6E0','rgba(0,0,0,0)',0)+scDot(16,23.5,1.4,'#FFF6E0','rgba(0,0,0,0)',0),
       // fern frond
-      scStroke('M7 34 C9 26 13 20 20 16','#4E8C33',2.2,SC_JI)
-        +scStroke('M9 28 L5 26 M11 24 L7 21 M14 21 L11 17 M17 18 L15 14','#6CC04A',2,SC_JI),
+      scStroke('M7 34 C9 26 13 20 20 16','#4E8C33',2.2,SC_FI)
+        +scStroke('M9 28 L5 26 M11 24 L7 21 M14 21 L11 17 M17 18 L15 14','#6CC04A',2,SC_FI),
       // clover
-      scStroke('M13 34 V26','#4E8C33',2,SC_JI)+scDot(9,22,4,'#6CC04A',SC_JI,1.5)
-        +scDot(17,22,4,'#6CC04A',SC_JI,1.5)+scDot(13,17,4,'#6CC04A',SC_JI,1.5),
+      scStroke('M13 34 V26','#4E8C33',2,SC_FI)+scDot(9,22,4,'#6CC04A',SC_FI,1.5)
+        +scDot(17,22,4,'#6CC04A',SC_FI,1.5)+scDot(13,17,4,'#6CC04A',SC_FI,1.5),
+    ],
+  },
+  jungle:{
+    quiet:[
+      // monstera leaf, its splits cut into the outline
+      scStroke('M7 27 L3 30','#2A7A38',1.6,SC_JI)
+        +scShape('M7 27 C4 24 6 18 12 16 L15.5 22 L17 15.5 C21 15.5 24 17 25.5 19 L21 24 L27.5 23 '
+          +'C28.5 25.5 28.5 28.5 27 31 L22 29 L24.5 34 C22 36 19 36.5 16.5 36 L16 30 L12 35.5 '
+          +'C8 35 5 33 5 30 C5 28.5 6 27.5 7 27 Z','#3FA34D',SC_JI,1.6)
+        +scStroke('M7 27 C13 26.5 19 26.8 25 27.5','#2A7A38',1.2,SC_CLEAR),
+      // fallen palm frond
+      scStroke('M3 33 C10 29 18 26 27 20','#2A7A38',1.6,SC_JI)
+        +scStroke('M7 31 L4 26 M11 29 L9 23.5 M15 27.5 L14 21.5 M19 25.5 L19 19.5 M23 23 L24 17.5 '
+          +'M8 32 L7.5 36 M12 30.5 L13 35 M16 28.5 L18 33 M20 26.5 L23 30.5','#4FAE55',1.8,SC_JI),
+      // puddle with a lily pad
+      '<ellipse cx="15" cy="30" rx="11" ry="4.6" fill="#3F8F86" stroke="'+SC_JI+'" stroke-width="1.6"/>'
+        +scStroke('M8 29 Q12 27 16 27.6','#9FE0D2',1.3,SC_CLEAR)
+        +scShape('M19 30.5 L23.44 31.15 A4.6 2.5 0 1 1 23.44 29.85 Z','#5DBB5A',SC_JI,1.3),
+      // creeping vine
+      scStroke('M3 33 C8 27 12 35 17 29 C21 24 25 31 28 25','#4E9F48',1.8,SC_JI)
+        +scLeaf(7,29.5,5,2.2,-120,'#6CC04A',SC_JI,1.2)+scLeaf(16,29,5,2.2,-60,'#6CC04A',SC_JI,1.2)
+        +scLeaf(24,27.5,5,2.2,-130,'#6CC04A',SC_JI,1.2),
+    ],
+    feature:[
+      // hibiscus
+      scLeaf(12,31,9,3.2,160,'#3FA34D',SC_JI,1.4)+scLeaf(15,31,9,3.2,20,'#3FA34D',SC_JI,1.4)
+        +scFlower(13,22,5.3,4.4,'#FF4F7B','#FFD84D',SC_JI,1.5)
+        +scStroke('M13 22 L19 15.5','#FFD84D',1.2,SC_CLEAR)+scDot(19.5,15,1.3,'#FF9E2C',SC_CLEAR,0),
+      // bird of paradise
+      scStroke('M13 36 V25','#2A7A38',2.2,SC_JI)
+        +scShape('M5 26 C11 22 20 22 26 26 C20 27 11 27 5 26 Z','#3FA34D',SC_JI,1.4)
+        +scShape('M12 24 L9 12 L15 23 Z','#FF9E2C',SC_JI,1.3)+scShape('M15 23 L17 10 L19 23 Z','#FFB23F',SC_JI,1.3)
+        +scShape('M18 23 L25 14 L21 24 Z','#FF9E2C',SC_JI,1.3)+scShape('M16 24 L22 18 L20 24.5 Z','#3B7BE0',SC_JI,1.1),
+      // coconuts
+      scLeaf(14,24,12,3,-150,'#3FA34D',SC_JI,1.3)+scLeaf(14,24,11,3,-35,'#3FA34D',SC_JI,1.3)
+        +scDot(10,29,5.2,'#8B5A2B',SC_JI,1.6)+scDot(19,30.5,4.6,'#7A4A22',SC_JI,1.6)
+        +scDot(8.6,27.6,.8,'#3A2412',SC_CLEAR,0)+scDot(11.4,27.6,.8,'#3A2412',SC_CLEAR,0)
+        +scDot(10,30.2,.8,'#3A2412',SC_CLEAR,0),
+      // bromeliad
+      scStroke('M14 34 C11 30 7 27 3 26 M14 34 C13 28 11 22 9 17 M14 34 C15 28 17 22 19 17 M14 34 C17 30 21 27 25 26',
+        '#3FA34D',3,SC_JI)
+        +scShape('M11 31 L14 19 L17 31 Z','#FF4F7B',SC_JI,1.4)+scDot(14,19.5,1.4,'#FFD84D',SC_CLEAR,0),
     ],
   },
   desert:{
@@ -108,6 +160,35 @@ const OBSTACLE_ART={
     +scShape('M56 96 C56 74 68 52 82 52 C94 52 98 76 98 96 Z','#55657A','#16233C',4)
     +'<path d="M18 72 C22 60 30 52 38 50" fill="none" stroke="#9DAABE" stroke-width="5.5" stroke-linecap="round"/>'
     +scStroke('M4 94 q5 -5 10 0 q5 5 10 0','#5BD6EA',3,SC_OI),
+  // a coconut palm: fronds behind and in front of a ringed trunk, a leafy clump at its foot
+  palm:
+    scShape('M58 28 C50 12 36 4 20 6 C34 12 46 20 58 28 Z','#2F8A3F','#12361C',3.6)
+    +scShape('M58 28 C66 12 80 4 96 10 C82 13 70 20 58 28 Z','#2F8A3F','#12361C',3.6)
+    +scShape('M42 96 C44 76 48 54 53 30 L64 32 C59 56 56 78 58 96 Z','#B07A40','#3A2412',4)
+    +scStroke('M44 86 L57 87 M46 74 L58 75.5 M48.5 62 L59.5 63.5 M51 50 L61 51.5 M53 40 L62.5 41.5','#8A5A2A',2.4,SC_CLEAR)
+    +scDot(52,37,5.5,'#7A4A22','#2A1A10',3)+scDot(62,39,5,'#8B5A2B','#2A1A10',3)
+    +scShape('M58 28 C42 18 18 20 4 38 C20 30 42 32 58 28 Z','#3FA34D','#12361C',3.6)
+    +scShape('M58 28 C74 18 92 22 98 42 C86 32 72 32 58 28 Z','#3FA34D','#12361C',3.6)
+    +scShape('M58 28 C44 32 28 44 20 62 C34 48 48 40 58 28 Z','#2F8A3F','#12361C',3.6)
+    +scShape('M58 28 C72 34 84 48 86 64 C78 50 68 42 58 28 Z','#2F8A3F','#12361C',3.6)
+    +scStroke('M58 28 C42 22 22 24 8 36 M58 28 C74 22 90 26 96 38 M58 28 C46 34 32 46 22 58 M58 28 C70 36 80 48 84 60',
+      '#6CC04A',2,SC_CLEAR)
+    +scDot(58,28,4.5,'#2F8A3F','#12361C',3)
+    +scShape('M10 96 C10 88 18 82 28 86 C32 78 42 76 48 84 C54 76 66 78 70 86 C80 82 90 88 90 96 Z','#2F8A3F','#12361C',3.6)
+    +scStroke('M24 92 C26 88 30 86 34 86 M60 90 C62 86 66 84 70 85','#58B866',2.2,SC_CLEAR),
+  // mossy temple stones: a carved upper block on a wider base, a vine climbing the side
+  temple:
+    scShape('M6 96 L6 52 C6 48 9 46 13 46 L87 46 C91 46 94 48 94 52 L94 96 Z','#8E9A86','#2F3A2C',4)
+    +scStroke('M6 72 H94 M34 52 V72 M66 52 V72 M50 72 V96','#6E7A66',2.6,SC_CLEAR)
+    +scShape('M20 46 L20 20 C20 16 23 14 27 14 L73 14 C77 14 80 16 80 20 L80 46 Z','#A2AE98','#2F3A2C',4)
+    +scStroke('M40 24 H60 V40 H45 V29 H55 V35','#5E6A58',3,SC_CLEAR)
+    +scShape('M4 50 C8 43 16 47 21 44 L79 44 C85 46 92 43 96 50 L96 54 C88 52 80 55 72 52 C62 55 40 52 30 55 '
+      +'C20 52 12 55 4 54 Z','#5DAA4E','#1E3A12',3)
+    +scShape('M18 20 C22 12 30 16 36 12 C44 8 52 16 60 11 C68 8 74 14 82 18 L82 23 C74 21 66 24 58 21 '
+      +'C50 24 42 21 34 24 C28 22 22 25 18 23 Z','#5DAA4E','#1E3A12',3)
+    +scStroke('M76 16 C80 28 72 38 78 50 C82 60 76 70 80 82','#3FA34D',3,'#12361C')
+    +scLeaf(78,34,7,3,-20,'#6CC04A','#12361C',1.8)+scLeaf(79,62,7,3,200,'#6CC04A','#12361C',1.8)
+    +scLeaf(78,78,6,2.6,-30,'#6CC04A','#12361C',1.6),
 };
 
 // one stable number per square, so a map always grows the same scenery
@@ -132,7 +213,7 @@ function scNode(key,viewBox,body){
 
 // the drawing for one square, or null when it should stay bare
 function tileArt(i){
-  const theme=SCENERY[mapTheme]?mapTheme:'jungle';
+  const theme=SCENERY[mapTheme]?mapTheme:'forest';
   const t=tileData[i];
   if(t){
     const kind=(t==='sandstone-spawner')?'sandstone':t;

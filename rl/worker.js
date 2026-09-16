@@ -18,7 +18,7 @@ const E=require('../js/engine.js');
 const {createEncoder,potential}=require('./encoding.js');
 const campaignLevels=require('./levels.js');
 
-const THEMES=['jungle','desert','ocean'];
+const THEMES=['forest','jungle','desert','ocean'];
 const DEFAULTS={
   seed:0,
   mode:'classic',       // turn order: 'classic' (single-player: White acts and fires, Black fires, Black acts) or 'pvp'
@@ -26,7 +26,7 @@ const DEFAULTS={
                         // 'external' (chosen by Python), or 'auto' (bot in classic, random in pvp)
   agentColor:'random',  // 'w', 'b' or 'random' each game (always White against the bot)
   difficulty:'random',  // the bot's level: 'easy', 'hard' or 'random' each game
-  theme:'random',       // 'jungle', 'desert', 'ocean' or 'random' each game
+  theme:'random',       // 'forest', 'jungle', 'desert', 'ocean' or 'random' each game
   levels:null,          // classic only: campaign level indices to draw from each game (null in the list = standard game)
   fog:false,
   maxTurns:300,         // both sides' turns together; reaching it is a draw

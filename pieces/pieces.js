@@ -10,7 +10,7 @@
 //   siege   a stub tower with a cannon barrel out of the roof
 // Team colour fills the body (light White, dark Black) with a slight per-type tint, and
 // the base ring; a dark outline plus a contrasting halo keeps pieces readable on any tile.
-// Theme sets (jungle.js, desert.js, ocean.js) register in PIECE_SETS with
+// Theme sets (forest.js, jungle.js, desert.js, ocean.js) register in PIECE_SETS with
 // { colors, base(rx) }: the metal, gem and wood colours plus the ground each piece
 // stands on, so a theme never changes a piece's shape.
 // In SVG strings, {name} is filled from the team palette (line, body, shade) or the set's colors.
@@ -119,7 +119,7 @@ function pieceFace(shape,team){
 // plain: leave out the theme's ground decoration (for small icons like the merge chart)
 function pieceSVG(type,color,theme,size,plain){
   const shape=PIECE_SHAPES[type];if(!shape)return '';
-  const set=PIECE_SETS[theme]||PIECE_SETS.jungle||{colors:{}};
+  const set=PIECE_SETS[theme]||PIECE_SETS.forest||{colors:{}};
   const tint=(PIECE_TINTS[color]||PIECE_TINTS.w)[type];
   const team={...(PIECE_TEAMS[color]||PIECE_TEAMS.w),body:tint[0],shade:tint[1]};
   const fill=str=>(str||'').replace(/\{(\w+)\}/g,(m,k)=>team[k]!=null?team[k]:(set.colors&&set.colors[k])||m);

@@ -127,16 +127,18 @@ The core progression mechanic. Drag one piece onto an adjacent ally to merge the
 
 ## Map Themes
 
-Three selectable themes that change visuals, obstacles, ambient wildlife, and background music:
+Four selectable themes that change visuals, obstacles, ambient wildlife, and background music. Forest is the default:
 
 | Theme | Obstacle | Neutral Animal | Aggressive Animal | Special |
 |-------|----------|----------------|-------------------|---------|
-| **Jungle** | Trees (🌳) | Monkey (🐒, 2HP) | Snake (🐍, 1HP) | -- |
+| **Forest** | Trees (🌳) | Deer (🦌, 2HP) | Wolf (🐺, 1HP) | -- |
+| **Jungle** | Palms (🌴) and temple ruins (🏛) | Monkey (🐒, 2HP) | Snake (🐍, 1HP) | -- |
 | **Desert** | Sandstone (🟧) | Camel (🐪, 3HP) | Mummy (🧟, 2HP) | One sandstone block is a pyramid the mummy starts next to |
 | **Ocean** | Sea Rocks (🪨) | Crab (🦀, 1HP) | Shark (🦈, 2HP) | A tornado (🌪, 3HP) roams and occasionally spawns an enemy 2HP pawn |
 
 - Obstacles are **impassable** and stop bishop, rook and Siege Tower attacks. Queens and knights fire over them.
-- Obstacles are placed in small clusters, avoiding the first/last 3 rows (king zones), and the map always keeps a cardinal and a diagonal route between the two King zones.
+- Obstacles are placed in small clusters, avoiding the first/last 3 rows (king zones), and the map always keeps a cardinal and a diagonal route between the two King zones. The jungle places its palm clumps first and then one small temple ruin.
+- The board is drawn to match the pieces (`js/scenery.js`): flat rounded tiles with a thin gap, a small sticker low on some free tiles (grass, leaves and toadstools in the forest; monstera, vines, puddles and hibiscus in the jungle; dunes and cacti in the desert; ripples, starfish and coral in the ocean) and a drawing that fills each impassable tile. Which sticker a tile gets is a hash of its row and column, so a map always looks the same and no game random numbers are used.
 - **Animals are switched off** for now: `ANIMALS_ON` in `js/constants.js` (and the same switch in `js/engine.js`). Map generation still draws the same random numbers for them, so boards and enemy strategies are unchanged, but nothing is placed and the roaming loop never starts. The system stays in `js/animals.js`.
 - When switched on, animals roam in real time: two neutral and one aggressive per map. Any piece can attack them; aggressive animals bite adjacent pieces, and animals sometimes bump pieces aside. Campaign levels and multiplayer games never had them.
 
@@ -148,15 +150,15 @@ Three selectable themes that change visuals, obstacles, ambient wildlife, and ba
 
 | # | Level | Board | Theme | Goal |
 |---|-------|-------|-------|------|
-| 1 | Pawn School | 5x5 | Jungle | Destroy all enemies |
-| 2 | Narrow Pass | 3x7 | Jungle | Destroy all enemies |
+| 1 | Pawn School | 5x5 | Forest | Destroy all enemies |
+| 2 | Narrow Pass | 3x7 | Forest | Destroy all enemies |
 | 3 | Clash in the Dunes | 11x8 | Desert | Destroy the enemy King (no merging) |
 | 4 | Desert Crossing | 9x5 | Desert | Destroy all enemies |
 | 5 | Island Siege | 5x9 | Ocean | Destroy all enemies |
-| 6 | The Maze | 9x9 | Jungle | Destroy all enemies |
+| 6 | The Maze | 9x9 | Forest | Destroy all enemies |
 | 7 | Twin Forts | 11x7 | Desert | Destroy all enemies |
 | 8 | Canyon Battle | 5x11 | Ocean | Destroy all enemies |
-| 9 | Open War | 9x9 | Jungle | Destroy all enemies (fog of war on) |
+| 9 | Open War | 9x9 | Forest | Destroy all enemies (fog of war on) |
 | 10 | Last Stand | 11x11 | Desert | Destroy all enemies |
 
 - You lose if all your pieces (or your King, on levels with Kings) are destroyed.
@@ -177,7 +179,7 @@ Three selectable themes that change visuals, obstacles, ambient wildlife, and ba
 
 ## Audio
 
-- **Medieval BGM** (`js/music.js`): each map theme has its own dance tune in a medieval mode -- a lively D Dorian estampie (jungle), a slow E Phrygian lament with a darbuka-style groove (desert) and a lilting 6/8 A Aeolian carol (ocean). A small synthesized band plays it: recorder, shawm, fiddle and harp take turns on the melody over lute chords or harp arpeggios, a bass, a drone and bells, with a drum groove (frame drum, rim clicks, woodblock, tambourine, finger cymbals) and fills at phrase ends. The dance's two sections trade instruments each time the tune repeats, and repeats add ornaments and a second voice a fifth below. No audio files needed.
+- **Medieval BGM** (`js/music.js`): each map theme has its own dance tune in a medieval mode -- a lively D Dorian estampie (forest; the jungle plays it brighter in D Mixolydian and a little quicker), a slow E Phrygian lament with a darbuka-style groove (desert) and a lilting 6/8 A Aeolian carol (ocean). A small synthesized band plays it: recorder, shawm, fiddle and harp take turns on the melody over lute chords or harp arpeggios, a bass, a drone and bells, with a drum groove (frame drum, rim clicks, woodblock, tambourine, finger cymbals) and fills at phrase ends. The dance's two sections trade instruments each time the tune repeats, and repeats add ornaments and a second voice a fifth below. No audio files needed.
 - **SFX**: All sound effects are synthesized in real-time (spawn, move, attack, hit, kill, merge, heal, win, lose, etc.).
 - Volume controls for BGM and SFX are available in the settings modal.
 
@@ -229,7 +231,8 @@ SemunCraft/
   pieces/               -- Piece artwork, one set per map theme
     pieces.js           -- pieceSVG(): piece silhouettes, team colours with per-type tints,
                            outline/halo, faces
-    jungle.js           -- jungle colours and ground (grass, flower)
+    forest.js           -- forest colours and ground (grass, flower)
+    jungle.js           -- jungle colours and ground (monstera leaf, hibiscus)
     desert.js           -- desert colours and ground (sand, cactus)
     ocean.js            -- ocean colours and ground (ripples, bubbles)
     preview.html        -- gallery of every set plus a solid-silhouette check
@@ -245,8 +248,10 @@ SemunCraft/
                            over a drum groove (startBgm, stopBgm)
     movement.js         -- isTileBlocked(), getDragDests() (valid moves/merges/attacks/heals
                            per piece), BFS pathfinding (stepToward, getPath), queenRange()
-    themes.js           -- THEMES object (jungle/desert/ocean tile types, colors, animals),
+    themes.js           -- THEMES object (forest/jungle/desert/ocean tile types, colors, animals),
                            selectMap(), generateMap()
+    scenery.js          -- tileArt(): the sticker drawn on each board tile (scenery on free
+                           tiles, a full drawing on impassable ones)
     render.js           -- render() (rebuilds the visible board DOM: fog, auras, highlights),
                            sqElAt(), flashSq(), spawnFlash(), mergeFlash()
     combat.js           -- sqCenter(), attack animations (emoji projectiles, SVG
@@ -415,10 +420,10 @@ The scripts are loaded in a specific order in `SemunCraft.html` because later fi
 2. `state.js` -- declares all globals (`pieces`, `turn`, `animals`, etc.)
 3. `audio.js` -- `SFX` object and the audio context used by many modules
 4. `music.js` -- `startBgm` / `stopBgm` (uses the audio context from audio.js)
-5. `pieces/pieces.js`, then `pieces/jungle.js`, `desert.js`, `ocean.js` -- `pieceSVG` used by render, drag, actions, combat and ui
+5. `pieces/pieces.js`, then `pieces/forest.js`, `jungle.js`, `desert.js`, `ocean.js` -- `pieceSVG` used by render, drag, actions, combat and ui
 6. `movement.js` -- `isTileBlocked`, `getDragDests` needed by render/combat
 7. `themes.js` -- `THEMES`, `generateMap` needed by game init
-8. `render.js` -- `render()`, `flashSq()` needed by combat/actions
+8. `scenery.js`, then `render.js` -- `tileArt()` for each tile; `render()`, `flashSq()` needed by combat/actions
 9. `combat.js` -- `computeActions`, `executeActions` needed by game turn flow
 10. `animals.js` -- animal loop functions needed by game init
 11. `actions.js` -- `executeDrop`, `handleClick` needed by drag handlers

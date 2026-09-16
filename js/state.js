@@ -26,7 +26,7 @@ let blackLastFrom=-1,blackLastTo=-1;
 let dragSrc=-1,dragDests=null,dragging=false,mouseDownI=-1,mouseDownX=0,mouseDownY=0;
 let sqPx=40;
 let gameMode='single',difficulty='easy';
-let mapTheme='jungle'; // 'jungle'|'desert'|'ocean'
+let mapTheme='forest'; // 'forest'|'jungle'|'desert'|'ocean'
 let tileData=[]; // per-sq tile type string
 let animals=[]; // array of {emoji,hp,maxHp,name,aggressive,fractDmg,x,y,tx,ty,speed}
 let titleTileData=null; // saved title-screen map for single-player reuse

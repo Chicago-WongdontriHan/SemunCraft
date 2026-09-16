@@ -25,17 +25,18 @@ The silhouette row shows the pieces as solid shapes — every type should still 
 Designs live in pieces/pieces.js (shapes) and pieces/&lt;theme&gt;.js — edit and reload this page.</p>
 <div id="sets"></div>
 <script src="pieces.js"></script>
+<script src="forest.js"></script>
 <script src="jungle.js"></script>
 <script src="desert.js"></script>
 <script src="ocean.js"></script>
 <script>
-const TILES={jungle:['#7a9e4c','#4a6e28'],desert:['#c8a84a','#a07828'],ocean:['#4a80c8','#2a5898']};
+const TILES={forest:['#7a9e4c','#4a6e28'],jungle:['#4f9b5e','#2d7243'],desert:['#c8a84a','#a07828'],ocean:['#4a80c8','#2a5898']};
 const TYPES=['pawn','knight','bishop','rook','queen','king','siege'];
 const labels=`<div class="labels">${TYPES.map(t=>`<span>${t}</span>`).join('')}</div>`;
 const rows=(theme,px,cls)=>['w','b'].map((c,ci)=>`<div class="row ${cls}">`
   +TYPES.map((t,ti)=>`<div class="cell" style="background:${TILES[theme][(ti+ci)%2]}">${pieceSVG(t,c,theme,px)}</div>`).join('')+'</div>').join('');
 document.getElementById('sets').innerHTML=
-  `<section><h2>silhouettes</h2><div class="row silhouette">${TYPES.map(t=>`<div class="cell">${pieceSVG(t,'w','jungle',80)}</div>`).join('')}</div>${labels}</section>`
+  `<section><h2>silhouettes</h2><div class="row silhouette">${TYPES.map(t=>`<div class="cell">${pieceSVG(t,'w','forest',80)}</div>`).join('')}</div>${labels}</section>`
   +Object.keys(TILES).map(theme=>`<section><h2>${theme}</h2>${rows(theme,80,'')}${labels}`
     +`<div style="margin-top:8px">${rows(theme,34,'small')}</div></section>`).join('');
 </script>

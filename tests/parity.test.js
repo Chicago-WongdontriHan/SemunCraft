@@ -45,7 +45,7 @@ section('piece stats match constants.js',()=>{
 });
 
 section('map generation and strategy pick match themes.js / ai.js',()=>{
-  for(const theme of ['jungle','desert','ocean'])
+  for(const theme of ['forest','jungle','desert','ocean'])
     for(const mode of ['easy','hard','pvp'])
       for(let seed=1;seed<=SEEDS;seed++){
         game.setRandom(E.makeRandom(seed));
@@ -202,7 +202,7 @@ function playPvp(opts,label,stats){
   game.run('pvpActive=false;pvpRole=null;');
 }
 
-const THEMES=['jungle','desert','ocean'];
+const THEMES=['forest','jungle','desert','ocean'];
 section('pvp games',stats=>{
   for(const theme of THEMES)for(const fog of [false,true])for(let seed=1;seed<=SEEDS;seed++)
     playPvp({seed,theme,fog},'pvp '+theme+(fog?' fog':'')+' seed '+seed,stats);

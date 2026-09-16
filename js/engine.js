@@ -11,12 +11,19 @@
 
 // ── DATA ─────────────────────────────────────────────────────────────────────
 const STATS={king:{hp:5,maxHp:5},pawn:{hp:1,maxHp:1},knight:{hp:4,maxHp:4},bishop:{hp:2,maxHp:2},rook:{hp:4,maxHp:4},queen:{hp:5,maxHp:5},siege:{hp:4,maxHp:4}};
-const THEME_OBSTACLE={jungle:'tree',desert:'sandstone',ocean:'rocks'};
+// each theme's impassable tiles and their share of the board, in the order themes.js places them
+const THEME_OBSTACLES={
+  forest:[['tree',.12]],
+  jungle:[['palm',.09],['temple',.04]],
+  desert:[['sandstone',.12]],
+  ocean:[['rocks',.12]],
+};
 // Roaming animals are off in the game (ANIMALS_ON in js/constants.js). Map generation still draws
 // the same random numbers for them, so boards match; nothing is kept.
 const ANIMALS_ON=false;
 // animal templates; map generation draws random numbers for them like themes.js
 const THEME_ANIMALS={
+  forest:{neutral:{emoji:'🦌',hp:2,maxHp:2,name:'Deer'},attacker:{emoji:'🐺',hp:1,maxHp:1,name:'Wolf'}},
   jungle:{neutral:{emoji:'🐒',hp:2,maxHp:2,name:'Monkey'},attacker:{emoji:'🐍',hp:1,maxHp:1,name:'Snake'}},
   desert:{neutral:{emoji:'🐪',hp:3,maxHp:3,name:'Camel'},attacker:null},
   ocean:{neutral:{emoji:'🦀',hp:1,maxHp:1,name:'Crab'},attacker:{emoji:'🦈',hp:2,maxHp:2,name:'Shark'}},
@@ -78,7 +85,7 @@ function newGame(o){
   o=o||{};
   const lv=o.level||null;
   const s={
-    cols:lv?lv.cols:9,rows:lv?lv.rows:9,theme:lv?lv.theme:(o.theme||'jungle'),
+    cols:lv?lv.cols:9,rows:lv?lv.rows:9,theme:lv?lv.theme:(o.theme||'forest'),
     mode:o.mode==='pvp'?'pvp':'classic',difficulty:o.difficulty||'hard',
     board:null,tiles:null,blocked:null,
     turn:'w',over:false,winner:null,
@@ -94,7 +101,7 @@ function newGame(o){
   s.tiles=new Array(n).fill('');
   s.blocked=new Array(n).fill(false);
   if(lv){
-    const obs=THEME_OBSTACLE[lv.theme]||'tree';
+    const obs=(THEME_OBSTACLES[lv.theme]||THEME_OBSTACLES.forest)[0][0];
     (lv.obstacles||[]).forEach(([r,c])=>{if(r>=0&&r<s.rows&&c>=0&&c<s.cols)setTile(s,r*s.cols+c,obs);});
     [['w',lv.white],['b',lv.black]].forEach(([color,list])=>(list||[]).forEach(pd=>{
       const p=makePiece(pd.type,color);
@@ -118,8 +125,11 @@ function newGame(o){
 
 function makePiece(type,color){return{type,color,hp:STATS[type].hp,maxHp:STATS[type].maxHp};}
 
-// a tile blocks when it is the pyramid or the current theme's obstacle (as isTileBlocked does)
-function setTile(s,i,t){s.tiles[i]=t;s.blocked[i]=t==='sandstone-spawner'||(!!t&&THEME_OBSTACLE[s.theme]===t);}
+// a tile blocks when it is the pyramid or one of the current theme's obstacles (as isTileBlocked does)
+function setTile(s,i,t){
+  s.tiles[i]=t;
+  s.blocked[i]=t==='sandstone-spawner'||(!!t&&(THEME_OBSTACLES[s.theme]||[]).some(o=>o[0]===t));
+}
 
 function clone(s){
   const c=Object.assign({},s);
@@ -138,44 +148,47 @@ function clone(s){
 // ── MAP GENERATION (generateMap in themes.js; same random draws, same order) ──
 function generateMap(s){
   const g=geo(s),R=s.rows,C=s.cols,rnd=()=>nextRandom(s);
-  const ttype=THEME_OBSTACLE[s.theme];
+  const types=THEME_OBSTACLES[s.theme];
   s.tiles.fill('');s.blocked.fill(false);s.animals=[];
-  if(!ttype)return;
-  const count=Math.round(.12*R*C);
-  const numChunks=Math.round(count/2.5);
-  const runLen=(ti,dr,dc)=>{
-    let run=0;const r=rowOf(s,ti),c=colOf(s,ti);
-    for(let k=1;k<=6;k++){const nr=r-dr*k,nc=c-dc*k;if(!g.inB(nr,nc))break;const j=nr*C+nc;if(s.blocked[j]||s.tiles[j]===ttype)run++;else break;}
-    for(let k=1;k<=6;k++){const nr=r+dr*k,nc=c+dc*k;if(!g.inB(nr,nc))break;const j=nr*C+nc;if(s.blocked[j]||s.tiles[j]===ttype)run++;else break;}
-    return run+1;
-  };
-  // obstacles stay out of the first and last 3 rows, off pieces, and never run longer than 6
-  const canPlace=ti=>{
-    const r=rowOf(s,ti);
-    if(r<3||r>R-4)return false;
-    if(s.tiles[ti]||s.board[ti])return false;
-    return runLen(ti,0,1)<=6&&runLen(ti,1,0)<=6;
-  };
-  let placed=0;
-  for(let chunk=0;chunk<numChunks&&placed<count;chunk++){
-    let seed=-1;
-    for(let att=0;att<60;att++){const t=Math.floor(rnd()*R*C);if(canPlace(t)){seed=t;break;}}
-    if(seed<0)continue;
-    const chunkSize=rnd()<0.5?2:rnd()<0.5?3:rnd()<0.4?1:4;
-    const frontier=[seed],inChunk=new Set([seed]);
-    setTile(s,seed,ttype);placed++;
-    for(let step=1;step<chunkSize&&placed<count;step++){
-      let added=false;
-      // same comparator as themes.js, so V8's sort draws the same random numbers
-      const shuffled=[...frontier].sort(()=>rnd()-.5);
-      for(const cur of shuffled){
-        const nbrs=g.adj8[cur].filter(n=>!inChunk.has(n)&&canPlace(n));
-        if(nbrs.length){
-          const nb=nbrs[Math.floor(rnd()*nbrs.length)];
-          setTile(s,nb,ttype);inChunk.add(nb);frontier.push(nb);placed++;added=true;break;
+  if(!types)return;
+  // each obstacle type in turn, in small chunks
+  for(const [ttype,chance] of types){
+    const count=Math.round(chance*R*C);
+    const numChunks=Math.round(count/2.5);
+    const runLen=(ti,dr,dc)=>{
+      let run=0;const r=rowOf(s,ti),c=colOf(s,ti);
+      for(let k=1;k<=6;k++){const nr=r-dr*k,nc=c-dc*k;if(!g.inB(nr,nc))break;const j=nr*C+nc;if(s.blocked[j]||s.tiles[j]===ttype)run++;else break;}
+      for(let k=1;k<=6;k++){const nr=r+dr*k,nc=c+dc*k;if(!g.inB(nr,nc))break;const j=nr*C+nc;if(s.blocked[j]||s.tiles[j]===ttype)run++;else break;}
+      return run+1;
+    };
+    // obstacles stay out of the first and last 3 rows, off pieces, and never run longer than 6
+    const canPlace=ti=>{
+      const r=rowOf(s,ti);
+      if(r<3||r>R-4)return false;
+      if(s.tiles[ti]||s.board[ti])return false;
+      return runLen(ti,0,1)<=6&&runLen(ti,1,0)<=6;
+    };
+    let placed=0;
+    for(let chunk=0;chunk<numChunks&&placed<count;chunk++){
+      let seed=-1;
+      for(let att=0;att<60;att++){const t=Math.floor(rnd()*R*C);if(canPlace(t)){seed=t;break;}}
+      if(seed<0)continue;
+      const chunkSize=rnd()<0.5?2:rnd()<0.5?3:rnd()<0.4?1:4;
+      const frontier=[seed],inChunk=new Set([seed]);
+      setTile(s,seed,ttype);placed++;
+      for(let step=1;step<chunkSize&&placed<count;step++){
+        let added=false;
+        // same comparator as themes.js, so V8's sort draws the same random numbers
+        const shuffled=[...frontier].sort(()=>rnd()-.5);
+        for(const cur of shuffled){
+          const nbrs=g.adj8[cur].filter(n=>!inChunk.has(n)&&canPlace(n));
+          if(nbrs.length){
+            const nb=nbrs[Math.floor(rnd()*nbrs.length)];
+            setTile(s,nb,ttype);inChunk.add(nb);frontier.push(nb);placed++;added=true;break;
+          }
         }
+        if(!added)break;
       }
-      if(!added)break;
     }
   }
   // keep a cardinal (rook) and a diagonal (bishop) route between the two king zones
@@ -991,7 +1004,7 @@ function botTurn(s){
 // fromSnapshot(data) builds a state from plain data, such as the browser game's own variables:
 // {cols, rows, theme, mode, board, tiles, turn, turnCount, spawns, targets, hitBy, acted, level, fog, maxTurns}
 function fromSnapshot(o){
-  const s={cols:o.cols,rows:o.rows,theme:o.theme||'jungle',mode:o.mode==='pvp'?'pvp':'classic',difficulty:o.difficulty||'hard',
+  const s={cols:o.cols,rows:o.rows,theme:o.theme||'forest',mode:o.mode==='pvp'?'pvp':'classic',difficulty:o.difficulty||'hard',
     board:o.board.map(p=>p&&Object.assign({},p)),tiles:null,blocked:null,turn:o.turn||'w',over:false,winner:null,
     turnCount:{w:o.turnCount.w,b:o.turnCount.b},spawns:{w:o.spawns.w,b:o.spawns.b},
     targets:{w:Object.assign({},o.targets.w),b:Object.assign({},o.targets.b)},moved:-1,
@@ -1021,7 +1034,7 @@ const SemunEngine={
   // rule queries
   getDests,computeActions,spawnRemaining,visible,fogFor,campaignResult,
   // helpers and data
-  generateMap,makeRandom,nextRandom,sqName,cheb,geo,STATS,STRATEGIES,THEME_OBSTACLE,
+  generateMap,makeRandom,nextRandom,sqName,cheb,geo,STATS,STRATEGIES,THEME_OBSTACLES,
 };
 if(typeof module!=='undefined'&&module.exports)module.exports=SemunEngine;
 else root.SemunEngine=SemunEngine;

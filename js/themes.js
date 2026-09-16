@@ -1,13 +1,28 @@
 // ── THEME DEFINITIONS ────────────────────────────────────────────────────────
 
 const THEMES={
-  jungle:{
-    name:'Jungle',
+  // the default map
+  forest:{
+    name:'Forest',
     lt:'#7a9e4c',dk:'#4a6e28',
     border:'#3a2810',
     bodyBg:'#0c1a08',
     tiles:{
       tree:    {chance:.12,icon:'🌳',label:'Tree',   effect:'Impassable obstacle',block:true},
+    },
+    neutral:{emoji:'\uD83E\uDD8C',hp:2,maxHp:2,name:'Deer',desc:'Roams the forest'},
+    attacker:{emoji:'\uD83D\uDC3A',hp:1,maxHp:1,name:'Wolf',desc:'Attacks adjacent pieces',aggressive:true},
+    neutralCount:2,
+  },
+  // palms go down in clumps first, then one small temple ruin
+  jungle:{
+    name:'Jungle',
+    lt:'#4f9b5e',dk:'#2d7243',
+    border:'#1f3a1c',
+    bodyBg:'#06170f',
+    tiles:{
+      palm:    {chance:.09,icon:'\uD83C\uDF34',label:'Palm',effect:'Impassable obstacle',block:true},
+      temple:  {chance:.04,icon:'\uD83C\uDFDB',label:'Temple Ruins',effect:'Impassable obstacle',block:true},
     },
     neutral:{emoji:'\uD83D\uDC12',hp:2,maxHp:2,name:'Monkey',desc:'Roams the jungle'},
     attacker:{emoji:'\uD83D\uDC0D',hp:1,maxHp:1,name:'Snake',desc:'Attacks adjacent pieces',aggressive:true},
@@ -39,9 +54,14 @@ const THEMES={
   },
 };
 
+// the obstacle a hand-placed map (campaign level, tutorial) uses on a theme: its first tile type
+function themeObstacle(theme){
+  return Object.keys((THEMES[theme]||THEMES.forest).tiles)[0];
+}
+
 function selectMap(theme){
   mapTheme=theme;
-  ['jungle','desert','ocean'].forEach(t=>{
+  ['forest','jungle','desert','ocean'].forEach(t=>{
     const b=document.getElementById('mbtn-'+t);
     if(b)b.classList.toggle('sel-map',t===theme);
   });
@@ -265,7 +285,7 @@ function generateMap(){
   }
   const nc=th.neutralCount||2;
   for(let k=0;k<nc;k++){if(th.neutral)placeOneAnimal(th.neutral,false);}
-  // attacker: jungle/ocean place one; desert attacker comes from pyramid only
+  // attacker: forest/jungle/ocean place one; desert attacker comes from pyramid only
   if(th.attacker)placeOneAnimal(th.attacker,true);
   if(ANIMALS_ON)startAnimalLoop();   // start continuous animation loop
   else{animals=[];stopAnimalLoop();}

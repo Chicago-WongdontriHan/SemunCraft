@@ -66,7 +66,7 @@ function applyOriginal(a,s){
 
 const stats={},t0=Date.now();
 for(let n=0;n<GAMES;n++){
-  const seed=n+1,theme=['jungle','desert','ocean'][n%3],difficulty=['easy','medium','hard'][n%3],fog=n%4===0;
+  const seed=n+1,theme=['forest','jungle','desert','ocean'][n%4],difficulty=['easy','medium','hard'][n%3],fog=n%4===0;
   game.created.length=0;
   game.setRandom(E.makeRandom(seed));
   const pickBlack=E.makeRandom(seed*104729+7);

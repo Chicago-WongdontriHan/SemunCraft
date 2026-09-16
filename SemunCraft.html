@@ -222,9 +222,9 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 .go-btn.secondary:hover{background:#162208;color:#90b050;}
 
 /* ── THEMES ── */
-/* ── JUNGLE MAP DECORATIONS ── */
-/* subtle vine glow around the jungle board */
-body.theme-jungle #board-wrap{
+/* ── FOREST MAP DECORATIONS ── */
+/* subtle vine glow around the forest board */
+body.theme-forest #board-wrap{
   border-color:#3a5018;
   box-shadow:
     0 0 0 1px #1a2810,
@@ -233,8 +233,8 @@ body.theme-jungle #board-wrap{
     inset 0 0 0 1px #6a8a30,
     inset 0 0 18px rgba(30,70,10,.35);
 }
-/* deeper rainforest ambient on body */
-body.theme-jungle{
+/* deep woodland ambient on body */
+body.theme-forest{
   background:#0c1a08;
   background-image:
     radial-gradient(ellipse at 20% 10%,rgba(30,70,10,.65) 0%,transparent 52%),
@@ -242,13 +242,13 @@ body.theme-jungle{
     radial-gradient(ellipse at 50% 50%,rgba(20,45,8,.3) 0%,transparent 70%);
 }
 
-body.theme-jungle #left-panel,body.theme-jungle #right-panel{background:#0e1a08;border-color:#2a4018;}
+body.theme-forest #left-panel,body.theme-forest #right-panel{background:#0e1a08;border-color:#2a4018;}
 body.theme-desert #left-panel,body.theme-desert #right-panel{background:#2a1808;border-color:#5a3810;}
 body.theme-ocean  #left-panel,body.theme-ocean  #right-panel{background:#070e1a;border-color:#1a2a50;}
-body.theme-jungle #top-bar{background:rgba(12,26,8,.85);}
+body.theme-forest #top-bar{background:rgba(12,26,8,.85);}
 body.theme-desert #top-bar{background:rgba(42,24,8,.85);}
 body.theme-ocean  #top-bar{background:rgba(5,10,26,.85);}
-body.theme-jungle #bottom-bar{background:rgba(10,20,6,.70);}
+body.theme-forest #bottom-bar{background:rgba(10,20,6,.70);}
 body.theme-desert #bottom-bar{background:rgba(36,22,6,.70);}
 body.theme-ocean  #bottom-bar{background:rgba(4,8,22,.70);}
 body.theme-desert .panel-label{color:#8a6028;}
@@ -265,11 +265,27 @@ body.theme-ocean .merge-guide{color:#80c8f0;}
 body.theme-ocean .tier-divider{background:#0e2040;}
 body.theme-ocean .act-btn{background:#070e1a;border-color:#1a4070;color:#4090c0;}
 body.theme-ocean .act-btn:hover{background:#0e1a2e;color:#70c0e8;}
-body.theme-jungle{background:#0c1a08;background-image:radial-gradient(ellipse at 20% 10%,rgba(30,60,10,.6) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(10,40,5,.7) 0%,transparent 50%);}
+body.theme-forest{background:#0c1a08;background-image:radial-gradient(ellipse at 20% 10%,rgba(30,60,10,.6) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(10,40,5,.7) 0%,transparent 50%);}
 body.theme-desert{background:#3d2e0a;background-image:radial-gradient(ellipse at 30% 15%,rgba(200,160,40,.50) 0%,transparent 45%),radial-gradient(ellipse at 75% 80%,rgba(180,140,30,.45) 0%,transparent 40%),repeating-linear-gradient(15deg,transparent,transparent 28px,rgba(80,45,8,.22) 28px,rgba(80,45,8,.22) 30px),repeating-linear-gradient(75deg,transparent,transparent 40px,rgba(60,35,5,.18) 40px,rgba(60,35,5,.18) 42px);}
 body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 20% 10%,rgba(10,30,80,.6) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(5,20,60,.7) 0%,transparent 50%);}
 
-body.theme-jungle{--tile-frame:#3c5a1e;}
+/* ── JUNGLE MAP ── humid teal glow, deeper greens */
+body.theme-jungle #board-wrap{
+  border-color:#1f4a2a;
+  box-shadow:
+    0 0 0 1px #0a1f12,
+    0 6px 24px rgba(0,0,0,.7),
+    0 0 32px rgba(40,170,110,.28),
+    inset 0 0 0 1px #3f8a5a,
+    inset 0 0 18px rgba(10,60,30,.35);
+}
+body.theme-jungle{background:#06170f;background-image:radial-gradient(ellipse at 20% 10%,rgba(20,90,50,.6) 0%,transparent 52%),radial-gradient(ellipse at 80% 90%,rgba(5,50,30,.75) 0%,transparent 55%),radial-gradient(ellipse at 50% 50%,rgba(10,50,30,.3) 0%,transparent 70%);}
+body.theme-jungle #left-panel,body.theme-jungle #right-panel{background:#08180f;border-color:#1c4028;}
+body.theme-jungle #top-bar{background:rgba(6,24,14,.85);}
+body.theme-jungle #bottom-bar{background:rgba(5,20,12,.70);}
+
+body.theme-forest{--tile-frame:#3c5a1e;}
+body.theme-jungle{--tile-frame:#1a4a2c;}
 body.theme-desert{--tile-frame:#7a5820;}
 body.theme-ocean{--tile-frame:#1e3c74;}
 /* ── TILE VISUALS ── */
@@ -356,6 +372,8 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 
 /* ── MAP SELECTOR ── */
 #map-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+/* four maps: two by two on a phone rather than three and one */
+@media (max-width: 480px){#map-row{display:grid;grid-template-columns:repeat(2,1fr);}}
 .map-btn{padding:8px 16px;font-size:13px;font-family:Georgia,serif;font-variant:small-caps;background:#0e1a08;border:1px solid #3a5820;color:#8ab840;border-radius:5px;cursor:pointer;transition:all .2s;}
 .map-btn:hover{background:#162a10;color:#c8e860;}
 .map-btn.sel-map{border-color:#c8a840;color:#c8a840;background:#1a1808;}
@@ -474,7 +492,8 @@ body.theme-ocean{--tile-frame:#1e3c74;}
   <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
     <div class="panel-label" style="font-size:12px;color:#6a8840;letter-spacing:.1em;font-variant:small-caps;">Map Theme</div>
     <div id="map-row">
-      <button class="map-btn sel-map" id="mbtn-jungle" onclick="selectMap('jungle')">🌿 Jungle</button>
+      <button class="map-btn sel-map" id="mbtn-forest" onclick="selectMap('forest')">🌲 Forest</button>
+      <button class="map-btn" id="mbtn-jungle" onclick="selectMap('jungle')">🌴 Jungle</button>
       <button class="map-btn" id="mbtn-desert" onclick="selectMap('desert')">🏜️ Desert</button>
       <button class="map-btn" id="mbtn-ocean" onclick="selectMap('ocean')">🌊 Ocean</button>
     </div>
@@ -650,31 +669,32 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 <!-- ?v= is the release version: bump it on every release so browsers (GitHub Pages lets them
      cache files for 10 minutes) never mix old cached scripts with new ones -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-<script src="js/constants.js?v=20260915c"></script>
-<script src="js/state.js?v=20260915c"></script>
-<script src="js/audio.js?v=20260915c"></script>
-<script src="js/music.js?v=20260915c"></script>
-<script src="pieces/pieces.js?v=20260915c"></script>
-<script src="pieces/jungle.js?v=20260915c"></script>
-<script src="pieces/desert.js?v=20260915c"></script>
-<script src="pieces/ocean.js?v=20260915c"></script>
-<script src="js/movement.js?v=20260915c"></script>
-<script src="js/themes.js?v=20260915c"></script>
-<script src="js/scenery.js?v=20260915c"></script>
-<script src="js/render.js?v=20260915c"></script>
-<script src="js/combat.js?v=20260915c"></script>
-<script src="js/animals.js?v=20260915c"></script>
-<script src="js/actions.js?v=20260915c"></script>
-<script src="js/ui.js?v=20260915c"></script>
-<script src="js/tutorial.js?v=20260915c"></script>
-<script src="js/campaign.js?v=20260915c"></script>
-<script src="js/pvp.js?v=20260915c"></script>
-<script src="js/ai.js?v=20260915c"></script>
-<script src="js/game.js?v=20260915c"></script>
-<script src="js/drag.js?v=20260915c"></script>
-<script src="js/resize.js?v=20260915c"></script>
+<script src="js/constants.js?v=20260916a"></script>
+<script src="js/state.js?v=20260916a"></script>
+<script src="js/audio.js?v=20260916a"></script>
+<script src="js/music.js?v=20260916a"></script>
+<script src="pieces/pieces.js?v=20260916a"></script>
+<script src="pieces/forest.js?v=20260916a"></script>
+<script src="pieces/jungle.js?v=20260916a"></script>
+<script src="pieces/desert.js?v=20260916a"></script>
+<script src="pieces/ocean.js?v=20260916a"></script>
+<script src="js/movement.js?v=20260916a"></script>
+<script src="js/themes.js?v=20260916a"></script>
+<script src="js/scenery.js?v=20260916a"></script>
+<script src="js/render.js?v=20260916a"></script>
+<script src="js/combat.js?v=20260916a"></script>
+<script src="js/animals.js?v=20260916a"></script>
+<script src="js/actions.js?v=20260916a"></script>
+<script src="js/ui.js?v=20260916a"></script>
+<script src="js/tutorial.js?v=20260916a"></script>
+<script src="js/campaign.js?v=20260916a"></script>
+<script src="js/pvp.js?v=20260916a"></script>
+<script src="js/ai.js?v=20260916a"></script>
+<script src="js/game.js?v=20260916a"></script>
+<script src="js/drag.js?v=20260916a"></script>
+<script src="js/resize.js?v=20260916a"></script>
 <!-- trained AI (Single Player difficulties, AI vs AI); the engine, network and weights load only when needed -->
-<script src="js/netai.js?v=20260915c"></script>
-<script src="js/aivsai.js?v=20260915c"></script>
+<script src="js/netai.js?v=20260916a"></script>
+<script src="js/aivsai.js?v=20260916a"></script>
 </body>
 </html>

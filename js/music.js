@@ -9,13 +9,13 @@
 //                  with a fill at the end of every second phrase
 // Everything is synthesized with Web Audio and scheduled slightly ahead of the
 // audio clock so the beat stays steady; stopBgm() cancels anything still queued.
-const MUSIC_MODES={dorian:[0,2,3,5,7,9,10],phrygian:[0,1,3,5,7,8,10],aeolian:[0,2,3,5,7,8,10]};
+const MUSIC_MODES={dorian:[0,2,3,5,7,9,10],phrygian:[0,1,3,5,7,8,10],aeolian:[0,2,3,5,7,8,10],mixolydian:[0,2,4,5,7,9,10]};
 // notes: [scale degree (0 = tonic, 7 = octave up, -1 = below), length in units]
 // chords: one root degree per bar
 // grooves: [offset in units within the bar, drum, velocity]
 const MEDIEVAL_TUNES={
-  // jungle: lively estampie in D Dorian
-  jungle:{tonic:293.66,mode:'dorian',unit:0.28,bar:4,
+  // forest: lively estampie in D Dorian
+  forest:{tonic:293.66,mode:'dorian',unit:0.28,bar:4,
     sections:[{lead:'recorder',accomp:'lute',groove:'light'},{lead:'fiddle',accomp:'harp',groove:'full'}],
     grooves:{
       light:[[0,'dum',1],[2,'tek',.7],[3,'tek',.5],[3.5,'tok',.45]],
@@ -57,6 +57,8 @@ const MEDIEVAL_TUNES={
       {notes:[[7,3],[6,2],[5,1],[4,2],[5,1],[4,3],[3,2],[2,1],[1,2],[-1,1],[0,6]],chords:[5,3,4,0]},
     ]},
 };
+// jungle: the forest estampie, brighter (Mixolydian) and a little quicker
+MEDIEVAL_TUNES.jungle=Object.assign({},MEDIEVAL_TUNES.forest,{mode:'mixolydian',unit:0.25});
 const TUNE_FORM=[0,1,0,1,2,3,2,3]; // AA'AA' BB'BB'
 let bgmTimer=null,bgmState=null,bgmNoise=null;
 
@@ -202,7 +204,7 @@ function bgmTick(){
   const ctx=audioCtx,s=bgmState;
   if(s.t<ctx.currentTime)s.t=ctx.currentTime+0.05; // the tab was throttled; don't pile up late notes
   while(s.t-ctx.currentTime<0.8){
-    const tune=MEDIEVAL_TUNES[mapTheme]||MEDIEVAL_TUNES.jungle;
+    const tune=MEDIEVAL_TUNES[mapTheme]||MEDIEVAL_TUNES.forest;
     if(s.theme!==mapTheme){s.theme=mapTheme;s.step=0;s.round=0;bgmSetDrone(tune,s.t);}
     if(s.step>=TUNE_FORM.length){
       // one breathing bar of drone and soft drums, then the dance comes around again

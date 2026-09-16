@@ -4,7 +4,7 @@ const CAMPAIGN_LEVELS=[
   // ── LEVEL 1: Pawn School (5x5) ──────────────────────────────────────────────
   {
     id:0, name:'Pawn School', desc:'Surround and destroy the enemy rook with your pawns.',
-    cols:5, rows:5, theme:'jungle',
+    cols:5, rows:5, theme:'forest',
     allowSpawn:false, turnLimit:12,
     winType:'destroy_all',
     obstacles:[[2,2]],
@@ -14,7 +14,7 @@ const CAMPAIGN_LEVELS=[
   // ── LEVEL 2: Narrow Pass (3x7) ─────────────────────────────────────────────
   {
     id:1, name:'Narrow Pass', desc:'Push through the corridor and destroy all enemies.',
-    cols:3, rows:7, theme:'jungle',
+    cols:3, rows:7, theme:'forest',
     allowSpawn:false, turnLimit:15,
     winType:'destroy_all',
     obstacles:[[3,0],[3,2]],
@@ -62,7 +62,7 @@ const CAMPAIGN_LEVELS=[
   // ── LEVEL 6: The Maze (9x9) ────────────────────────────────────────────────
   {
     id:5, name:'The Maze', desc:'Navigate the maze with your queen. Destroy all enemies.',
-    cols:9, rows:9, theme:'jungle',
+    cols:9, rows:9, theme:'forest',
     allowSpawn:false, turnLimit:20,
     winType:'destroy_all',
     obstacles:[[1,2],[1,6],[2,4],[3,1],[3,3],[3,5],[3,7],[5,1],[5,3],[5,5],[5,7],[6,4],[7,2],[7,6]],
@@ -92,7 +92,7 @@ const CAMPAIGN_LEVELS=[
   // ── LEVEL 9: Open War (9x9) ────────────────────────────────────────────────
   {
     id:8, name:'Open War', desc:'Full-scale battle in the fog. Scout the terrain and destroy all enemy pieces.',
-    cols:9, rows:9, theme:'jungle',
+    cols:9, rows:9, theme:'forest',
     allowSpawn:false, turnLimit:35,
     mapCheatDefault:false,
     winType:'destroy_all',
@@ -170,7 +170,7 @@ function startCampaignLevel(levelIdx){
   pieces=new Array(ROWS*COLS).fill(null);
   tileData=new Array(ROWS*COLS).fill('');
   // place obstacles
-  const obsType=lv.theme==='desert'?'sandstone':lv.theme==='ocean'?'rocks':'tree';
+  const obsType=themeObstacle(lv.theme);
   (lv.obstacles||[]).forEach(([r,c])=>{
     if(inB(r,c))tileData[idx(r,c)]=obsType;
   });

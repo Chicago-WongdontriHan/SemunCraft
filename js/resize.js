@@ -40,7 +40,7 @@ function resizeBoard(){
     boardW=sqPx*vCols;boardH=sqPx*vRows;
   }
   const wrap=document.getElementById('board-wrap');
-  const thBorder=(THEMES[mapTheme]||THEMES.jungle).border;
+  const thBorder=(THEMES[mapTheme]||THEMES.forest).border;
   wrap.style.borderColor=thBorder;
   wrap.style.width=boardW+'px';wrap.style.height=boardH+'px';wrap.style.margin=gutter?gutter+'px':'';
   document.getElementById('board').style.width=boardW+'px';document.getElementById('board').style.height=boardH+'px';
@@ -111,7 +111,7 @@ document.addEventListener('keydown',e=>{
 });
 
 window.addEventListener('load',()=>{
-  document.body.className='theme-jungle';
+  document.body.className='theme-'+mapTheme;
   resizeBoard();resizeBoard();
   renderPcCards();
   const startOnce=()=>{if(!bgmPaused)startBgm();document.removeEventListener('pointerdown',startOnce);document.removeEventListener('keydown',startOnce);};

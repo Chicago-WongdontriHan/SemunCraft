@@ -60,7 +60,7 @@ section('clone() is independent of the original',()=>{
 section('invariants hold in random games',()=>{
   const results={w:0,b:0,draw:0};
   for(let n=0;n<GAMES;n++){
-    const mode=n%2?'pvp':'classic',theme=['jungle','desert','ocean'][n%3];
+    const mode=n%2?'pvp':'classic',theme=['forest','jungle','desert','ocean'][n%4];
     const {s}=playRandom({seed:n+1,mode,theme,difficulty:n%4<2?'easy':'hard',fog:n%5===0,maxTurns:400},n+5000,st=>invariants(st,mode+' game '+(n+1)));
     if(!s.winner)fail('game '+(n+1)+' ended without a winner');
     else results[s.winner]++;
@@ -93,7 +93,7 @@ section('fromSnapshot rebuilds a state, and act() applies just the action',()=>{
   const pick=E.makeRandom(21);
   let checked=0,kept=0;
   for(let n=0;n<40;n++){
-    const s=E.newGame({seed:900+n,mode:n%2?'pvp':'classic',theme:['jungle','desert','ocean'][n%3],maxTurns:200});
+    const s=E.newGame({seed:900+n,mode:n%2?'pvp':'classic',theme:['forest','jungle','desert','ocean'][n%4],maxTurns:200});
     while(!s.over){
       if(s.mode==='classic'&&s.turn==='b'&&n%4===0){E.botTurn(s);continue;}
       const r=E.fromSnapshot({cols:s.cols,rows:s.rows,theme:s.theme,mode:s.mode,board:s.board,tiles:s.tiles,turn:s.turn,

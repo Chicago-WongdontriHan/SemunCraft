@@ -345,7 +345,7 @@ function renderMinimap(){
   mm.style.height=(cell*ROWS)+'px';
   mm.style.gridTemplateColumns='repeat('+COLS+','+cell+'px)';
   // use theme colors to match the main board
-  const thm=THEMES[mapTheme]||THEMES.jungle;
+  const thm=THEMES[mapTheme]||THEMES.forest;
   const lt=thm.lt, dk=thm.dk;
   for(let r=0;r<ROWS;r++){
     for(let c=0;c<COLS;c++){

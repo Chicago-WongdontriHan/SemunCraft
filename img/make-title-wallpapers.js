@@ -63,19 +63,21 @@ const tower=(x,base,w,h,fill,ink,lw,win)=>{
 const flag=(x,y,h,color,ink,lw)=>'<path d="M'+n2(x)+' '+n2(y)+' V'+n2(y-h)+'" stroke="'+ink+'" stroke-width="'+n2(lw)+'" stroke-linecap="round"/>'
   +'<path d="M'+n2(x)+' '+n2(y-h)+' L'+n2(x+h*.55)+' '+n2(y-h*.8)+' L'+n2(x)+' '+n2(y-h*.6)+' Z" fill="'+color+'" stroke="'+ink+'" stroke-width="'+n2(lw*.8)+'" stroke-linejoin="round"/>';
 // a castle standing on a hill: its base goes to the lowest point of the ground under it, so it never floats;
-// ruler(x, feetY, size), if given, draws who stands on the centre tower's roof in place of its flag
-function castle(cx,w,ground,fill,ink,lw,win,banner,ruler){
+// ruler(x, feetY, size), if given, stands on the wall walk between the centre tower and the side tower
+// (side -1 the left one, +1 the right one); it is drawn before the wall so the parapet hides its feet
+function castle(cx,w,ground,fill,ink,lw,win,banner,ruler,side){
   let base=0;for(let k=0;k<=8;k++)base=Math.max(base,ground(cx-w/2+w*k/8));
   base+=w*.03;
-  const tw=w*.2,th=w*.5,wallH=th*.62;
-  let s='<path d="M'+n2(cx-w/2+tw/2)+' '+n2(base)+' V'+n2(base-wallH)+' H'+n2(cx+w/2-tw/2)+' V'+n2(base)+' Z" fill="'+fill+'" stroke="'+ink+'" stroke-width="'+lw+'"/>';
+  const tw=w*.2,th=w*.5,wallH=th*.62,rulerSize=w*.26;
+  let s=ruler?ruler(cx+(side||-1)*w*.2,base-wallH+rulerSize*.16,rulerSize):'';
+  s+='<path d="M'+n2(cx-w/2+tw/2)+' '+n2(base)+' V'+n2(base-wallH)+' H'+n2(cx+w/2-tw/2)+' V'+n2(base)+' Z" fill="'+fill+'" stroke="'+ink+'" stroke-width="'+lw+'"/>';
   const merl=8,mw=(w-tw)/(merl*2-1);
   for(let k=0;k<merl;k++)s+='<rect x="'+n2(cx-w/2+tw/2+k*2*mw)+'" y="'+n2(base-wallH-mw*.8)+'" width="'+n2(mw)+'" height="'+n2(mw*.8+lw)+'" fill="'+fill+'" stroke="'+ink+'" stroke-width="'+lw+'"/>';
   const gw=w*.14,gh=wallH*.62;
   s+='<path d="M'+n2(cx-gw/2)+' '+n2(base)+' V'+n2(base-gh+gw/2)+' A'+n2(gw/2)+' '+n2(gw/2)+' 0 0 1 '+n2(cx+gw/2)+' '+n2(base-gh+gw/2)+' V'+n2(base)+' Z" fill="#3A2A1A" stroke="'+ink+'" stroke-width="'+lw+'"/>';
   s+=tower(cx-w/2,base,tw,th,fill,ink,lw,win)+tower(cx+w/2-tw,base,tw,th,fill,ink,lw,win)+tower(cx-tw/2,base-wallH*.35,tw,th*1.05,fill,ink,lw,win);
   s+=flag(cx-w/2+tw/2,base-th,w*.16,banner,ink,lw*.8)+flag(cx+w/2-tw/2,base-th,w*.16,banner,ink,lw*.8)
-    +(ruler?ruler(cx,base-wallH*.35-th*1.05+tw*.2,tw*1.6):flag(cx,base-wallH*.35-th*1.05,w*.2,banner,ink,lw*.8));
+    +flag(cx,base-wallH*.35-th*1.05,w*.2,banner,ink,lw*.8);
   return s;
 }
 const burst=(x,y,s)=>{let d='';for(let k=0;k<16;k++){const a=k*Math.PI/8,rr=k%2?s*.45:s;d+=(k?'L':'M')+n2(x+rr*Math.cos(a))+' '+n2(y+rr*Math.sin(a));}
@@ -156,9 +158,9 @@ function battleLines(W,H){
   let s=sky(W,H,m);
   const far=hill(W,H,H*.5,H*.045,.2,'#C5E6A2','#5A843C',lw);
   s+=far.path;
-  // each king stands on the roof of its castle, in command of the army below
-  s+=castle(W*.14,m*.24,far.surface,'#F4EAD2','#5A4630',lw,'#6B4A2A','#FFC93A',(x,y,size)=>sc.piece('king','w',x,y,size));
-  s+=castle(W*.86,m*.24,far.surface,'#5A5670','#1E1B2C',lw,'#FFB84D','#C8324A',(x,y,size)=>sc.piece('king','b',x,y,size,true));
+  // each king stands on its castle wall, in command of the army below (mirrored on Black's side)
+  s+=castle(W*.14,m*.24,far.surface,'#F4EAD2','#5A4630',lw,'#6B4A2A','#FFC93A',(x,y,size)=>sc.piece('king','w',x,y,size),-1);
+  s+=castle(W*.86,m*.24,far.surface,'#5A5670','#1E1B2C',lw,'#FFB84D','#C8324A',(x,y,size)=>sc.piece('king','b',x,y,size,true),1);
   const backY=H*.585,By=H*1.04;
   const field=battlefield(W,H,Object.assign({backY,By,vy:(backY-.34*By)/.66,Wb:m*.15,a:.46,A:H*.07,lambda:W*.7,phase:.7,lw},FIELD));
   s+=field.svg;

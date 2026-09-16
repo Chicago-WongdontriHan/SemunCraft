@@ -111,8 +111,9 @@ function netAiMove(level,chain){
 
 function netAiDescribe(a,p,events){
   switch(a.type){
-    case'move':return p.type+' '+sqName(a.from)+'→'+sqName(a.to);
-    case'merge':{const m=events.find(e=>e.type==='merge');return 'merges → '+(m?m.piece:'')+'@'+sqName(a.to);}
+    // a move or merge into undergrowth doesn't say where the piece went (see inCover)
+    case'move':return p.type+' '+sqName(a.from)+'→'+(isConcealedFrom(a.to,'w')?'the undergrowth':sqName(a.to));
+    case'merge':{const m=events.find(e=>e.type==='merge');return 'merges → '+(m?m.piece:'')+(isConcealedFrom(a.to,'w')?' in the undergrowth':'@'+sqName(a.to));}
     case'spawn':return 'spawns@'+sqName(a.to);
     case'target':return p.type+' targets '+sqName(a.to);
     case'heal':case'healLock':return 'bishop heals '+sqName(a.to);

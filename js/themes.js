@@ -14,7 +14,8 @@ const THEMES={
     attacker:{emoji:'\uD83D\uDC3A',hp:1,maxHp:1,name:'Wolf',desc:'Attacks adjacent pieces',aggressive:true},
     neutralCount:2,
   },
-  // palms go down in clumps first, then one small temple ruin
+  // palms go down in clumps first, then one small temple ruin, then patches of undergrowth,
+  // which hide whatever stands in them (see inCover in movement.js)
   jungle:{
     name:'Jungle',
     lt:'#4f9b5e',dk:'#2d7243',
@@ -23,6 +24,7 @@ const THEMES={
     tiles:{
       palm:    {chance:.09,icon:'\uD83C\uDF34',label:'Palm',effect:'Impassable obstacle',block:true},
       temple:  {chance:.04,icon:'\uD83C\uDFDB',label:'Temple Ruins',effect:'Impassable obstacle',block:true},
+      undergrowth:{chance:.08,icon:'\uD83C\uDF3F',label:'Undergrowth',effect:'Hides a piece from enemies that are not next to it',block:false},
     },
     neutral:{emoji:'\uD83D\uDC12',hp:2,maxHp:2,name:'Monkey',desc:'Roams the jungle'},
     attacker:{emoji:'\uD83D\uDC0D',hp:1,maxHp:1,name:'Snake',desc:'Attacks adjacent pieces',aggressive:true},
@@ -54,9 +56,10 @@ const THEMES={
   },
 };
 
-// the obstacle a hand-placed map (campaign level, tutorial) uses on a theme: its first tile type
+// the obstacle a hand-placed map (campaign level, tutorial) uses on a theme: its first blocking tile type
 function themeObstacle(theme){
-  return Object.keys((THEMES[theme]||THEMES.forest).tiles)[0];
+  const tiles=(THEMES[theme]||THEMES.forest).tiles;
+  return Object.keys(tiles).find(t=>tiles[t].block)||'tree';
 }
 
 function selectMap(theme){

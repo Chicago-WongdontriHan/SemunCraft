@@ -413,7 +413,8 @@ function renderMinimap(){
       }
       // piece dot
       const p=pieces[i];
-      if(p){
+      // an enemy hidden in undergrowth stays off the minimap too
+      if(p&&(mapCheat||!isConcealedFrom(i,myColor()))){
         const dot=document.createElement('div');
         dot.style.cssText='width:60%;height:60%;border-radius:50%;margin:20% auto;background:'+(p.color==='w'?'#fff':'#1a0e04')+';';
         d.appendChild(dot);

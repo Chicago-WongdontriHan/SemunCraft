@@ -23,6 +23,8 @@ function render(){
   const auraMap=new Map();
   for(let pi=0;pi<ROWS*COLS;pi++){
     const pp=pieces[pi];if(!pp)continue;
+    // a piece hidden in undergrowth gives nothing away, not even its aura
+    if(!mapCheat&&isConcealedFrom(pi,mc))continue;
     let zone=[];
     if(pp.type==='pawn')zone=adj8(pi);
     else if(pp.type==='knight')zone=kJumps(pi);
@@ -139,30 +141,35 @@ function render(){
           }
         }
         if(!dragging&&i===blackLastFrom)sq.classList.add('last-from');
-        if(!dragging&&i===blackLastTo)sq.classList.add('last-to');
+        if(!dragging&&i===blackLastTo&&!isConcealedFrom(i,mc))sq.classList.add('last-to');
       }
 
+      // undergrowth: an enemy hidden here isn't drawn (Map Cheat shows it faintly)
+      const concealedHere=isConcealedFrom(i,mc);
       // attack/heal target indicators
       const isAtkTarget=Object.entries(targets).some(([s,t])=>parseInt(t)===i&&pieces[parseInt(s)]&&pieces[parseInt(s)].color===mc&&pieces[parseInt(s)].type!=='bishop');
       const isHealTarget=Object.entries(targets).some(([s,t])=>parseInt(t)===i&&pieces[parseInt(s)]&&pieces[parseInt(s)].color===mc&&pieces[parseInt(s)].type==='bishop');
       const hasTarget=targets[i]!==undefined&&pieces[i]&&pieces[i].color===mc;
-      if(isAtkTarget)sq.classList.add('atk-target');
+      if(isAtkTarget&&!concealedHere)sq.classList.add('atk-target');
       if(isHealTarget)sq.classList.add('heal-target');
       if(hasTarget)sq.classList.add('has-target');
 
-      const p=(dragging&&i===dragSrc)?null:pieces[i];
+      let p=(dragging&&i===dragSrc)?null:pieces[i];
+      if(p&&concealedHere&&!mapCheat)p=null;
       if(!p&&prodTgts.has(i)){
         const div=document.createElement('div');div.className='piece piece-ghost';
         div.innerHTML=pieceSVG('pawn',mc,mapTheme,Math.floor(sqPx*.86));
         sq.appendChild(div);
       }else if(p){
-        const div=document.createElement('div');div.className='piece';
+        const div=document.createElement('div');div.className='piece'+(concealedHere?' piece-concealed':'');
         if(p.newborn){const aura=document.createElement('div');aura.className='newborn-aura';div.appendChild(aura);}
         // piece artwork comes from the map theme's set in pieces/
         const svgWrap=document.createElement('div');
         svgWrap.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:1;';
         svgWrap.innerHTML=pieceSVG(p.type,p.color,mapTheme,Math.floor(sqPx*.86));
         div.appendChild(svgWrap);
+        // standing in undergrowth: leaves in front of the piece, under its HP pips
+        if(tileData[i]==='undergrowth'&&typeof undergrowthFront==='function')div.appendChild(undergrowthFront());
         const bar=document.createElement('div');bar.className='hp-bar';
 
         for(let h=0;h<p.maxHp;h++){const pip=document.createElement('div');pip.className='hp-pip '+(h<p.hp?'full-':'empty-')+p.color;pip.style.width=pipW;pip.style.height=pipH;bar.appendChild(pip);}

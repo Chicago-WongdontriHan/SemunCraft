@@ -138,8 +138,30 @@ const SCENERY={
   },
 };
 
-// impassable tiles, drawn in the 100x100 box a piece uses so they fill the square
-const OBSTACLE_ART={
+// a leaf's midrib: from its base most of the way to its tip
+const scRib=(x,y,len,ang)=>{const t=ang*Math.PI/180;
+  return 'M'+x+' '+y+' L'+scR(x+len*.8*Math.cos(t))+' '+scR(y+len*.8*Math.sin(t));};
+
+// undergrowth (jungle): a thicket of broad leaves. The front leaves are drawn a second time over a
+// piece standing in it (undergrowthFront), so it looks tucked in while its HP pips stay on top.
+const UG_INK='#0F3A1C';
+const UG_FRONT=
+  scLeaf(6,101,36,10,-58,'#3FA34D',UG_INK,2.8)+scLeaf(94,101,36,10,-122,'#3FA34D',UG_INK,2.8)
+  +scLeaf(27,102,32,10,-97,'#4FAE55',UG_INK,2.8)+scLeaf(73,102,32,10,-83,'#4FAE55',UG_INK,2.8)
+  +scLeaf(50,103,26,9,-90,'#58B866',UG_INK,2.6)
+  +scStroke([scRib(6,101,36,-58),scRib(94,101,36,-122),scRib(27,102,32,-97),scRib(73,102,32,-83),
+    scRib(50,103,26,-90)].join(' '),'#8FD27A',1.6,SC_CLEAR);
+const UG_BACK=
+  '<ellipse cx="50" cy="86" rx="48" ry="20" fill="rgba(6,40,20,.35)"/>'
+  +scLeaf(50,99,76,13,-90,'#27743A',UG_INK,3)
+  +scLeaf(45,99,68,14,-120,'#2F8A45',UG_INK,3)+scLeaf(55,99,68,14,-60,'#2F8A45',UG_INK,3)
+  +scLeaf(40,99,56,13,-150,'#27743A',UG_INK,3)+scLeaf(60,99,56,13,-30,'#27743A',UG_INK,3)
+  +scStroke([scRib(50,99,76,-90),scRib(45,99,68,-120),scRib(55,99,68,-60),scRib(40,99,56,-150),
+    scRib(60,99,56,-30)].join(' '),'#58B866',2,SC_CLEAR);
+
+// terrain tiles, drawn in the 100x100 box a piece uses so they fill the square
+const TERRAIN_ART={
+  undergrowth:UG_BACK+UG_FRONT,
   tree:
     scShape('M42 96 C42 80 42 70 41 62 L59 62 C58 70 58 80 58 96 Z','#8B5A2B','#2A1A10',4)
     +scStroke('M50 80 L44 73 M50 89 L56 82','#6B4420',3,'rgba(0,0,0,0)')
@@ -199,11 +221,11 @@ function scHash(r,c){
 }
 
 const scCache=new Map();
-function scNode(key,viewBox,body){
+function scNode(key,viewBox,body,cls){
   let n=scCache.get(key);
   if(!n){
     n=document.createElementNS('http://www.w3.org/2000/svg','svg');
-    n.setAttribute('class','tile-art');
+    n.setAttribute('class',cls||'tile-art');
     n.setAttribute('viewBox',viewBox);
     n.innerHTML=body;
     scCache.set(key,n);
@@ -211,13 +233,16 @@ function scNode(key,viewBox,body){
   return n.cloneNode(true);
 }
 
+// the leaves in front of a piece standing in undergrowth
+function undergrowthFront(){return scNode('ug-front','0 0 100 100',UG_FRONT,'tile-front');}
+
 // the drawing for one square, or null when it should stay bare
 function tileArt(i){
   const theme=SCENERY[mapTheme]?mapTheme:'forest';
   const t=tileData[i];
   if(t){
     const kind=(t==='sandstone-spawner')?'sandstone':t;
-    const art=OBSTACLE_ART[kind];
+    const art=TERRAIN_ART[kind];
     return art?scNode('ob|'+kind,'0 0 100 100',art):null;
   }
   const r=ROW(i),c=COL(i),h=scHash(r,c),roll=h%1000;

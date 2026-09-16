@@ -113,6 +113,31 @@ section('fromSnapshot rebuilds a state, and act() applies just the action',()=>{
   return checked+' actions, '+kept+' kept the turn';
 });
 
+section('undergrowth hides a piece until an enemy stands next to it',()=>{
+  // an empty jungle board with one patch of undergrowth at d5 (row 4, column 3)
+  const s=E.newGame({seed:1,theme:'jungle',mode:'pvp'});
+  const at=(r,c)=>r*s.cols+c,put=(r,c,type,color)=>{s.board[at(r,c)]={type,color,hp:E.STATS[type].hp,maxHp:E.STATS[type].maxHp};};
+  s.board.fill(null);s.tiles.fill('');s.blocked.fill(false);s.targets={w:{},b:{}};
+  s.tiles[at(4,3)]='undergrowth';
+  put(8,0,'king','w');put(0,8,'king','b');
+  put(4,1,'rook','w');           // two squares west of the thicket, in rook range
+  put(4,3,'rook','b');           // hiding in it
+  put(4,5,'pawn','w');           // two squares east: in the hidden rook's range, not next to it
+  const wRook=at(4,1),bRook=at(4,3);
+  if(!E.inCover(s,bRook,'w')||!E.concealed(s,bRook,'w'))fail('a rook alone in undergrowth should be hidden from White');
+  if(E.getDests(s,wRook).attack.has(bRook))fail('White can drag an attack onto a hidden piece');
+  if(E.computeActions(s,'w').some(a=>a.target===bRook))fail('White auto-attacks a hidden piece');
+  if(E.legalActions(s,{anyTarget:true}).some(a=>a.type==='target'&&a.to===bRook))fail('White can lock onto a hidden piece');
+  s.targets.w[wRook]=bRook;      // an old lock doesn't fire at it either
+  if(E.computeActions(s,'w').some(a=>a.target===bRook))fail('a lock fires at a hidden piece');
+  if(!E.computeActions(s,'b').some(a=>a.attacker===bRook&&a.target===at(4,5)))fail('the hidden rook should still fire out of cover');
+  if(E.concealed(s,wRook,'b'))fail('a piece outside undergrowth is never hidden');
+  put(3,2,'pawn','w');           // a White pawn steps next to the thicket and spots it
+  if(E.concealed(s,bRook,'w'))fail('a piece next to it should reveal the hidden rook');
+  if(!E.getDests(s,wRook).attack.has(bRook))fail('once spotted the rook can be attacked');
+  if(!E.computeActions(s,'w').some(a=>a.attacker===wRook&&a.target===bRook))fail('once spotted the lock should fire');
+});
+
 section('speed',()=>{
   const pick=E.makeRandom(1);
   let steps=0,games=0;const t0=Date.now();

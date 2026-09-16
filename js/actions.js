@@ -74,7 +74,7 @@ function handleTargetClick(i){
       tgts[targetSrc]=i; addLog(p.type+' will heal '+sqName(i));
     }
   }else{
-    if(pieces[i]&&pieces[i].color!==mc){
+    if(pieces[i]&&pieces[i].color!==mc&&!isConcealedFrom(i,mc)){
       tgts[targetSrc]=i; addLog(p.type+' will attack '+sqName(i));
     }
   }
@@ -277,7 +277,8 @@ function executeDrop(from,to,dests){
     }
   }
   // if dropped on any enemy piece: set as priority target; if in range also attack now
-  if(pieces[to]&&pieces[to].color!==myColor()&&!dests.attack.has(to)){
+  // (not one hidden in undergrowth: the drop just fails, as on any tile you can't move to)
+  if(pieces[to]&&pieces[to].color!==myColor()&&!dests.attack.has(to)&&!isConcealedFrom(to,myColor())){
     tgts[from]=to;
     addLog(p.type+' targets '+pieces[to].type+'@'+sqName(to));
     setStatus(p.type+' will fire at '+pieces[to].type+' when in range.');

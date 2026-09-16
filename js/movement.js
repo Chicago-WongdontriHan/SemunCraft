@@ -13,6 +13,19 @@ function isTileBlocked(i){
   return !!(info&&info.block);
 }
 
+// Undergrowth (jungle): whatever stands in it is hidden from a side until one of that side's pieces
+// is on the tile or next to it. Unlike fog this holds for both sides, and with Map Cheat on too.
+function inCover(i,color){
+  if(tileData[i]!=='undergrowth')return false;
+  if(pieces[i]&&pieces[i].color===color)return false;
+  return !adj8(i).some(j=>pieces[j]&&pieces[j].color===color);
+}
+// an enemy of `color` hidden in undergrowth: it can't be seen, targeted or attacked, though it can attack out
+function isConcealedFrom(i,color){
+  const p=pieces[i];
+  return !!p&&p.color!==color&&inCover(i,color);
+}
+
 function pieceSpeed(p){
   if(!p)return 1;
   if(p.type==='bishop')return 2;
@@ -112,6 +125,8 @@ function getDragDests(i){
     for(const j of [...attack]){if(!isTileVisible(j))attack.delete(j);}
     for(const j of [...heal]){if(!isTileVisible(j))heal.delete(j);}
   }
+  // undergrowth: an enemy hidden in cover can't be attacked (for both sides)
+  for(const j of [...attack]){if(isConcealedFrom(j,p.color))attack.delete(j);}
   return{move,merge,attack,heal};
 }
 

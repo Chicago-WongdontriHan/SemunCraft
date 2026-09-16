@@ -52,7 +52,8 @@ function createEncoder(opts){
     const set=(ch,g,v)=>{out[ch*P+g]=Math.round(Math.min(1,v)*255);};
     const fill=(ch,v)=>out.fill(Math.round(Math.min(1,v)*255),ch*P,(ch+1)*P);
     const fog=E.fogFor(s,side);
-    const seen=i=>!fog||E.visible(s,i,side);
+    // fog hides what is out of sight; undergrowth hides what stands in it (for either side, fog or not)
+    const seen=i=>(!fog||E.visible(s,i,side))&&!E.inCover(s,i,side);
     for(let i=0;i<B.length;i++){
       const g=cell(s,i,side),p=B[i],vis=seen(i);
       set(CH.onBoard,g,1);
@@ -73,7 +74,7 @@ function createEncoder(opts){
         const from=+k,p=B[from];
         if(!p||p.color!==color||(color===enemy&&!seen(from)))continue;
         set(lockCh,cell(s,from,side),1);
-        set(lockedCh,cell(s,t[k],side),1);
+        if(!E.inCover(s,+t[k],side))set(lockedCh,cell(s,t[k],side),1);
       }
     }
     fill(CH.ownSpawns,E.spawnRemaining(s,side)/16);

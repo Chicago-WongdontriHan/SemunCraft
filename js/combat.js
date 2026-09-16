@@ -202,6 +202,8 @@ function computeActions(color){
         let bEnemies=bishopRange(i).filter(j=>pieces[j]&&pieces[j].color===enemy);
         // fog of war: the local player cannot attack fogged enemies
         if(color===myColor()&&!mapCheat)bEnemies=bEnemies.filter(j=>isTileVisible(j));
+        // undergrowth: enemies hidden in cover can't be hit (either side)
+        bEnemies=bEnemies.filter(j=>!isConcealedFrom(j,color));
         if(bEnemies.length){
           bEnemies.sort((a,b)=>{const pa=pieces[a],pb=pieces[b];if(pa.type==='king')return -1;if(pb.type==='king')return 1;return pa.hp-pb.hp;});
           actions.push({attacker:i,target:bEnemies[0],action:'attack'});
@@ -211,10 +213,11 @@ function computeActions(color){
       const range=p.type==='queen'?queenRange(i):p.type==='siege'?siegeRange(i):p.type==='rook'?rookRange(i):p.type==='knight'?kJumps(i):p.type==='bishop'?bishopRange(i):adj8(i);
       let enemies=range.filter(j=>pieces[j]&&pieces[j].color===enemy);
       if(color===myColor()&&!mapCheat)enemies=enemies.filter(j=>isTileVisible(j));
+      enemies=enemies.filter(j=>!isConcealedFrom(j,color));
       if(!enemies.length)continue;
       const manualTgt=targets[i];
       let tgtI;
-      if(manualTgt!==undefined&&pieces[manualTgt]&&pieces[manualTgt].color===enemy&&range.includes(manualTgt)){
+      if(manualTgt!==undefined&&pieces[manualTgt]&&pieces[manualTgt].color===enemy&&range.includes(manualTgt)&&!isConcealedFrom(manualTgt,color)){
         tgtI=manualTgt;
       }else{
         const sorted=[...enemies].sort((a,b)=>{const pa=pieces[a],pb=pieces[b];if(pa.type==='king')return -1;if(pb.type==='king')return 1;if(!targeted.has(a)&&targeted.has(b))return -1;if(targeted.has(a)&&!targeted.has(b))return 1;return pa.hp-pb.hp;});

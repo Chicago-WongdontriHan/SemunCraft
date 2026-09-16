@@ -11,12 +11,12 @@
 
 // ── DATA ─────────────────────────────────────────────────────────────────────
 const STATS={king:{hp:5,maxHp:5},pawn:{hp:1,maxHp:1},knight:{hp:4,maxHp:4},bishop:{hp:2,maxHp:2},rook:{hp:4,maxHp:4},queen:{hp:5,maxHp:5},siege:{hp:4,maxHp:4}};
-// each theme's impassable tiles and their share of the board, in the order themes.js places them
-const THEME_OBSTACLES={
-  forest:[['tree',.12]],
-  jungle:[['palm',.09],['temple',.04]],
-  desert:[['sandstone',.12]],
-  ocean:[['rocks',.12]],
+// each theme's terrain, in the order themes.js places it: [tile, share of the board, blocks]
+const THEME_TILES={
+  forest:[['tree',.12,true]],
+  jungle:[['palm',.09,true],['temple',.04,true],['undergrowth',.08,false]],
+  desert:[['sandstone',.12,true]],
+  ocean:[['rocks',.12,true]],
 };
 // Roaming animals are off in the game (ANIMALS_ON in js/constants.js). Map generation still draws
 // the same random numbers for them, so boards match; nothing is kept.
@@ -101,7 +101,7 @@ function newGame(o){
   s.tiles=new Array(n).fill('');
   s.blocked=new Array(n).fill(false);
   if(lv){
-    const obs=(THEME_OBSTACLES[lv.theme]||THEME_OBSTACLES.forest)[0][0];
+    const obs=((THEME_TILES[lv.theme]||THEME_TILES.forest).find(t=>t[2])||['tree'])[0];
     (lv.obstacles||[]).forEach(([r,c])=>{if(r>=0&&r<s.rows&&c>=0&&c<s.cols)setTile(s,r*s.cols+c,obs);});
     [['w',lv.white],['b',lv.black]].forEach(([color,list])=>(list||[]).forEach(pd=>{
       const p=makePiece(pd.type,color);
@@ -128,7 +128,7 @@ function makePiece(type,color){return{type,color,hp:STATS[type].hp,maxHp:STATS[t
 // a tile blocks when it is the pyramid or one of the current theme's obstacles (as isTileBlocked does)
 function setTile(s,i,t){
   s.tiles[i]=t;
-  s.blocked[i]=t==='sandstone-spawner'||(!!t&&(THEME_OBSTACLES[s.theme]||[]).some(o=>o[0]===t));
+  s.blocked[i]=t==='sandstone-spawner'||(!!t&&(THEME_TILES[s.theme]||[]).some(o=>o[0]===t&&o[2]));
 }
 
 function clone(s){
@@ -148,12 +148,28 @@ function clone(s){
 // ── MAP GENERATION (generateMap in themes.js; same random draws, same order) ──
 function generateMap(s){
   const g=geo(s),R=s.rows,C=s.cols,rnd=()=>nextRandom(s);
-  const types=THEME_OBSTACLES[s.theme];
+  const types=THEME_TILES[s.theme];
   s.tiles.fill('');s.blocked.fill(false);s.animals=[];
   if(!types)return;
-  // each obstacle type in turn, in small chunks
-  for(const [ttype,chance] of types){
+  // each terrain type in turn
+  for(const [ttype,chance,blocks] of types){
     const count=Math.round(chance*R*C);
+    if(!blocks){
+      // walkable terrain (undergrowth): a few seeds, each spreading at random to about count/seeds tiles
+      const seeds=[];
+      for(let k=0;k<Math.ceil(count/3);k++)seeds.push(Math.floor(rnd()*R*C));
+      for(const seed of seeds){
+        const toFill=Math.ceil(count/seeds.length);
+        const q=[seed],seen=new Set([seed]);let placed=0;
+        while(q.length&&placed<toFill){
+          const cur=q.shift(),r=rowOf(s,cur);
+          if(r>=3&&r<=R-4&&!s.tiles[cur]&&!s.board[cur]){setTile(s,cur,ttype);placed++;}
+          g.adj8[cur].forEach(n=>{if(!seen.has(n)&&rnd()<.5){seen.add(n);q.push(n);}});
+        }
+      }
+      continue;
+    }
+    // obstacles, in small chunks
     const numChunks=Math.round(count/2.5);
     const runLen=(ti,dr,dc)=>{
       let run=0;const r=rowOf(s,ti),c=colOf(s,ti);
@@ -311,6 +327,16 @@ function visible(s,i,color){
 }
 // classic mode hides fogged enemies from White only (the AI ignores fog); in PvP each side is limited
 function fogFor(s,color){return s.fog&&(s.mode==='pvp'||color==='w');}
+// Undergrowth (jungle): whatever stands in it is hidden from a side until one of that side's pieces
+// is on the tile or next to it. Unlike fog this holds for both sides, with or without fog.
+function inCover(s,i,color){
+  if(s.tiles[i]!=='undergrowth')return false;
+  const B=s.board;
+  if(B[i]&&B[i].color===color)return false;
+  return !geo(s).adj8[i].some(j=>B[j]&&B[j].color===color);
+}
+// an enemy of `color` hidden in undergrowth: it can't be targeted or attacked, though it can attack out
+function concealed(s,i,color){const p=s.board[i];return !!p&&p.color!==color&&inCover(s,i,color);}
 // counter used for bishop mana timing: single-player uses White's turn count for every bishop
 function clock(s,color){return s.mode==='pvp'?s.turnCount[color]:s.turnCount.w;}
 
@@ -366,6 +392,7 @@ function getDests(s,i){
     for(const j of [...attack])if(!visible(s,j,p.color))attack.delete(j);
     for(const j of [...heal])if(!visible(s,j,p.color))heal.delete(j);
   }
+  for(const j of [...attack])if(concealed(s,j,p.color))attack.delete(j);
   return{move,merge,attack,heal};
 }
 
@@ -401,7 +428,7 @@ function legalActions(s,opts){
     });
     d.heal.forEach(j=>{if(!d.merge.has(j))out.push({type:'heal',from:i,to:j});});
     if(opts.anyTarget){
-      for(let j=0;j<B.length;j++)if(B[j]&&B[j].color!==color)out.push({type:'target',from:i,to:j});
+      for(let j=0;j<B.length;j++)if(B[j]&&B[j].color!==color&&!concealed(s,j,color))out.push({type:'target',from:i,to:j});
     }else d.attack.forEach(j=>out.push({type:'target',from:i,to:j}));
   }
   const king=B.findIndex(p=>p&&p.color===color&&p.type==='king');
@@ -428,6 +455,7 @@ function computeActions(s,color){
       else{
         let foes=bRange.filter(j=>B[j]&&B[j].color===enemy);
         if(fog)foes=foes.filter(j=>visible(s,j,color));
+        foes=foes.filter(j=>!concealed(s,j,color));
         if(foes.length){
           foes.sort((a,b)=>{const pa=B[a],pb=B[b];if(pa.type==='king')return -1;if(pb.type==='king')return 1;return pa.hp-pb.hp;});
           acts.push({attacker:i,target:foes[0],action:'attack'});
@@ -437,10 +465,11 @@ function computeActions(s,color){
       const range=p.type==='queen'?g.qr[i]:p.type==='siege'?lineRange(s,i,CARD,4):p.type==='rook'?lineRange(s,i,CARD,3):p.type==='knight'?g.kj[i]:g.adj8[i];
       let foes=range.filter(j=>B[j]&&B[j].color===enemy);
       if(fog)foes=foes.filter(j=>visible(s,j,color));
+      foes=foes.filter(j=>!concealed(s,j,color));
       if(!foes.length)continue;
       const lock=targets[i];
       let t;
-      if(lock!==undefined&&B[lock]&&B[lock].color===enemy&&range.includes(lock))t=lock;
+      if(lock!==undefined&&B[lock]&&B[lock].color===enemy&&range.includes(lock)&&!concealed(s,lock,color))t=lock;
       else t=[...foes].sort((a,b)=>{const pa=B[a],pb=B[b];if(pa.type==='king')return -1;if(pb.type==='king')return 1;
         if(!targeted.has(a)&&targeted.has(b))return -1;if(targeted.has(a)&&!targeted.has(b))return 1;return pa.hp-pb.hp;})[0];
       targeted.add(t);
@@ -1032,9 +1061,9 @@ const SemunEngine={
   // playing
   newGame,legalActions,step,botTurn,clone,isLegal,fromSnapshot,act,
   // rule queries
-  getDests,computeActions,spawnRemaining,visible,fogFor,campaignResult,
+  getDests,computeActions,spawnRemaining,visible,fogFor,inCover,concealed,campaignResult,
   // helpers and data
-  generateMap,makeRandom,nextRandom,sqName,cheb,geo,STATS,STRATEGIES,THEME_OBSTACLES,
+  generateMap,makeRandom,nextRandom,sqName,cheb,geo,STATS,STRATEGIES,THEME_TILES,
 };
 if(typeof module!=='undefined'&&module.exports)module.exports=SemunEngine;
 else root.SemunEngine=SemunEngine;

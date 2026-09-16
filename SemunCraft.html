@@ -69,7 +69,11 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 .sq.lt{background:#7a9e4c;}
 .sq.dk{background:#4a6e28;}
 .sq:hover{filter:brightness(1.1);}
-.sq.sel{background:#b8d840 !important;}
+/* the selected piece: a bright square with a thick gold ring and glow, and the piece lifts and bobs */
+.sq.sel{background:#e2f27a !important;box-shadow:inset 0 0 0 calc(var(--tile-ring,1.5px) + 3px) #ffc93a,inset 0 0 16px 6px rgba(255,236,120,.95) !important;animation:selGlow 1.2s ease-in-out infinite;}
+.sq.sel>.piece{animation:selLift 1.2s ease-in-out infinite;filter:drop-shadow(0 5px 4px rgba(40,26,0,.5));z-index:4;}
+@keyframes selLift{0%,100%{transform:translateY(-3%) scale(1.07)}50%{transform:translateY(-9%) scale(1.07)}}
+@keyframes selGlow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.12)}}
 .sq.show-move{outline:2px solid rgba(160,220,60,.7);outline-offset:-2px;background:rgba(100,200,40,.08) !important;}
 .sq.show-atk{outline:2px solid rgba(255,80,30,.7);outline-offset:-2px;background:rgba(255,80,30,.10) !important;}
 /* clear, solid selection auras — sit above tile bg but below .piece (z-index 1) */
@@ -678,32 +682,32 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 <!-- ?v= is the release version: bump it on every release so browsers (GitHub Pages lets them
      cache files for 10 minutes) never mix old cached scripts with new ones -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-<script src="js/constants.js?v=20260916c"></script>
-<script src="js/state.js?v=20260916c"></script>
-<script src="js/audio.js?v=20260916c"></script>
-<script src="js/music.js?v=20260916c"></script>
-<script src="pieces/pieces.js?v=20260916c"></script>
-<script src="pieces/forest.js?v=20260916c"></script>
-<script src="pieces/jungle.js?v=20260916c"></script>
-<script src="pieces/desert.js?v=20260916c"></script>
-<script src="pieces/ocean.js?v=20260916c"></script>
-<script src="js/movement.js?v=20260916c"></script>
-<script src="js/themes.js?v=20260916c"></script>
-<script src="js/scenery.js?v=20260916c"></script>
-<script src="js/render.js?v=20260916c"></script>
-<script src="js/combat.js?v=20260916c"></script>
-<script src="js/animals.js?v=20260916c"></script>
-<script src="js/actions.js?v=20260916c"></script>
-<script src="js/ui.js?v=20260916c"></script>
-<script src="js/tutorial.js?v=20260916c"></script>
-<script src="js/campaign.js?v=20260916c"></script>
-<script src="js/pvp.js?v=20260916c"></script>
-<script src="js/ai.js?v=20260916c"></script>
-<script src="js/game.js?v=20260916c"></script>
-<script src="js/drag.js?v=20260916c"></script>
-<script src="js/resize.js?v=20260916c"></script>
+<script src="js/constants.js?v=20260916d"></script>
+<script src="js/state.js?v=20260916d"></script>
+<script src="js/audio.js?v=20260916d"></script>
+<script src="js/music.js?v=20260916d"></script>
+<script src="pieces/pieces.js?v=20260916d"></script>
+<script src="pieces/forest.js?v=20260916d"></script>
+<script src="pieces/jungle.js?v=20260916d"></script>
+<script src="pieces/desert.js?v=20260916d"></script>
+<script src="pieces/ocean.js?v=20260916d"></script>
+<script src="js/movement.js?v=20260916d"></script>
+<script src="js/themes.js?v=20260916d"></script>
+<script src="js/scenery.js?v=20260916d"></script>
+<script src="js/render.js?v=20260916d"></script>
+<script src="js/combat.js?v=20260916d"></script>
+<script src="js/animals.js?v=20260916d"></script>
+<script src="js/actions.js?v=20260916d"></script>
+<script src="js/ui.js?v=20260916d"></script>
+<script src="js/tutorial.js?v=20260916d"></script>
+<script src="js/campaign.js?v=20260916d"></script>
+<script src="js/pvp.js?v=20260916d"></script>
+<script src="js/ai.js?v=20260916d"></script>
+<script src="js/game.js?v=20260916d"></script>
+<script src="js/drag.js?v=20260916d"></script>
+<script src="js/resize.js?v=20260916d"></script>
 <!-- trained AI (Single Player difficulties, AI vs AI); the engine, network and weights load only when needed -->
-<script src="js/netai.js?v=20260916c"></script>
-<script src="js/aivsai.js?v=20260916c"></script>
+<script src="js/netai.js?v=20260916d"></script>
+<script src="js/aivsai.js?v=20260916d"></script>
 </body>
 </html>

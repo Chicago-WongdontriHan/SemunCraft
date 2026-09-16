@@ -5,8 +5,8 @@
 //   knight  horse head with a mane
 //   bishop  tall pointed mitre with a green healing cross, holding a crook staff
 //   rook    castle tower with battlements and a door
-//   queen   wide flowing gown and a spiked crown with gems
-//   king    tallest and broadest: square-shouldered robe, beard, domed crown with a cross
+//   queen   slim gown, long hair, a tall three-point crown and a sceptre
+//   king    the broadest piece: square-shouldered robe, beard, flat crown with a cross
 //   siege   low, wide cannon cart on two wheels
 // Team colour fills the body (light White, dark Black) with a slight per-type tint, and
 // the base ring; a dark outline plus a contrasting halo keeps pieces readable on any tile.
@@ -58,23 +58,35 @@ const PIECE_SHAPES={
     eyes:[[43,57],[57,57]],blush:[[38,63],[62,63]],
     detail:'<path d="M33 46 H67" stroke="{line}" stroke-width="3"/>'
       +'<path d="M43 86 L43 77 A7 7 0 0 1 57 77 L57 86 Z" fill="{shade}" stroke="{line}" stroke-width="3"/>'},
-  queen:{ring:28,shine:[36,78],
-    body:'<path d="M20 86 C23 72 36 61 50 59 C64 61 77 72 80 86 Z"/><circle cx="50" cy="45" r="13"/>',
-    eyes:[[45,46],[55,46]],blush:[[40,51],[60,51]],
-    // necklace with a gem
-    detail:pieceStroke('M42 61 C45 67 55 67 58 61','{metal}',2.5)+'<circle cx="50" cy="68" r="3.4" fill="{gem}" stroke="{line}" stroke-width="2"/>',
-    crown:'<path d="M35 35 L31 14 L41 24 L50 8 L59 24 L69 14 L65 35 Z" fill="{metal}" stroke="{line}" stroke-width="3.5" stroke-linejoin="round"/>'
-      +[[31,13],[50,7],[69,13]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="4.2" fill="{gem}" stroke="{line}" stroke-width="2.2"/>`).join('')},
-  king:{ring:30,shine:[31,77],
-    body:'<path d="M18 86 L21 67 C23 59 34 55 50 55 C66 55 77 59 79 67 L82 86 Z"/><circle cx="50" cy="42" r="13"/>',
-    eyes:[[45,41],[55,41]],blush:[[40,46],[60,46]],
+  queen:{ring:23,shine:[38,74],
+    // a sceptre held at her side
+    back:pieceStroke('M84 86 V32','{wood}',4)
+      +'<circle cx="84" cy="24" r="7.5" fill="{gem}" stroke="{line}" stroke-width="3"/>'
+      +'<circle cx="81.5" cy="21.5" r="2" fill="#fff" opacity=".7"/>',
+    // a slim gown, with long hair down both sides
+    body:'<path d="M30 86 C31 72 38 62 50 58 C62 62 69 72 70 86 Z"/><circle cx="50" cy="44" r="12"/>'
+      +'<path d="M36 40 C29 50 29 66 32 76 L40 70 C36 60 37 48 41 41 Z"/>'
+      +'<path d="M64 40 C71 50 71 66 68 76 L60 70 C64 60 63 48 59 41 Z"/>',
+    eyes:[[45,45],[55,45]],blush:[[40,50],[60,50]],
+    // the hair shaded, and a necklace with a gem
+    detail:'<path d="M36 40 C29 50 29 66 32 76 L40 70 C36 60 37 48 41 41 Z" fill="{shade}" stroke="{line}" stroke-width="3" stroke-linejoin="round"/>'
+      +'<path d="M64 40 C71 50 71 66 68 76 L60 70 C64 60 63 48 59 41 Z" fill="{shade}" stroke="{line}" stroke-width="3" stroke-linejoin="round"/>'
+      +pieceStroke('M43 60 C46 65 54 65 57 60','{metal}',2.5)+'<circle cx="50" cy="66" r="3.2" fill="{gem}" stroke="{line}" stroke-width="2"/>',
+    crown:'<path d="M37 36 L34 10 L43 23 L50 4 L57 23 L66 10 L63 36 Z" fill="{metal}" stroke="{line}" stroke-width="3.5" stroke-linejoin="round"/>'
+      +[[34,9,4],[50,3,4.4],[66,9,4]].map(([x,y,r])=>`<circle cx="${x}" cy="${y}" r="${r}" fill="{gem}" stroke="{line}" stroke-width="2.2"/>`).join('')},
+  king:{ring:32,shine:[27,74],
+    // the broadest piece: wide robe on square shoulders
+    body:'<path d="M12 86 L17 64 C20 55 33 51 50 51 C67 51 80 55 83 64 L88 86 Z"/><circle cx="50" cy="40" r="13"/>',
+    eyes:[[45,39],[55,39]],blush:[[40,44],[60,44]],
     // fur collar and a beard
-    detail:pieceStroke('M26 64 C38 70 62 70 74 64','#FFFDF5',5)
-      +[[38,67.5],[50,69.5],[62,67.5]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="1.4" fill="{line}"/>`).join('')
-      +'<path d="M42 49 C44 59 56 59 58 49 C54 52 46 52 42 49 Z" fill="{shade}" stroke="{line}" stroke-width="2" stroke-linejoin="round"/>',
-    crown:'<path d="M36 33 L36 23 C36 11 64 11 64 23 L64 33 Z" fill="{metal}" stroke="{line}" stroke-width="3.5" stroke-linejoin="round"/>'
-      +'<path d="M36 26 H64" stroke="{line}" stroke-width="2.5"/><circle cx="50" cy="29.5" r="2.8" fill="{gem}" stroke="{line}" stroke-width="1.6"/>'
-      +pieceStroke('M50 2 V14 M44 7 H56','{metal}',4)},
+    detail:pieceStroke('M22 60 C36 68 64 68 78 60','#FFFDF5',5)
+      +[[36,64],[50,66],[64,64]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="1.5" fill="{line}"/>`).join('')
+      +'<path d="M41 45 C43 58 57 58 59 45 C54 49 46 49 41 45 Z" fill="{shade}" stroke="{line}" stroke-width="2" stroke-linejoin="round"/>',
+    // a low, wide crown with three gems, and the cross above it
+    crown:'<path d="M31 32 L31 22 C31 10 69 10 69 22 L69 32 Z" fill="{metal}" stroke="{line}" stroke-width="3.5" stroke-linejoin="round"/>'
+      +'<path d="M31 24 H69" stroke="{line}" stroke-width="2.5"/>'
+      +[[40,28],[50,28],[60,28]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="2.6" fill="{gem}" stroke="{line}" stroke-width="2.2"/>`).join('')
+      +pieceStroke('M50 3 V13 M44 8 H56','{metal}',4)},
   siege:{ring:34,noRing:true,shine:[27,62],
     back:'<g transform="rotate(-28 50 50)"><rect x="40" y="30" width="44" height="20" rx="8" fill="{iron}" stroke="{line}" stroke-width="4"/>'
       +'<ellipse cx="84" cy="40" rx="5" ry="10" fill="#26262E" stroke="{line}" stroke-width="3"/></g>',

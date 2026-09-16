@@ -267,8 +267,8 @@ function generateMap(){
   for(let k=0;k<nc;k++){if(th.neutral)placeOneAnimal(th.neutral,false);}
   // attacker: jungle/ocean place one; desert attacker comes from pyramid only
   if(th.attacker)placeOneAnimal(th.attacker,true);
-  // start continuous animation loop
-  startAnimalLoop();
+  if(ANIMALS_ON)startAnimalLoop();   // start continuous animation loop
+  else{animals=[];stopAnimalLoop();}
 }
 
 function getTileEffect(i){

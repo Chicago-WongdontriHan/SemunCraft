@@ -12,7 +12,10 @@
 // ── DATA ─────────────────────────────────────────────────────────────────────
 const STATS={king:{hp:5,maxHp:5},pawn:{hp:1,maxHp:1},knight:{hp:4,maxHp:4},bishop:{hp:2,maxHp:2},rook:{hp:4,maxHp:4},queen:{hp:5,maxHp:5},siege:{hp:4,maxHp:4}};
 const THEME_OBSTACLE={jungle:'tree',desert:'sandstone',ocean:'rocks'};
-// animal templates; map generation places them (and draws random numbers for them) like themes.js
+// Roaming animals are off in the game (ANIMALS_ON in js/constants.js). Map generation still draws
+// the same random numbers for them, so boards match; nothing is kept.
+const ANIMALS_ON=false;
+// animal templates; map generation draws random numbers for them like themes.js
 const THEME_ANIMALS={
   jungle:{neutral:{emoji:'🐒',hp:2,maxHp:2,name:'Monkey'},attacker:{emoji:'🐍',hp:1,maxHp:1,name:'Snake'}},
   desert:{neutral:{emoji:'🐪',hp:3,maxHp:3,name:'Camel'},attacker:null},
@@ -222,7 +225,7 @@ function generateMap(s){
       const pt=sTiles[Math.floor(rnd()*sTiles.length)];
       setTile(s,pt,'sandstone-spawner');
       const m=g.adj8[pt].find(j=>!s.blocked[j])||pt,mr=rowOf(s,m),mc=colOf(s,m);
-      s.animals.push({emoji:'🧟',hp:2,maxHp:2,name:'Mummy',aggressive:true,fractDmg:0,
+      if(ANIMALS_ON)s.animals.push({emoji:'🧟',hp:2,maxHp:2,name:'Mummy',aggressive:true,fractDmg:0,
         x:mc+0.5,y:mr+0.5,prevTileR:mr,prevTileC:mc,tx:mc+0.5,ty:mr+0.5,
         speed:0.0005,waitMs:1500,isMummy:true,spawnedFromPyramid:pt});
     }
@@ -233,7 +236,7 @@ function generateMap(s){
     for(let i=0;i<R*C;i++){const r=rowOf(s,i);if(r>=3&&r<=R-4&&!s.tiles[i]&&!s.board[i])eM.push(i);}
     if(eM.length){
       const ti=eM[Math.floor(rnd()*eM.length)],r=rowOf(s,ti),cl=colOf(s,ti);
-      s.animals.push({emoji:'🌪',hp:3,maxHp:3,name:'Tornado',aggressive:false,fractDmg:0,
+      if(ANIMALS_ON)s.animals.push({emoji:'🌪',hp:3,maxHp:3,name:'Tornado',aggressive:false,fractDmg:0,
         x:cl+0.5,y:r+0.5,prevTileR:r,prevTileC:cl,tx:cl+0.5,ty:r+0.5,
         speed:0.0004,waitMs:2000,isTornado:true,spawnTimer:0});
     }
@@ -243,9 +246,9 @@ function generateMap(s){
     do{col=2+Math.floor(rnd()*(C-4));row=3+Math.floor(rnd()*(R-6));att++;}
     while(att<40&&(s.board[row*C+col]||s.blocked[row*C+col]));
     if(s.blocked[row*C+col])return;
-    s.animals.push({emoji:t.emoji,hp:t.maxHp,maxHp:t.maxHp,name:t.name,aggressive,fractDmg:0,
-      x:col+0.5,y:row+0.5,prevTileR:row,prevTileC:col,tx:col+0.5,ty:row+0.5,
-      speed:0.0005+rnd()*0.0003,waitMs:0});
+    const speed=0.0005+rnd()*0.0003;   // drawn either way, so boards match themes.js
+    if(ANIMALS_ON)s.animals.push({emoji:t.emoji,hp:t.maxHp,maxHp:t.maxHp,name:t.name,aggressive,fractDmg:0,
+      x:col+0.5,y:row+0.5,prevTileR:row,prevTileC:col,tx:col+0.5,ty:row+0.5,speed,waitMs:0});
   };
   const th=THEME_ANIMALS[s.theme];
   for(let k=0;k<2;k++)if(th.neutral)place(th.neutral,false);

@@ -38,7 +38,7 @@ function initGame(){
   // single-player: reuse title-screen map; PvP always regenerates
   if(!pvpActive&&gameMode!=='pvp'&&titleTileData){
     tileData=titleTileData.slice();
-    animals=titleAnimals.map(a=>({...a}));
+    animals=ANIMALS_ON?titleAnimals.map(a=>({...a})):[];
     animals.forEach(na=>{
       if(na.isMummy){
         const pr=Math.round(na.y-0.5),pc=Math.round(na.x-0.5);
@@ -52,8 +52,7 @@ function initGame(){
         }
       }
     });
-    startAnimalLoop();
-    setTimeout(()=>renderAnimalOverlay(),50);
+    if(ANIMALS_ON){startAnimalLoop();setTimeout(()=>renderAnimalOverlay(),50);}
   }else{
     generateMap();
   }

@@ -7,7 +7,7 @@
 //   rook    castle tower with battlements and a door
 //   queen   slim gown, long hair, a tall three-point crown and a sceptre
 //   king    the broadest piece: square-shouldered robe, beard, flat crown with a cross
-//   siege   low, wide cannon cart on two wheels
+//   siege   a stub tower with a cannon barrel out of the roof
 // Team colour fills the body (light White, dark Black) with a slight per-type tint, and
 // the base ring; a dark outline plus a contrasting halo keeps pieces readable on any tile.
 // Theme sets (jungle.js, desert.js, ocean.js) register in PIECE_SETS with
@@ -35,6 +35,13 @@ const PIECE_TINTS={
 // thin parts (staff, cross, collar) get their own outline so they stay visible when small
 const pieceStroke=(d,color,w)=>`<path d="${d}" fill="none" stroke="{line}" stroke-width="${w+4}" stroke-linecap="round" stroke-linejoin="round"/>`
   +`<path d="${d}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+// the cannon barrel of the siege tower, drawn twice: bare inside the body (so the piece's outline
+// and halo wrap tower and barrel together) and painted on top in the details
+const siegeBarrel=paint=>'<g transform="translate(-0.16,-8.39) scale(0.956)"><g transform="rotate(-28 50 50)">'
+  +'<rect x="40" y="30" width="44" height="20" rx="8"'+(paint?' fill="{iron}" stroke="{line}" stroke-width="4.2"':'')+'/>'
+  +'<ellipse cx="84" cy="40" rx="5" ry="10"'+(paint?' fill="#26262E" stroke="{line}" stroke-width="3.1"':'')+'/>'
+  +'</g></g>';
 
 // ring: base ring half-width; shine: highlight position; back: parts drawn behind the body
 const PIECE_SHAPES={
@@ -87,14 +94,15 @@ const PIECE_SHAPES={
       +'<path d="M31 24 H69" stroke="{line}" stroke-width="2.5"/>'
       +[[40,28],[50,28],[60,28]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="2.6" fill="{gem}" stroke="{line}" stroke-width="2.2"/>`).join('')
       +pieceStroke('M50 3 V13 M44 8 H56','{metal}',4)},
-  siege:{ring:34,noRing:true,shine:[27,62],
-    back:'<g transform="rotate(-28 50 50)"><rect x="40" y="30" width="44" height="20" rx="8" fill="{iron}" stroke="{line}" stroke-width="4"/>'
-      +'<ellipse cx="84" cy="40" rx="5" ry="10" fill="#26262E" stroke="{line}" stroke-width="3"/></g>',
-    body:'<path d="M14 78 L21 52 L79 52 L86 78 Z"/>',
-    eyes:[[43,63],[57,63]],blush:[[36,67],[64,67]],
-    detail:[[28,80],[72,80]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="11" fill="{wood}" stroke="{line}" stroke-width="3.5"/>`
-      +`<path d="M${x-7} ${y} H${x+7} M${x} ${y-7} V${y+7}" stroke="{line}" stroke-width="2.2"/>`
-      +`<circle cx="${x}" cy="${y}" r="3" fill="{metal}" stroke="{line}" stroke-width="1.6"/>`).join('')},
+  siege:{ring:24,shine:[38,70],
+    // a rook squeezed down to a stub tower, with the barrel drawn into the body so the outline
+    // wraps tower and barrel as one shape; the details below paint the barrel iron
+    body:'<path d="M27 54.5 L27 38.4 L38 38.4 L38 44.7 L45 44.7 L45 38.4 L55 38.4 L55 44.7 L62 44.7 L62 38.4 L73 38.4 L73 54.5 L67 58 L69 86 L31 86 L33 58 Z"/>'
+      +siegeBarrel(false),
+    eyes:[[43,66],[57,66]],blush:[[38,70],[62,70]],
+    detail:'<path d="M33 58 H67" stroke="{line}" stroke-width="3"/>'
+      +'<path d="M43 86 L43 79.7 A7 4.9 0 0 1 57 79.7 L57 86 Z" fill="{shade}" stroke="{line}" stroke-width="3"/>'
+      +siegeBarrel(true)},
 };
 
 function pieceFace(shape,team){

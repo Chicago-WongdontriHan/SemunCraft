@@ -5,6 +5,10 @@ const ROW    = i=>Math.floor(i/COLS);
 const COL    = i=>i%COLS;
 const FILES  = 'abcdefghijkl';
 const sqName = i=>FILES[COL(i)]+(ROWS-ROW(i));
+
+// Roaming animals are switched off for now. Map generation still draws the same random numbers
+// for them, so maps and enemy strategies are unchanged; nothing is placed and the loop never starts.
+const ANIMALS_ON=false;
 const sqFrom = s=>{ if(!s||s.length<2)return -1; const c=FILES.indexOf(s[0].toLowerCase()),r=ROWS-parseInt(s.slice(1)); return(r>=0&&r<ROWS&&c>=0&&c<COLS)?idx(r,c):-1; };
 const inB    = (r,c)=>r>=0&&r<ROWS&&c>=0&&c<COLS;
 const adj8   = i=>{ const r=ROW(i),c=COL(i),res=[]; for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;if(inB(r+dr,c+dc))res.push(idx(r+dr,c+dc));} return res; };

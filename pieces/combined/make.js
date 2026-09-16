@@ -145,7 +145,7 @@ const UNITS=[
   {name:'Guardian',parts:['knight','rook'],draw:c=>onRoof('knight',c,2)},
   {name:'Paladin',parts:['knight','knight'],draw:c=>twins(c)},
   {name:'Mage',parts:['bishop','rook'],draw:c=>onRoof('bishop',c,0)},
-  {name:'Cannon',parts:['rook','rook'],draw:c=>onRoof('siege',c,0)},
+  {name:'Cannon',parts:['rook','rook'],draw:c=>piece('siege',c,NORMAL)},   // now a real piece
 ];
 
 // ── pages ───────────────────────────────────────────────────────────────────

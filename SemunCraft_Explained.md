@@ -82,7 +82,7 @@ The core progression mechanic. Drag one piece onto an adjacent ally to merge the
 ## Fog of War
 
 - You only see tiles within 2 squares of your own pieces.
-- Tiles you've seen before but can't see now stay hazy: terrain and piece range auras show, enemy pieces don't. Tiles you've never seen are fully covered.
+- Tiles you've seen before but can't see now stay hazy: terrain shows, enemy pieces don't. Tiles you've never seen are fully covered.
 - The AI is not affected by fog.
 - **Map Cheat** turns fog off. Regular games start with it off; the tutorial and most campaign levels start with it on.
 
@@ -204,7 +204,7 @@ An interactive 7-step tutorial:
 
 - **Top bar**: Game title, optional Anthropic API key (Claude plays Black on Hard), status text, turn counter, and ⚙ Audio settings.
 - **Left panel**: Merge guide chart and paginated unit reference cards.
-- **Center**: The game board with piece range auras, HP pips, bishop mana pips, coordinate labels, and pan arrows when zoomed in.
+- **Center**: The game board with HP pips, bishop mana pips, coordinate labels, and pan arrows when zoomed in.
 - **Right panel**: Move hint (Easy mode), action buttons (Spawn, Merge, Skip, Menu), and Map View (minimap, zoom, Map Cheat).
 - **Bottom bar**: Game log and an AI "thinking" indicator dot.
 - **Mobile**: In portrait, the merge chart becomes a strip above the board and the buttons wrap into finger-sized rows below it (unit cards, minimap and hint are hidden). The status line wraps, and when zoomed in the board leaves room around it for the pan arrows. On short landscape screens the side panels shrink and the layout is centered. Touch devices get touch wording (tap a siege tower twice instead of right-clicking).
@@ -253,7 +253,7 @@ SemunCraft/
                            selectMap(), generateMap()
     scenery.js          -- tileArt(): the sticker drawn on each board tile (scenery on free
                            tiles, a full drawing on impassable ones)
-    render.js           -- render() (rebuilds the visible board DOM: fog, auras, highlights),
+    render.js           -- render() (rebuilds the visible board DOM: fog, action guide, highlights),
                            sqElAt(), flashSq(), spawnFlash(), mergeFlash()
     combat.js           -- sqCenter(), attack animations (emoji projectiles, SVG
                            spear/cannonball), computeActions() (auto-targeting),

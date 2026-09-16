@@ -72,30 +72,10 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 /* the selected piece: a bright square with a thick gold ring and glow, and the piece lifts and bobs */
 .sq.sel{background:#e2f27a !important;box-shadow:inset 0 0 0 calc(var(--tile-ring,1.5px) + 3px) #ffc93a,inset 0 0 16px 6px rgba(255,236,120,.95) !important;animation:selGlow 1.2s ease-in-out infinite;}
 .sq.sel>.piece{animation:selLift 1.2s ease-in-out infinite;filter:drop-shadow(0 5px 4px rgba(40,26,0,.5));z-index:4;}
-@keyframes selLift{0%,100%{transform:translateY(-3%) scale(1.07)}50%{transform:translateY(-9%) scale(1.07)}}
+@keyframes selLift{0%,100%{transform:translateY(-1%) scale(1.05)}50%{transform:translateY(-4%) scale(1.05)}}
 @keyframes selGlow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.12)}}
 .sq.show-move{outline:2px solid rgba(160,220,60,.7);outline-offset:-2px;background:rgba(100,200,40,.08) !important;}
 .sq.show-atk{outline:2px solid rgba(255,80,30,.7);outline-offset:-2px;background:rgba(255,80,30,.10) !important;}
-/* clear, solid selection auras — sit above tile bg but below .piece (z-index 1) */
-.sq[class*="aura-"]::before{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;border-radius:2px;}
-.piece{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;gap:0;z-index:1;}
-.sq.aura-pawn-w::before  {background:radial-gradient(ellipse at 50% 50%,rgba(210,255,80,.42) 0%,rgba(180,240,60,.16) 40%,transparent 70%);}
-.sq.aura-knight-w::before{background:radial-gradient(ellipse at 50% 50%,rgba(80,190,255,.42) 0%,rgba(60,170,255,.15) 40%,transparent 70%);}
-.sq.aura-bishop-w::before{background:radial-gradient(ellipse at 50% 50%,rgba(60,255,170,.42) 0%,rgba(40,240,150,.15) 40%,transparent 70%);}
-.sq.aura-rook-w::before  {background:radial-gradient(ellipse at 50% 50%,rgba(255,200,40,.44) 0%,rgba(255,180,20,.16) 40%,transparent 70%);}
-.sq.aura-queen-w::before {background:radial-gradient(ellipse at 50% 50%,rgba(255,100,210,.44) 0%,rgba(255,80,200,.16) 40%,transparent 70%);}
-.sq.aura-king-w::before  {background:radial-gradient(ellipse at 50% 50%,rgba(255,255,120,.65) 0%,rgba(255,255,100,.26) 40%,transparent 70%);}
-.sq.aura-siege-w::before {background:radial-gradient(ellipse at 50% 50%,rgba(255,140,40,.46) 0%,rgba(255,120,20,.17) 40%,transparent 70%);}
-.sq.aura-pawn-b::before  {background:radial-gradient(ellipse at 50% 50%,rgba(255,100,30,.42) 0%,rgba(255,80,10,.15) 40%,transparent 70%);}
-.sq.aura-knight-b::before{background:radial-gradient(ellipse at 50% 50%,rgba(255,50,50,.42) 0%,rgba(240,30,30,.15) 40%,transparent 70%);}
-.sq.aura-bishop-b::before{background:radial-gradient(ellipse at 50% 50%,rgba(255,50,170,.42) 0%,rgba(240,30,160,.15) 40%,transparent 70%);}
-.sq.aura-rook-b::before  {background:radial-gradient(ellipse at 50% 50%,rgba(255,90,10,.46) 0%,rgba(255,70,0,.17) 40%,transparent 70%);}
-.sq.aura-queen-b::before {background:radial-gradient(ellipse at 50% 50%,rgba(190,40,255,.44) 0%,rgba(180,20,255,.16) 40%,transparent 70%);}
-.sq.aura-king-b::before  {background:radial-gradient(ellipse at 50% 50%,rgba(255,30,30,.42) 0%,rgba(240,10,10,.15) 40%,transparent 70%);}
-.sq.aura-siege-b::before {background:radial-gradient(ellipse at 50% 50%,rgba(255,60,10,.46) 0%,rgba(255,40,0,.17) 40%,transparent 70%);}
-.sq.aura-depth-2::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;background:rgba(255,255,255,.10);border-radius:2px;}
-.sq.aura-depth-3::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;background:rgba(255,255,255,.20);border-radius:2px;}
-.sq.aura-depth-4::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;background:rgba(255,255,255,.32);border-radius:2px;}
 .sq.drop-atk{background:#d86020 !important;}
 /* action guide: what a tapped or dragged piece can do (guideEl in render.js) */
 .guide{position:absolute;inset:0;z-index:3;pointer-events:none;display:flex;align-items:center;justify-content:center;}
@@ -104,12 +84,17 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 .guide-badge-l{left:3%;}
 .guide-badge-r{right:3%;}
 .guide-piece{position:relative;display:flex;}
-.guide-move .guide-piece{animation:guideGhost 1.6s ease-in-out infinite;}
+.guide-move .guide-piece,.guide-spawn .guide-piece{animation:guideGhost 1.6s ease-in-out infinite;}
 .guide-merge .guide-piece,.guide-merge-heal .guide-piece{opacity:.8;}
 .guide-attack .guide-mark{opacity:.9;animation:guideBeat 1.1s ease-in-out infinite;}
 .sq.guide-merge-tile>.piece{opacity:.3;}
 @keyframes guideGhost{0%,100%{opacity:.34}50%{opacity:.58}}
 @keyframes guideBeat{0%,100%{transform:scale(.9)}50%{transform:scale(1)}}
+/* the selected king's Spawn / Move chooser (actions.js) */
+#king-choice{position:fixed;z-index:800;display:flex;gap:6px;padding:5px;background:#0e1f08;border:2px solid #4a8020;border-radius:9px;box-shadow:0 6px 18px rgba(0,0,0,.7);}
+.king-choice-btn{padding:7px 14px;font:600 14px Georgia,serif;font-variant:small-caps;color:#9ac860;background:#0a1606;border:1px solid #3a6020;border-radius:6px;cursor:pointer;touch-action:manipulation;}
+.king-choice-btn.on{color:#1a1204;background:#ffc93a;border-color:#ffe08a;}
+.king-choice-btn:disabled{opacity:.4;cursor:default;}
 .sq.drop-heal{background:#40d870 !important;}
 .sq.last-from{background:#c8a020 !important;opacity:.7;}
 .sq.last-to{background:#e8c040 !important;opacity:.8;}
@@ -135,7 +120,6 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 .glyph{line-height:1;font-size:var(--glyph-size,18px);}
 .glyph-w{color:#fff;text-shadow:0 0 4px rgba(0,0,0,.9),0 1px 2px #333;}
 .glyph-b{color:#1a0e04;text-shadow:0 0 3px rgba(200,200,150,.4);}
-.piece-ghost{opacity:.28;}
 .hp-bar{position:absolute;bottom:2px;left:0;right:0;display:flex;gap:1px;justify-content:center;flex-wrap:wrap;z-index:5;}
 .hp-pip{border-radius:1px;flex-shrink:0;}
 .hp-pip.full-w{background:#90e040;}
@@ -682,32 +666,32 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 <!-- ?v= is the release version: bump it on every release so browsers (GitHub Pages lets them
      cache files for 10 minutes) never mix old cached scripts with new ones -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-<script src="js/constants.js?v=20260916d"></script>
-<script src="js/state.js?v=20260916d"></script>
-<script src="js/audio.js?v=20260916d"></script>
-<script src="js/music.js?v=20260916d"></script>
-<script src="pieces/pieces.js?v=20260916d"></script>
-<script src="pieces/forest.js?v=20260916d"></script>
-<script src="pieces/jungle.js?v=20260916d"></script>
-<script src="pieces/desert.js?v=20260916d"></script>
-<script src="pieces/ocean.js?v=20260916d"></script>
-<script src="js/movement.js?v=20260916d"></script>
-<script src="js/themes.js?v=20260916d"></script>
-<script src="js/scenery.js?v=20260916d"></script>
-<script src="js/render.js?v=20260916d"></script>
-<script src="js/combat.js?v=20260916d"></script>
-<script src="js/animals.js?v=20260916d"></script>
-<script src="js/actions.js?v=20260916d"></script>
-<script src="js/ui.js?v=20260916d"></script>
-<script src="js/tutorial.js?v=20260916d"></script>
-<script src="js/campaign.js?v=20260916d"></script>
-<script src="js/pvp.js?v=20260916d"></script>
-<script src="js/ai.js?v=20260916d"></script>
-<script src="js/game.js?v=20260916d"></script>
-<script src="js/drag.js?v=20260916d"></script>
-<script src="js/resize.js?v=20260916d"></script>
+<script src="js/constants.js?v=20260916f"></script>
+<script src="js/state.js?v=20260916f"></script>
+<script src="js/audio.js?v=20260916f"></script>
+<script src="js/music.js?v=20260916f"></script>
+<script src="pieces/pieces.js?v=20260916f"></script>
+<script src="pieces/forest.js?v=20260916f"></script>
+<script src="pieces/jungle.js?v=20260916f"></script>
+<script src="pieces/desert.js?v=20260916f"></script>
+<script src="pieces/ocean.js?v=20260916f"></script>
+<script src="js/movement.js?v=20260916f"></script>
+<script src="js/themes.js?v=20260916f"></script>
+<script src="js/scenery.js?v=20260916f"></script>
+<script src="js/render.js?v=20260916f"></script>
+<script src="js/combat.js?v=20260916f"></script>
+<script src="js/animals.js?v=20260916f"></script>
+<script src="js/actions.js?v=20260916f"></script>
+<script src="js/ui.js?v=20260916f"></script>
+<script src="js/tutorial.js?v=20260916f"></script>
+<script src="js/campaign.js?v=20260916f"></script>
+<script src="js/pvp.js?v=20260916f"></script>
+<script src="js/ai.js?v=20260916f"></script>
+<script src="js/game.js?v=20260916f"></script>
+<script src="js/drag.js?v=20260916f"></script>
+<script src="js/resize.js?v=20260916f"></script>
 <!-- trained AI (Single Player difficulties, AI vs AI); the engine, network and weights load only when needed -->
-<script src="js/netai.js?v=20260916d"></script>
-<script src="js/aivsai.js?v=20260916d"></script>
+<script src="js/netai.js?v=20260916f"></script>
+<script src="js/aivsai.js?v=20260916f"></script>
 </body>
 </html>

@@ -342,8 +342,10 @@ function handleClick(i,additive){
     return;
   }
   if(p&&p.color===mc&&p.type==='king'){
-    selectedPieces=new Set();kingSelected=!kingSelected;render();
-    setStatus(kingSelected?'Click adjacent square to spawn pawn':'Your turn');return;
+    // tapping the king again puts it down; otherwise it opens in spawn mode while pawns are left
+    if(kingSelected||selectedPieces.has(i)){kingSelected=false;selectedPieces=new Set();render();setStatus('Your turn');return;}
+    setKingMode(i,spawnRemaining()>0?'spawn':'move');
+    return;
   }
   if(!p&&kingSelected){
     if(ki>=0&&adj8(ki).includes(i)){
@@ -378,6 +380,53 @@ function handleClick(i,additive){
     return;
   }
   kingSelected=false;selectedPieces=new Set();render();
+}
+
+// ── KING: SPAWN A PAWN OR MOVE ───────────────────────────────────────────────
+// Spawning and moving both use the squares around the king, so a selected king gets a small
+// Spawn / Move chooser beside it: Spawn shows ghost pawns where one can be placed, Move shows
+// the king's own action guide. The chooser sits clear of the king's 3x3 so it covers no marker.
+let kingChooser=null;
+function setKingMode(ki,mode){
+  if(mode==='spawn'){
+    selectedPieces=new Set();kingSelected=true;
+    setStatus('Tap a ghost pawn to spawn it ('+spawnRemaining()+' left)');
+  }else{
+    kingSelected=false;selectedPieces=new Set([ki]);
+    setStatus('Tap a marker to move the king');
+  }
+  SFX.select();render();showKingChooser(ki,mode);
+}
+function closeKingChooser(){if(kingChooser){kingChooser.remove();kingChooser=null;}}
+function showKingChooser(ki,mode){
+  closeKingChooser();
+  if(!sqElAt(ki))return;
+  const box=document.createElement('div');box.id='king-choice';
+  const left=spawnRemaining();
+  [['♟ Spawn ('+left+')','spawn',left>0],['♚ Move','move',true]].forEach(([label,m,enabled])=>{
+    const b=document.createElement('button');
+    b.className='king-choice-btn'+(m===mode?' on':'');b.textContent=label;b.disabled=!enabled;
+    b.onclick=()=>{if(m!==mode&&!over&&!thinking&&isMyTurn())setKingMode(ki,m);};
+    box.appendChild(b);
+  });
+  document.body.appendChild(box);kingChooser=box;
+  placeKingChooser(ki);
+}
+function placeKingChooser(ki){
+  const sq=sqElAt(ki);if(!sq){closeKingChooser();return;}
+  const r=sq.getBoundingClientRect(),bw=kingChooser.offsetWidth,bh=kingChooser.offsetHeight;
+  let top=r.top-sqPx-8-bh;                       // above the king's 3x3...
+  if(top<6)top=r.bottom+sqPx+8;                  // ...or below it when there is no room
+  kingChooser.style.left=Math.min(Math.max(r.left+r.width/2-bw/2,6),innerWidth-bw-6)+'px';
+  kingChooser.style.top=top+'px';
+}
+// called after every render: the chooser only stays while the king is still the selected piece
+function syncKingChooser(){
+  if(!kingChooser)return;
+  const mc=myColor(),ki=pieces.findIndex(q=>q&&q.color===mc&&q.type==='king');
+  const kingUp=ki>=0&&!dragging&&!over&&!thinking&&isMyTurn()
+    &&(kingSelected||(selectedPieces.size===1&&selectedPieces.has(ki)));
+  if(kingUp)placeKingChooser(ki);else closeKingChooser();
 }
 
 // ── ACTIONS ──────────────────────────────────────────────────────────────────

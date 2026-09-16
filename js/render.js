@@ -18,26 +18,6 @@ function render(){
     const selP=pieces[selIdx];
     if(selP&&selP.color===mc)selDests=getDragDests(selIdx);
   }
-  // compute aura map: tileIdx -> 'type-color' class suffix
-  // auras are shown for all pieces, including enemies in the fog (so players can sense threats)
-  const auraMap=new Map();
-  for(let pi=0;pi<ROWS*COLS;pi++){
-    const pp=pieces[pi];if(!pp)continue;
-    // a piece hidden in undergrowth gives nothing away, not even its aura
-    if(!mapCheat&&isConcealedFrom(pi,mc))continue;
-    let zone=[];
-    if(pp.type==='pawn')zone=adj8(pi);
-    else if(pp.type==='knight')zone=kJumps(pi);
-    else if(pp.type==='bishop'){const d=getDragDests(pi);zone=[...d.move,...d.attack];}
-    else if(pp.type==='rook')zone=rookRange(pi);
-    else if(pp.type==='siege')zone=siegeRange(pi);
-    else if(pp.type==='queen')zone=queenRange(pi);
-    else if(pp.type==='king')zone=adj8(pi);
-    zone.forEach(j=>{
-      if(!auraMap.has(j)) auraMap.set(j,{cls:pp.type+'-'+pp.color,count:1});
-      else auraMap.get(j).count++;
-    });
-  }
   // the piece the action guide is for: the one being dragged, else the one selected
   const guideSrc=dragging&&dragDests?dragSrc:selDests?[...selectedPieces][0]:-1;
   const pipW=Math.max(2,Math.floor(sqPx*.10))+'px';
@@ -75,14 +55,6 @@ function render(){
             const arch=document.createElement('div');arch.className='spawner-arch';sq.appendChild(arch);
           }
         }
-        // still show auras so players can sense enemy threats in explored fog
-        if(auraMap.has(i)){
-          const {cls,count}=auraMap.get(i);
-          sq.classList.add('aura-'+cls);
-          if(count>=4)sq.classList.add('aura-depth-4');
-          else if(count>=3)sq.classList.add('aura-depth-3');
-          else if(count>=2)sq.classList.add('aura-depth-2');
-        }
         sq.classList.add('fog','fog-explored');
         const cov2=document.createElement('div');cov2.className='fog-cover';sq.appendChild(cov2);
         if(c===viewCol0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
@@ -116,14 +88,6 @@ function render(){
       }else{
         if(kingSelected&&i===ki)sq.classList.add('sel');
         else if(selectedPieces.has(i))sq.classList.add('sel');
-        // aura always shown — type color + stacking depth
-        if(auraMap.has(i)){
-          const {cls,count}=auraMap.get(i);
-          sq.classList.add('aura-'+cls);
-          if(count>=4)sq.classList.add('aura-depth-4');
-          else if(count>=3)sq.classList.add('aura-depth-3');
-          else if(count>=2)sq.classList.add('aura-depth-2');
-        }
         if(selDests)guide=guideAt(selDests,i);
         if(!dragging&&i===blackLastFrom)sq.classList.add('last-from');
         if(!dragging&&i===blackLastTo&&!isConcealedFrom(i,mc))sq.classList.add('last-to');
@@ -141,11 +105,9 @@ function render(){
 
       let p=(dragging&&i===dragSrc)?null:pieces[i];
       if(p&&concealedHere&&!mapCheat)p=null;
-      if(!p&&prodTgts.has(i)){
-        const div=document.createElement('div');div.className='piece piece-ghost';
-        div.innerHTML=pieceSVG('pawn',mc,mapTheme,Math.floor(sqPx*.86));
-        sq.appendChild(div);
-      }else if(p){
+      // the king in spawn mode: a ghost pawn on each square one can be placed on
+      if(!p&&prodTgts.has(i))guide='spawn';
+      if(p){
         const div=document.createElement('div');div.className='piece'+(concealedHere?' piece-concealed':'');
         if(p.newborn){const aura=document.createElement('div');aura.className='newborn-aura';div.appendChild(aura);}
         // piece artwork comes from the map theme's set in pieces/
@@ -172,8 +134,8 @@ function render(){
         sq.appendChild(div);
       }
       if(guide){
-        if(guide!=='move'&&guide!=='attack'&&guide!=='heal')sq.classList.add('guide-merge-tile');
-        sq.appendChild(guideEl(guide,guideSrc,i));
+        if(guide==='merge'||guide==='merge-heal')sq.classList.add('guide-merge-tile');
+        sq.appendChild(guideEl(guide,guide==='spawn'?ki:guideSrc,i));
       }
 
       // animals rendered in separate overlay by renderAnimalOverlay()
@@ -182,6 +144,8 @@ function render(){
       boardEl.appendChild(sq);
     }
   }
+  // the king's Spawn / Move chooser follows the king, and goes once the king is put down
+  if(typeof syncKingChooser==='function')syncKingChooser();
 }
 
 // ── ACTION GUIDE ─────────────────────────────────────────────────────────────
@@ -205,6 +169,8 @@ const GUIDE_RING=(fill,stroke,dash)=>'<svg class="guide-mark" viewBox="0 0 100 1
   +'" stroke="'+stroke+'" stroke-width="5"'+(dash?' stroke-dasharray="11 7"':'')+'/></svg>';
 const GUIDE_MERGE_BADGE='<svg class="guide-badge guide-badge-l" viewBox="-20 -20 40 40"><circle r="16" fill="#2E8FE0" stroke="#0B2A4A" stroke-width="3.5"/>'
   +'<path d="M-8 0 H8 M0 -8 V8" stroke="#fff" stroke-width="5" stroke-linecap="round"/></svg>';
+const GUIDE_SPAWN_BADGE='<svg class="guide-badge guide-badge-r" viewBox="-20 -20 40 40"><circle r="16" fill="#F2B233" stroke="#4A3208" stroke-width="3.5"/>'
+  +'<path d="M-8 0 H8 M0 -8 V8" stroke="#fff" stroke-width="5" stroke-linecap="round"/></svg>';
 const GUIDE_HEAL_BADGE='<svg class="guide-badge guide-badge-r" viewBox="-20 -20 40 40"><circle r="16" fill="#2FBF5A" stroke="#0E3A1A" stroke-width="3.5"/>'
   +'<path d="M0 9 C-14 -1 -9 -13 0 -6 C9 -13 14 -1 0 9 Z" fill="#fff"/></svg>';
 function guideEl(kind,src,i){
@@ -213,6 +179,9 @@ function guideEl(kind,src,i){
   const size=Math.floor(sqPx*.86);
   if(kind==='move'){
     el.innerHTML='<div class="guide-piece">'+pieceSVG(sp.type,sp.color,mapTheme,size)+'</div>';
+  }else if(kind==='spawn'){
+    // src is the king: a ghost pawn of its colour with a gold +
+    el.innerHTML='<div class="guide-piece">'+pieceSVG('pawn',sp.color,mapTheme,size)+'</div>'+GUIDE_SPAWN_BADGE;
   }else if(kind==='attack'){
     el.innerHTML=GUIDE_TARGET;
   }else if(kind==='heal'){

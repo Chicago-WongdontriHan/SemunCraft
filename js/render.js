@@ -5,6 +5,8 @@ function render(){
   const boardEl=document.getElementById('board'); boardEl.innerHTML='';
   const vRows=viewRowsN(), vCols=viewColsN();
   boardEl.style.gridTemplateColumns='repeat('+vCols+',1fr)';
+  // the gap between tiles, thin but never thinner than a pixel
+  boardEl.style.setProperty('--tile-ring',Math.max(1,Math.round(sqPx*0.018))+'px');
   const mc=myColor();
   const ki=pieces.findIndex(p=>p&&p.color===mc&&p.type==='king');
   const prodTgts=kingSelected&&ki>=0?new Set(adj8(ki).filter(i=>!pieces[i]&&!isTileBlocked(i))):new Set();
@@ -47,6 +49,8 @@ function render(){
       sq.style.width=sqPx+'px'; sq.style.height=sqPx+'px';
       // fog of war: three visibility states
       const vis=tileVisibility(i);
+      // theme scenery / obstacle sticker, under everything else the square holds
+      if(vis!=='unknown'&&typeof tileArt==='function'){const art=tileArt(i);if(art)sq.appendChild(art);}
       if(vis==='unknown'){
         // unexplored — opaque fog cover hides everything
         sq.classList.add('fog','fog-unknown');

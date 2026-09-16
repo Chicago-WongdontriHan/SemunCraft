@@ -58,10 +58,11 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 
 /* ── BOARD ── */
 #board-wrap{position:relative;flex-shrink:0;align-self:flex-start;border:3px solid #3a2810;border-radius:3px;box-shadow:0 0 0 1px #1a1008,0 6px 24px rgba(0,0,0,.7),inset 0 0 0 1px #5a4020;}
-#board{display:grid;grid-template-columns:repeat(9,1fr);overflow:hidden;user-select:none;touch-action:none;}
+#board{display:grid;background:var(--tile-frame,#3c5a1e);grid-template-columns:repeat(9,1fr);overflow:hidden;user-select:none;touch-action:none;}
 #atk-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
 
-.sq{position:relative;cursor:grab;overflow:hidden;}
+.sq{position:relative;cursor:grab;overflow:hidden;border-radius:12%;box-shadow:inset 0 0 0 var(--tile-ring,1.5px) var(--tile-frame,#3c5a1e);}
+.tile-art{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;}
 .sq.lt{background:#7a9e4c;}
 .sq.dk{background:#4a6e28;}
 .sq:hover{filter:brightness(1.1);}
@@ -222,22 +223,6 @@ h1{font-size:15px;font-weight:700;letter-spacing:.08em;color:#c8a840;font-varian
 
 /* ── THEMES ── */
 /* ── JUNGLE MAP DECORATIONS ── */
-body.theme-jungle .sq.lt{
-  background:
-    radial-gradient(ellipse 38% 26% at 25% 72%,rgba(120,180,55,.7),transparent),
-    radial-gradient(ellipse 32% 22% at 72% 28%,rgba(140,200,70,.55),transparent),
-    radial-gradient(ellipse 22% 16% at 58% 85%,rgba(80,140,40,.7),transparent),
-    radial-gradient(ellipse 18% 12% at 10% 20%,rgba(100,160,50,.5),transparent),
-    #7a9e4c !important;
-}
-body.theme-jungle .sq.dk{
-  background:
-    radial-gradient(ellipse 38% 26% at 28% 62%,rgba(70,110,35,.75),transparent),
-    radial-gradient(ellipse 32% 22% at 72% 28%,rgba(85,135,45,.65),transparent),
-    radial-gradient(ellipse 24% 18% at 55% 85%,rgba(50,90,25,.8),transparent),
-    radial-gradient(ellipse 15% 10% at 85% 70%,rgba(30,70,20,.65),transparent),
-    #4a6e28 !important;
-}
 /* subtle vine glow around the jungle board */
 body.theme-jungle #board-wrap{
   border-color:#3a5018;
@@ -247,23 +232,6 @@ body.theme-jungle #board-wrap{
     0 0 32px rgba(90,160,40,.28),
     inset 0 0 0 1px #6a8a30,
     inset 0 0 18px rgba(30,70,10,.35);
-}
-/* scattered leaf tufts on select tiles via nth-child for variety */
-body.theme-jungle .sq.lt:nth-child(9n+2),
-body.theme-jungle .sq.lt:nth-child(11n+5){
-  background-image:
-    radial-gradient(ellipse 15% 8% at 30% 35%,rgba(160,220,80,.8),transparent),
-    radial-gradient(ellipse 38% 26% at 25% 72%,rgba(120,180,55,.55),transparent),
-    radial-gradient(ellipse 32% 22% at 72% 28%,rgba(140,200,70,.45),transparent),
-    radial-gradient(ellipse 22% 16% at 58% 85%,rgba(80,140,40,.55),transparent);
-}
-body.theme-jungle .sq.dk:nth-child(13n+3),
-body.theme-jungle .sq.dk:nth-child(7n+4){
-  background-image:
-    radial-gradient(ellipse 18% 10% at 70% 40%,rgba(100,160,40,.75),transparent),
-    radial-gradient(ellipse 38% 26% at 28% 62%,rgba(70,110,35,.6),transparent),
-    radial-gradient(ellipse 32% 22% at 72% 28%,rgba(85,135,45,.5),transparent),
-    radial-gradient(ellipse 24% 18% at 55% 85%,rgba(50,90,25,.65),transparent);
 }
 /* deeper rainforest ambient on body */
 body.theme-jungle{
@@ -301,22 +269,15 @@ body.theme-jungle{background:#0c1a08;background-image:radial-gradient(ellipse at
 body.theme-desert{background:#3d2e0a;background-image:radial-gradient(ellipse at 30% 15%,rgba(200,160,40,.50) 0%,transparent 45%),radial-gradient(ellipse at 75% 80%,rgba(180,140,30,.45) 0%,transparent 40%),repeating-linear-gradient(15deg,transparent,transparent 28px,rgba(80,45,8,.22) 28px,rgba(80,45,8,.22) 30px),repeating-linear-gradient(75deg,transparent,transparent 40px,rgba(60,35,5,.18) 40px,rgba(60,35,5,.18) 42px);}
 body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 20% 10%,rgba(10,30,80,.6) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(5,20,60,.7) 0%,transparent 50%);}
 
+body.theme-jungle{--tile-frame:#3c5a1e;}
+body.theme-desert{--tile-frame:#7a5820;}
+body.theme-ocean{--tile-frame:#1e3c74;}
 /* ── TILE VISUALS ── */
 .sq.tile-river   {background:linear-gradient(135deg,#1a50c8 0%,#2060e0 40%,#1a50c8 60%,#1840a0 100%) !important;opacity:.85;}
 .sq.tile-rock    {background-image:radial-gradient(ellipse at 40% 45%,#5a5040 35%,transparent 36%),radial-gradient(ellipse at 65% 55%,#4a4030 28%,transparent 29%);}
 .sq.tile-dune    {background-image:repeating-linear-gradient(108deg,transparent,transparent 4px,rgba(180,140,60,.18) 4px,rgba(180,140,60,.18) 6px);}
-.sq.tile-tree{position:relative;background:#1e3a0e !important;background-image:radial-gradient(circle at 50% 62%,#4a7020 18%,#2a5010 30%,#1a3808 55%,transparent 60%),radial-gradient(circle at 50% 30%,#5a8828 22%,#2e5c12 40%,transparent 50%);box-shadow:inset 0 -3px 6px rgba(0,0,0,.4),inset 0 1px 3px rgba(100,200,40,.15);}
-.sq.tile-tree::after{z-index:1;content:'🌳';position:absolute;top:50%;left:50%;transform:translate(-50%,-52%);font-size:calc(var(--glyph-size)*0.85);line-height:1;opacity:.9;pointer-events:none;text-shadow:0 2px 4px rgba(0,0,0,.6);}
-.sq.tile-sandstone{position:relative;background:#6a4510 !important;background-image:linear-gradient(180deg,#7a5218 0%,#5a3a0a 100%);box-shadow:inset 0 -4px 8px rgba(0,0,0,.5);}
-.sq.tile-sandstone::before{content:'';position:absolute;z-index:1;pointer-events:none;left:5%;bottom:14%;width:90%;height:8%;background:rgba(0,0,0,.35);border-radius:50%;filter:blur(3px);}
-.sq.tile-sandstone::after{z-index:2;content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom right,#f0d070 0%,#d4960a 60%,#a06808 100%);clip-path:polygon(8% 100%,40% 20%,72% 100%, 55% 44%,90% 100%,72% 100%);filter:drop-shadow(0 0 2px rgba(60,30,0,.9)) drop-shadow(-1px -1px 0px rgba(60,30,0,.8)) drop-shadow(2px 3px 4px rgba(0,0,0,.7));}
-.sq.tile-sandstone-spawner{position:relative;background:#6a4510 !important;background-image:linear-gradient(180deg,#7a5218 0%,#5a3a0a 100%);box-shadow:inset 0 -4px 8px rgba(0,0,0,.5);animation:spawnerGlow 2.2s ease-in-out infinite;}
-.sq.tile-sandstone-spawner::before{content:'';position:absolute;z-index:1;pointer-events:none;left:5%;bottom:14%;width:90%;height:8%;background:rgba(0,0,0,.35);border-radius:50%;filter:blur(3px);}
-.sq.tile-sandstone-spawner::after{z-index:2;content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom right,#f0d070 0%,#d4960a 60%,#a06808 100%);clip-path:polygon(8% 100%,40% 20%,72% 100%);filter:drop-shadow(0 0 2px rgba(60,30,0,.9)) drop-shadow(-1px -1px 0px rgba(60,30,0,.8)) drop-shadow(2px 3px 4px rgba(0,0,0,.7));}
+.sq.tile-sandstone-spawner{position:relative;animation:spawnerGlow 2.2s ease-in-out infinite;}
 @keyframes spawnerGlow{0%,100%{box-shadow:inset 0 0 4px rgba(255,200,80,.3);}50%{box-shadow:inset 0 0 12px rgba(255,200,80,.7);}}
-.sq.tile-rocks{position:relative;background:#0a1428 !important;background-image:radial-gradient(ellipse at 50% 50%,#0e1c38 30%,#060e20 100%);overflow:hidden;}
-.sq.tile-rocks::before{content:'';position:absolute;z-index:2;pointer-events:none;top:50%;left:50%;width:82%;height:82%;margin:-41% 0 0 -41%;border-radius:50%;border:3px solid rgba(80,160,255,.7);border-top-color:rgba(180,220,255,.9);border-bottom-color:rgba(40,80,200,.4);animation:swirlSpin 1.8s linear infinite;}
-.sq.tile-rocks::after{content:'';position:absolute;z-index:3;pointer-events:none;top:50%;left:50%;width:52%;height:52%;margin:-26% 0 0 -26%;border-radius:50%;border:2.5px solid rgba(120,200,255,.65);border-top-color:rgba(220,240,255,.9);border-right-color:rgba(40,100,200,.3);animation:swirlSpin 1.1s linear infinite reverse;box-shadow:0 0 8px rgba(100,180,255,.4);}
 @keyframes swirlSpin{to{transform:rotate(360deg);}}
 @keyframes mummyPulse{0%,100%{filter:drop-shadow(0 0 4px rgba(160,210,40,.7)) sepia(.4) hue-rotate(20deg);}50%{filter:drop-shadow(0 0 10px rgba(200,240,60,1)) sepia(.6) hue-rotate(30deg);}}
 .sq.tile-deep{position:relative;background:#050a1a !important;background-image:radial-gradient(circle at 50% 50%,rgba(10,30,100,.0) 12%,rgba(10,50,160,.55) 14%,rgba(10,30,100,.0) 16%,rgba(10,50,160,.40) 24%,rgba(10,30,100,.0) 27%,rgba(10,50,160,.28) 36%,rgba(10,30,100,.0) 40%,rgba(10,50,160,.18) 50%,transparent 55%),radial-gradient(ellipse at 50% 50%,#0a1438 30%,#050810 70%);animation:deepSpin 6s linear infinite,deepPulse 3s ease-in-out infinite;}
@@ -689,30 +650,31 @@ body.theme-ocean{background:#050a1a;background-image:radial-gradient(ellipse at 
 <!-- ?v= is the release version: bump it on every release so browsers (GitHub Pages lets them
      cache files for 10 minutes) never mix old cached scripts with new ones -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-<script src="js/constants.js?v=20260915b"></script>
-<script src="js/state.js?v=20260915b"></script>
-<script src="js/audio.js?v=20260915b"></script>
-<script src="js/music.js?v=20260915b"></script>
-<script src="pieces/pieces.js?v=20260915b"></script>
-<script src="pieces/jungle.js?v=20260915b"></script>
-<script src="pieces/desert.js?v=20260915b"></script>
-<script src="pieces/ocean.js?v=20260915b"></script>
-<script src="js/movement.js?v=20260915b"></script>
-<script src="js/themes.js?v=20260915b"></script>
-<script src="js/render.js?v=20260915b"></script>
-<script src="js/combat.js?v=20260915b"></script>
-<script src="js/animals.js?v=20260915b"></script>
-<script src="js/actions.js?v=20260915b"></script>
-<script src="js/ui.js?v=20260915b"></script>
-<script src="js/tutorial.js?v=20260915b"></script>
-<script src="js/campaign.js?v=20260915b"></script>
-<script src="js/pvp.js?v=20260915b"></script>
-<script src="js/ai.js?v=20260915b"></script>
-<script src="js/game.js?v=20260915b"></script>
-<script src="js/drag.js?v=20260915b"></script>
-<script src="js/resize.js?v=20260915b"></script>
+<script src="js/constants.js?v=20260915c"></script>
+<script src="js/state.js?v=20260915c"></script>
+<script src="js/audio.js?v=20260915c"></script>
+<script src="js/music.js?v=20260915c"></script>
+<script src="pieces/pieces.js?v=20260915c"></script>
+<script src="pieces/jungle.js?v=20260915c"></script>
+<script src="pieces/desert.js?v=20260915c"></script>
+<script src="pieces/ocean.js?v=20260915c"></script>
+<script src="js/movement.js?v=20260915c"></script>
+<script src="js/themes.js?v=20260915c"></script>
+<script src="js/scenery.js?v=20260915c"></script>
+<script src="js/render.js?v=20260915c"></script>
+<script src="js/combat.js?v=20260915c"></script>
+<script src="js/animals.js?v=20260915c"></script>
+<script src="js/actions.js?v=20260915c"></script>
+<script src="js/ui.js?v=20260915c"></script>
+<script src="js/tutorial.js?v=20260915c"></script>
+<script src="js/campaign.js?v=20260915c"></script>
+<script src="js/pvp.js?v=20260915c"></script>
+<script src="js/ai.js?v=20260915c"></script>
+<script src="js/game.js?v=20260915c"></script>
+<script src="js/drag.js?v=20260915c"></script>
+<script src="js/resize.js?v=20260915c"></script>
 <!-- trained AI (Single Player difficulties, AI vs AI); the engine, network and weights load only when needed -->
-<script src="js/netai.js?v=20260915b"></script>
-<script src="js/aivsai.js?v=20260915b"></script>
+<script src="js/netai.js?v=20260915c"></script>
+<script src="js/aivsai.js?v=20260915c"></script>
 </body>
 </html>

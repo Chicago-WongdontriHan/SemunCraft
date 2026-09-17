@@ -4,7 +4,61 @@
 // rest of the gesture then went to that removed square and never arrived, so a drag needed a
 // second touch. The pointer is captured on #board instead, which is never replaced, so every
 // move and the release come here however the board is redrawn.
-function sqIdxFromPoint(x,y){const rect=document.getElementById('board').getBoundingClientRect();const c=Math.floor((x-rect.left)/sqPx)+viewCol0,r=Math.floor((y-rect.top)/sqPx)+viewRow0;return(r>=viewRow0&&r<viewRow0+viewRowsN()&&c>=viewCol0&&c<viewCol0+viewColsN())?idx(r,c):-1;}
+// the board's own rectangle is the size on screen, zoom and all (and during a gesture, the preview too)
+function sqIdxFromPoint(x,y){
+  const rect=document.getElementById('board').getBoundingClientRect();
+  const c=Math.floor((x-rect.left)/(rect.width/COLS)),r=Math.floor((y-rect.top)/(rect.height/ROWS));
+  return(r>=0&&r<ROWS&&c>=0&&c<COLS)?idx(r,c):-1;
+}
+
+// ── ZOOM AND PAN GESTURES ─────────────────────────────────────────────────────
+// Two fingers pinch the board and slide it at the same time. One finger slides it when the board is
+// zoomed in and the press didn't start on one of your own pieces, and the mouse wheel zooms at the
+// pointer. While a gesture runs the board is only moved and scaled; the squares are laid out again
+// when it ends, so a pinch stays smooth however many pieces are on the board.
+const pointers=new Map(); // every pointer down on the board: id → {x,y}
+let gesture=null;         // {mode:'pinch'|'slide'|'wheel', ...} while zooming or sliding
+let wheelTimer=null;
+let ignoreRest=false;     // after a gesture, the fingers still down must not act as taps
+
+function clipRect(){return document.getElementById('board-clip').getBoundingClientRect();}
+
+function startPinch(){
+  const[a,b]=[...pointers.values()];
+  gesture={mode:'pinch',zoom:boardZoom,panX:boardPanX,panY:boardPanY,
+    z0:boardZoom,x0:boardPanX,y0:boardPanY,
+    dist:Math.max(1,Math.hypot(a.x-b.x,a.y-b.y)),mx:(a.x+b.x)/2,my:(a.y+b.y)/2};
+}
+function startSlide(x,y){
+  gesture={mode:'slide',zoom:boardZoom,panX:boardPanX,panY:boardPanY,
+    z0:boardZoom,x0:boardPanX,y0:boardPanY,dist:1,mx:x,my:y};
+}
+// move the view so the point the gesture grabbed stays under the fingers, at the new zoom
+function gestureTo(zoom,px,py){
+  const r=clipRect(),g=gesture;
+  const k=zoom/g.z0,fx=g.mx-r.left,fy=g.my-r.top;
+  const[panX,panY]=clampPan(zoom,(px-r.left)-(fx-g.x0)*k,(py-r.top)-(fy-g.y0)*k);
+  g.zoom=zoom;g.panX=panX;g.panY=panY;
+  previewBoardView(zoom,panX,panY);
+}
+function moveGesture(){
+  const g=gesture;if(!g)return;
+  if(g.mode==='pinch'){
+    const[a,b]=[...pointers.values()];
+    if(!a||!b)return;
+    const zoom=Math.max(1,Math.min(BOARD_ZOOM_MAX,g.z0*(Math.hypot(a.x-b.x,a.y-b.y)/g.dist)));
+    gestureTo(zoom,(a.x+b.x)/2,(a.y+b.y)/2);
+  }else{
+    const p=[...pointers.values()][0];
+    if(!p)return;
+    gestureTo(g.z0,p.x,p.y);
+  }
+}
+function endGesture(){
+  const g=gesture;gesture=null;
+  if(!g)return;
+  commitBoardView(g.zoom,g.panX,g.panY);
+}
 
 // ── box selection state ───────────────────────────────────────────────────────
 let boxSelecting=false,boxX0=0,boxY0=0,boxX1=0,boxY1=0,boxMouseDownOnEmpty=false;
@@ -35,8 +89,27 @@ function endDrag(){
 const boardInput=document.getElementById('board');
 
 boardInput.addEventListener('pointerdown',e=>{
-  if(press)return;                                  // a second finger while one is already down
-  if(over||thinking||!isMyTurn())return;
+  if(e.pointerType!=='mouse'||e.button===0)pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  // a second finger: pinch the board instead of whatever the first one was starting
+  if(pointers.size===2){
+    e.preventDefault();
+    if(dragging){endDrag();render();}
+    if(press&&press.box){boxSelecting=false;clearBoxSelect();}
+    press=null;ignoreRest=true;
+    startPinch();
+    try{boardInput.setPointerCapture(e.pointerId);}catch(err){}
+    return;
+  }
+  if(pointers.size>2||ignoreRest)return;
+  if(press)return;                                  // a second button while one is already down
+  if(over||thinking||!isMyTurn()){
+    // the board can still be slid while the other side thinks
+    if(boardZoom>1.001&&!press){
+      press={id:e.pointerId,type:e.pointerType,x:e.clientX,y:e.clientY,i:-1,canDrag:false,canBox:false,box:false};
+      try{boardInput.setPointerCapture(e.pointerId);}catch(err){}
+    }
+    return;
+  }
   const i=sqIdxFromPoint(e.clientX,e.clientY);if(i<0)return;
   if(e.pointerType==='mouse'&&e.button===2){e.preventDefault();handleRightClick(i,e);return;}
   if(e.button!==0)return;
@@ -51,9 +124,14 @@ boardInput.addEventListener('pointerdown',e=>{
 });
 
 boardInput.addEventListener('pointermove',e=>{
+  const pt=pointers.get(e.pointerId);
+  if(pt){pt.x=e.clientX;pt.y=e.clientY;}
+  if(gesture){e.preventDefault();moveGesture();return;}
   if(!press||e.pointerId!==press.id)return;
   if(!dragging&&!press.box&&Math.hypot(e.clientX-press.x,e.clientY-press.y)>(DRAG_START_PX[press.type]||6)){
     if(press.canDrag&&!over&&!thinking&&isMyTurn())startDrag(press.i,e.clientX,e.clientY,press.type);
+    // a board bigger than its frame slides under the finger
+    else if(boardZoom>1.001){startSlide(press.x,press.y);moveGesture();return;}
     else if(press.canBox){press.box=true;boxSelecting=true;boxX0=press.x;boxY0=press.y;}
   }
   if(dragging)moveGhost(e.clientX,e.clientY,press.type);
@@ -61,6 +139,9 @@ boardInput.addEventListener('pointermove',e=>{
 });
 
 boardInput.addEventListener('pointerup',e=>{
+  pointers.delete(e.pointerId);
+  if(gesture){endGesture();press=null;if(pointers.size===0)ignoreRest=false;else ignoreRest=true;return;}
+  if(ignoreRest){if(pointers.size===0)ignoreRest=false;return;}
   if(!press||e.pointerId!==press.id)return;
   const pr=press;press=null;
   if(dragging){
@@ -79,6 +160,9 @@ boardInput.addEventListener('pointerup',e=>{
 });
 
 boardInput.addEventListener('pointercancel',e=>{
+  pointers.delete(e.pointerId);
+  if(gesture){endGesture();press=null;ignoreRest=pointers.size>0;return;}
+  if(pointers.size===0)ignoreRest=false;
   if(!press||e.pointerId!==press.id)return;
   const pr=press;press=null;
   if(pr.box){boxSelecting=false;clearBoxSelect();}
@@ -86,6 +170,26 @@ boardInput.addEventListener('pointercancel',e=>{
 });
 
 boardInput.addEventListener('contextmenu',e=>e.preventDefault());
+
+// Safari on iPhone zooms the whole page on a pinch or a stray double tap, whatever touch-action says,
+// which fights the board's own zoom; its gesture events are turned off here
+['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
+
+// the mouse wheel zooms at the pointer; the view is committed once the wheel stops
+document.getElementById('board-wrap').addEventListener('wheel',e=>{
+  e.preventDefault();
+  if(gesture&&gesture.mode!=='wheel')return;
+  if(!gesture)gesture={mode:'wheel',zoom:boardZoom,panX:boardPanX,panY:boardPanY,
+    z0:boardZoom,x0:boardPanX,y0:boardPanY,dist:1,mx:e.clientX,my:e.clientY};
+  const dy=e.deltaMode===1?e.deltaY*16:e.deltaMode===2?e.deltaY*100:e.deltaY;
+  const zoom=Math.max(1,Math.min(BOARD_ZOOM_MAX,gesture.zoom*Math.exp(-dy*.0016)));
+  // each wheel notch zooms about where the pointer is, so the gesture's grab point follows it
+  gesture.z0=gesture.zoom;gesture.x0=gesture.panX;gesture.y0=gesture.panY;
+  gesture.mx=e.clientX;gesture.my=e.clientY;
+  gestureTo(zoom,e.clientX,e.clientY);
+  clearTimeout(wheelTimer);
+  wheelTimer=setTimeout(()=>{if(gesture&&gesture.mode==='wheel')endGesture();},130);
+},{passive:false});
 
 function drawBoxSelect(){
   let el=document.getElementById('box-select-rect');

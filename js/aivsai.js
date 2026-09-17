@@ -51,7 +51,7 @@ function aiVsAiNewMatch(){
   tileData=s.tiles.slice();
   mapCheat=true;exploredTiles=new Set();
   const cheat=document.getElementById('btn-mapcheat');if(cheat)cheat.textContent='🗺 Map Cheat: ON';
-  viewN=Math.max(ROWS,COLS);viewRow0=0;viewCol0=0;
+  resetView();
   logLines=[];document.getElementById('log').textContent='';
   selectedPieces=new Set();kingSelected=false;targetMode=false;targetSrc=-1;
   over=false;thinking=true;

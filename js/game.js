@@ -25,7 +25,7 @@ function initGame(){
   wPawnTiles.forEach(j=>{pieces[j]={type:'pawn',color:'w',hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,firstMove:true};});
   const bPawnTiles=adj8(bKiPos).filter(j=>!pieces[j]).sort((a,b)=>cheb(a,wKiPos)-cheb(b,wKiPos)).slice(0,3);
   bPawnTiles.forEach(j=>{pieces[j]={type:'pawn',color:'b',hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,firstMove:true};});
-  viewN=Math.max(ROWS,COLS); viewRow0=0; viewCol0=0;
+  resetView();
   turn='w'; over=false; thinking=false; logLines=[]; kingSelected=false;
   whiteTargets={}; blackTargets={};
   spawnHistory=[]; blackSpawnHistory=[]; whiteTurnCount=0; blackTurnCount=0; movedThisTurn=-1;

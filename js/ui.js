@@ -167,7 +167,7 @@ function goIntro(){
   titleTileData=tileData.slice();
   titleAnimals=animals.map(a=>({...a}));
   animals=[];
-  viewN=9; viewRow0=0; viewCol0=0;
+  resetView();
   render();
   resizeBoard();
 }
@@ -206,90 +206,29 @@ function toggleMapCheat(){
 }
 
 // ── VIEWPORT (zoom + pan + minimap) ──────────────────────────────────────────
-function animatePanSlide(dx,dy){
-  const inner=document.getElementById('board-inner');
-  if(!inner)return;
-  inner.style.transition='none';
-  inner.style.transform='translate('+dx+'px,'+dy+'px)';
-  // force reflow
-  void inner.offsetWidth;
-  inner.style.transition='transform 220ms ease-out';
-  inner.style.transform='translate(0,0)';
-  setTimeout(()=>{inner.style.transition='';inner.style.transform='';},240);
-}
-
-function animateZoomScale(fromScale,toScale,onDone){
-  const inner=document.getElementById('board-inner');
-  if(!inner){if(onDone)onDone();return;}
-  inner.style.transition='none';
-  inner.style.transformOrigin='center center';
-  inner.style.transform='scale('+fromScale+')';
-  void inner.offsetWidth;
-  inner.style.transition='transform 260ms ease-out';
-  inner.style.transform='scale('+toScale+')';
-  setTimeout(()=>{
-    inner.style.transition='';inner.style.transform='';
-    if(onDone)onDone();
-  },280);
-}
-
+// the arrows slide the view by one square
 function panView(dr,dc){
-  const oldR=viewRow0, oldC=viewCol0;
-  viewRow0+=dr; viewCol0+=dc;
-  clampViewport();
-  if(viewRow0===oldR&&viewCol0===oldC)return false;
-  const actualDr=viewRow0-oldR, actualDc=viewCol0-oldC;
-  // disable each animal's own left/top transition so only the parent pan transform drives them
-  animalDivs.forEach((el)=>{if(el)el.style.transition='none';});
-  render(); resizeBoard(); updateViewportControls();
-  // smooth slide: start at old position, animate to new
-  animatePanSlide(actualDc*sqPx, actualDr*sqPx);
-  // restore animal transitions after pan animation completes
-  setTimeout(()=>{
-    animalDivs.forEach((el)=>{if(el&&el.isConnected)el.style.transition='left 80ms linear,top 80ms linear';});
-  },260);
+  const before=[boardPanX,boardPanY];
+  [boardPanX,boardPanY]=clampPan(boardZoom,boardPanX-dc*sqPx,boardPanY-dr*sqPx);
+  if(boardPanX===before[0]&&boardPanY===before[1])return false;
+  applyBoardView(true);updateViewportControls();
   return true;
 }
 
-// step viewN by 2 so odd→odd (5, 7, 9) keeps viewport center aligned and
-// scale = oldN/newN fully clips the 2 outer rows/cols (not just half-clips)
-function zoomIn(){
-  if(viewN<=5)return;
-  const step=2;
-  if(viewN-step<5)return;
-  const oldViewN=viewN;
-  const newViewN=oldViewN-step;
-  const cR=viewRow0+Math.floor(viewRowsN()/2);
-  const cC=viewCol0+Math.floor(viewColsN()/2);
-  // scale ratio matches final tile size ratio: new_sqPx/old_sqPx ≈ oldN/newN
-  const scaleUp=oldViewN/newViewN;
-  animateZoomScale(1,scaleUp,()=>{
-    viewN=newViewN;
-    viewRow0=cR-Math.floor(viewRowsN()/2);
-    viewCol0=cC-Math.floor(viewColsN()/2);
-    clampViewport();
-    resizeBoard(); render(); updateViewportControls();
-  });
+// zoom by a factor, keeping the point under (px,py) — the frame's centre by default — where it is
+function zoomBy(f,px,py){
+  const clip=document.getElementById('board-clip');
+  if(!clip)return;
+  const r=clip.getBoundingClientRect();
+  const zoom=Math.max(1,Math.min(BOARD_ZOOM_MAX,boardZoom*f));
+  if(Math.abs(zoom-boardZoom)<1e-4)return;
+  const cx=(px===undefined?r.width/2:px-r.left),cy=(py===undefined?r.height/2:py-r.top);
+  const k=zoom/boardZoom;
+  const[panX,panY]=clampPan(zoom,cx-(cx-boardPanX)*k,cy-(cy-boardPanY)*k);
+  commitBoardView(zoom,panX,panY);
 }
-
-function zoomOut(){
-  const maxN=Math.max(ROWS,COLS);
-  if(viewN>=maxN)return;
-  const step=2;
-  if(viewN+step>maxN)return;
-  const oldSqPx=sqPx, oldViewN=viewN;
-  const newViewN=oldViewN+step;
-  const cR=viewRow0+Math.floor(viewRowsN()/2);
-  const cC=viewCol0+Math.floor(viewColsN()/2);
-  viewN=newViewN;
-  viewRow0=cR-Math.floor(viewRowsN()/2);
-  viewCol0=cC-Math.floor(viewColsN()/2);
-  clampViewport();
-  resizeBoard(); render(); updateViewportControls();
-  // initial scale makes new tiles visually the same size as old (outer rows clipped)
-  const startScale=oldSqPx/sqPx;
-  animateZoomScale(startScale,1);
-}
+function zoomIn(){zoomBy(1.4);}
+function zoomOut(){zoomBy(1/1.4);}
 
 // hold-to-pan
 let panHoldTimer=null, panHoldInterval=null;
@@ -315,8 +254,8 @@ function updateViewportControls(){
   renderMinimap();
   // zoom buttons
   const zi=document.getElementById('btn-zoom-in'),zo=document.getElementById('btn-zoom-out');
-  if(zi)zi.disabled=viewN-2<5;
-  if(zo)zo.disabled=viewN+2>Math.max(ROWS,COLS);
+  if(zi)zi.disabled=boardZoom>=BOARD_ZOOM_MAX-1e-3;
+  if(zo)zo.disabled=boardZoom<=1+1e-3;
 }
 
 // simple rgb darken helper for obstacles: returns a darker shade of #rrggbb
@@ -360,7 +299,7 @@ function renderMinimap(){
       if(vis==='unknown'){
         // the same grey as the board's fog
         d.style.background=fogStyle().solid;
-        if(r>=viewRow0&&r<viewRow0+viewRowsN()&&c>=viewCol0&&c<viewCol0+viewColsN()){
+        if(inViewRC(r,c)){
           d.style.outline='1px solid rgba(200,240,80,.9)';
         }
         mm.appendChild(d);
@@ -384,7 +323,7 @@ function renderMinimap(){
         const overlay=document.createElement('div');
         overlay.style.cssText='position:absolute;inset:0;background:'+fogStyle().veil+';pointer-events:none;';
         d.appendChild(overlay);
-        if(r>=viewRow0&&r<viewRow0+viewRowsN()&&c>=viewCol0&&c<viewCol0+viewColsN()){
+        if(inViewRC(r,c)){
           d.style.outline='1px solid rgba(200,240,80,.9)';
         }
         mm.appendChild(d);
@@ -407,7 +346,7 @@ function renderMinimap(){
         }
       }
       // viewport highlight
-      if(r>=viewRow0&&r<viewRow0+viewRowsN()&&c>=viewCol0&&c<viewCol0+viewColsN()){
+      if(inViewRC(r,c)){
         d.style.outline='1px solid rgba(200,240,80,.9)';
         // slightly brighten the viewport area
         d.style.filter='brightness(1.35)';

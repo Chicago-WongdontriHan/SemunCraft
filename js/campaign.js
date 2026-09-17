@@ -209,7 +209,7 @@ function startCampaignLevel(levelIdx){
   if(mcBtn)mcBtn.textContent='🗺 Map Cheat: '+(mapCheat?'ON':'OFF');
   selectedPieces=new Set();
   // reset viewport to show entire campaign board
-  viewN=Math.max(ROWS,COLS); viewRow0=0; viewCol0=0;
+  resetView();
   const tc=document.getElementById('turn-counter');if(tc)tc.textContent='Turn 0';
   document.getElementById('ghost').style.display='none';
   document.getElementById('thinking-dot').classList.remove('on');

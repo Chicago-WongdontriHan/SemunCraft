@@ -156,10 +156,9 @@ function renderAnimalOverlay(){
   }
 
   animals.forEach((na,i)=>{
-    // position relative to viewport (subtract viewport offset)
-    const px=(na.x-viewCol0)*sqPx, py=(na.y-viewRow0)*sqPx;
-    // hide if outside viewport or fogged (fog of war)
-    let inView=na.x>=viewCol0&&na.x<viewCol0+viewColsN()&&na.y>=viewRow0&&na.y<viewRow0+viewRowsN();
+    // the overlay sits inside the board, so the board's own zoom and pan carry it along
+    const px=na.x*sqPx, py=na.y*sqPx;
+    let inView=true; // hidden only by fog
     if(inView&&!mapCheat){
       const ar=Math.round(na.y-0.5),ac=Math.round(na.x-0.5);
       if(inB(ar,ac)&&!isTileVisible(idx(ar,ac)))inView=false;

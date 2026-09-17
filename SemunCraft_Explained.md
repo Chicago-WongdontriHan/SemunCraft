@@ -91,7 +91,9 @@ The core progression mechanic. Drag one piece onto an adjacent ally to merge the
 
 ## Zoom & Minimap
 
-- **🔍+ / 🔍−** zoom between the full board and a 5x5 window. Arrows around the board pan the view (hold to keep panning).
+- Zoom is continuous, from the whole board (1x) up to 4x. Pinch with two fingers, turn the mouse wheel over the board, or press **🔍+ / 🔍−**; the wheel and a pinch zoom around the point under your fingers, the buttons around the middle of the board.
+- When the board is bigger than its frame, drag it to slide the view (one finger, or the mouse anywhere that isn't one of your own pieces). The arrows around the board still slide it a square at a time (hold to keep going), and dragging one of your own pieces still moves that piece.
+- The whole board is always drawn inside a frame that clips it, so zooming and sliding never change what the game knows; while a pinch or a drag is in progress the board is only moved and scaled, and the squares are laid out again at the new size when it ends (`applyBoardView` / `previewBoardView` / `commitBoardView` in `js/resize.js`, the gestures in `js/drag.js`).
 - The minimap in the right panel shows the whole map, your fog, and the current view.
 
 ---
@@ -208,10 +210,10 @@ An interactive 7-step tutorial:
 - **Font**: all UI text uses Lilita One (`fonts/LilitaOne.woff2`, SIL Open Font License in `fonts/OFL.txt`) through the `--ui-font` variable; room/peer IDs and the API key field stay monospace so similar characters stay distinct.
 - **Top bar**: Game title, optional Anthropic API key (Claude plays Black on Hard), status text, turn counter, and ⚙ Audio settings.
 - **Left panel**: Merge guide chart and paginated unit reference cards.
-- **Center**: The game board with HP pips, bishop mana pips, coordinate labels, and pan arrows when zoomed in.
+- **Center**: The game board with HP pips, bishop mana pips, coordinate labels, and pan arrows when zoomed in (the board can also be dragged to slide it).
 - **Right panel**: Move hint (Easy mode), action buttons (Spawn, Merge, Skip, Menu), and Map View (minimap, zoom, Map Cheat).
 - **Bottom bar**: Game log and an AI "thinking" indicator dot.
-- **Mobile**: In portrait, the merge chart becomes a strip above the board and the buttons wrap into finger-sized rows below it (unit cards, minimap and hint are hidden). The status line wraps, and when zoomed in the board leaves room around it for the pan arrows. On short landscape screens the side panels shrink and the layout is centered. Touch devices get touch wording (tap a siege tower twice instead of right-clicking).
+- **Mobile**: In portrait, the merge chart becomes a strip above the board and the buttons wrap into finger-sized rows below it (unit cards, minimap and hint are hidden). The status line wraps, and when zoomed in the board leaves room around it for the pan arrows. A double tap never zooms the page (the board has its own pinch zoom). On short landscape screens the side panels shrink and the layout is centered. Touch devices get touch wording (tap a siege tower twice instead of right-clicking).
 
 ### Controls
 
@@ -271,7 +273,7 @@ SemunCraft/
                            targeting (right-click, unsiege)
     ui.js               -- syncUI(), addLog(), setStatus(), showMoveHint() (Easy mode),
                            renderPcCards(), game over / rematch / menu, Map Cheat toggle,
-                           zoom and pan, renderMinimap()
+                           zoom and pan buttons, renderMinimap()
     tutorial.js         -- 7-step interactive tutorial: TUTORIAL_STEPS array, tutBoard(),
                            tutCheckAction(), startTutorial(), tutAutoNext()
     campaign.js         -- CAMPAIGN_LEVELS, level select, startCampaignLevel(),

@@ -1,4 +1,31 @@
 // ── RESIZE ───────────────────────────────────────────────────────────────────
+// put the board where the current zoom and pan say, without laying the squares out again
+function applyBoardView(smooth){
+  const inner=document.getElementById('board-inner');
+  if(!inner)return;
+  inner.style.transition=smooth?'left 180ms ease-out,top 180ms ease-out':'';
+  inner.style.transform='';
+  inner.style.left=boardPanX+'px';inner.style.top=boardPanY+'px';
+  if(smooth)setTimeout(()=>{inner.style.transition='';},200);
+}
+// show a zoom or pan while the gesture is still running: the board is only moved and scaled, which
+// costs nothing; commitBoardView lays the squares out again at the new size when the gesture ends
+function previewBoardView(zoom,panX,panY){
+  const inner=document.getElementById('board-inner');
+  if(!inner)return;
+  inner.style.transition='';
+  inner.style.transformOrigin='0 0';
+  inner.style.transform='translate('+(panX-boardPanX)+'px,'+(panY-boardPanY)+'px) scale('+(zoom/boardZoom)+')';
+}
+function commitBoardView(zoom,panX,panY){
+  const zoomed=Math.abs(zoom-boardZoom)>1e-4;
+  boardZoom=zoom;boardPanX=panX;boardPanY=panY;
+  if(zoomed){resizeBoard();render();}
+  else{clampViewport();applyBoardView();}
+  if(typeof updateViewportControls==='function')updateViewportControls();
+  if(typeof renderAnimalOverlay==='function')renderAnimalOverlay();
+}
+
 function resizeBoard(){
   const vw=window.innerWidth,vh=window.innerHeight;
   const topH=document.getElementById('top-bar').offsetHeight;
@@ -12,7 +39,7 @@ function resizeBoard(){
   let availW,availH,panelWL,panelWR;
   // portrait: when zoomed in, leave a gutter around the board so the pan arrows sit beside it
   // (otherwise they hang off the screen edges and cover the buttons)
-  const gutter=isPortrait&&(viewRowsN()<ROWS||viewColsN()<COLS)?32:0;
+  const gutter=isPortrait&&boardZoom>1.01?32:0;
   if(isPortrait){
     // portrait mobile: board gets full width, ~60% of viewport height
     // don't measure panel heights (unreliable on mobile) — use fixed viewport fractions
@@ -29,22 +56,24 @@ function resizeBoard(){
     availH=vh-topH-botH-20;
   }
 
-  const vRows=viewRowsN(),vCols=viewColsN();
-  let boardW,boardH;
-  if(vRows===vCols){
-    const boardPx=Math.floor(Math.min(availW,availH)/vCols)*vCols;
-    sqPx=boardPx/vCols;
-    boardW=boardPx;boardH=boardPx;
-  }else{
-    sqPx=Math.floor(Math.min(availW/vCols,availH/vRows));
-    boardW=sqPx*vCols;boardH=sqPx*vRows;
-  }
+  // the frame shows the whole board at zoom 1; zooming in grows the board behind it
+  boardFitPx=Math.max(8,Math.floor(Math.min(availW/COLS,availH/ROWS)));
+  boardZoom=Math.max(1,Math.min(BOARD_ZOOM_MAX,boardZoom));
+  sqPx=Math.round(boardFitPx*boardZoom*100)/100;
+  const frameW=boardFitPx*COLS,frameH=boardFitPx*ROWS;
+  const boardW=sqPx*COLS,boardH=sqPx*ROWS;
+  clampViewport();
   const wrap=document.getElementById('board-wrap');
   const thBorder=(THEMES[mapTheme]||THEMES.forest).border;
   wrap.style.borderColor=thBorder;
-  wrap.style.width=boardW+'px';wrap.style.height=boardH+'px';wrap.style.margin=gutter?gutter+'px':'';
-  document.getElementById('board').style.width=boardW+'px';document.getElementById('board').style.height=boardH+'px';
-  const ph=boardH+6;
+  // the frame is border-box, so its 3px border has to be added or it would cut the last row and column
+  wrap.style.width=(frameW+6)+'px';wrap.style.height=(frameH+6)+'px';wrap.style.margin=gutter?gutter+'px':'';
+  const boardEl=document.getElementById('board');
+  boardEl.style.width=boardW+'px';boardEl.style.height=boardH+'px';
+  const innerEl=document.getElementById('board-inner');
+  if(innerEl){innerEl.style.width=boardW+'px';innerEl.style.height=boardH+'px';}
+  applyBoardView();
+  const ph=frameH+6;
   const lp=document.getElementById('left-panel'),rp=document.getElementById('right-panel');
   if(isPortrait){
     // portrait: panels are full-width strips, height is auto (set by CSS)

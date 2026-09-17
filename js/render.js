@@ -3,8 +3,7 @@ function render(){
   clampViewport();
   updateExploredTiles();
   const boardEl=document.getElementById('board'); boardEl.innerHTML='';
-  const vRows=viewRowsN(), vCols=viewColsN();
-  boardEl.style.gridTemplateColumns='repeat('+vCols+',1fr)';
+  boardEl.style.gridTemplateColumns='repeat('+COLS+',1fr)';
   // the gap between tiles, thin but never thinner than a pixel
   boardEl.style.setProperty('--tile-ring',Math.max(1,Math.round(sqPx*0.018))+'px');
   // coordinates on a clouded square take the colour of the map's weather
@@ -25,8 +24,8 @@ function render(){
   const pipW=Math.max(2,Math.floor(sqPx*.10))+'px';
   const pipH=Math.max(2,Math.floor(sqPx*.07))+'px';
 
-  for(let r=viewRow0;r<viewRow0+vRows;r++){
-    for(let c=viewCol0;c<viewCol0+vCols;c++){
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
       const i=idx(r,c);
       const sq=document.createElement('div');
       const thm=THEMES[mapTheme]||THEMES.forest;
@@ -41,8 +40,8 @@ function render(){
         // unexplored — thick cloud hides everything
         sq.classList.add('fog','fog-unknown');
         sq.appendChild(fogCover(i,'unknown'));
-        if(c===viewCol0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
-        if(r===viewRow0+vRows-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
+        if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
+        if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
         boardEl.appendChild(sq);
         continue;
       }
@@ -59,8 +58,8 @@ function render(){
         }
         sq.classList.add('fog','fog-explored');
         sq.appendChild(fogCover(i,'explored'));
-        if(c===viewCol0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
-        if(r===viewRow0+vRows-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
+        if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
+        if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
         boardEl.appendChild(sq);
         continue;
       }
@@ -141,8 +140,8 @@ function render(){
       }
 
       // animals rendered in separate overlay by renderAnimalOverlay()
-      if(c===viewCol0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
-      if(r===viewRow0+vRows-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
+      if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
+      if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
       boardEl.appendChild(sq);
     }
   }
@@ -201,11 +200,7 @@ function guideEl(kind,src,i){
 }
 
 function sqElAt(i){
-  const r=ROW(i),c=COL(i);
-  const vRows=viewRowsN(),vCols=viewColsN();
-  if(r<viewRow0||r>=viewRow0+vRows||c<viewCol0||c>=viewCol0+vCols)return null;
-  const localR=r-viewRow0, localC=c-viewCol0;
-  return document.getElementById('board').children[localR*vCols+localC]||null;
+  return document.getElementById('board').children[ROW(i)*COLS+COL(i)]||null;
 }
 function flashSq(i,cls){const el=sqElAt(i);if(!el)return;el.classList.add(cls);setTimeout(()=>el&&el.classList.remove(cls),500);}
 function spawnFlash(i){

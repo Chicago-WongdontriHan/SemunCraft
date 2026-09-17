@@ -1,9 +1,8 @@
 // ── ATTACK SYSTEM ────────────────────────────────────────────────────────────
 function sqCenter(i){
   const b=document.getElementById('board').getBoundingClientRect();
-  const vRows=viewRowsN(),vCols=viewColsN();
-  const sw=b.width/vCols, sh=b.height/vRows;
-  const localC=COL(i)-viewCol0, localR=ROW(i)-viewRow0;
+  const sw=b.width/COLS, sh=b.height/ROWS;
+  const localC=COL(i), localR=ROW(i);
   return{
     x: b.left + (localC+0.5)*sw,   // viewport X (for fixed-pos emoji)
     y: b.top  + (localR+0.5)*sh,   // viewport Y

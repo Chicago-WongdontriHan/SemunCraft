@@ -41,8 +41,13 @@ let blackHitBy=[]; // [{target:blackIdx, attacker:whiteIdx}] — tracks which bl
 let blackActed=new Set(); // indices of black pieces that auto-attacked this turn (cannot also move)
 
 // ── VIEWPORT (zoom + pan) ────────────────────────────────────────────────────
-let viewN=9; // zoom level: show viewN x viewN area of the board (5-9)
-let viewRow0=0, viewCol0=0; // top-left of visible area
+// The whole board is always drawn, inside a frame that shows as much of it as fits. boardZoom is
+// continuous: 1 fits the board in the frame, above that the board is larger than the frame and
+// boardPanX/Y say, in pixels, how far it is slid under it (0 or negative). Pinch, the mouse wheel
+// and the zoom buttons set the zoom; dragging the board, the arrows and the minimap set the pan.
+let boardZoom=1, boardPanX=0, boardPanY=0;
+let boardFitPx=40;        // the square size that fits the whole board in the frame (set by resizeBoard)
+const BOARD_ZOOM_MAX=4;
 
 // ── FOG OF WAR ───────────────────────────────────────────────────────────────
 let mapCheat=false; // when false, only tiles within 2 of any white piece are currently visible
@@ -77,16 +82,29 @@ function updateExploredTiles(){
     }
   }
 }
-function viewRowsN(){ return Math.min(viewN,ROWS); }
-function viewColsN(){ return Math.min(viewN,COLS); }
-function clampViewport(){
-  viewRow0=Math.max(0,Math.min(ROWS-viewRowsN(),viewRow0));
-  viewCol0=Math.max(0,Math.min(COLS-viewColsN(),viewCol0));
+function resetView(){boardZoom=1;boardPanX=0;boardPanY=0;}
+function boardFrameW(){return boardFitPx*COLS;}
+function boardFrameH(){return boardFitPx*ROWS;}
+// keep the board over its frame: centred while it fits, otherwise no further than its edges
+function clampPan(zoom,panX,panY){
+  const bw=boardFitPx*zoom*COLS,bh=boardFitPx*zoom*ROWS,fw=boardFrameW(),fh=boardFrameH();
+  return[bw<=fw+.5?(fw-bw)/2:Math.max(fw-bw,Math.min(0,panX)),
+         bh<=fh+.5?(fh-bh)/2:Math.max(fh-bh,Math.min(0,panY))];
 }
-function canPanN(){return viewRow0>0;}
-function canPanS(){return viewRow0+viewRowsN()<ROWS;}
-function canPanW(){return viewCol0>0;}
-function canPanE(){return viewCol0+viewColsN()<COLS;}
+function clampViewport(){[boardPanX,boardPanY]=clampPan(boardZoom,boardPanX,boardPanY);}
+// the part of the board on screen, in squares
+function viewRect(){
+  const s=Math.max(1,sqPx);
+  return{c0:-boardPanX/s,r0:-boardPanY/s,cols:boardFrameW()/s,rows:boardFrameH()/s};
+}
+function inViewRC(r,c){
+  const v=viewRect();
+  return c+1>v.c0+.001&&c<v.c0+v.cols-.001&&r+1>v.r0+.001&&r<v.r0+v.rows-.001;
+}
+function canPanN(){return boardPanY<-.5;}
+function canPanS(){return boardPanY>boardFrameH()-sqPx*ROWS+.5;}
+function canPanW(){return boardPanX<-.5;}
+function canPanE(){return boardPanX>boardFrameW()-sqPx*COLS+.5;}
 
 // ── CAMPAIGN STATE ───────────────────────────────────────────────────────────
 let campaignLevel=null; // current level config object, or null for normal game

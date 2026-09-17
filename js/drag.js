@@ -26,12 +26,12 @@ function clipRect(){return document.getElementById('board-clip').getBoundingClie
 function startPinch(){
   const[a,b]=[...pointers.values()];
   gesture={mode:'pinch',zoom:boardZoom,panX:boardPanX,panY:boardPanY,
-    z0:boardZoom,x0:boardPanX,y0:boardPanY,
+    z0:boardZoom,x0:boardPanX,y0:boardPanY,oz:boardZoom,ox:boardPanX,oy:boardPanY,
     dist:Math.max(1,Math.hypot(a.x-b.x,a.y-b.y)),mx:(a.x+b.x)/2,my:(a.y+b.y)/2};
 }
 function startSlide(x,y){
   gesture={mode:'slide',zoom:boardZoom,panX:boardPanX,panY:boardPanY,
-    z0:boardZoom,x0:boardPanX,y0:boardPanY,dist:1,mx:x,my:y};
+    z0:boardZoom,x0:boardPanX,y0:boardPanY,oz:boardZoom,ox:boardPanX,oy:boardPanY,dist:1,mx:x,my:y};
 }
 // move the view so the point the gesture grabbed stays under the fingers, at the new zoom
 function gestureTo(zoom,px,py){
@@ -57,6 +57,8 @@ function moveGesture(){
 function endGesture(){
   const g=gesture;gesture=null;
   if(!g)return;
+  // two fingers put down and lifted without moving is a tap, not a pinch: leave the view alone
+  if(Math.abs(g.zoom-g.oz)<.02&&Math.abs(g.panX-g.ox)<3&&Math.abs(g.panY-g.oy)<3){applyBoardView();return;}
   commitBoardView(g.zoom,g.panX,g.panY);
 }
 
@@ -89,6 +91,8 @@ function endDrag(){
 const boardInput=document.getElementById('board');
 
 boardInput.addEventListener('pointerdown',e=>{
+  // nothing was down, so anything left over from an earlier gesture is stale
+  if(pointers.size===0){if(gesture)endGesture();press=null;ignoreRest=false;}
   if(e.pointerType!=='mouse'||e.button===0)pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
   // a second finger: pinch the board instead of whatever the first one was starting
   if(pointers.size===2){
@@ -171,6 +175,28 @@ boardInput.addEventListener('pointercancel',e=>{
 
 boardInput.addEventListener('contextmenu',e=>e.preventDefault());
 
+// A finger can be lifted where the board never hears about it: capturing the pointer can fail, and a
+// touch that ends over another element reports there instead. The ghost finger left behind turned the
+// next tap into a two-finger pinch and the board stopped answering taps, so the window clears them and
+// resets the board's input once nothing is down.
+function forgetPointer(e){
+  if(!pointers.has(e.pointerId))return;   // the board's own handler already dealt with it
+  pointers.delete(e.pointerId);
+  if(pointers.size===0){if(gesture)endGesture();press=null;ignoreRest=false;}
+}
+window.addEventListener('pointerup',forgetPointer);
+window.addEventListener('pointercancel',forgetPointer);
+
+// a double tap on the board must never zoom the page: the board has its own zoom, and the browser's
+// double-tap zoom can leave a phone stuck at a magnification the game can't undo
+let lastTapEnd=0;
+boardInput.addEventListener('touchend',e=>{
+  const t=Date.now();
+  if(t-lastTapEnd<450)e.preventDefault();
+  lastTapEnd=t;
+},{passive:false});
+boardInput.addEventListener('dblclick',e=>e.preventDefault());
+
 // Safari on iPhone zooms the whole page on a pinch or a stray double tap, whatever touch-action says,
 // which fights the board's own zoom; its gesture events are turned off here
 ['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
@@ -180,7 +206,7 @@ document.getElementById('board-wrap').addEventListener('wheel',e=>{
   e.preventDefault();
   if(gesture&&gesture.mode!=='wheel')return;
   if(!gesture)gesture={mode:'wheel',zoom:boardZoom,panX:boardPanX,panY:boardPanY,
-    z0:boardZoom,x0:boardPanX,y0:boardPanY,dist:1,mx:e.clientX,my:e.clientY};
+    z0:boardZoom,x0:boardPanX,y0:boardPanY,oz:boardZoom,ox:boardPanX,oy:boardPanY,dist:1,mx:e.clientX,my:e.clientY};
   const dy=e.deltaMode===1?e.deltaY*16:e.deltaMode===2?e.deltaY*100:e.deltaY;
   const zoom=Math.max(1,Math.min(BOARD_ZOOM_MAX,gesture.zoom*Math.exp(-dy*.0016)));
   // each wheel notch zooms about where the pointer is, so the gesture's grab point follows it

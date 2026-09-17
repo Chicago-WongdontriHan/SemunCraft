@@ -15,6 +15,7 @@ The goal: **destroy the enemy King** while building up your army through a merge
 - **9x9 grid** with alternating light/dark tiles (like a chess board, but larger). Campaign levels use their own board sizes.
 - Coordinate system uses algebraic notation (a-i columns, 1-9 rows).
 - **White King** starts on b2 (bottom-left area); **Black King** starts on h8 (top-right area). Each King starts with 3 pawns on the adjacent tiles closest to the enemy King.
+- The other two corners hold the resources: an **Elixir spring on b8** and a **Coin mine on h2**. Each is exactly as far from one King as from the other, so the race for them starts even, and the obstacles are mirrored through the board’s centre for the same reason.
 
 ---
 
@@ -55,7 +56,20 @@ The core progression mechanic. Drag one piece onto an adjacent ally to merge the
 
 - The **King** spawns pawns on adjacent empty tiles: click the King, then an empty tile next to it (or press **Spawn** to place one on the free tile closest to the enemy King).
 - Coin starts at **8** and earns **a sixth a turn** — the old rate of one every 6 turns, now arriving continuously instead of in jumps (`8 + turnCount / 6`, `COIN_START` / `COIN_TURNS` in `js/state.js`, written the same way in `js/engine.js` so both land on the same number). A pawn from the King costs 1 Coin, so spawning waits until a whole Coin is in hand. The AI earns Coin on the same terms.
+- A **Coin mine** dug by a pawn (below) adds to the same purse, permanently.
 - Spawning is your only way to create new units -- everything else comes from merging. Campaign levels don't allow spawning.
+
+---
+
+## The Spring and the Mine
+
+Two tiles on the board are worth a turn of standing still (`RESOURCE_TILES` in `js/state.js`, the `mine` action in `js/engine.js`):
+
+- The **Elixir spring** (b8) and the **Coin mine** (h2). Only a **pawn** can work them, and only by **spending its whole turn**: select the pawn and press the action button, which reads **Mine Elixir** or **Mine Coin**.
+- That is the point of the rule. Banking a resource costs you tempo and leaves a 1 HP pawn standing still in the open, so the side that is ahead cannot mine without giving the other side a turn to come back.
+- Mined Coin is added to the King’s purse for good (`mined` in `js/state.js`, added to `spawnQuota`); Elixir is banked on its own (`elixir`) and will pay for the strongest merges.
+- Both tiles are **landmarks**: a coloured dot marks each one through the fog, because both sides know where they are from the start.
+- Black digs too: the built-in AI takes it before anything else on its turn (`fallbackAI` in `js/ai.js`, `botTurn` in `js/engine.js`), and because the trained networks were trained before the rule existed, the same check runs for them in `netAiChoose` and in AI vs AI (`freeMine`).
 
 ---
 
@@ -141,7 +155,7 @@ Four selectable themes that change visuals, obstacles, ambient wildlife, and bac
 | **Ocean** | Sea Rocks (🪨) | Crab (🦀, 1HP) | Shark (🦈, 2HP) | A tornado (🌪, 3HP) roams and occasionally spawns an enemy 2HP pawn |
 
 - Obstacles are **impassable** and stop bishop, rook and Siege Tower attacks. Queens and knights fire over them.
-- Obstacles are placed in small clusters, avoiding the first/last 3 rows (king zones), and the map always keeps a cardinal and a diagonal route between the two King zones. The jungle places its palm clumps first, then one small temple ruin, then two or so patches of undergrowth.
+- Obstacles are placed in small clusters, avoiding the first/last 3 rows (king zones), then **mirrored through the centre of the board** so neither side is nearer to cover, to the spring or to the mine; the map always keeps a cardinal and a diagonal route between the two King zones (when one is cleared, its mirror goes with it). The jungle places its palm clumps first, then one small temple ruin, then two or so patches of undergrowth.
 - **Undergrowth** (jungle only): walkable tiles that don't block movement or shots. A piece standing in undergrowth is hidden from the other side until one of that side's pieces is on a tile next to it: it isn't drawn, isn't on the minimap, and can't be targeted or attacked, by drag, right-click, a lock or an auto-attack. It can still attack out of cover. Once an enemy piece is next to it, every enemy piece can see and hit it. This applies to both sides and with or without fog (Map Cheat draws hidden pieces faintly but they still can't be hit). The rule lives in `inCover` / `isConcealedFrom` (movement.js) and `inCover` / `concealed` (engine.js), and the trained AI's observation leaves hidden pieces out too.
 - The board is drawn to match the pieces (`js/scenery.js`): flat rounded tiles with a thin gap, a small sticker low on some free tiles (grass, leaves and toadstools in the forest; monstera, vines, puddles and hibiscus in the jungle; dunes and cacti in the desert; ripples, starfish and coral in the ocean) and a drawing that fills each impassable tile. Which sticker a tile gets is a hash of its row and column, so a map always looks the same and no game random numbers are used.
 - **Animals are switched off** for now: `ANIMALS_ON` in `js/constants.js` (and the same switch in `js/engine.js`). Map generation still draws the same random numbers for them, so boards and enemy strategies are unchanged, but nothing is placed and the roaming loop never starts. The system stays in `js/animals.js`.
@@ -222,9 +236,9 @@ An interactive 7-step tutorial:
 - **Font**: all UI text uses Lilita One (`fonts/LilitaOne.woff2`, SIL Open Font License in `fonts/OFL.txt`) through the `--ui-font` variable; room/peer IDs and the API key field stay monospace so similar characters stay distinct.
 - **Top bar**: Game title, optional Anthropic API key (Claude plays Black on Hard), status text, turn counter, and ⚙ Audio settings.
 - **Left panel**: The Coin and Elixir counters and paginated unit reference cards.
-- **Resources** (`renderResources` in `js/ui.js`): **Coin** is what the King spends to spawn pawns (8 to start, a sixth a turn, 1 a pawn, so the count is often a fraction; the rate sits inside the Coin chip as a decimal, +0.17, so it reads as Coin's income and not Elixir's) and **Elixir** is the army's magic. Elixir has no rule behind it at all — nothing earns or spends it — so it reads 0; a bishop's mana is its own heal charge, shown on the piece, and is not this resource. In AI vs AI both sides' counters are shown.
+- **Resources** (`renderResources` in `js/ui.js`): **Coin** is what the King spends to spawn pawns (8 to start, a sixth a turn, 1 a pawn, so the count is often a fraction; the rate sits inside the Coin chip as a decimal, +0.17, so it reads as Coin's income and not Elixir's) and **Elixir** is what a pawn digs at the spring — the count is real now, and a bishop’s mana is its own heal charge, not this. AI vs AI shows both sides’ numbers, and the strip stays one line.
 - **Center**: The game board with HP pips, bishop mana pips, coordinate labels, and pan arrows when zoomed in (the board can also be dragged to slide it).
-- **Right panel**: Move hint (Easy mode), action buttons (Spawn, Merge, Skip, Menu), and Map View (minimap, zoom, Map Cheat).
+- **Right panel**: Move hint (Easy mode), action buttons (Spawn, Merge, the selected piece’s own action, Skip, Menu), and Map View (minimap, zoom, Map Cheat). The third button is whatever the one selected piece can do where it stands: **Mine Elixir** / **Mine Coin** for a pawn on a resource tile, **Scry (2)** for a bishop holding both its mana.
 - **Bottom bar**: Game log and an AI "thinking" indicator dot.
 - **Mobile**: In portrait, the resource counters become a strip above the board, kept to one line (two in AI vs AI would push the board down), and the status line is clipped to one line for the same reason and the buttons wrap into finger-sized rows below it (unit cards, minimap and hint are hidden). The status line wraps, and the board keeps its full size when zoomed in: the pan arrows are hidden (drag the board instead) and the small map in the button strip below shows where the view is. A double tap never zooms the page (the board has its own pinch zoom). On short landscape screens the side panels shrink and the layout is centered. Touch devices get touch wording (tap a siege tower twice instead of right-clicking).
 
@@ -470,4 +484,4 @@ The scripts are loaded in a specific order in `SemunCraft.html` because later fi
 - Drag-and-drop is implemented via mouse/touch events with a floating ghost element; on touch screens the drag starts on touchstart so iOS doesn't cancel the gesture.
 - Attack animations use flying emoji projectiles, SVG spears and cannonballs, and SVG arrow overlays.
 - Board auto-resizes to fit the viewport, with separate portrait and landscape mobile layouts.
-- Pieces are drawn as SVG from the `pieces/` folder. Each type has its own cute silhouette and size: a small round pawn, a horse-head knight, a mitred bishop with a green healing cross and a staff, a castle rook, a slim queen with long hair, a tall three-point crown and a sceptre, a broad bearded king under a flat crown with a cross, and a stub tower with a cannon barrel out of the roof for the siege tower. Bodies use the team colour (light White, dark Black) with a slight tint per type -- knights bluish, bishops greenish, rooks brick, queens pink, kings gold, siege towers stone. A dark outline plus a contrasting halo keeps them readable on any tile. Map themes only change crown/gem colours and the ground under each piece: grass and a flower (jungle), sand and a cactus (desert), ripples and bubbles (ocean). Open `pieces/preview.html` to see every set, including a solid-silhouette check.
+- Pieces are drawn as SVG from the `pieces/` folder. Each type has its own cute silhouette and size: a small round pawn holding a sword and a buckler, a horse-head knight, a mitred bishop with a green healing cross and a staff, a castle rook, a slim queen with long hair, a tall three-point crown and a sceptre, a broad bearded king under a flat crown with a cross, and a stub tower with a cannon barrel out of the roof for the siege tower. Bodies use the team colour (light White, dark Black) with a slight tint per type -- knights bluish, bishops greenish, rooks brick, queens pink, kings gold, siege towers stone. A dark outline plus a contrasting halo keeps them readable on any tile. Map themes only change crown/gem colours and the ground under each piece: grass and a flower (jungle), sand and a cactus (desert), ripples and bubbles (ocean). Open `pieces/preview.html` to see every set, including a solid-silhouette check.

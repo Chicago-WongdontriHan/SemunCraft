@@ -29,7 +29,7 @@ function initGame(){
   turn='w'; over=false; thinking=false; logLines=[]; kingSelected=false;
   whiteTargets={}; blackTargets={};
   spawnHistory=[]; blackSpawnHistory=[]; whiteTurnCount=0; blackTurnCount=0; movedThisTurn=-1;
-  scans=[];
+  scans=[];elixir={w:0,b:0};mined={w:0,b:0};
   exploredTiles=new Set();
   // regular games start fogged (the tutorial and campaign set their own default)
   mapCheat=false;

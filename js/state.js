@@ -11,7 +11,15 @@ let movedThisTurn=-1; // idx of white piece that acted this turn (cannot auto-at
 // jumps. A pawn from the King costs one, so spawning waits until a whole Coin is in hand.
 // The same sum is in js/engine.js, written the same way so both sides land on the same number.
 const COIN_START=8, COIN_TURNS=6;
-function spawnQuota(){ if(campaignLevel&&campaignLevel.spawnLimit)return campaignLevel.spawnLimit; return COIN_START+whiteTurnCount/COIN_TURNS; }
+// The spring and the mine: a pawn standing on one spends its whole turn digging, which is what makes
+// banking a resource risky — the pawn stands still, in the open, while the other side moves.
+// Mined Coin is added to the turn income; Elixir is banked on its own. ('mine' in js/engine.js)
+const RESOURCE_TILES={spring:'elixir',mine:'coin'};
+let elixir={w:0,b:0};   // Elixir dug at a spring
+let mined={w:0,b:0};    // Coin dug at a mine, on top of the turn income
+function canMine(i){ const p=pieces[i]; return !!p&&p.type==='pawn'&&!!RESOURCE_TILES[tileData[i]]; }
+function oppColor(){ return myColor()==='w'?'b':'w'; }
+function spawnQuota(){ const base=campaignLevel&&campaignLevel.spawnLimit?campaignLevel.spawnLimit:COIN_START+whiteTurnCount/COIN_TURNS; return base+mined[myColor()]; }
 function spawnUsed(){ return spawnHistory.length; }
 // a quarter Coin a turn means the count is often a fraction; whole numbers stay plain
 function coinText(n){ return Number.isInteger(n)?String(n):n.toFixed(2); }
@@ -23,7 +31,7 @@ function spawnRemaining(){
   }
   return Math.max(0,spawnQuota()-spawnUsed());
 }
-function blackSpawnQuota(){ return COIN_START+blackTurnCount/COIN_TURNS; }
+function blackSpawnQuota(){ return COIN_START+blackTurnCount/COIN_TURNS+mined[oppColor()]; }
 function blackSpawnUsed(){ return blackSpawnHistory.length; }
 function blackSpawnRemaining(){ return Math.max(0,blackSpawnQuota()-blackSpawnUsed()); }
 let whiteTargets={};  // pieceIdx -> targetIdx (enemy for attackers, friendly for bishops)
@@ -137,7 +145,7 @@ let lastPf=12;
 
 // ── PIECE CARD DATA ──────────────────────────────────────────────────────────
 const PC_DATA=[
-  {gw:'♙',gb:'♟',name:'Pawn',   stats:'1HP · move any dir · atk adj'},
+  {gw:'♙',gb:'♟',name:'Pawn',   stats:'1HP · any dir · atk adj · mines'},
   {gw:'♘',gb:'♞',name:'Knight', stats:'4HP · L-jump · atk L-dist'},
   {gw:'♗',gb:'♝',name:'Bishop', stats:'2HP · diagonal 2 · heals (mana)'},
   {gw:'♖',gb:'♜',name:'Rook',   stats:'4HP · card2 · pierce rng3'},

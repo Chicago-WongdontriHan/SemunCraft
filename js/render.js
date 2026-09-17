@@ -36,10 +36,14 @@ function render(){
       const vis=tileVisibility(i);
       // theme scenery / obstacle sticker, under everything else the square holds
       if(vis!=='unknown'&&typeof tileArt==='function'){const art=tileArt(i);if(art)sq.appendChild(art);}
+      // the spring and the mine are landmarks: their place stays known through the fog
+      const res=typeof RESOURCE_TILES!=='undefined'?RESOURCE_TILES[tileData[i]]:null;
+      if(res)sq.classList.add('tile-'+tileData[i]);
       if(vis==='unknown'){
         // unexplored — thick cloud hides everything
         sq.classList.add('fog','fog-unknown');
         sq.appendChild(fogCover(i,'unknown'));
+        if(res){const m=document.createElement('span');m.className='res-ghost res-'+res;sq.appendChild(m);}
         if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
         if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
         boardEl.appendChild(sq);
@@ -58,6 +62,7 @@ function render(){
         }
         sq.classList.add('fog','fog-explored');
         sq.appendChild(fogCover(i,'explored'));
+        if(res){const m=document.createElement('span');m.className='res-ghost res-'+res;sq.appendChild(m);}
         if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
         if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
         boardEl.appendChild(sq);

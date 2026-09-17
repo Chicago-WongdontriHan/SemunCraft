@@ -17,6 +17,7 @@ const UI_ICONS={
     +'<path d="M5.4 4.4a9.4 9.4 0 0 0 0 13.2M18.6 4.4a9.4 9.4 0 0 1 0 13.2"/><path d="M12 13v7"/>',
   refresh:'<path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v4h-4"/>',
   scry:'<path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/>',
+  mine:'<path d="M3.5 20.5 L13.5 10.5"/><path d="M4 10.2 C8 5.6 15 4.6 20 7.6"/><path d="M20 7.6 C17 2.6 8.6 4 4 10.2"/>',
   prev:'<path d="M14.5 6l-6 6 6 6"/>',
   next:'<path d="M9.5 6l6 6-6 6"/>',
 };
@@ -52,14 +53,17 @@ function syncUI(){
       if(!locked&&rem<1)spawnBtn.disabled=true;
     }
   }
-  // scrying: only a bishop of yours holding both its mana can do it
-  const scryBtn=document.getElementById('btn-scry');
-  if(scryBtn){
-    const sel=selectedPieces.size===1?pieces[[...selectedPieces][0]]:null;
-    const ready=!!sel&&sel.color===myColor()&&sel.type==='bishop'&&(sel.mana||0)>=2;
-    scryBtn.disabled=locked||!ready;
-    scryBtn.classList.toggle('active-mode',!!scryMode);
-    scryBtn.innerHTML=uiLabel('scry',scryMode?'Pick a square':'Scry (2)');
+  // one button for the selected piece's own action: a pawn digs where it stands, a bishop scries
+  const spBtn=document.getElementById('btn-special');
+  if(spBtn){
+    const i=selectedPieces.size===1?[...selectedPieces][0]:-1;
+    const sel=i>=0?pieces[i]:null;
+    const mine=!!sel&&sel.color===myColor()&&canMine(i);
+    const scry=!!sel&&sel.color===myColor()&&sel.type==='bishop'&&(sel.mana||0)>=2;
+    spBtn.disabled=locked||!(mine||scry);
+    spBtn.classList.toggle('active-mode',!!scryMode);
+    spBtn.innerHTML=uiLabel(mine?'mine':'scry',
+      scryMode?'Pick a square':mine?(tileData[i]==='spring'?'Mine Elixir':'Mine Coin'):'Scry (2)');
   }
   const mergeBtn=document.getElementById('btn-merge');
   if(mergeBtn){
@@ -81,8 +85,14 @@ function showMoveHint(){
   const mc=myColor();
   const bp2=[];for(let i=0;i<ROWS*COLS;i++){const p=pieces[i];if(p&&p.color===mc)bp2.push({i,p});}
   let hint='';
-  // check merges
+  // a pawn standing on a spring or a mine: worth a turn, and easy to miss
   for(const {i,p} of bp2){
+    if(p.type==='pawn'&&RESOURCE_TILES[tileData[i]]){
+      hint='pawn at '+sqName(i)+' can mine '+(tileData[i]==='spring'?'Elixir':'Coin');break;
+    }
+  }
+  // check merges
+  if(!hint)for(const {i,p} of bp2){
     const d=getDragDests(i);
     if(d.merge.size){const t=[...d.merge][0];hint=p.type+' at '+sqName(i)+' can merge with '+pieces[t].type+' at '+sqName(t);break;}
   }
@@ -156,9 +166,11 @@ function coinCount(color){
   if(gameMode==='aivsai'&&aiVsAi&&typeof SemunEngine!=='undefined')return SemunEngine.spawnRemaining(aiVsAi.s,color);
   return color===myColor()?spawnRemaining():blackSpawnRemaining();
 }
-// Elixir has no rule behind it yet: nothing earns or spends it, so it reads 0 for both sides.
-// (A bishop's mana is its own heal charge, shown on the piece, and is not this resource.)
-function elixirCount(color){return 0;}
+// Elixir is what a pawn digs at a spring; a bishop's mana is its own heal charge and is not this.
+function elixirCount(color){
+  if(gameMode==='aivsai'&&aiVsAi&&aiVsAi.s.elixir)return aiVsAi.s.elixir[color]||0;
+  return (typeof elixir!=='undefined'&&elixir[color])||0;
+}
 function renderResources(){
   const el=document.getElementById('resources');if(!el)return;
   const noSpawn=campaignLevel&&campaignLevel.allowSpawn===false;

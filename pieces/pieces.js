@@ -1,7 +1,7 @@
 // ── PIECE DESIGNS ────────────────────────────────────────────────────────────
 // Every piece is an SVG in a 100x100 box, standing on a base at y=86.
 // Types are told apart by silhouette and size, and look the same in every set:
-//   pawn    small and round (the shortest piece)
+//   pawn    a foot soldier: small and round, a sword at her side and a buckler on her arm
 //   knight  horse head with a mane
 //   bishop  tall pointed mitre with a green healing cross, holding a crook staff
 //   rook    castle tower with battlements and a door
@@ -47,8 +47,18 @@ const siegeBarrel=paint=>'<g transform="translate(-0.16,-8.39) scale(0.956)"><g 
 // halo: the outline the halo follows when a detail reaches past the body (default: the body)
 const PIECE_SHAPES={
   pawn:{ring:19,shine:[41,77],
+    // a sword held point-up at her side: grip, crossguard and a tapered blade
+    back:pieceStroke('M79 69 V80','{wood}',5)
+      +'<circle cx="79" cy="83" r="3.6" fill="{metal}" stroke="{line}" stroke-width="2.6"/>'
+      +'<path d="M79 29 L83.5 64 L74.5 64 Z" fill="{metal}" stroke="{line}" stroke-width="3.2" stroke-linejoin="round"/>'
+      +pieceStroke('M71 67 H87','{metal}',4),
     body:'<path d="M34 86 C34 75 41 68 50 68 C59 68 66 75 66 86 Z"/><circle cx="50" cy="54" r="14"/>',
-    eyes:[[45,55],[55,55]],blush:[[40,60],[60,60]]},
+    eyes:[[45,55],[55,55]],blush:[[40,60],[60,60]],
+    // a small round buckler strapped to the other arm, iron-rimmed over wood
+    detail:'<circle cx="31" cy="72" r="10" fill="{wood}" stroke="{line}" stroke-width="3.2"/>'
+      +'<circle cx="31" cy="72" r="7" fill="none" stroke="{metal}" stroke-width="2.4"/>'
+      +'<circle cx="31" cy="72" r="3.3" fill="{metal}" stroke="{line}" stroke-width="2.2"/>'
+      +'<path d="M25.5 68 C26.5 65.5 29 64 31.5 63.8" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".5"/>'},
   knight:{ring:24,shine:[39,75],
     body:'<path d="M29 86 C27 71 32 59 38 51 C32 44 34 30 44 23 L47 11 L56 21 C69 24 78 36 77 50 C76 58 69 61 63 58 C61 65 67 74 72 86 Z"/>',
     // the mane stands out past the back of the neck, so the halo follows the body and mane together

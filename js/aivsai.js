@@ -49,7 +49,7 @@ function aiVsAiNewMatch(){
   COLS=s.cols;ROWS=s.rows;
   document.body.className='theme-'+s.theme;
   tileData=s.tiles.slice();
-  mapCheat=true;exploredTiles=new Set();scans=[];
+  mapCheat=true;exploredTiles=new Set();scans=[];elixir={w:0,b:0};mined={w:0,b:0};
   const cheat=document.getElementById('btn-mapcheat');if(cheat)cheat.innerHTML=uiLabel('map','Map Cheat: ON');
   resetView();
   logLines=[];document.getElementById('log').textContent='';
@@ -99,7 +99,7 @@ function aiVsAiStep(){
   if(s.over){aiVsAiFinish();return;}
   const color=s.turn,ai=color==='w'?g.white:g.black;
   const before=s.board.map(p=>p&&Object.assign({},p));
-  const a=SemunNet.choose(aiVsAiNets[ai],aiVsAiEncoder,s).action;
+  const a=freeMine(s)||SemunNet.choose(aiVsAiNets[ai],aiVsAiEncoder,s).action;
   const events=SemunEngine.step(s,a);
   g.lastFrom=a.from===undefined?-1:a.from;
   g.lastTo=a.to===undefined?-1:a.to;

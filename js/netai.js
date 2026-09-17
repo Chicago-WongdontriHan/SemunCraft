@@ -55,17 +55,31 @@ function netAiPreload(){
   if(level)netAiLoadModel(level.model).catch(()=>{});
 }
 
+// a pawn of the side to move standing on a spring or a mine, as an action (botTurn does this itself)
+function freeMine(state){
+  for(let i=0;i<state.board.length;i++){
+    const p=state.board[i];
+    if(p&&p.color===state.turn&&p.type==='pawn'&&RESOURCE_TILES[state.tiles[i]])return{type:'mine',from:i,to:i};
+  }
+  return null;
+}
+
 // the game's variables as an engine state with Black to move
 function netAiSnapshot(){
   // a campaign level's own rules (no merging, no spawning, its objective) go with the snapshot
   return SemunEngine.fromSnapshot({cols:COLS,rows:ROWS,theme:mapTheme,mode:'classic',board:pieces,tiles:tileData,turn:'b',
     level:campaignLevel||null,
     turnCount:{w:whiteTurnCount,b:blackTurnCount},spawns:{w:spawnHistory.length,b:blackSpawnHistory.length},
-    targets:{w:whiteTargets,b:blackTargets},hitBy:blackHitBy,acted:[...blackActed],scans,maxTurns:300});
+    targets:{w:whiteTargets,b:blackTargets},hitBy:blackHitBy,acted:[...blackActed],scans,
+    elixir:{w:elixir.w,b:elixir.b},mined:{w:mined.w,b:mined.b},maxTurns:300});
 }
 
 // Black's move at this difficulty (tests/netai.test.js replaces this with random legal moves)
 function netAiChoose(state,level){
+  // digging came after these networks were trained, so it is not one of the moves they can pick:
+  // a pawn of theirs standing on a spring or a mine digs, the way the built-in AI does
+  const dig=freeMine(state);
+  if(dig)return dig;
   const cfg=NETAI_LEVELS[level];
   return SemunNet.choose(netAiNets[cfg.model],netAiEncoder,state,{temperature:cfg.temperature}).action;
 }
@@ -77,6 +91,7 @@ function netAiApply(action){
   pieces=s.board;
   whiteTargets=s.targets.w;blackTargets=s.targets.b;
   scans=s.scans; // a scry Black cast lives in the engine's state: bring it back with the board
+  elixir=s.elixir;mined=s.mined;
   for(let k=spawned;k<s.spawns.b;k++)blackSpawnHistory.push(blackTurnCount);
   return result;
 }

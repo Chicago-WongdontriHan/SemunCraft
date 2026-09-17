@@ -90,6 +90,7 @@ function newGame(o){
     board:null,tiles:null,blocked:null,
     turn:'w',over:false,winner:null,
     turnCount:{w:0,b:0},spawns:{w:0,b:0},targets:{w:{},b:{}},
+    elixir:{w:0,b:0},mined:{w:0,b:0},   // dug at a spring and at a mine ('mine' action)
     moved:-1,   // square of the piece that moved or healed this turn (it doesn't auto-attack)
     scans:[],   // bishops' scrying: [{tiles, turns, color}] (see the 'scry' action)
     hitBy:[],   // classic: Black pieces White hit this round, for the reactive AI
@@ -140,6 +141,8 @@ function clone(s){
   c.blocked=s.blocked.slice();
   c.turnCount={w:s.turnCount.w,b:s.turnCount.b};
   c.spawns={w:s.spawns.w,b:s.spawns.b};
+  c.elixir={w:s.elixir.w,b:s.elixir.b};
+  c.mined={w:s.mined.w,b:s.mined.b};
   c.targets={w:Object.assign({},s.targets.w),b:Object.assign({},s.targets.b)};
   c.scans=s.scans.map(sc=>({tiles:sc.tiles.slice(),turns:sc.turns,color:sc.color}));
   c.hitBy=s.hitBy.map(h=>({target:h.target,attacker:h.attacker}));
@@ -210,6 +213,9 @@ function generateMap(s){
       }
     }
   }
+  // the board is mirrored through its centre, so neither side is nearer to cover or to a resource
+  const mirrorOf=ti=>(R-1-rowOf(s,ti))*C+(C-1-colOf(s,ti));
+  for(let i=0;i<R*C;i++){const j=mirrorOf(i);if(i<j)setTile(s,j,s.tiles[i]);}
   // keep a cardinal (rook) and a diagonal (bishop) route between the two king zones
   const wK=7*C+1,bK=1*C+7;
   const hasPath=dirs=>{
@@ -247,8 +253,10 @@ function generateMap(s){
     return[];
   };
   [[[0,1],[0,-1],[1,0],[-1,0]],[[1,1],[1,-1],[-1,1],[-1,-1]]].forEach(dirs=>{
-    if(!hasPath(dirs))findBlockers(dirs).forEach(ti=>setTile(s,ti,''));
+    if(!hasPath(dirs))findBlockers(dirs).forEach(ti=>{setTile(s,ti,'');setTile(s,mirrorOf(ti),'');});
   });
+  // the Elixir spring and the Coin mine, each the same distance from both kings (themes.js)
+  if(R===9&&C===9){setTile(s,1*C+1,'spring');setTile(s,7*C+7,'mine');}
   // desert: one sandstone becomes the pyramid, with the mummy beside it
   if(s.theme==='desert'){
     const sTiles=[];
@@ -286,6 +294,9 @@ function generateMap(s){
   for(let k=0;k<2;k++)if(th.neutral)place(th.neutral,false);
   if(th.attacker)place(th.attacker,true);
 }
+
+// a pawn digs a spring for Elixir and a mine for Coin, at the cost of its turn (RESOURCE_TILES in state.js)
+const RESOURCE_TILES={spring:'elixir',mine:'coin'};
 
 // ── RULES: RANGES AND VISIBILITY (constants.js, state.js) ────────────────────
 const CARD=[[-1,0],[1,0],[0,-1],[0,1]];
@@ -361,7 +372,7 @@ function clock(s,color){return s.mode==='pvp'?s.turnCount[color]:s.turnCount.w;}
 function spawnRemaining(s,color){
   const lv=s.level;
   // 8 Coin to start and one more every 6 turns, a sixth at a time (COIN_START / COIN_TURNS in js/state.js)
-  const quota=lv&&lv.spawnLimit?lv.spawnLimit:8+s.turnCount[color]/6;
+  const quota=(lv&&lv.spawnLimit?lv.spawnLimit:8+s.turnCount[color]/6)+s.mined[color];
   return Math.max(0,quota-s.spawns[color]);
 }
 
@@ -446,6 +457,8 @@ function legalActions(s,opts){
       if(p.type==='bishop'&&(p.mana||0)>0&&B[j].hp<B[j].maxHp)out.push({type:'healLock',from:i,to:j});
     });
     d.heal.forEach(j=>{if(!d.merge.has(j))out.push({type:'heal',from:i,to:j});});
+    // a pawn standing on a spring or a mine can spend its turn digging
+    if(p.type==='pawn'&&RESOURCE_TILES[s.tiles[i]])out.push({type:'mine',from:i,to:i});
     // a bishop with both its mana can light a 3x3 it cannot see, up to SCRY_RANGE away
     if(p.type==='bishop'&&(p.mana||0)>=2)
       for(let j=0;j<B.length;j++)
@@ -599,6 +612,12 @@ function applyAction(s,a,events){
       delete tg[a.from];
       s.moved=a.from;
       events.push({type:'heal',from:a.from,to:a.to,hp:t.hp});
+      return false;
+    }
+    case'mine':{
+      if(RESOURCE_TILES[s.tiles[a.from]]==='elixir')s.elixir[color]++;else s.mined[color]++;
+      s.moved=a.from;                       // the pawn dug instead of shooting
+      events.push({type:'mine',at:a.from,kind:RESOURCE_TILES[s.tiles[a.from]]});
       return false;
     }
     case'scry':{
@@ -1070,6 +1089,14 @@ function botTurn(s){
   if(s.over)throw new Error('the game is over');
   if(s.mode!=='classic'||s.turn!=='b')throw new Error('botTurn plays Black in classic mode');
   const events=[];
+  // a pawn of ours standing on a spring or a mine digs first of all (fallbackAI in ai.js)
+  const dig=s.board.findIndex((p,i)=>p&&p.color==='b'&&p.type==='pawn'&&RESOURCE_TILES[s.tiles[i]]);
+  if(dig>=0){
+    if(RESOURCE_TILES[s.tiles[dig]]==='elixir')s.elixir.b++;else s.mined.b++;
+    events.push({type:'mine',at:dig,kind:RESOURCE_TILES[s.tiles[dig]]});
+    finishTurn(s,'b',events);
+    return events;
+  }
   if(!reactiveAI(s,events)){
     // (the campaign AI runs the reactive check again, drawing new random numbers, as ai.js does)
     if(s.level)campaignAI(s,events);
@@ -1091,6 +1118,8 @@ function fromSnapshot(o){
   const s={cols:o.cols,rows:o.rows,theme:o.theme||'forest',mode:o.mode==='pvp'?'pvp':'classic',difficulty:o.difficulty||'hard',
     board:o.board.map(p=>p&&Object.assign({},p)),tiles:null,blocked:null,turn:o.turn||'w',over:false,winner:null,
     turnCount:{w:o.turnCount.w,b:o.turnCount.b},spawns:{w:o.spawns.w,b:o.spawns.b},
+    elixir:{w:(o.elixir&&o.elixir.w)||0,b:(o.elixir&&o.elixir.b)||0},
+    mined:{w:(o.mined&&o.mined.w)||0,b:(o.mined&&o.mined.b)||0},
     targets:{w:Object.assign({},o.targets.w),b:Object.assign({},o.targets.b)},moved:-1,
     scans:(o.scans||[]).map(sc=>({tiles:sc.tiles.slice(),turns:sc.turns,color:sc.color})),
     hitBy:(o.hitBy||[]).map(h=>({target:h.target,attacker:h.attacker})),acted:(o.acted||[]).slice(),

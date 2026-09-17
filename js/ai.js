@@ -530,6 +530,17 @@ function campaignAI(){
 }
 
 function fallbackAI(){
+  // a pawn of ours standing on a spring or a mine digs first of all
+  for(let i=0;i<ROWS*COLS;i++){
+    const p=pieces[i];
+    if(p&&p.color==='b'&&p.type==='pawn'&&RESOURCE_TILES[tileData[i]]){
+      const kind=RESOURCE_TILES[tileData[i]];
+      if(kind==='elixir')elixir.b++;else mined.b++;
+      addLog('Black mines '+(kind==='elixir'?'Elixir':'Coin')+' at '+sqName(i));
+      SFX.mine(kind);flashSq(i,'heal-flash');render();
+      finishBlackTurn();return;
+    }
+  }
   // try reactive behavior first (respond to being hit)
   if(reactiveAI())return;
   // campaign mode uses dedicated AI

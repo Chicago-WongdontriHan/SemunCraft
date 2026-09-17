@@ -389,6 +389,25 @@ function handleClick(i,additive){
   kingSelected=false;selectedPieces=new Set();render();
 }
 
+// ── PAWN: MINING ─────────────────────────────────────────────────────────────
+// A pawn on a spring or a mine digs out one resource, and that is its whole turn. ('mine' in engine.js)
+function mineAt(i){
+  const p=pieces[i],kind=RESOURCE_TILES[tileData[i]];
+  if(!p||p.type!=='pawn'||!kind)return;
+  if(kind==='elixir')elixir[p.color]++;else mined[p.color]++;
+  movedThisTurn=i;
+  addLog('Pawn mines '+(kind==='elixir'?'Elixir':'Coin')+' at '+sqName(i));
+  SFX.mine(kind);flashSq(i,'heal-flash');
+  render();endTurn();
+}
+// the special-action button: whatever the one selected piece can do here
+function doSpecial(){
+  const i=selectedPieces.size===1?[...selectedPieces][0]:-1;
+  const p=i<0?null:pieces[i];
+  if(p&&p.color===myColor()&&canMine(i)){mineAt(i);return;}
+  startScry();
+}
+
 // ── BISHOP: SCRYING ──────────────────────────────────────────────────────────
 // A bishop spends both its mana to light a 3x3 it cannot see, for its next two turns: the fog lifts
 // there, terrain and enemies both. It costs the bishop's turn, like a heal, and it doesn't lift the

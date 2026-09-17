@@ -177,6 +177,21 @@ const TERRAIN_ART={
     +scShape('M28 39 L32 17 C32 13 38 11 45 11 L55 11 C60 11 63 14 64 18 L67 39 Z','#E3A55E','#5A3818',3.6)
     +scShape('M68 96 C68 83 76 73 85 73 C93 73 98 84 98 96 Z','#C9853E','#5A3818',3.6)
     +'<ellipse cx="16" cy="93" rx="7" ry="3.6" fill="#F4D58D" stroke="#5A3818" stroke-width="2.6"/>',
+  // the Elixir spring: a stone basin of bright water, with a drop rising off it
+  spring:
+    scShape('M8 70 C8 51 26 39 50 39 C74 39 92 51 92 70 C92 86 74 95 50 95 C26 95 8 86 8 70 Z','#7D8A94','#232C33',4)
+    +scShape('M18 70 C18 56 32 47 50 47 C68 47 82 56 82 70 C82 82 68 88 50 88 C32 88 18 82 18 70 Z','#3FCB6A','#123A22',3.4)
+    +scStroke('M28 68 C34 61 43 58 52 60','#A9F7C0',3,SC_CLEAR)
+    +scShape('M50 4 C58 16 65 25 65 31 A15 15 0 0 1 35 31 C35 25 42 16 50 4 Z','#43C45A','#12351C',3.6)
+    +scStroke('M44 30 C44 25 46 21 49 17','#DFFBE6',2.6,SC_CLEAR)
+    +scDot(20,50,3.6,'#9AF0B4','#12351C',2.4)+scDot(80,54,3,'#9AF0B4','#12351C',2.4),
+  // the Coin mine: a cut in the rock with gold showing through
+  mine:
+    scShape('M2 95 C4 71 19 52 40 52 C61 52 73 71 75 95 Z','#6E7C92','#16233C',4)
+    +scShape('M60 95 C60 79 70 65 82 65 C93 65 98 80 98 95 Z','#55657A','#16233C',3.6)
+    +scStroke('M14 86 C20 73 29 64 39 61','#9DAABE',5,SC_CLEAR)
+    +scDot(50,31,18,'#F6C544','#5A3C0A',4)+scDot(50,31,10,'#FFE38A','#5A3C0A',2.6)
+    +scDot(21,66,5,'#F6C544','#5A3C0A',2.6)+scDot(70,57,4,'#F6C544','#5A3C0A',2.6),
   rocks:
     scShape('M2 96 C2 66 18 34 40 34 C62 34 72 66 72 96 Z','#6E7C92','#16233C',4)
     +scShape('M56 96 C56 74 68 52 82 52 C94 52 98 76 98 96 Z','#55657A','#16233C',4)

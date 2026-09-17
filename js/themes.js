@@ -174,6 +174,11 @@ function generateMap(){
     }
   });
 
+  // Mirror the board through its centre, so neither king is nearer to cover, to the spring or to
+  // the mine than the other. Terrain only ever lands on the middle rows, which mirror onto themselves.
+  const mirrorOf=ti=>idx(ROWS-1-ROW(ti),COLS-1-COL(ti));
+  for(let i=0;i<ROWS*COLS;i++){const j=mirrorOf(i);if(i<j)tileData[j]=tileData[i];}
+
   // ── PATHFINDING VALIDATION ──────────────────────────────────────────────────
   // Ensure at least one cardinal path (for rook) and one diagonal path (for bishop)
   // can reach from one king zone to the other. If not, remove blocking obstacles.
@@ -238,13 +243,17 @@ function generateMap(){
   // Check cardinal path (rook)
   if(!hasPath(wKiPos,bKiPos,cardinalDirs)){
     const blockers=findBlockers(wKiPos,bKiPos,cardinalDirs);
-    blockers.forEach(ti=>{tileData[ti]='';});
+    blockers.forEach(ti=>{tileData[ti]='';tileData[mirrorOf(ti)]='';});
   }
   // Check diagonal path (bishop)
   if(!hasPath(wKiPos,bKiPos,diagonalDirs)){
     const blockers=findBlockers(wKiPos,bKiPos,diagonalDirs);
-    blockers.forEach(ti=>{tileData[ti]='';});
+    blockers.forEach(ti=>{tileData[ti]='';tileData[mirrorOf(ti)]='';});
   }
+
+  // The Elixir spring and the Coin mine, on the two corners the kings left empty: each is exactly as
+  // far from one king as from the other, so the race for them starts even. (generateMap in engine.js)
+  if(ROWS===9&&COLS===9&&!campaignLevel){tileData[idx(1,1)]='spring';tileData[idx(7,7)]='mine';}
 
   // desert: mark one sandstone as mummy-spawner pyramid
   if(mapTheme==='desert'){

@@ -260,22 +260,22 @@ function tileArt(i){
 }
 
 // ── FOG OF WAR ───────────────────────────────────────────────────────────────
-// Squares out of sight lie under the map's own weather: morning mist in the forest, steamy haze in
-// the jungle, drifting dust in the desert, sea fog on the ocean. Unexplored squares are under thick
+// Squares out of sight lie under grey cloud tinged with the map's own weather: morning mist in the
+// forest, steamy haze in the jungle, drifting dust in the desert, sea fog on the ocean. Unexplored squares are under thick
 // cloud, explored ones under a thin veil of it so their terrain still shows. The cloud is one picture
 // repeating every FOG_TILES squares and pinned to the board, so it runs on from square to square.
 // Colours are opaque with a separate opacity: the puffs of one layer are drawn inside a group with
 // that opacity, so they don't darken where they overlap.
 const FOG_TILES=4, FOG_P=160; // the picture spans 4 squares, at 40 units a square
 const FOG_STYLE={
-  forest:{sky:'#A3B79A',back:'#C4D4B9',front:'#EEF5E7',ink:'#2C4624',accent:'#FFFFFF',accentA:.6,
-    veil:'rgba(206,222,196,.6)',wisp:'#F2F8EE',wispA:.55,text:'rgba(40,62,32,.8)'},
-  jungle:{sky:'#82B3A0',back:'#ABD2C1',front:'#E4F5ED',ink:'#144634',accent:'#FFFFFF',accentA:.6,
-    veil:'rgba(194,230,215,.58)',wisp:'#EEFAF5',wispA:.55,text:'rgba(16,60,44,.8)'},
-  desert:{sky:'#C8A673',back:'#E0C69C',front:'#F7E9CB',ink:'#684418',accent:'#9A6A30',accentA:.5,
-    veil:'rgba(240,222,186,.6)',wisp:'#FBF1DC',wispA:.55,text:'rgba(90,58,20,.8)'},
-  ocean:{sky:'#8CA8C3',back:'#B6CBDE',front:'#EAF2F9',ink:'#1A3860',accent:'#2B4C74',accentA:.5,
-    veil:'rgba(208,224,240,.6)',wisp:'#F3F8FC',wispA:.55,text:'rgba(24,50,86,.8)'},
+  forest:{sky:'#AAB0A8',back:'#CACEC6',front:'#F0F2EE',ink:'#363E34',accent:'#FFFFFF',accentA:.6,
+    veil:'rgba(212,217,209,.6)',wisp:'#F4F6F3',wispA:.55,text:'rgba(48,55,46,.8)'},
+  jungle:{sky:'#99A7A2',back:'#BDC8C3',front:'#ECF1EE',ink:'#2B3A35',accent:'#FFFFFF',accentA:.6,
+    veil:'rgba(210,221,217,.58)',wisp:'#F3F7F6',wispA:.55,text:'rgba(36,50,45,.8)'},
+  desert:{sky:'#B3A99A',back:'#D0C8BB',front:'#EEEAE1',ink:'#53483B',accent:'#7E6F5E',accentA:.5,
+    veil:'rgba(228,223,212,.6)',wisp:'#F4F1EB',wispA:.55,text:'rgba(71,62,50,.8)'},
+  ocean:{sky:'#9CA4AC',back:'#C2C8CE',front:'#EEF1F3',ink:'#2C3541',accent:'#3E4854',accentA:.5,
+    veil:'rgba(217,222,227,.6)',wisp:'#F6F7F8',wispA:.55,text:'rgba(40,47,58,.8)'},
 };
 function fogStyle(){return FOG_STYLE[mapTheme]||FOG_STYLE.forest;}
 

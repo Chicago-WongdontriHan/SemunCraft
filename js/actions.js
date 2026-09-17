@@ -324,7 +324,9 @@ function handleClick(i,additive){
     const sp=pieces[srcI];
     if(sp&&sp.color===mc&&srcI!==i){
       const dests=getDragDests(srcI);
-      if(dests.move.has(i)||dests.attack.has(i)||dests.merge.has(i)||dests.heal.has(i)){
+      // in a level without merging, tapping an ally the piece could merge with just selects that ally
+      const refused=campaignLevel&&campaignLevel.noMerge&&dests.merge.has(i);
+      if(!refused&&(dests.move.has(i)||dests.attack.has(i)||dests.merge.has(i)||dests.heal.has(i))){
         selectedPieces=new Set();
         executeDrop(srcI,i,dests);
         return;

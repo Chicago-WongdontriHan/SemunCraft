@@ -153,7 +153,7 @@ Four selectable themes that change visuals, obstacles, ambient wildlife, and bac
 |---|-------|-------|-------|------|
 | 1 | Pawn School | 5x5 | Forest | Destroy all enemies |
 | 2 | Narrow Pass | 3x7 | Forest | Destroy all enemies |
-| 3 | Clash in the Dunes | 11x8 | Desert | Destroy the enemy King (no merging) |
+| 3 | Clash in the Dunes | 8x8 | Desert | Destroy the enemy King (no merging; armies set up as in chess) |
 | 4 | Desert Crossing | 9x5 | Desert | Destroy all enemies |
 | 5 | Island Siege | 5x9 | Ocean | Destroy all enemies |
 | 6 | The Maze | 9x9 | Forest | Destroy all enemies |

@@ -154,6 +154,8 @@ function render(){
 // make (with a blue +) and/or a green heart for a heal. Tapping a marker takes that action.
 function guideAt(d,i){
   if(d.attack.has(i))return 'attack';
+  // a level without merging offers nothing on the allies a merge would use (dropping there is refused)
+  if(d.merge.has(i)&&campaignLevel&&campaignLevel.noMerge)return null;
   const merge=d.merge.has(i),heal=d.heal.has(i);
   if(merge&&heal)return 'merge-heal';
   if(merge)return 'merge';

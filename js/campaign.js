@@ -21,22 +21,22 @@ const CAMPAIGN_LEVELS=[
     white:[{type:'pawn',r:6,c:0},{type:'pawn',r:6,c:2},{type:'knight',r:6,c:1}],
     black:[{type:'rook',r:0,c:1},{type:'pawn',r:1,c:0},{type:'pawn',r:1,c:2}],
   },
-  // ── LEVEL 3: Clash in the Dunes (11x8) ───────────────────────────────────────────
+  // ── LEVEL 3: Clash in the Dunes (8x8) ───────────────────────────────────────────
   {
-    id:2, name:'Clash in the Dunes', desc:'A massive desert battle! Full chess-style armies with twin queens clash on an open field. Destroy the enemy king to win — but protect yours! No merging allowed.',
-    cols:11, rows:8, theme:'desert',
+    id:2, name:'Clash in the Dunes', desc:'A desert battle! Two full armies line up as in chess on an open field. Destroy the enemy king to win — but protect yours! No merging allowed.',
+    cols:8, rows:8, theme:'desert',
     allowSpawn:false, noMerge:true, turnLimit:40,
     winType:'destroy_king',
     obstacles:[],
+    // the chess setup: rook, knight, bishop, queen, king, bishop, knight, rook on the back rank
+    // (queen on the d-file, king on the e-file) and eight pawns in front
     white:[
-      // back row (row 7): rook, knight, bishop, queen, king, queen, bishop, knight, rook
-      {type:'rook',r:7,c:1},{type:'knight',r:7,c:2},{type:'bishop',r:7,c:3},{type:'queen',r:7,c:4},{type:'king',r:7,c:5},{type:'queen',r:7,c:6},{type:'bishop',r:7,c:7},{type:'knight',r:7,c:8},{type:'rook',r:7,c:9},
-      // pawn row (row 6): 9 pawns
-      {type:'pawn',r:6,c:1},{type:'pawn',r:6,c:2},{type:'pawn',r:6,c:3},{type:'pawn',r:6,c:4},{type:'pawn',r:6,c:5},{type:'pawn',r:6,c:6},{type:'pawn',r:6,c:7},{type:'pawn',r:6,c:8},{type:'pawn',r:6,c:9},
+      {type:'rook',r:7,c:0},{type:'knight',r:7,c:1},{type:'bishop',r:7,c:2},{type:'queen',r:7,c:3},{type:'king',r:7,c:4},{type:'bishop',r:7,c:5},{type:'knight',r:7,c:6},{type:'rook',r:7,c:7},
+      {type:'pawn',r:6,c:0},{type:'pawn',r:6,c:1},{type:'pawn',r:6,c:2},{type:'pawn',r:6,c:3},{type:'pawn',r:6,c:4},{type:'pawn',r:6,c:5},{type:'pawn',r:6,c:6},{type:'pawn',r:6,c:7},
     ],
     black:[
-      {type:'rook',r:0,c:1},{type:'knight',r:0,c:2},{type:'bishop',r:0,c:3},{type:'queen',r:0,c:4},{type:'king',r:0,c:5},{type:'queen',r:0,c:6},{type:'bishop',r:0,c:7},{type:'knight',r:0,c:8},{type:'rook',r:0,c:9},
-      {type:'pawn',r:1,c:1},{type:'pawn',r:1,c:2},{type:'pawn',r:1,c:3},{type:'pawn',r:1,c:4},{type:'pawn',r:1,c:5},{type:'pawn',r:1,c:6},{type:'pawn',r:1,c:7},{type:'pawn',r:1,c:8},{type:'pawn',r:1,c:9},
+      {type:'rook',r:0,c:0},{type:'knight',r:0,c:1},{type:'bishop',r:0,c:2},{type:'queen',r:0,c:3},{type:'king',r:0,c:4},{type:'bishop',r:0,c:5},{type:'knight',r:0,c:6},{type:'rook',r:0,c:7},
+      {type:'pawn',r:1,c:0},{type:'pawn',r:1,c:1},{type:'pawn',r:1,c:2},{type:'pawn',r:1,c:3},{type:'pawn',r:1,c:4},{type:'pawn',r:1,c:5},{type:'pawn',r:1,c:6},{type:'pawn',r:1,c:7},
     ],
   },
   // ── LEVEL 4: Desert Crossing (9x5) ─────────────────────────────────────────

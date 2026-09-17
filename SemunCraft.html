@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>SemunCraft</title>
 <!-- fetch the UI font with the page, so the title does not flash in a fallback face -->
-<link rel="preload" href="fonts/LilitaOne.woff2?v=20260916o" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/LilitaOne.woff2?v=20260916p" as="font" type="font/woff2" crossorigin>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 /* the game's one UI font (Lilita One, as on the title screen); ids and keys stay monospace */
@@ -15,13 +15,13 @@ html,body{width:100%;height:100%;overflow:hidden;}
 body{font-family:var(--ui-font);background:#0c1a08;color:#c8d4a0;display:flex;flex-direction:column;align-items:center;height:100vh;height:100dvh;padding:6px 10px 4px;gap:5px;background-image:radial-gradient(ellipse at 20% 10%,rgba(30,60,10,.6) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(10,40,5,.7) 0%,transparent 50%);}
 
 /* ── INTRO ── */
-@font-face{font-family:'Lilita One';src:url(fonts/LilitaOne.woff2?v=20260916o) format('woff2');font-display:swap;}
+@font-face{font-family:'Lilita One';src:url(fonts/LilitaOne.woff2?v=20260916p) format('woff2');font-display:swap;}
 /* the title screen: a war scene behind (Battle Lines on wide screens, The Clash on tall ones, from
    img/make-title-wallpapers.js), the SemunCraft title, and the menu on a translucent card. Every
    size follows --tw, the title's width, so the whole menu scales with the screen and still fits. */
 #intro{--tw:min(92vw,640px,60vh);position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;gap:calc(var(--tw)*.02);padding:12px 8px;overflow-y:auto;
-  background:#8ED6F2 url(img/title-wide.svg?v=20260916o) center bottom/cover no-repeat;}
-@media (orientation:portrait){#intro{background-image:url(img/title-tall.svg?v=20260916o);}}
+  background:#8ED6F2 url(img/title-wide.svg?v=20260916p) center bottom/cover no-repeat;}
+@media (orientation:portrait){#intro{background-image:url(img/title-tall.svg?v=20260916p);}}
 #intro-title{width:var(--tw);height:auto;display:block;flex-shrink:0;overflow:visible;}
 #intro-title text{font-family:'Lilita One',Georgia,serif;font-size:120px;text-anchor:middle;stroke-linejoin:round;}
 #intro-title .title-shadow{fill:#2A1706;stroke:#2A1706;stroke-width:20px;}
@@ -81,6 +81,9 @@ h1{font-size:18px;font-weight:400;font-family:'Lilita One',Georgia,serif;letter-
 .fog-cover{border-radius:inherit;}
 /* undergrowth: leaves in front of a piece standing in it (under its pips); a hidden enemy under Map Cheat */
 .tile-front{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;}
+/* a piece fills its square: the selection lift, the spawn pop and the fades all go on this box, and on a box
+   with no height they hung the artwork from the square's top edge, half a square too high */
+.sq>.piece{position:absolute;inset:0;}
 .piece-concealed{opacity:.45;}
 .sq.lt{background:#7a9e4c;}
 .sq.dk{background:#4a6e28;}
@@ -316,7 +319,7 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 @keyframes deepSpin{to{background-position:0 0,0 0;filter:hue-rotate(360deg);}}
 @keyframes deepPulse{0%,100%{box-shadow:inset 0 0 10px rgba(10,40,180,.4),inset 0 0 30px rgba(5,20,100,.6);}50%{box-shadow:inset 0 0 18px rgba(20,60,220,.6),inset 0 0 40px rgba(10,30,140,.8);}}
 .sq.tile-blocked{cursor:not-allowed !important;}
-.sq.tile-blocked>.piece{z-index:6 !important;position:relative;}
+.sq.tile-blocked>.piece{z-index:6 !important;}
 .spawner-arch{position:absolute;z-index:3;bottom:22%;left:50%;transform:translateX(-50%);width:20%;height:24%;background:#1a0800;border-radius:50% 50% 0 0 / 80% 80% 0 0;pointer-events:none;box-shadow:0 0 6px rgba(255,180,60,.5);}
 
 /* ── DEATH ANIMATION ── */
@@ -689,32 +692,32 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 <!-- ?v= is the release version: bump it on every release so browsers (GitHub Pages lets them
      cache files for 10 minutes) never mix old cached scripts with new ones -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-<script src="js/constants.js?v=20260916o"></script>
-<script src="js/state.js?v=20260916o"></script>
-<script src="js/audio.js?v=20260916o"></script>
-<script src="js/music.js?v=20260916o"></script>
-<script src="pieces/pieces.js?v=20260916o"></script>
-<script src="pieces/forest.js?v=20260916o"></script>
-<script src="pieces/jungle.js?v=20260916o"></script>
-<script src="pieces/desert.js?v=20260916o"></script>
-<script src="pieces/ocean.js?v=20260916o"></script>
-<script src="js/movement.js?v=20260916o"></script>
-<script src="js/themes.js?v=20260916o"></script>
-<script src="js/scenery.js?v=20260916o"></script>
-<script src="js/render.js?v=20260916o"></script>
-<script src="js/combat.js?v=20260916o"></script>
-<script src="js/animals.js?v=20260916o"></script>
-<script src="js/actions.js?v=20260916o"></script>
-<script src="js/ui.js?v=20260916o"></script>
-<script src="js/tutorial.js?v=20260916o"></script>
-<script src="js/campaign.js?v=20260916o"></script>
-<script src="js/pvp.js?v=20260916o"></script>
-<script src="js/ai.js?v=20260916o"></script>
-<script src="js/game.js?v=20260916o"></script>
-<script src="js/drag.js?v=20260916o"></script>
-<script src="js/resize.js?v=20260916o"></script>
+<script src="js/constants.js?v=20260916p"></script>
+<script src="js/state.js?v=20260916p"></script>
+<script src="js/audio.js?v=20260916p"></script>
+<script src="js/music.js?v=20260916p"></script>
+<script src="pieces/pieces.js?v=20260916p"></script>
+<script src="pieces/forest.js?v=20260916p"></script>
+<script src="pieces/jungle.js?v=20260916p"></script>
+<script src="pieces/desert.js?v=20260916p"></script>
+<script src="pieces/ocean.js?v=20260916p"></script>
+<script src="js/movement.js?v=20260916p"></script>
+<script src="js/themes.js?v=20260916p"></script>
+<script src="js/scenery.js?v=20260916p"></script>
+<script src="js/render.js?v=20260916p"></script>
+<script src="js/combat.js?v=20260916p"></script>
+<script src="js/animals.js?v=20260916p"></script>
+<script src="js/actions.js?v=20260916p"></script>
+<script src="js/ui.js?v=20260916p"></script>
+<script src="js/tutorial.js?v=20260916p"></script>
+<script src="js/campaign.js?v=20260916p"></script>
+<script src="js/pvp.js?v=20260916p"></script>
+<script src="js/ai.js?v=20260916p"></script>
+<script src="js/game.js?v=20260916p"></script>
+<script src="js/drag.js?v=20260916p"></script>
+<script src="js/resize.js?v=20260916p"></script>
 <!-- trained AI (Single Player difficulties, AI vs AI); the engine, network and weights load only when needed -->
-<script src="js/netai.js?v=20260916o"></script>
-<script src="js/aivsai.js?v=20260916o"></script>
+<script src="js/netai.js?v=20260916p"></script>
+<script src="js/aivsai.js?v=20260916p"></script>
 </body>
 </html>

@@ -111,7 +111,7 @@ function render(){
         const div=document.createElement('div');div.className='piece'+(concealedHere?' piece-concealed':'');
         if(p.newborn){const aura=document.createElement('div');aura.className='newborn-aura';div.appendChild(aura);}
         // piece artwork comes from the map theme's set in pieces/
-        const svgWrap=document.createElement('div');
+        const svgWrap=document.createElement('div');svgWrap.className='piece-art';
         svgWrap.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:1;';
         svgWrap.innerHTML=pieceSVG(p.type,p.color,mapTheme,Math.floor(sqPx*.86));
         div.appendChild(svgWrap);
@@ -223,7 +223,8 @@ function spawnFlash(i){
 
 function mergeFlash(i){
   const el=sqElAt(i);if(!el)return;
-  const p=el.querySelector('.piece');
+  // only the artwork hops (the pips stay put), and the hop stays inside the square
+  const p=el.querySelector('.piece-art')||el.querySelector('.piece');
   if(p){p.style.animation='none';void p.offsetWidth;p.style.animation='mergeFlash .55s ease-out';setTimeout(()=>{if(p)p.style.animation='';},600);}
   // two rings for merge
   const rect=el.getBoundingClientRect();

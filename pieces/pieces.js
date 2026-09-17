@@ -43,13 +43,17 @@ const siegeBarrel=paint=>'<g transform="translate(-0.16,-8.39) scale(0.956)"><g 
   +'<ellipse cx="84" cy="40" rx="5" ry="10"'+(paint?' fill="#26262E" stroke="{line}" stroke-width="3.1"':'')+'/>'
   +'</g></g>';
 
-// ring: base ring half-width; shine: highlight position; back: parts drawn behind the body
+// ring: base ring half-width; shine: highlight position; back: parts drawn behind the body;
+// halo: the outline the halo follows when a detail reaches past the body (default: the body)
 const PIECE_SHAPES={
   pawn:{ring:19,shine:[41,77],
     body:'<path d="M34 86 C34 75 41 68 50 68 C59 68 66 75 66 86 Z"/><circle cx="50" cy="54" r="14"/>',
     eyes:[[45,55],[55,55]],blush:[[40,60],[60,60]]},
   knight:{ring:24,shine:[39,75],
     body:'<path d="M29 86 C27 71 32 59 38 51 C32 44 34 30 44 23 L47 11 L56 21 C69 24 78 36 77 50 C76 58 69 61 63 58 C61 65 67 74 72 86 Z"/>',
+    // the mane stands out past the back of the neck, so the halo follows the body and mane together
+    // (stroked along the body alone, the mane covered it there)
+    halo:'<path d="M29 86 C28 82 28 78 30 75 C28 66 28 57 32 50 C30 39 35 27 44 23 L47 11 L56 21 C69 24 78 36 77 50 C76 58 69 61 63 58 C61 65 67 74 72 86 Z"/>',
     eyes:[[57,35]],blush:[[64,45]],
     // mane along the back of the neck, and a nostril
     detail:'<path d="M44 23 C35 27 30 39 32 50 C28 57 28 66 30 75 L37 70 C35 62 36 55 40 50 C37 41 39 31 47 27 Z" fill="{shade}" stroke="{line}" stroke-width="3" stroke-linejoin="round"/>'
@@ -129,7 +133,7 @@ function pieceSVG(type,color,theme,size,plain){
     +(shape.noRing?'':`<ellipse cx="50" cy="86" rx="${shape.ring}" ry="7" fill="${team.ring}" stroke="${team.line}" stroke-width="3.5"/>`)
     +fill(!plain&&set.base?set.base(shape.ring):'')
     +fill(shape.back)
-    +`<g fill="none" stroke="${team.halo}" stroke-width="11" stroke-linejoin="round">${shape.body}</g>`
+    +`<g fill="none" stroke="${team.halo}" stroke-width="11" stroke-linejoin="round">${shape.halo||shape.body}</g>`
     +`<g fill="${team.body}" stroke="${team.line}" stroke-width="4" stroke-linejoin="round">${shape.body}</g>`
     +`<ellipse cx="${sx}" cy="${sy}" rx="4" ry="7" fill="#fff" opacity="${team.shine}" transform="rotate(18 ${sx} ${sy})"/>`
     +fill(shape.detail)+pieceFace(shape,team)+fill(shape.crown)

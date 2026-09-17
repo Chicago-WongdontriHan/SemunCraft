@@ -268,18 +268,25 @@ function mmDarken(hex,amt){
   return 'rgb('+r+','+g+','+b+')';
 }
 
+// the minimap in the right panel, and on phones (where that panel is hidden) a small one in the
+// board's bottom-left corner while the board is zoomed in, both showing where the view sits
 function renderMinimap(){
-  const mm=document.getElementById('minimap');
-  if(!mm)return;
-  mm.innerHTML='';
-  // fit within the panel box: compute both width- and height-constrained cell sizes
-  // and pick the smaller so aspect ratio is preserved without overflowing.
   const rp=document.getElementById('right-panel');
   const availW=rp?Math.max(60,rp.clientWidth-12):96;
   const maxH=rp?Math.max(60,Math.floor(rp.clientHeight*0.28)):150;
-  const cellByW=Math.floor(availW/COLS);
-  const cellByH=Math.floor(maxH/ROWS);
-  const cell=Math.max(4,Math.min(cellByW,cellByH));
+  const panel=document.getElementById('minimap');
+  if(panel)drawMinimap(panel,Math.max(4,Math.min(Math.floor(availW/COLS),Math.floor(maxH/ROWS))));
+  const corner=document.getElementById('minimap-mobile');
+  if(corner){
+    // only where the panel's minimap can't be seen, and only when there is a view to point out
+    const show=boardZoom>1.01&&(!panel||panel.offsetParent===null);
+    corner.style.display=show?'grid':'none';
+    if(show)drawMinimap(corner,Math.max(3,Math.floor(Math.min(84/COLS,84/ROWS))));
+  }
+}
+
+function drawMinimap(mm,cell){
+  mm.innerHTML='';
   mm.style.width=(cell*COLS)+'px';
   mm.style.height=(cell*ROWS)+'px';
   mm.style.gridTemplateColumns='repeat('+COLS+','+cell+'px)';
@@ -299,9 +306,6 @@ function renderMinimap(){
       if(vis==='unknown'){
         // the same grey as the board's fog
         d.style.background=fogStyle().solid;
-        if(inViewRC(r,c)){
-          d.style.outline='1px solid rgba(200,240,80,.9)';
-        }
         mm.appendChild(d);
         continue;
       }
@@ -323,9 +327,6 @@ function renderMinimap(){
         const overlay=document.createElement('div');
         overlay.style.cssText='position:absolute;inset:0;background:'+fogStyle().veil+';pointer-events:none;';
         d.appendChild(overlay);
-        if(inViewRC(r,c)){
-          d.style.outline='1px solid rgba(200,240,80,.9)';
-        }
         mm.appendChild(d);
         continue;
       }
@@ -345,12 +346,6 @@ function renderMinimap(){
           d.style.background=mmDarken(dk,0.45);
         }
       }
-      // viewport highlight
-      if(inViewRC(r,c)){
-        d.style.outline='1px solid rgba(200,240,80,.9)';
-        // slightly brighten the viewport area
-        d.style.filter='brightness(1.35)';
-      }
       // piece dot
       const p=pieces[i];
       // an enemy hidden in undergrowth stays off the minimap too
@@ -362,4 +357,26 @@ function renderMinimap(){
       mm.appendChild(d);
     }
   }
+  // the field of view as one box, which follows the board's smooth zoom
+  if(boardZoom>1.01){
+    const v=viewRect(),box=document.createElement('div');
+    box.className='mm-view';
+    box.style.cssText='position:absolute;pointer-events:none;border:1.5px solid rgba(220,250,110,.95);'
+      +'border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.45),0 0 6px rgba(200,240,80,.35);'
+      +'background:rgba(220,250,110,.14);'
+      +'left:'+(2+v.c0*cell)+'px;top:'+(2+v.r0*cell)+'px;'
+      +'width:'+(v.cols*cell)+'px;height:'+(v.rows*cell)+'px;';
+    mm.appendChild(box);
+  }
+}
+
+// tapping a minimap centres the view there
+function minimapTap(e,mm){
+  if(boardZoom<=1.01)return;
+  e.preventDefault();e.stopPropagation();
+  const r=mm.getBoundingClientRect();
+  const u=(e.clientX-r.left-2)/Math.max(1,r.width-4),w=(e.clientY-r.top-2)/Math.max(1,r.height-4);
+  const clip=document.getElementById('board-clip').getBoundingClientRect();
+  [boardPanX,boardPanY]=clampPan(boardZoom,clip.width/2-u*COLS*sqPx,clip.height/2-w*ROWS*sqPx);
+  applyBoardView();updateViewportControls();
 }

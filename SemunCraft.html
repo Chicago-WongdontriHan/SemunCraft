@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>SemunCraft</title>
 <!-- fetch the UI font with the page, so the title does not flash in a fallback face -->
-<link rel="preload" href="fonts/LilitaOne.woff2?v=20260917a" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/LilitaOne.woff2?v=20260917b" as="font" type="font/woff2" crossorigin>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 /* a double tap must not zoom the page: the board has its own pinch and zoom (js/drag.js) */
@@ -17,13 +17,13 @@ html,body{width:100%;height:100%;overflow:hidden;}
 body{font-family:var(--ui-font);background:#0c1a08;color:#c8d4a0;display:flex;flex-direction:column;align-items:center;height:100vh;height:100dvh;padding:6px 10px 4px;gap:5px;background-image:radial-gradient(ellipse at 20% 10%,rgba(30,60,10,.6) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(10,40,5,.7) 0%,transparent 50%);}
 
 /* ── INTRO ── */
-@font-face{font-family:'Lilita One';src:url(fonts/LilitaOne.woff2?v=20260917a) format('woff2');font-display:swap;}
+@font-face{font-family:'Lilita One';src:url(fonts/LilitaOne.woff2?v=20260917b) format('woff2');font-display:swap;}
 /* the title screen: a war scene behind (Battle Lines on wide screens, The Clash on tall ones, from
    img/make-title-wallpapers.js), the SemunCraft title, and the menu on a translucent card. Every
    size follows --tw, the title's width, so the whole menu scales with the screen and still fits. */
 #intro{--tw:min(92vw,640px,60vh);position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;gap:calc(var(--tw)*.02);padding:12px 8px;overflow-y:auto;
-  background:#8ED6F2 url(img/title-wide.svg?v=20260917a) center bottom/cover no-repeat;}
-@media (orientation:portrait){#intro{background-image:url(img/title-tall.svg?v=20260917a);}}
+  background:#8ED6F2 url(img/title-wide.svg?v=20260917b) center bottom/cover no-repeat;}
+@media (orientation:portrait){#intro{background-image:url(img/title-tall.svg?v=20260917b);}}
 #intro-title{width:var(--tw);height:auto;display:block;flex-shrink:0;overflow:visible;}
 #intro-title text{font-family:'Lilita One',Georgia,serif;font-size:120px;text-anchor:middle;stroke-linejoin:round;}
 #intro-title .title-shadow{fill:#2A1706;stroke:#2A1706;stroke-width:20px;}
@@ -379,7 +379,11 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 .sq.fog-explored{filter:saturate(.35);}
 .sq.fog-explored .fog-cover{position:absolute;inset:0;z-index:9;pointer-events:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2);}
 #board-inner{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;}
-#minimap{display:grid;margin:4px auto;background:#0a1406;border:1px solid #2a4018;padding:2px;box-sizing:content-box;}
+#minimap{position:relative;display:grid;margin:4px auto;background:#0a1406;border:1px solid #2a4018;padding:2px;box-sizing:content-box;}
+/* phones: a small map in the board's bottom-left corner showing where the view is (js/ui.js) */
+#minimap-mobile{position:absolute;left:6px;bottom:6px;z-index:60;display:none;grid-auto-flow:row;background:rgba(8,16,5,.86);
+  border:1px solid rgba(200,240,80,.45);border-radius:4px;padding:2px;box-sizing:content-box;touch-action:none;
+  box-shadow:0 2px 10px rgba(0,0,0,.7);}
 .mm-cell{box-sizing:border-box;}
 
 /* ── MAP SELECTOR ── */
@@ -418,7 +422,8 @@ body.theme-ocean{--tile-frame:#1e3c74;}
   #actions{flex-direction:row;flex-wrap:wrap;justify-content:center;gap:6px;width:auto;}
   /* finger-sized buttons */
   #actions .act-btn,#btn-zoom-in,#btn-zoom-out,#btn-mapcheat{width:auto;min-height:36px;padding:6px 12px;font-size:12px !important;white-space:nowrap;}
-  #minimap{display:none !important;} /* hide minimap in portrait */
+  #minimap{display:none !important;} /* the corner map takes its place */
+  .pan-arrow{display:none !important;} /* the board is dragged to slide it */
   #hint-box{display:none !important;}
   #pvp-section{display:none !important;}
   #pvp-label{display:none !important;}
@@ -465,6 +470,7 @@ body.theme-ocean{--tile-frame:#1e3c74;}
   #right-panel{max-width:100px !important;padding:3px 2px;}
   #actions .act-btn{padding:3px 4px;font-size:8px;}
   #minimap{display:none !important;}
+  .pan-arrow{display:none !important;}
   #hint-box{display:none !important;}
   #pvp-section{display:none !important;}
   #pvp-label{display:none !important;}
@@ -608,6 +614,7 @@ body.theme-ocean{--tile-frame:#1e3c74;}
   </div>
 
   <div id="board-wrap">
+    <div id="minimap-mobile" onpointerdown="minimapTap(event,this)"></div>
     <div id="board-clip">
       <div id="board-inner">
         <div id="board"></div>
@@ -633,7 +640,7 @@ body.theme-ocean{--tile-frame:#1e3c74;}
     </div>
     <div class="tier-divider" style="width:100%"></div>
     <div class="panel-label">Map View</div>
-    <div id="minimap"></div>
+    <div id="minimap" onpointerdown="minimapTap(event,this)"></div>
     <div style="display:flex;gap:4px;justify-content:center;">
       <button class="act-btn" id="btn-zoom-in" onclick="zoomIn()" style="flex:1;">🔍+</button>
       <button class="act-btn" id="btn-zoom-out" onclick="zoomOut()" style="flex:1;">🔍−</button>
@@ -685,32 +692,32 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 <!-- ?v= is the release version: bump it on every release so browsers (GitHub Pages lets them
      cache files for 10 minutes) never mix old cached scripts with new ones -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-<script src="js/constants.js?v=20260917a"></script>
-<script src="js/state.js?v=20260917a"></script>
-<script src="js/audio.js?v=20260917a"></script>
-<script src="js/music.js?v=20260917a"></script>
-<script src="pieces/pieces.js?v=20260917a"></script>
-<script src="pieces/forest.js?v=20260917a"></script>
-<script src="pieces/jungle.js?v=20260917a"></script>
-<script src="pieces/desert.js?v=20260917a"></script>
-<script src="pieces/ocean.js?v=20260917a"></script>
-<script src="js/movement.js?v=20260917a"></script>
-<script src="js/themes.js?v=20260917a"></script>
-<script src="js/scenery.js?v=20260917a"></script>
-<script src="js/render.js?v=20260917a"></script>
-<script src="js/combat.js?v=20260917a"></script>
-<script src="js/animals.js?v=20260917a"></script>
-<script src="js/actions.js?v=20260917a"></script>
-<script src="js/ui.js?v=20260917a"></script>
-<script src="js/tutorial.js?v=20260917a"></script>
-<script src="js/campaign.js?v=20260917a"></script>
-<script src="js/pvp.js?v=20260917a"></script>
-<script src="js/ai.js?v=20260917a"></script>
-<script src="js/game.js?v=20260917a"></script>
-<script src="js/drag.js?v=20260917a"></script>
-<script src="js/resize.js?v=20260917a"></script>
+<script src="js/constants.js?v=20260917b"></script>
+<script src="js/state.js?v=20260917b"></script>
+<script src="js/audio.js?v=20260917b"></script>
+<script src="js/music.js?v=20260917b"></script>
+<script src="pieces/pieces.js?v=20260917b"></script>
+<script src="pieces/forest.js?v=20260917b"></script>
+<script src="pieces/jungle.js?v=20260917b"></script>
+<script src="pieces/desert.js?v=20260917b"></script>
+<script src="pieces/ocean.js?v=20260917b"></script>
+<script src="js/movement.js?v=20260917b"></script>
+<script src="js/themes.js?v=20260917b"></script>
+<script src="js/scenery.js?v=20260917b"></script>
+<script src="js/render.js?v=20260917b"></script>
+<script src="js/combat.js?v=20260917b"></script>
+<script src="js/animals.js?v=20260917b"></script>
+<script src="js/actions.js?v=20260917b"></script>
+<script src="js/ui.js?v=20260917b"></script>
+<script src="js/tutorial.js?v=20260917b"></script>
+<script src="js/campaign.js?v=20260917b"></script>
+<script src="js/pvp.js?v=20260917b"></script>
+<script src="js/ai.js?v=20260917b"></script>
+<script src="js/game.js?v=20260917b"></script>
+<script src="js/drag.js?v=20260917b"></script>
+<script src="js/resize.js?v=20260917b"></script>
 <!-- trained AI (Single Player difficulties, AI vs AI); the engine, network and weights load only when needed -->
-<script src="js/netai.js?v=20260917a"></script>
-<script src="js/aivsai.js?v=20260917a"></script>
+<script src="js/netai.js?v=20260917b"></script>
+<script src="js/aivsai.js?v=20260917b"></script>
 </body>
 </html>

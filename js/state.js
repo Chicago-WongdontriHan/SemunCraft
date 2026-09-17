@@ -97,10 +97,6 @@ function viewRect(){
   const s=Math.max(1,sqPx);
   return{c0:-boardPanX/s,r0:-boardPanY/s,cols:boardFrameW()/s,rows:boardFrameH()/s};
 }
-function inViewRC(r,c){
-  const v=viewRect();
-  return c+1>v.c0+.001&&c<v.c0+v.cols-.001&&r+1>v.r0+.001&&r<v.r0+v.rows-.001;
-}
 function canPanN(){return boardPanY<-.5;}
 function canPanS(){return boardPanY>boardFrameH()-sqPx*ROWS+.5;}
 function canPanW(){return boardPanX<-.5;}

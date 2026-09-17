@@ -37,14 +37,11 @@ function resizeBoard(){
   const isLandscapeMobile=!isPortrait&&vh<=500&&vw>vh;
 
   let availW,availH,panelWL,panelWR;
-  // portrait: when zoomed in, leave a gutter around the board so the pan arrows sit beside it
-  // (otherwise they hang off the screen edges and cover the buttons)
-  const gutter=isPortrait&&boardZoom>1.01?32:0;
   if(isPortrait){
     // portrait mobile: board gets full width, ~60% of viewport height
     // don't measure panel heights (unreliable on mobile) — use fixed viewport fractions
-    availW=vw-8-gutter*2;
-    availH=Math.floor(vh*0.6)-gutter*2;
+    availW=vw-8;
+    availH=Math.floor(vh*0.6);
     panelWL=0;panelWR=0;
   }else{
     // desktop / landscape: panels are side columns
@@ -67,7 +64,7 @@ function resizeBoard(){
   const thBorder=(THEMES[mapTheme]||THEMES.forest).border;
   wrap.style.borderColor=thBorder;
   // the frame is border-box, so its 3px border has to be added or it would cut the last row and column
-  wrap.style.width=(frameW+6)+'px';wrap.style.height=(frameH+6)+'px';wrap.style.margin=gutter?gutter+'px':'';
+  wrap.style.width=(frameW+6)+'px';wrap.style.height=(frameH+6)+'px';wrap.style.margin='';
   const boardEl=document.getElementById('board');
   boardEl.style.width=boardW+'px';boardEl.style.height=boardH+'px';
   const innerEl=document.getElementById('board-inner');

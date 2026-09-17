@@ -182,7 +182,8 @@ Four selectable themes that change visuals, obstacles, ambient wildlife, and bac
 ## Audio
 
 - **Medieval BGM** (`js/music.js`): each map theme has its own dance tune in a medieval mode -- a lively D Dorian estampie (forest; the jungle plays it brighter in D Mixolydian and a little quicker), a slow E Phrygian lament (desert) and a lilting 6/8 A Aeolian carol (ocean). A small synthesized band plays it: recorder, shawm, fiddle and harp take turns on the melody over lute chords or harp arpeggios, a bass, a drone and bells, with a pop drum beat: kick, a snare backbeat and hi-hats (on the beat in the quieter section, every eighth note in the fuller one), tom fills at section ends and crash cymbals on section starts. The dance's two sections trade instruments each time the tune repeats, and repeats add ornaments and a second voice a fifth below. No audio files needed.
-- **SFX**: All sound effects are synthesized in real-time (spawn, move, attack, hit, kill, merge, heal, win, lose, etc.).
+- **SFX**: All sound effects are synthesized in real-time (move, attack, hit, heal, win, lose, etc.).
+- **Piece voices** (`PIECE_VOICES` in `js/audio.js`): every piece type has its own voice, heard when one arrives (a spawned pawn, a merged piece, the rooks of an unsieged tower) and, sinking, when one falls: a squeaky pip for the pawn, hoofbeats and a whinny for the knight, chapel bells for the bishop, a stone thud and a low horn for the rook, a trumpet fanfare for the queen, a deep horn over a drum for the king and iron clanks with a cannon boom for the siege tower. Both sides' pieces use them, and every heal (a bishop's drop, a locked heal at the end of the turn, Black's heals) plays a warm, rising healing chime.
 - Volume controls for BGM and SFX are available in the settings modal.
 
 ---

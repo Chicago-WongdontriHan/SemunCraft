@@ -300,7 +300,7 @@ function applyActions(actions,color){
     if(over)return;
     if(action==='heal'){
       const t=pieces[target];if(!t||t.color!==color)return;
-      t.hp=Math.min(t.maxHp,t.hp+2);flashSq(target,'heal-flash');
+      t.hp=Math.min(t.maxHp,t.hp+2);flashSq(target,'heal-flash');SFX.heal();
       const bp=pieces[attacker];if(bp&&bp.type==='bishop'){bp.mana=Math.max(0,(bp.mana||0)-1);bp.lastHealTurn=whiteTurnCount;}
       msgs.push('healed '+t.type+'@'+sqName(target)+' '+t.hp+'HP');
     }else{
@@ -314,7 +314,7 @@ function applyActions(actions,color){
       // track hits on black pieces for reactive AI
       if(color==='w'&&t.color==='b'&&t.hp>0)blackHitBy.push({target,attacker});
       if(t.hp<=0){
-        showDeath(target,t.color,t.type);SFX.kill();
+        showDeath(target,t.color,t.type);SFX.fall(t.type);
         pieces[target]=null;
         msgs.push(t.type+'@'+sqName(target)+' ✕');
         if(campaignLevel){const cr=checkCampaignWin();if(cr)over=true;}

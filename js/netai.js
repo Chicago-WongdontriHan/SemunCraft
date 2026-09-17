@@ -100,9 +100,12 @@ function netAiMove(level,chain){
   addLog('Black '+netAiDescribe(a,p,events));
   render();
   if(a.type==='move'&&p)animatePieceMove(a.from,a.to,p.type,'b',true,()=>{},p.type==='knight'?260:180);
-  else if(a.type==='spawn')spawnFlash(a.to);
-  else if(a.type==='merge'||a.type==='unsiege')mergeFlash(a.type==='merge'?a.to:a.from);
-  else if(a.type==='heal')flashSq(a.to,'heal-flash');
+  else if(a.type==='spawn'){spawnFlash(a.to);SFX.arrive('pawn');}
+  else if(a.type==='merge'||a.type==='unsiege'){
+    mergeFlash(a.type==='merge'?a.to:a.from);
+    const m=events.find(e=>e.type==='merge');SFX.arrive(a.type==='unsiege'?'rook':m&&m.piece);
+  }
+  else if(a.type==='heal'){flashSq(a.to,'heal-flash');SFX.heal();}
   // after a knight's L-jump merge Black moves again
   const board=pieces;
   if(continues&&chain<20){setTimeout(()=>{if(!over&&pieces===board)netAiMove(level,chain+1);},350);return;}

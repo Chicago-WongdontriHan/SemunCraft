@@ -21,7 +21,7 @@ function bSpawn(bKi,cands,count){
     pieces[sorted[k]]={type:'pawn',color:'b',hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,firstMove:true};
     blackSpawnHistory.push(blackTurnCount);
   }
-  addLog('Black spawns '+n+'x pawn ('+blackSpawnRemaining()+' left)');
+  addLog('Black spawns '+n+'x pawn ('+blackSpawnRemaining()+' left)');SFX.arrive('pawn');
   render();
   for(let k=0;k<n;k++) spawnFlash(sorted[k]);
   finishBlackTurn();return true;
@@ -37,13 +37,13 @@ function bMergeQueen(limit){
     if(k===b)continue;
     if(adj8(k).includes(b)){
       const nq={type:'queen',color:'b',hp:STATS.queen.hp,maxHp:STATS.queen.maxHp};
-      pieces[k]=null;pieces[b]=nq;addLog('Black merges->queen');render();mergeFlash(b);finishBlackTurn();return true;
+      pieces[k]=null;pieces[b]=nq;addLog('Black merges->queen');SFX.arrive('queen');render();mergeFlash(b);finishBlackTurn();return true;
     }
   }
   return false;
 }
 
-function bMerge(ft,tt,rt,limit){if(campaignLevel&&campaignLevel.noMerge)return false;const bp=bPieces();const pool={pawn:bp.pawns,knight:bp.knights,bishop:bp.bishops,rook:bp.rooks};const cur={knight:bp.knights.length,bishop:bp.bishops.length,rook:bp.rooks.length};if(cur[rt]!==undefined&&cur[rt]>=limit)return false;for(const a of(pool[ft]||[]))for(const b of(pool[tt]||[])){if(a===b)continue;if(adj8(a).includes(b)){const nb3={type:rt,color:'b',hp:STATS[rt].hp,maxHp:STATS[rt].maxHp};if(rt==='bishop')nb3.mana=1;pieces[a]=null;pieces[b]=nb3;addLog('Black merges->'+rt);render();mergeFlash(b);finishBlackTurn();return true;}}return false;}
+function bMerge(ft,tt,rt,limit){if(campaignLevel&&campaignLevel.noMerge)return false;const bp=bPieces();const pool={pawn:bp.pawns,knight:bp.knights,bishop:bp.bishops,rook:bp.rooks};const cur={knight:bp.knights.length,bishop:bp.bishops.length,rook:bp.rooks.length};if(cur[rt]!==undefined&&cur[rt]>=limit)return false;for(const a of(pool[ft]||[]))for(const b of(pool[tt]||[])){if(a===b)continue;if(adj8(a).includes(b)){const nb3={type:rt,color:'b',hp:STATS[rt].hp,maxHp:STATS[rt].maxHp};if(rt==='bishop')nb3.mana=1;pieces[a]=null;pieces[b]=nb3;addLog('Black merges->'+rt);SFX.arrive(rt);render();mergeFlash(b);finishBlackTurn();return true;}}return false;}
 
 function bMoveAll(dirStr){
   const M={N:[-1,0],S:[1,0],E:[0,1],W:[0,-1],NE:[-1,1],NW:[-1,-1],SE:[1,1],SW:[1,-1]};
@@ -596,8 +596,8 @@ function applyBlackMove(text){
   text=text.slice(Math.max(0,text.toUpperCase().search(/MERGE|MOVE_ALL|PRODUCE/)));
   const up=text.toUpperCase();const coords=text.match(/[a-lA-L](?:1[0-2]|[1-9])/g)||[];
   const bKi=pieces.findIndex(p=>p&&p.color==='b'&&p.type==='king');
-  if(up.startsWith('MERGE')&&coords.length>=2){const a=sqFrom(coords[0]),b=sqFrom(coords[1]),pa=pieces[a],pb=pieces[b];if(a>=0&&b>=0&&pa?.color==='b'&&pb?.color==='b'&&adj8(a).includes(b)){const nt={'pawn+pawn':'knight','knight+pawn':'bishop','knight+knight':'rook','bishop+knight':'queen','rook+rook':'siege'}[[pa.type,pb.type].sort().join('+')];if(nt){const nb2={type:nt,color:'b',hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};if(nt==='bishop')nb2.mana=1;if(nt==='siege')nb2.sieged=true;pieces[a]=null;pieces[b]=nb2;addLog('Black merges->'+nt);render();mergeFlash(b);finishBlackTurn();return;}}}
+  if(up.startsWith('MERGE')&&coords.length>=2){const a=sqFrom(coords[0]),b=sqFrom(coords[1]),pa=pieces[a],pb=pieces[b];if(a>=0&&b>=0&&pa?.color==='b'&&pb?.color==='b'&&adj8(a).includes(b)){const nt={'pawn+pawn':'knight','knight+pawn':'bishop','knight+knight':'rook','bishop+knight':'queen','rook+rook':'siege'}[[pa.type,pb.type].sort().join('+')];if(nt){const nb2={type:nt,color:'b',hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};if(nt==='bishop')nb2.mana=1;if(nt==='siege')nb2.sieged=true;pieces[a]=null;pieces[b]=nb2;addLog('Black merges->'+nt);SFX.arrive(nt);render();mergeFlash(b);finishBlackTurn();return;}}}
   if(up.startsWith('MOVE_ALL')){const dm=up.match(/\b(NE|NW|SE|SW|N|S|E|W)\b/);if(dm){bMoveAll(dm[1]);return;}}
-  if(up.startsWith('PRODUCE')&&coords.length>=1){const sq=sqFrom(coords[0]);if(sq>=0&&!pieces[sq]&&!isTileBlocked(sq)&&blackSpawnRemaining()>0&&bKi>=0&&adj8(bKi).includes(sq)){pieces[sq]={type:'pawn',color:'b',hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,firstMove:true};blackSpawnHistory.push(blackTurnCount);addLog('Black spawns@'+sqName(sq));render();spawnFlash(sq);finishBlackTurn();return;}}
+  if(up.startsWith('PRODUCE')&&coords.length>=1){const sq=sqFrom(coords[0]);if(sq>=0&&!pieces[sq]&&!isTileBlocked(sq)&&blackSpawnRemaining()>0&&bKi>=0&&adj8(bKi).includes(sq)){pieces[sq]={type:'pawn',color:'b',hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,firstMove:true};blackSpawnHistory.push(blackTurnCount);addLog('Black spawns@'+sqName(sq));SFX.arrive('pawn');render();spawnFlash(sq);finishBlackTurn();return;}}
   aiFallback();
 }

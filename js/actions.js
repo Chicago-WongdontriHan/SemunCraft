@@ -47,7 +47,7 @@ function unsiegePiece(i){
   const sharedHp=Math.max(1,Math.min(STATS.rook.maxHp,p.hp));
   pieces[i]={type:'rook',color:p.color,hp:sharedHp,maxHp:STATS.rook.maxHp};
   if(dest)pieces[dest]={type:'rook',color:p.color,hp:sharedHp,maxHp:STATS.rook.maxHp};
-  addLog('Unsieged into '+(dest?'2 rooks':'1 rook'));SFX.merge();
+  addLog('Unsieged into '+(dest?'2 rooks':'1 rook'));SFX.arrive('rook');
   mergeFlash(i);if(dest)setTimeout(()=>spawnFlash(dest),120);
   tutCheckAction('unsiege');
   selectedPieces=new Set();endTurn();
@@ -189,7 +189,7 @@ function executeDrop(from,to,dests){
         const nt='queen';
         const newPiece={type:nt,color:p.color,hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};
         pieces[from]=null;pieces[to]=newPiece;
-        addLog('Merged to '+nt+'@'+sqName(to));SFX.merge();tutCheckAction('merge');
+        addLog('Merged to '+nt+'@'+sqName(to));SFX.arrive(nt);tutCheckAction('merge');
         movedThisTurn=-1;
         setTimeout(()=>mergeFlash(to),50);endTurn();
       };
@@ -233,7 +233,7 @@ function executeDrop(from,to,dests){
       if(nt==='bishop')newPiece.mana=1;
       if(nt==='siege')newPiece.sieged=true;
       pieces[from]=null;pieces[to]=newPiece;
-      addLog('Merged to '+nt+'@'+sqName(to));SFX.merge();tutCheckAction('merge');
+      addLog('Merged to '+nt+'@'+sqName(to));SFX.arrive(nt);tutCheckAction('merge');
       movedThisTurn=-1;
       setTimeout(()=>mergeFlash(to),50);
       const knightLJump=p.type==='knight'&&kJumps(from).includes(to);
@@ -356,7 +356,7 @@ function handleClick(i,additive){
       if(isTileBlocked(i)){setStatus('Cannot spawn on obstacle');kingSelected=false;render();return;}
       pieces[i]={type:'pawn',color:mc,hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,newborn:true,firstMove:true};
       spawnHistory.push(whiteTurnCount);
-      addLog('Spawned pawn ('+spawnRemaining()+' left)');spawnFlash(i);SFX.spawn();kingSelected=false;tutCheckAction('spawn');endTurn();}
+      addLog('Spawned pawn ('+spawnRemaining()+' left)');spawnFlash(i);SFX.arrive('pawn');kingSelected=false;tutCheckAction('spawn');endTurn();}
     else{kingSelected=false;render();setStatus('Your turn');}
     return;
   }
@@ -443,7 +443,7 @@ function doSpawn(){
   const best=bKi>=0?cands.reduce((a,b)=>cheb(a,bKi)<cheb(b,bKi)?a:b):cands[0];
   pieces[best]={type:'pawn',color:mc,hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,newborn:true,firstMove:true};
   spawnHistory.push(whiteTurnCount);
-  addLog('Spawned pawn ('+spawnRemaining()+' left)');spawnFlash(best);SFX.spawn();tutCheckAction('spawn');endTurn();
+  addLog('Spawned pawn ('+spawnRemaining()+' left)');spawnFlash(best);SFX.arrive('pawn');tutCheckAction('spawn');endTurn();
 }
 
 // arrow keys: pieces only move by drag or tap, so point the player there
@@ -470,7 +470,7 @@ function doMergeAll(){
         const match=(pi.type===a&&pj.type===b)||(a!==b&&pi.type===b&&pj.type===a);
         if(!match)continue;
         pieces[i]=null;pieces[j]={type:r,color:mc,hp:STATS[r].hp,maxHp:STATS[r].maxHp};
-        addLog('Merged '+a+'+'+b+' -> '+r+'@'+sqName(j));SFX.merge();
+        addLog('Merged '+a+'+'+b+' -> '+r+'@'+sqName(j));SFX.arrive(r);
         movedThisTurn=-1;
         setTimeout(()=>mergeFlash(j),50);
         endTurn();return;

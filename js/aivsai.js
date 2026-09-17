@@ -116,7 +116,7 @@ function aiVsAiStep(){
         else if(e.type==='spawn')spawnFlash(e.to);
         else if(e.type==='merge'||e.type==='unsiege')mergeFlash(e.type==='merge'?e.to:e.from);
       }
-      aiVsAiSound(a,events);
+      aiVsAiSound(a,events,before);
     }
     aiVsAiSchedule(s.over?1200:AIVSAI_DELAY);
   };
@@ -125,13 +125,16 @@ function aiVsAiStep(){
   else show();
 }
 
-function aiVsAiSound(a,events){
-  if(events.some(e=>e.type==='attack'&&e.killed))SFX.kill();
-  else if(events.some(e=>e.type==='attack'))SFX.attack();
-  else if(a.type==='merge'||a.type==='unsiege')SFX.merge();
-  else if(a.type==='spawn')SFX.spawn();
-  else if(a.type==='heal'||a.type==='healLock')SFX.heal();
-  else SFX.move();
+// the move's own sound (a new piece's voice, a heal, or a step), then the voice of every piece that fell
+function aiVsAiSound(a,events,before){
+  const merge=events.find(e=>e.type==='merge'),kills=events.filter(e=>e.type==='attack'&&e.killed);
+  if(a.type==='merge')SFX.arrive(merge&&merge.piece);
+  else if(a.type==='unsiege')SFX.arrive('rook');
+  else if(a.type==='spawn')SFX.arrive('pawn');
+  else if(a.type==='heal'||events.some(e=>e.type==='heal'))SFX.heal();
+  else if(!kills.length&&events.some(e=>e.type==='attack'))SFX.attack();
+  else if(!kills.length)SFX.move();
+  kills.forEach(e=>{if(before[e.to])SFX.fall(before[e.to].type);});
 }
 
 function aiVsAiDescribe(color,ai,a,events,before){

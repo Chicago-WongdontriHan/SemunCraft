@@ -92,7 +92,7 @@ function updateAnimals(dt){
               const ax=na.x*sqPx,ay=na.y*sqPx;
               const board=document.getElementById('board');
               if(board){const br=board.getBoundingClientRect();emojiAnim(na.emoji,br.left+ax,br.top+ay,tc.x,tc.y,sqPx*.5,220,()=>{});}
-              if(tp.hp<=0){showDeath(tgt,tp.color,tp.type);pieces[tgt]=null;if(campaignLevel){const cr=checkCampaignWin();if(cr)over=true;}else if(tp.type==='king')over=true;}
+              if(tp.hp<=0){showDeath(tgt,tp.color,tp.type);SFX.fall(tp.type);pieces[tgt]=null;if(campaignLevel){const cr=checkCampaignWin();if(cr)over=true;}else if(tp.type==='king')over=true;}
               render();
             }
           }

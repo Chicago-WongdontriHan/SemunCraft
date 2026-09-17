@@ -135,19 +135,30 @@ function bgmThump(t,f0,f1,peak,len){
   osc.connect(amp);amp.connect(bgmGain);osc.start(t);osc.stop(t+len+.02);bgmTrack(osc);
 }
 // (start time, velocity 0..1)
+// Every hit is a tuned drum or a ringing metal partial: short bright noise bursts sounded like a gas
+// stove's igniter clicking, so the only noise left is a little low skin rustle under the drums.
 const PERC={
   // frame drum: low thump with a little skin noise
   dum:(t,v)=>{bgmThump(t,130,48,.17*v,.42);bgmNoiseHit(t,.02*v,.05,[['lowpass',600]]);},
-  // rim click
-  tek:(t,v)=>bgmNoiseHit(t,.055*v,.07,[['bandpass',2100,.9]]),
+  // tap on the drum's rim: a short tuned knock
+  tek:(t,v)=>bgmThump(t,340,230,.075*v,.1),
   // woodblock
   tok:(t,v)=>bgmThump(t,1000,760,.07*v,.07),
-  // tambourine jingles
-  jingle:(t,v)=>bgmNoiseHit(t,.045*v,.22,[['highpass',5500],['bandpass',8500,1.1]]),
+  // tambourine: the jingles' metal ring, without the hiss
+  jingle:(t,v)=>[[3150,.012],[4720,.008],[6300,.005]].forEach(([f,a])=>bgmTone({type:'sine',f,t,d:.25,peak:a*v,attack:.002,decay:true})),
   // finger cymbals
   zill:(t,v)=>[[2380,.022],[3620,.014],[5170,.008]].forEach(([f,a])=>bgmTone({type:'sine',f,t,d:1.2,peak:a*v,attack:.003,decay:true})),
-  // short roll that swells into the next beat
-  roll:(t,v)=>{for(let k=0;k<7;k++)bgmNoiseHit(t+k*.055,(.018+k*.006)*v,.06,[['bandpass',1300,.8]]);},
+  // a roll on the low drum that swells into the next beat
+  roll:(t,v)=>{for(let k=0;k<6;k++)bgmThump(t+k*.07,150+k*6,95,(.05+k*.018)*v,.12);},
+  // war drum under the dance: a deep boom, with a mid punch so small speakers still hear it
+  boom:(t,v)=>{bgmThump(t,95,42,.24*v,.5);bgmThump(t,180,90,.06*v,.07);bgmNoiseHit(t,.012*v,.04,[['lowpass',300]]);},
+  // the off-beat drum: a tuned body with a soft low rustle
+  snap:(t,v)=>{bgmThump(t,210,150,.1*v,.14);bgmNoiseHit(t,.015*v,.08,[['lowpass',1000]]);},
+};
+// the steady drum beat under every bar: boom on the strong beats, snap between them
+const DRUM_BEAT={
+  4:[[0,'boom',1],[1,'snap',.75],[2,'boom',.85],[3,'snap',.8]],
+  6:[[0,'boom',1],[1.5,'snap',.6],[3,'boom',.8],[4.5,'snap',.7]],
 };
 
 // hurdy-gurdy style drone on the tonic and fifth, retuned when the map theme changes
@@ -192,9 +203,10 @@ function bgmPlayPhrase(tune,step,t,round){
     }
     // bass on the two strong beats of the bar
     [0,tune.bar/2].forEach(off=>INSTRUMENTS.bass(tuneFreq(tune,root-14),bt+off*u,u*tune.bar/2*0.9,1));
-    // drums, with a fill closing every second phrase
+    // drums, with a fill closing every second phrase, over the steady beat
     const groove=tune.grooves[step%2===1&&b===bars-1?'fill':sec.groove];
     groove.forEach(([off,hit,v])=>PERC[hit](bt+off*u,v));
+    (DRUM_BEAT[tune.bar]||DRUM_BEAT[4]).forEach(([off,hit,v])=>PERC[hit](bt+off*u,v));
   });
   return bars*tune.bar*u;
 }
@@ -209,6 +221,7 @@ function bgmTick(){
     if(s.step>=TUNE_FORM.length){
       // one breathing bar of drone and soft drums, then the dance comes around again
       tune.grooves.light.forEach(([off,hit,v])=>PERC[hit](s.t+off*tune.unit,v*.7));
+      PERC.boom(s.t,.6);
       s.t+=tune.bar*tune.unit;s.step=0;s.round++;
       continue;
     }

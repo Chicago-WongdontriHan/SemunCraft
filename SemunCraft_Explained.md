@@ -94,7 +94,7 @@ The core progression mechanic. Drag one piece onto an adjacent ally to merge the
 - Zoom is continuous, from the whole board (1x) up to 4x. Pinch with two fingers, turn the mouse wheel over the board, or press **🔍+ / 🔍−**; the wheel and a pinch zoom around the point under your fingers, the buttons around the middle of the board.
 - When the board is bigger than its frame, drag it to slide the view (one finger, or the mouse anywhere that isn't one of your own pieces). The arrows around the board still slide it a square at a time (hold to keep going), and dragging one of your own pieces still moves that piece.
 - The whole board is always drawn inside a frame that clips it, so zooming and sliding never change what the game knows; while a pinch or a drag is in progress the board is only moved and scaled, and the squares are laid out again at the new size when it ends (`applyBoardView` / `previewBoardView` / `commitBoardView` in `js/resize.js`, the gestures in `js/drag.js`).
-- The minimap in the right panel shows the whole map, your fog, and a box around the part you are looking at. On phones, where that panel is hidden, the same map appears at the left of the button strip under the board while you are zoomed in. Tapping either one jumps the view there.
+- The minimap in the right panel shows the whole map, your fog, and a box around the part you are looking at. On phones, where that panel is hidden, the same map sits at the left of the button strip under the board at all times, so the strip never changes size; the box appears on it once you zoom in. Tapping either one jumps the view there.
 
 ---
 
@@ -215,7 +215,7 @@ An interactive 7-step tutorial:
 - **Center**: The game board with HP pips, bishop mana pips, coordinate labels, and pan arrows when zoomed in (the board can also be dragged to slide it).
 - **Right panel**: Move hint (Easy mode), action buttons (Spawn, Merge, Skip, Menu), and Map View (minimap, zoom, Map Cheat).
 - **Bottom bar**: Game log and an AI "thinking" indicator dot.
-- **Mobile**: In portrait, the resource counters become a strip above the board and the buttons wrap into finger-sized rows below it (unit cards, minimap and hint are hidden). The status line wraps, and the board keeps its full size when zoomed in: the pan arrows are hidden (drag the board instead) and a small map in the button strip below shows where the view is. A double tap never zooms the page (the board has its own pinch zoom). On short landscape screens the side panels shrink and the layout is centered. Touch devices get touch wording (tap a siege tower twice instead of right-clicking).
+- **Mobile**: In portrait, the resource counters become a strip above the board and the buttons wrap into finger-sized rows below it (unit cards, minimap and hint are hidden). The status line wraps, and the board keeps its full size when zoomed in: the pan arrows are hidden (drag the board instead) and the small map in the button strip below shows where the view is. A double tap never zooms the page (the board has its own pinch zoom). On short landscape screens the side panels shrink and the layout is centered. Touch devices get touch wording (tap a siege tower twice instead of right-clicking).
 
 ### Controls
 

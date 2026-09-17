@@ -334,8 +334,9 @@ function renderMinimap(){
   if(panel)drawMinimap(panel,Math.max(4,Math.min(Math.floor(availW/COLS),Math.floor(maxH/ROWS))));
   const corner=document.getElementById('minimap-mobile');
   if(corner){
-    // only where the panel's minimap can't be seen, and only when there is a view to point out
-    const show=boardZoom>1.01&&(!panel||panel.offsetParent===null);
+    // wherever the panel's minimap can't be seen, and always: the strip of buttons it sits in must
+    // not change size when the board is zoomed
+    const show=!panel||panel.offsetParent===null;
     corner.style.display=show?'grid':'none';
     // the strip the map sits in makes room for it at its left
     const rp=document.getElementById('right-panel');

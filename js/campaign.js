@@ -206,7 +206,7 @@ function startCampaignLevel(levelIdx){
   // campaign map cheat: default ON unless the level explicitly opts out
   mapCheat=(lv.mapCheatDefault===false)?false:true;
   const mcBtn=document.getElementById('btn-mapcheat');
-  if(mcBtn)mcBtn.textContent='🗺 Map Cheat: '+(mapCheat?'ON':'OFF');
+  if(mcBtn)mcBtn.innerHTML=uiLabel('map','Map Cheat: '+(mapCheat?'ON':'OFF'));
   selectedPieces=new Set();
   // reset viewport to show entire campaign board
   resetView();

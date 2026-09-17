@@ -1,4 +1,35 @@
 // ── UI ───────────────────────────────────────────────────────────────────────
+// ── ICONS ────────────────────────────────────────────────────────────────────
+// Every button's icon is drawn here in one line style, so no button falls back to an emoji that
+// wouldn't match the rest. A button says which one it wants with data-icon and keeps its text.
+const UI_LINE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">';
+const UI_ICONS={
+  spawn:'<path d="M12 20v-7"/><path d="M12 13c-3.6 0-5.5-2.2-5.5-5.5C10 7.5 12 9.6 12 13z"/>'
+    +'<path d="M12 13c0-3.4 2-5.5 5.5-5.5C17.5 10.8 15.6 13 12 13z"/><path d="M7 20h10"/>',
+  merge:'<path d="M5 4v4a5 5 0 0 0 5 5h4a5 5 0 0 1 5 5v2"/><path d="M19 4v4a5 5 0 0 1-5 5"/><path d="M16 17l3 3 3-3"/>',
+  skip:'<path d="M5 5l9 7-9 7z"/><path d="M18 5v14"/>',
+  menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
+  zoomIn:'<circle cx="11" cy="11" r="6.5"/><path d="M15.8 15.8L21 21M11 8.5v5M8.5 11h5"/>',
+  zoomOut:'<circle cx="11" cy="11" r="6.5"/><path d="M15.8 15.8L21 21M8.5 11h5"/>',
+  map:'<path d="M3 6.5l6-2.5 6 2.5 6-2.5v13l-6 2.5-6-2.5-6 2.5z"/><path d="M9 4v13M15 6.5v13"/>',
+  audio:'<path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z"/><path d="M16 9.2a4 4 0 0 1 0 5.6"/><path d="M18.6 6.6a7.5 7.5 0 0 1 0 10.8"/>',
+  host:'<path d="M12 12.8a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6z"/><path d="M8.2 7.2a5.4 5.4 0 0 0 0 7.6M15.8 7.2a5.4 5.4 0 0 1 0 7.6"/>'
+    +'<path d="M5.4 4.4a9.4 9.4 0 0 0 0 13.2M18.6 4.4a9.4 9.4 0 0 1 0 13.2"/><path d="M12 13v7"/>',
+  refresh:'<path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v4h-4"/>',
+  prev:'<path d="M14.5 6l-6 6 6 6"/>',
+  next:'<path d="M9.5 6l6 6-6 6"/>',
+};
+// a button's contents: the icon, then its words
+function uiLabel(icon,text){
+  return (UI_ICONS[icon]?UI_LINE+UI_ICONS[icon]+'</svg>':'')+(text?'<span>'+text+'</span>':'');
+}
+function fillUiIcons(){
+  document.querySelectorAll('[data-icon]').forEach(el=>{
+    if(el.querySelector('svg'))return;
+    el.innerHTML=uiLabel(el.dataset.icon,el.textContent.trim());
+  });
+}
+
 function setStatus(t){document.getElementById('status').textContent=t;}
 function addLog(msg){logLines.push(msg);if(logLines.length>4)logLines.shift();document.getElementById('log').textContent=logLines.join(' · ');}
 
@@ -12,21 +43,21 @@ function syncUI(){
   if(spawnBtn){
     if(campaignLevel&&!campaignLevel.allowSpawn){
       spawnBtn.disabled=true;
-      spawnBtn.textContent='Spawn (N/A)';
+      spawnBtn.innerHTML=uiLabel('spawn','Spawn (N/A)');
     }else{
       // how many are left is on the Coin counter in the resources panel
       const rem=spawnRemaining();
-      spawnBtn.textContent='🌱 Spawn';
-      if(!locked&&rem<=0)spawnBtn.disabled=true;
+      spawnBtn.innerHTML=uiLabel('spawn','Spawn');
+      if(!locked&&rem<1)spawnBtn.disabled=true;
     }
   }
   const mergeBtn=document.getElementById('btn-merge');
   if(mergeBtn){
     if(campaignLevel&&campaignLevel.noMerge){
       mergeBtn.disabled=true;
-      mergeBtn.textContent='Merge (N/A)';
+      mergeBtn.innerHTML=uiLabel('merge','Merge (N/A)');
     }else{
-      mergeBtn.textContent='⚗ Merge';
+      mergeBtn.innerHTML=uiLabel('merge','Merge');
     }
   }
   renderResources();
@@ -62,7 +93,7 @@ function showMoveHint(){
       if(d.move.size){const mv=[...d.move].reduce((a,b)=>cheb(a,eki)<cheb(b,eki)?a:b);hint='Move pawn at '+sqName(best.i)+' toward enemy';}
     }
   }
-  if(!hint&&spawnRemaining()>0)hint='Spawn a pawn next to your King';
+  if(!hint&&spawnRemaining()>=1)hint='Spawn a pawn next to your King';
   if(!hint)hint='Skip turn';
   hb.textContent='Hint: '+hint;
   hb.style.display='block';
@@ -125,12 +156,10 @@ function renderResources(){
   const sides=both?['w','b']:[myColor()];
   const chip=(icon,text)=>'<span class="res-chip">'+icon+'<b>'+text+'</b></span>';
   el.innerHTML=sides.map(color=>{
-    const coin=noSpawn?'—':coinCount(color);
-    // when the next coin arrives, for the side that is counting turns
-    const turns=color==='w'?6-(whiteTurnCount%6)||6:6-(blackTurnCount%6)||6;
+    const coin=noSpawn?'—':coinText(coinCount(color));
     return '<div class="res-side">'+(both?'<span class="res-team">'+(color==='w'?'White':'Black')+'</span>':'')
       +chip(RES_COIN,coin)+chip(RES_ELIXIR,elixirCount(color))
-      +(noSpawn?'':'<span class="res-note">+1 in '+turns+'t</span>')+'</div>';
+      +(noSpawn?'':'<span class="res-note">+'+COIN_PER_TURN+'/turn</span>')+'</div>';
   }).join('');
 }
 
@@ -228,7 +257,7 @@ function showFloatingMessage(text,tileIdx,opts){
 function toggleMapCheat(){
   mapCheat=!mapCheat;
   const btn=document.getElementById('btn-mapcheat');
-  if(btn)btn.textContent='🗺 Map Cheat: '+(mapCheat?'ON':'OFF');
+  if(btn)btn.innerHTML=uiLabel('map','Map Cheat: '+(mapCheat?'ON':'OFF'));
   render(); renderMinimap();
 }
 

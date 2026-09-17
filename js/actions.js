@@ -346,17 +346,17 @@ function handleClick(i,additive){
   if(p&&p.color===mc&&p.type==='king'){
     // tapping the king again puts it down; otherwise it opens in spawn mode while pawns are left
     if(kingSelected||selectedPieces.has(i)){kingSelected=false;selectedPieces=new Set();render();setStatus('Your turn');return;}
-    setKingMode(i,spawnRemaining()>0?'spawn':'move');
+    setKingMode(i,spawnRemaining()>=1?'spawn':'move');
     return;
   }
   if(!p&&kingSelected){
     if(ki>=0&&adj8(ki).includes(i)){
       const rs=spawnRemaining();
-      if(rs<=0){setStatus('No spawn charges left');kingSelected=false;render();return;}
+      if(rs<1){setStatus('Not enough Coin for a pawn');kingSelected=false;render();return;}
       if(isTileBlocked(i)){setStatus('Cannot spawn on obstacle');kingSelected=false;render();return;}
       pieces[i]={type:'pawn',color:mc,hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,newborn:true,firstMove:true};
       spawnHistory.push(whiteTurnCount);
-      addLog('Spawned pawn ('+spawnRemaining()+' left)');spawnFlash(i);SFX.arrive('pawn');kingSelected=false;tutCheckAction('spawn');endTurn();}
+      addLog('Spawned pawn ('+coinText(spawnRemaining())+' Coin left)');spawnFlash(i);SFX.arrive('pawn');kingSelected=false;tutCheckAction('spawn');endTurn();}
     else{kingSelected=false;render();setStatus('Your turn');}
     return;
   }
@@ -392,7 +392,7 @@ let kingChooser=null;
 function setKingMode(ki,mode){
   if(mode==='spawn'){
     selectedPieces=new Set();kingSelected=true;
-    setStatus('Tap a ghost pawn to spawn it ('+spawnRemaining()+' left)');
+    setStatus('Tap a ghost pawn to spawn it ('+coinText(spawnRemaining())+' Coin)');
   }else{
     kingSelected=false;selectedPieces=new Set([ki]);
     setStatus('Tap a marker to move the king');
@@ -404,7 +404,7 @@ function showKingChooser(ki,mode){
   closeKingChooser();
   if(!sqElAt(ki))return;
   const box=document.createElement('div');box.id='king-choice';
-  const left=spawnRemaining();
+  const left=Math.floor(spawnRemaining());
   [['♟ Spawn ('+left+')','spawn',left>0],['♚ Move','move',true]].forEach(([label,m,enabled])=>{
     const b=document.createElement('button');
     b.className='king-choice-btn'+(m===mode?' on':'');b.textContent=label;b.disabled=!enabled;
@@ -435,7 +435,7 @@ function syncKingChooser(){
 function doSpawn(){
   if(over||thinking||!isMyTurn())return;
   const mc=myColor();
-  if(spawnRemaining()<=0){setStatus('No spawn charges left (+1 in '+(6-whiteTurnCount%6)+' turns)');return;}
+  if(spawnRemaining()<1){setStatus('Not enough Coin for a pawn (+0.25 a turn)');return;}
   const ki=pieces.findIndex(p=>p&&p.color===mc&&p.type==='king');
   const bKi=pieces.findIndex(p=>p&&p.color!==mc&&p.type==='king');
   if(ki<0)return;
@@ -443,7 +443,7 @@ function doSpawn(){
   const best=bKi>=0?cands.reduce((a,b)=>cheb(a,bKi)<cheb(b,bKi)?a:b):cands[0];
   pieces[best]={type:'pawn',color:mc,hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,newborn:true,firstMove:true};
   spawnHistory.push(whiteTurnCount);
-  addLog('Spawned pawn ('+spawnRemaining()+' left)');spawnFlash(best);SFX.arrive('pawn');tutCheckAction('spawn');endTurn();
+  addLog('Spawned pawn ('+coinText(spawnRemaining())+' Coin left)');spawnFlash(best);SFX.arrive('pawn');tutCheckAction('spawn');endTurn();
 }
 
 // arrow keys: pieces only move by drag or tap, so point the player there

@@ -138,6 +138,7 @@ document.addEventListener('keydown',e=>{
 
 window.addEventListener('load',()=>{
   document.body.className='theme-'+mapTheme;
+  fillUiIcons();
   resizeBoard();resizeBoard();
   renderPcCards();
   const startOnce=()=>{if(!bgmPaused)startBgm();document.removeEventListener('pointerdown',startOnce);document.removeEventListener('keydown',startOnce);};

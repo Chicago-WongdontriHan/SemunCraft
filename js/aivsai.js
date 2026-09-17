@@ -50,7 +50,7 @@ function aiVsAiNewMatch(){
   document.body.className='theme-'+s.theme;
   tileData=s.tiles.slice();
   mapCheat=true;exploredTiles=new Set();
-  const cheat=document.getElementById('btn-mapcheat');if(cheat)cheat.textContent='🗺 Map Cheat: ON';
+  const cheat=document.getElementById('btn-mapcheat');if(cheat)cheat.innerHTML=uiLabel('map','Map Cheat: ON');
   resetView();
   logLines=[];document.getElementById('log').textContent='';
   selectedPieces=new Set();kingSelected=false;targetMode=false;targetSrc=-1;

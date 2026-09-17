@@ -410,7 +410,7 @@ function startTutorial(){
   // tutorial always runs with full map visibility
   mapCheat=true;
   const mcBtn=document.getElementById('btn-mapcheat');
-  if(mcBtn)mcBtn.textContent='🗺 Map Cheat: ON';
+  if(mcBtn)mcBtn.innerHTML=uiLabel('map','Map Cheat: ON');
   generateMap();
   animals=[];
   animalDivs.forEach(el=>el.remove());animalDivs.clear();

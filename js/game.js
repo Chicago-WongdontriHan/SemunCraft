@@ -32,7 +32,7 @@ function initGame(){
   exploredTiles=new Set();
   // regular games start fogged (the tutorial and campaign set their own default)
   mapCheat=false;
-  const mcBtn=document.getElementById('btn-mapcheat');if(mcBtn)mcBtn.textContent='🗺 Map Cheat: OFF';
+  const mcBtn=document.getElementById('btn-mapcheat');if(mcBtn)mcBtn.innerHTML=uiLabel('map','Map Cheat: OFF');
   const tc=document.getElementById('turn-counter');if(tc)tc.textContent='Turn 0';
   animalDivs.forEach(el=>el.remove());animalDivs.clear();
   // single-player: reuse title-screen map; PvP always regenerates

@@ -12,8 +12,8 @@ function bPieces(){const r={pawns:[],knights:[],bishops:[],rooks:[],queens:[]};f
 
 function bSpawn(bKi,cands,count){
   if(!cands.length)return false;
-  const rem=blackSpawnRemaining();
-  if(rem<=0)return false;
+  const rem=Math.floor(blackSpawnRemaining());
+  if(rem<1)return false;
   const wKi=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='king');
   const n=Math.min(count||1,cands.length,rem);
   const sorted=wKi>=0?[...cands].sort((a,b)=>cheb(a,wKi)-cheb(b,wKi)):cands;
@@ -21,7 +21,7 @@ function bSpawn(bKi,cands,count){
     pieces[sorted[k]]={type:'pawn',color:'b',hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,firstMove:true};
     blackSpawnHistory.push(blackTurnCount);
   }
-  addLog('Black spawns '+n+'x pawn ('+blackSpawnRemaining()+' left)');SFX.arrive('pawn');
+  addLog('Black spawns '+n+'x pawn ('+coinText(blackSpawnRemaining())+' Coin left)');SFX.arrive('pawn');
   render();
   for(let k=0;k<n;k++) spawnFlash(sorted[k]);
   finishBlackTurn();return true;
@@ -537,7 +537,7 @@ function buildStateDesc(){
   let s='BOARD ('+COLS+'x'+ROWS+', files a-'+FILES[COLS-1]+', ranks 1-'+ROWS+'):\n';for(let i=0;i<ROWS*COLS;i++){const p=pieces[i];if(p)s+=sqName(i)+': '+(p.color==='b'?'B':'W')+' '+p.type+' HP='+p.hp+'/'+p.maxHp+'\n';}
   const obstacles=[];for(let i=0;i<ROWS*COLS;i++){if(isTileBlocked(i))obstacles.push(sqName(i));}
   s+='OBSTACLES: '+(obstacles.join(',')||'none')+'\n';
-  const bKi=pieces.findIndex(p=>p&&p.color==='b'&&p.type==='king');const bp=bPieces();const adjE=bKi>=0&&blackSpawnRemaining()>0?adj8(bKi).filter(i=>!pieces[i]&&!isTileBlocked(i)):[];
+  const bKi=pieces.findIndex(p=>p&&p.color==='b'&&p.type==='king');const bp=bPieces();const adjE=bKi>=0&&blackSpawnRemaining()>=1?adj8(bKi).filter(i=>!pieces[i]&&!isTileBlocked(i)):[];
   const stratDesc={pawn_troops:'Spam pawns, rush.',knight_attack:'Build knights, attack.',pawn_knight:'2 knights + pawn shields.',bishop_pawn:'Build bishops for healing+advance.',rook_pawn:'Climb the merge chain to rook and queen.'}[aiStrategy]||'';
   s+='\nSTRATEGY: '+stratDesc+'\nACTIONS (one only):\n1. PRODUCE <sq> spawn a pawn next to your king; available: '+(adjE.map(sqName).join(',')||'none')+'\n2. MOVE_ALL <DIR> advance one pawn or knight toward N/S/E/W/NE/NW/SE/SW\n3. MERGE <sq1> <sq2> two adjacent pieces: pawn+pawn=knight, pawn+knight=bishop, knight+knight=rook, knight+bishop=queen, rook+rook=siege\n   pairs: ';
   const pairs=[];
@@ -598,6 +598,6 @@ function applyBlackMove(text){
   const bKi=pieces.findIndex(p=>p&&p.color==='b'&&p.type==='king');
   if(up.startsWith('MERGE')&&coords.length>=2){const a=sqFrom(coords[0]),b=sqFrom(coords[1]),pa=pieces[a],pb=pieces[b];if(a>=0&&b>=0&&pa?.color==='b'&&pb?.color==='b'&&adj8(a).includes(b)){const nt={'pawn+pawn':'knight','knight+pawn':'bishop','knight+knight':'rook','bishop+knight':'queen','rook+rook':'siege'}[[pa.type,pb.type].sort().join('+')];if(nt){const nb2={type:nt,color:'b',hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};if(nt==='bishop')nb2.mana=1;if(nt==='siege')nb2.sieged=true;pieces[a]=null;pieces[b]=nb2;addLog('Black merges->'+nt);SFX.arrive(nt);render();mergeFlash(b);finishBlackTurn();return;}}}
   if(up.startsWith('MOVE_ALL')){const dm=up.match(/\b(NE|NW|SE|SW|N|S|E|W)\b/);if(dm){bMoveAll(dm[1]);return;}}
-  if(up.startsWith('PRODUCE')&&coords.length>=1){const sq=sqFrom(coords[0]);if(sq>=0&&!pieces[sq]&&!isTileBlocked(sq)&&blackSpawnRemaining()>0&&bKi>=0&&adj8(bKi).includes(sq)){pieces[sq]={type:'pawn',color:'b',hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,firstMove:true};blackSpawnHistory.push(blackTurnCount);addLog('Black spawns@'+sqName(sq));SFX.arrive('pawn');render();spawnFlash(sq);finishBlackTurn();return;}}
+  if(up.startsWith('PRODUCE')&&coords.length>=1){const sq=sqFrom(coords[0]);if(sq>=0&&!pieces[sq]&&!isTileBlocked(sq)&&blackSpawnRemaining()>=1&&bKi>=0&&adj8(bKi).includes(sq)){pieces[sq]={type:'pawn',color:'b',hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,firstMove:true};blackSpawnHistory.push(blackTurnCount);addLog('Black spawns@'+sqName(sq));SFX.arrive('pawn');render();spawnFlash(sq);finishBlackTurn();return;}}
   aiFallback();
 }

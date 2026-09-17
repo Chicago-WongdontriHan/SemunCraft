@@ -16,7 +16,7 @@ const PRELUDE=`
 var bgmPlaying=false,bgmPaused=true,bgmVol=0,sfxVol=0,audioCtx=null;
 const SFX=new Proxy({},{get:()=>function(){}});
 function startBgm(){} function stopBgm(){}
-function pieceSVG(){return '';}
+function pieceSVG(){return '';} function uiLabel(icon,text){return text||'';} function fillUiIcons(){}
 function render(){} function sqElAt(){return __fakeEl();} function flashSq(){} function spawnFlash(){} function mergeFlash(){}
 function setStatus(){} function addLog(m){logLines.push(m);if(logLines.length>4)logLines.shift();}
 function syncUI(){} function showMoveHint(){} function showGameOver(){} function hideGameOver(){}

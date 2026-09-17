@@ -54,7 +54,7 @@ The core progression mechanic. Drag one piece onto an adjacent ally to merge the
 ## Spawning
 
 - The **King** spawns pawns on adjacent empty tiles: click the King, then an empty tile next to it (or press **Spawn** to place one on the free tile closest to the enemy King).
-- Spawn quota starts at **8** and increases by 1 every 6 turns (`8 + floor(turnCount / 6)`). The AI has its own quota on the same schedule.
+- Coin starts at **8** and earns **0.25 a turn** (`8 + turnCount * 0.25`, `COIN_START` / `COIN_PER_TURN` in `js/state.js`, mirrored in `js/engine.js`). A pawn from the King costs 1 Coin, so spawning waits until a whole Coin is in hand. The AI earns Coin on the same terms.
 - Spawning is your only way to create new units -- everything else comes from merging. Campaign levels don't allow spawning.
 
 ---
@@ -207,10 +207,11 @@ An interactive 7-step tutorial:
 ## UI Layout
 
 - **Title screen**: the SemunCraft title over a war scene drawn from the game's own pieces, including the combined-unit designs (Guardian, Paladin, Mage) and cannons: *Battle Lines* on wide screens (two armies on a rolling checkerboard field, each king on its castle roof) and *The Clash* on tall ones (the armies meeting with spears, cannonballs and smoke). The scenes are `img/title-wide.svg` and `img/title-tall.svg`, drawn by `node img/make-title-wallpapers.js`. The menu sits on a translucent card and scales with the screen.
+- **Design** (the `--leather-*`, `--gold*`, `--parch*` and `--btn-*` tokens at the top of `SemunCraft.html`): everything outside the board is one system — leather panels in the map's own colour behind a gold frame, section headers on gold ribbons with a notched foot, bevelled plaque buttons (solid gold for the main one on a panel), and sunken boxes for anything that shows a value. A map theme only re-sets the tokens, so the panels, bars, buttons, popups, the settings card, the tutorial card and the overlays all follow it. Button icons are drawn in one line style in `UI_ICONS` (`js/ui.js`) and requested with `data-icon`, so no button falls back to an emoji.
 - **Font**: all UI text uses Lilita One (`fonts/LilitaOne.woff2`, SIL Open Font License in `fonts/OFL.txt`) through the `--ui-font` variable; room/peer IDs and the API key field stay monospace so similar characters stay distinct.
 - **Top bar**: Game title, optional Anthropic API key (Claude plays Black on Hard), status text, turn counter, and ⚙ Audio settings.
 - **Left panel**: The Coin and Elixir counters and paginated unit reference cards.
-- **Resources** (`renderResources` in `js/ui.js`): **Coin** is what the King spends to spawn pawns and **Elixir** is the army's magic. Neither is a pool the rules keep yet. Coin reads the spawn allowance the game already tracks (8 to start, one more every 6 turns, which is why the Spawn button no longer prints a count). Elixir has no rule behind it at all — nothing earns or spends it — so it reads 0; a bishop's mana is its own heal charge, shown on the piece, and is not this resource. In AI vs AI both sides' counters are shown.
+- **Resources** (`renderResources` in `js/ui.js`): **Coin** is what the King spends to spawn pawns (8 to start, 0.25 a turn, 1 a pawn, so the count is often a fraction and the panel shows the rate) and **Elixir** is the army's magic. Elixir has no rule behind it at all — nothing earns or spends it — so it reads 0; a bishop's mana is its own heal charge, shown on the piece, and is not this resource. In AI vs AI both sides' counters are shown.
 - **Center**: The game board with HP pips, bishop mana pips, coordinate labels, and pan arrows when zoomed in (the board can also be dragged to slide it).
 - **Right panel**: Move hint (Easy mode), action buttons (Spawn, Merge, Skip, Menu), and Map View (minimap, zoom, Map Cheat).
 - **Bottom bar**: Game log and an AI "thinking" indicator dot.

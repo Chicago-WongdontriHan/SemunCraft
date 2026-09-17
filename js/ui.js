@@ -100,9 +100,9 @@ function renderPcCards(){
 }
 
 // ── RESOURCES ────────────────────────────────────────────────────────────────
-// Coin pays for the pawns the King spawns and Elixir is the magic the army holds. The rules don't
-// keep either as a pool yet, so the panel reads them off what the game already tracks: Coin is the
-// spawn allowance (8, and one more every 6 turns) and Elixir the mana on that side's bishops.
+// Coin pays for the pawns the King spawns and Elixir is meant for the magic units. Neither is a pool
+// the rules keep yet: Coin reads the spawn allowance the game already tracks (8, and one more every
+// 6 turns), and Elixir has no rule behind it at all, so it reads 0 until one is written.
 const RES_COIN='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.4" fill="#F5C443" stroke="#3A2614" stroke-width="2.3"/>'
   +'<circle cx="12" cy="12" r="5.2" fill="none" stroke="#3A2614" stroke-width="1.5" opacity=".5"/>'
   +'<ellipse cx="9" cy="8.4" rx="2" ry="1.2" fill="#fff" opacity=".6" transform="rotate(-28 9 8.4)"/></svg>';
@@ -115,10 +115,9 @@ function coinCount(color){
   if(gameMode==='aivsai'&&aiVsAi&&typeof SemunEngine!=='undefined')return SemunEngine.spawnRemaining(aiVsAi.s,color);
   return color===myColor()?spawnRemaining():blackSpawnRemaining();
 }
-function elixirCount(color){
-  const board=(gameMode==='aivsai'&&aiVsAi)?aiVsAi.s.board:pieces;
-  return board.reduce((n,p)=>n+(p&&p.color===color&&p.type==='bishop'?(p.mana||0):0),0);
-}
+// Elixir has no rule behind it yet: nothing earns or spends it, so it reads 0 for both sides.
+// (A bishop's mana is its own heal charge, shown on the piece, and is not this resource.)
+function elixirCount(color){return 0;}
 function renderResources(){
   const el=document.getElementById('resources');if(!el)return;
   const noSpawn=campaignLevel&&campaignLevel.allowSpawn===false;

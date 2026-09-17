@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>SemunCraft</title>
 <!-- fetch the UI font with the page, so the title does not flash in a fallback face -->
-<link rel="preload" href="fonts/LilitaOne.woff2?v=20260917o" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/LilitaOne.woff2?v=20260917p" as="font" type="font/woff2" crossorigin>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 /* a double tap must not zoom the page: the board has its own pinch and zoom (js/drag.js) */
@@ -61,13 +61,13 @@ html,body{width:100%;height:100%;overflow:hidden;}
 body{font-family:var(--ui-font);background:#0c1a08;color:#c8d4a0;display:flex;flex-direction:column;align-items:center;height:100vh;height:100dvh;padding:6px 10px 4px;gap:5px;background-image:radial-gradient(ellipse at 20% 10%,rgba(30,60,10,.6) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(10,40,5,.7) 0%,transparent 50%);}
 
 /* ── INTRO ── */
-@font-face{font-family:'Lilita One';src:url(fonts/LilitaOne.woff2?v=20260917o) format('woff2');font-display:swap;}
+@font-face{font-family:'Lilita One';src:url(fonts/LilitaOne.woff2?v=20260917p) format('woff2');font-display:swap;}
 /* the title screen: a war scene behind (Battle Lines on wide screens, The Clash on tall ones, from
    img/make-title-wallpapers.js), the SemunCraft title, and the menu on a translucent card. Every
    size follows --tw, the title's width, so the whole menu scales with the screen and still fits. */
 #intro{--tw:min(92vw,640px,60vh);position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;gap:calc(var(--tw)*.02);padding:12px 8px;overflow-y:auto;
-  background:#8ED6F2 url(img/title-wide.svg?v=20260917o) center bottom/cover no-repeat;}
-@media (orientation:portrait){#intro{background-image:url(img/title-tall.svg?v=20260917o);}}
+  background:#8ED6F2 url(img/title-wide.svg?v=20260917p) center bottom/cover no-repeat;}
+@media (orientation:portrait){#intro{background-image:url(img/title-tall.svg?v=20260917p);}}
 #intro-title{width:var(--tw);height:auto;display:block;flex-shrink:0;overflow:visible;}
 #intro-title text{font-family:'Lilita One',Georgia,serif;font-size:120px;text-anchor:middle;stroke-linejoin:round;}
 #intro-title .title-shadow{fill:#2A1706;stroke:#2A1706;stroke-width:20px;}
@@ -394,6 +394,12 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 #pan-w{left:-52px;top:50%;transform:translateY(-50%);}
 #pan-e{right:-52px;top:50%;transform:translateY(-50%);}
 #board-clip{position:absolute;inset:0;overflow:hidden;border-radius:3px;}
+/* scrying: the squares a bishop may light, and the ones her sight is holding open */
+.sq.scry-target{box-shadow:inset 0 0 0 calc(var(--tile-ring,1.5px) + 2px) #7FC8FF,inset 0 0 12px rgba(127,200,255,.45);cursor:crosshair;}
+.sq.scry-lit{box-shadow:inset 0 0 0 calc(var(--tile-ring,1.5px) + 2px) rgba(127,200,255,.85),inset 0 0 14px rgba(127,200,255,.35);}
+.scry-count{position:absolute;top:2px;right:3px;z-index:8;font-family:var(--ui-font);font-size:9px;line-height:1;
+  color:#DCEEFF;text-shadow:0 1px 2px rgba(0,0,0,.9);pointer-events:none;}
+
 /* a campaign level's goal square: the gate to reach, or the floor to hold */
 .sq.goal-tile{box-shadow:inset 0 0 0 calc(var(--tile-ring,1.5px) + 2px) var(--gold-lit),inset 0 0 14px rgba(240,201,74,.5);
   animation:goalPulse 1.6s ease-in-out infinite;}
@@ -692,6 +698,7 @@ body.theme-ocean{--tile-frame:#1e3c74;}
     <div id="actions">
       <button class="act-btn" id="btn-spawn" data-icon="spawn" onclick="doSpawn()">Spawn</button>
       <button class="act-btn" id="btn-merge" data-icon="merge" onclick="doMergeAll()">Merge</button>
+      <button class="act-btn" id="btn-scry" data-icon="scry" onclick="startScry()">Scry (2)</button>
       <button class="act-btn" id="btn-skip" data-icon="skip" onclick="doSkip()">Skip</button>
       <button class="act-btn gold" id="btn-new" data-icon="menu" onclick="goIntro()">Menu</button>
     </div>
@@ -749,32 +756,32 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 <!-- ?v= is the release version: bump it on every release so browsers (GitHub Pages lets them
      cache files for 10 minutes) never mix old cached scripts with new ones -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-<script src="js/constants.js?v=20260917o"></script>
-<script src="js/state.js?v=20260917o"></script>
-<script src="js/audio.js?v=20260917o"></script>
-<script src="js/music.js?v=20260917o"></script>
-<script src="pieces/pieces.js?v=20260917o"></script>
-<script src="pieces/forest.js?v=20260917o"></script>
-<script src="pieces/jungle.js?v=20260917o"></script>
-<script src="pieces/desert.js?v=20260917o"></script>
-<script src="pieces/ocean.js?v=20260917o"></script>
-<script src="js/movement.js?v=20260917o"></script>
-<script src="js/themes.js?v=20260917o"></script>
-<script src="js/scenery.js?v=20260917o"></script>
-<script src="js/render.js?v=20260917o"></script>
-<script src="js/combat.js?v=20260917o"></script>
-<script src="js/animals.js?v=20260917o"></script>
-<script src="js/actions.js?v=20260917o"></script>
-<script src="js/ui.js?v=20260917o"></script>
-<script src="js/tutorial.js?v=20260917o"></script>
-<script src="js/campaign.js?v=20260917o"></script>
-<script src="js/pvp.js?v=20260917o"></script>
-<script src="js/ai.js?v=20260917o"></script>
-<script src="js/game.js?v=20260917o"></script>
-<script src="js/drag.js?v=20260917o"></script>
-<script src="js/resize.js?v=20260917o"></script>
+<script src="js/constants.js?v=20260917p"></script>
+<script src="js/state.js?v=20260917p"></script>
+<script src="js/audio.js?v=20260917p"></script>
+<script src="js/music.js?v=20260917p"></script>
+<script src="pieces/pieces.js?v=20260917p"></script>
+<script src="pieces/forest.js?v=20260917p"></script>
+<script src="pieces/jungle.js?v=20260917p"></script>
+<script src="pieces/desert.js?v=20260917p"></script>
+<script src="pieces/ocean.js?v=20260917p"></script>
+<script src="js/movement.js?v=20260917p"></script>
+<script src="js/themes.js?v=20260917p"></script>
+<script src="js/scenery.js?v=20260917p"></script>
+<script src="js/render.js?v=20260917p"></script>
+<script src="js/combat.js?v=20260917p"></script>
+<script src="js/animals.js?v=20260917p"></script>
+<script src="js/actions.js?v=20260917p"></script>
+<script src="js/ui.js?v=20260917p"></script>
+<script src="js/tutorial.js?v=20260917p"></script>
+<script src="js/campaign.js?v=20260917p"></script>
+<script src="js/pvp.js?v=20260917p"></script>
+<script src="js/ai.js?v=20260917p"></script>
+<script src="js/game.js?v=20260917p"></script>
+<script src="js/drag.js?v=20260917p"></script>
+<script src="js/resize.js?v=20260917p"></script>
 <!-- trained AI (Single Player difficulties, AI vs AI); the engine, network and weights load only when needed -->
-<script src="js/netai.js?v=20260917o"></script>
-<script src="js/aivsai.js?v=20260917o"></script>
+<script src="js/netai.js?v=20260917p"></script>
+<script src="js/aivsai.js?v=20260917p"></script>
 </body>
 </html>

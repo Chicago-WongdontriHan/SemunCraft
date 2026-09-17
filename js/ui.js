@@ -16,6 +16,7 @@ const UI_ICONS={
   host:'<path d="M12 12.8a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6z"/><path d="M8.2 7.2a5.4 5.4 0 0 0 0 7.6M15.8 7.2a5.4 5.4 0 0 1 0 7.6"/>'
     +'<path d="M5.4 4.4a9.4 9.4 0 0 0 0 13.2M18.6 4.4a9.4 9.4 0 0 1 0 13.2"/><path d="M12 13v7"/>',
   refresh:'<path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v4h-4"/>',
+  scry:'<path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/>',
   prev:'<path d="M14.5 6l-6 6 6 6"/>',
   next:'<path d="M9.5 6l6 6-6 6"/>',
 };
@@ -50,6 +51,15 @@ function syncUI(){
       spawnBtn.innerHTML=uiLabel('spawn','Spawn');
       if(!locked&&rem<1)spawnBtn.disabled=true;
     }
+  }
+  // scrying: only a bishop of yours holding both its mana can do it
+  const scryBtn=document.getElementById('btn-scry');
+  if(scryBtn){
+    const sel=selectedPieces.size===1?pieces[[...selectedPieces][0]]:null;
+    const ready=!!sel&&sel.color===myColor()&&sel.type==='bishop'&&(sel.mana||0)>=2;
+    scryBtn.disabled=locked||!ready;
+    scryBtn.classList.toggle('active-mode',!!scryMode);
+    scryBtn.innerHTML=uiLabel('scry',scryMode?'Pick a square':'Scry (2)');
   }
   const mergeBtn=document.getElementById('btn-merge');
   if(mergeBtn){

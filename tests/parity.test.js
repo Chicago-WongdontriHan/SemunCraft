@@ -63,7 +63,7 @@ section('map generation and strategy pick match themes.js / ai.js',()=>{
 // White's actions (and both sides' in PvP) are picked at random from the engine's
 // legal actions, then played through the original code's own input handlers.
 const LEVELS=game.get('CAMPAIGN_LEVELS');
-game.run(`function __snap(){return{board:pieces,tiles:tileData,over,turn,whiteTurnCount,blackTurnCount,
+game.run(`function __snap(){return{board:pieces,tiles:tileData,over,turn,whiteTurnCount,blackTurnCount,scans,
   whiteSpawns:spawnHistory.length,blackSpawns:blackSpawnHistory.length,whiteTargets,blackTargets,
   moved:movedThisTurn,hitBy:blackHitBy,acted:[...blackActed]};}
 function __dests(i){const d=getDragDests(i),o={};for(const k of ['move','merge','attack','heal'])o[k]=[...d[k]].sort((a,b)=>a-b);return o;}`,'snapshot');
@@ -88,7 +88,8 @@ function choose(acts,pick){
 function applyOriginal(a,s){
   const p=a.from!==undefined?s.board[a.from]:null;
   const drop='executeDrop('+a.from+','+a.to+',getDragDests('+a.from+'))';
-  if(a.type==='spawn')game.run('kingSelected=true;handleClick('+a.to+')');
+  if(a.type==='scry')game.run('castScry('+a.from+','+a.to+')');
+  else if(a.type==='spawn')game.run('kingSelected=true;handleClick('+a.to+')');
   else if(a.type==='unsiege')game.run('unsiegePiece('+a.from+')');
   else if(a.type==='skip')game.run('doSkip()');
   else if(p&&p.type==='bishop'&&(a.type==='merge'||a.type==='healLock')){
@@ -161,7 +162,7 @@ function playClassic(opts,label,stats){
     o.winner=origWinner(o);
     if(!check(label+': after action '+n+' '+q(a),o,{board:s.board,tiles:s.tiles,over:s.over,
       whiteTurnCount:s.turnCount.w,blackTurnCount:s.turnCount.b,whiteSpawns:s.spawns.w,blackSpawns:s.spawns.b,
-      whiteTargets:s.targets.w,blackTargets:s.targets.b,moved:s.moved,hitBy:s.hitBy,acted:s.acted,winner:s.winner}))return;
+      whiteTargets:s.targets.w,blackTargets:s.targets.b,moved:s.moved,hitBy:s.hitBy,acted:s.acted,scans:s.scans,winner:s.winner}))return;
   }
 }
 

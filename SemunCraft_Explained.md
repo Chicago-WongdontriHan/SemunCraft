@@ -85,6 +85,7 @@ The core progression mechanic. Drag one piece onto an adjacent ally to merge the
 - Tiles you've never seen are covered in solid grey. Tiles you've seen before but can't see now are under a see-through grey veil with their terrain faded: terrain shows, enemy pieces don't.
 - The grey has a slight tint of each map's colour (`fogCover` in `js/scenery.js`), and the minimap shows fog in the same colours.
 - The AI is not affected by fog.
+- **Scrying** (`scry` in engine.js, `castScry` in actions.js): a bishop may spend **both** its mana to light a **3x3** it cannot see, up to 4 squares away, for its next **2 turns**. It costs the bishop's turn, like a heal, so its mana is a fork: heal 2 HP, or see nine tiles. The lit squares carry a blue ring and a countdown. It lifts fog only — a piece in the jungle's undergrowth stays hidden until someone stands next to it — and the opponent isn't told.
 - **Map Cheat** turns fog off. Regular games start with it off; the tutorial and most campaign levels start with it on.
 
 ---

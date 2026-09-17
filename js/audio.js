@@ -55,6 +55,10 @@ const SFX={
   hit:    ()=>{playNoise(.08,.8);playTone(150,.08,'square',.4);},
   kill:   ()=>{playNoise(.18,1);for(let i=0;i<3;i++)setTimeout(()=>playTone(120-i*20,.1,'sawtooth',.5),i*60);},
   merge:  ()=>{[440,550,660].forEach((f,i)=>setTimeout(()=>playTone(f,.15,'sine',.6),i*70));},
+  // scrying: a thin rising shimmer, like a held breath
+  scry:   ()=>{const t=getAudioCtx().currentTime+.01;
+    [784,1047,1319].forEach((f,k)=>sfxTone({f,t:t+k*.07,d:.5,vol:.18,attack:.02,vib:[6,.004]}));
+    sfxTone({f:2093,t:t+.2,d:.7,vol:.1,attack:.05});},
   // healing: a warm swell with a sparkle rising through it
   heal:   ()=>{const t=getAudioCtx().currentTime+.01;
     [523,659].forEach(f=>sfxTone({f,t,d:.75,vol:.4,attack:.12,vib:[5,.006]}));

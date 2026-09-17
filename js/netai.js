@@ -61,7 +61,7 @@ function netAiSnapshot(){
   return SemunEngine.fromSnapshot({cols:COLS,rows:ROWS,theme:mapTheme,mode:'classic',board:pieces,tiles:tileData,turn:'b',
     level:campaignLevel||null,
     turnCount:{w:whiteTurnCount,b:blackTurnCount},spawns:{w:spawnHistory.length,b:blackSpawnHistory.length},
-    targets:{w:whiteTargets,b:blackTargets},hitBy:blackHitBy,acted:[...blackActed],maxTurns:300});
+    targets:{w:whiteTargets,b:blackTargets},hitBy:blackHitBy,acted:[...blackActed],scans,maxTurns:300});
 }
 
 // Black's move at this difficulty (tests/netai.test.js replaces this with random legal moves)
@@ -76,6 +76,7 @@ function netAiApply(action){
   const result=SemunEngine.act(s,action);
   pieces=s.board;
   whiteTargets=s.targets.w;blackTargets=s.targets.b;
+  scans=s.scans; // a scry Black cast lives in the engine's state: bring it back with the board
   for(let k=spawned;k<s.spawns.b;k++)blackSpawnHistory.push(blackTurnCount);
   return result;
 }

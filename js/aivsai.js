@@ -49,7 +49,7 @@ function aiVsAiNewMatch(){
   COLS=s.cols;ROWS=s.rows;
   document.body.className='theme-'+s.theme;
   tileData=s.tiles.slice();
-  mapCheat=true;exploredTiles=new Set();
+  mapCheat=true;exploredTiles=new Set();scans=[];
   const cheat=document.getElementById('btn-mapcheat');if(cheat)cheat.innerHTML=uiLabel('map','Map Cheat: ON');
   resetView();
   logLines=[];document.getElementById('log').textContent='';

@@ -316,6 +316,11 @@ function executeDrop(from,to,dests){
 
 function handleClick(i,additive){
   const p=pieces[i];const mc=myColor();
+  if(scryMode){
+    if(scrySrc>=0&&scryTargets(scrySrc).has(i))castScry(scrySrc,i);
+    else cancelScry();
+    return;
+  }
   const ki=pieces.findIndex(q=>q&&q.color===mc&&q.type==='king');
   // click-to-move: if exactly one friendly piece is selected and the clicked tile is
   // a valid move/attack/merge destination for it, execute the action
@@ -382,6 +387,39 @@ function handleClick(i,additive){
     return;
   }
   kingSelected=false;selectedPieces=new Set();render();
+}
+
+// ── BISHOP: SCRYING ──────────────────────────────────────────────────────────
+// A bishop spends both its mana to light a 3x3 it cannot see, for its next two turns: the fog lifts
+// there, terrain and enemies both. It costs the bishop's turn, like a heal, and it doesn't lift the
+// jungle's undergrowth — that still takes standing next to it. ('scry' in engine.js)
+let scryMode=false, scrySrc=-1;
+function startScry(){
+  const i=[...selectedPieces][0];
+  const p=i===undefined?null:pieces[i];
+  if(!p||p.color!==myColor()||p.type!=='bishop'||(p.mana||0)<2){setStatus('Select a bishop with full mana');return;}
+  scryMode=true;scrySrc=i;targetMode=false;
+  render();syncUI();
+  setStatus('Tap a square out of sight to scry it (2 mana)');
+}
+function cancelScry(){scryMode=false;scrySrc=-1;render();syncUI();}
+// the squares a bishop may light: within reach, and somewhere it cannot already see
+function scryTargets(i){
+  const mc=myColor(),out=new Set();
+  for(let j=0;j<ROWS*COLS;j++)if(cheb(i,j)<=SCRY_RANGE&&!isTileVisible(j))out.add(j);
+  return out;
+}
+function castScry(from,to){
+  const p=pieces[from];
+  if(!p||p.type!=='bishop'||(p.mana||0)<2)return;
+  p.mana=Math.max(0,(p.mana||0)-2);
+  p.lastHealTurn=whiteTurnCount;
+  scans.push({tiles:scryBox(to),turns:SCRY_TURNS,color:p.color});
+  scryMode=false;scrySrc=-1;
+  movedThisTurn=from;
+  addLog('Bishop scries '+sqName(to));
+  SFX.scry();
+  render();endTurn();
 }
 
 // ── KING: SPAWN A PAWN OR MOVE ───────────────────────────────────────────────

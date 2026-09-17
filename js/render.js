@@ -73,6 +73,10 @@ function render(){
         }
       }
 
+      // scrying: the squares this bishop may light, and the ones already burning
+      if(typeof scryMode!=='undefined'&&scryMode&&scrySrc>=0&&scryTargets(scrySrc).has(i))sq.classList.add('scry-target');
+      const lit=typeof scryLit==='function'&&scryLit(i,mc);
+      if(lit)sq.classList.add('scry-lit');
       // a campaign level's goal squares: the gate to reach, the floor to hold
       if(campaignLevel&&campaignLevel.squares&&campaignLevel.squares.some(([gr,gc])=>gr===r&&gc===c))sq.classList.add('goal-tile');
       // action guide: what the tapped or dragged piece can do on this square (drawn over the piece below)
@@ -142,6 +146,11 @@ function render(){
       }
 
       // animals rendered in separate overlay by renderAnimalOverlay()
+      if(lit){
+        // how many of your turns the light has left
+        const turns=Math.max(...scans.filter(sc=>sc.color===mc&&sc.tiles.includes(i)).map(sc=>sc.turns));
+        const n=document.createElement('span');n.className='scry-count';n.textContent=turns;sq.appendChild(n);
+      }
       if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
       if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
       boardEl.appendChild(sq);

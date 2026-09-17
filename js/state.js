@@ -55,6 +55,14 @@ let boardZoom=1, boardPanX=0, boardPanY=0;
 let boardFitPx=40;        // the square size that fits the whole board in the frame (set by resizeBoard)
 const BOARD_ZOOM_MAX=4;
 
+// scrying: [{tiles, turns, color}] — a bishop's 3x3 stays lit for that side's next SCRY_TURNS turns
+let scans=[];
+// the scans of the side whose turn is starting burn down by one
+function tickScans(color){
+  scans=scans.filter(sc=>sc.color!==color||--sc.turns>0);
+}
+function scryLit(i,color){return scans.some(sc=>sc.color===color&&sc.tiles.includes(i));}
+
 // ── FOG OF WAR ───────────────────────────────────────────────────────────────
 let mapCheat=false; // when false, only tiles within 2 of any white piece are currently visible
 let exploredTiles=new Set(); // tiles that have ever been visible (fogged but partially shown)
@@ -66,6 +74,7 @@ let exploredTiles=new Set(); // tiles that have ever been visible (fogged but pa
 function tileVisibility(i){
   if(mapCheat)return 'visible';
   const mc=(typeof myColor==='function')?myColor():'w';
+  if(scryLit(i,mc))return 'visible'; // a bishop is looking at it
   for(let j=0;j<ROWS*COLS;j++){
     const p=pieces[j];
     if(p&&p.color===mc&&cheb(i,j)<=2)return 'visible';

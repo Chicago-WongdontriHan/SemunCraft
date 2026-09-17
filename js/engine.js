@@ -91,6 +91,7 @@ function newGame(o){
     turn:'w',over:false,winner:null,
     turnCount:{w:0,b:0},spawns:{w:0,b:0},targets:{w:{},b:{}},
     moved:-1,   // square of the piece that moved or healed this turn (it doesn't auto-attack)
+    scans:[],   // bishops' scrying: [{tiles, turns, color}] (see the 'scry' action)
     hitBy:[],   // classic: Black pieces White hit this round, for the reactive AI
     acted:[],   // classic: Black pieces that auto-attacked this round
     level:lv,fog:o.fog!==undefined?!!o.fog:(lv?lv.mapCheatDefault===false:false),
@@ -140,6 +141,7 @@ function clone(s){
   c.turnCount={w:s.turnCount.w,b:s.turnCount.b};
   c.spawns={w:s.spawns.w,b:s.spawns.b};
   c.targets={w:Object.assign({},s.targets.w),b:Object.assign({},s.targets.b)};
+  c.scans=s.scans.map(sc=>({tiles:sc.tiles.slice(),turns:sc.turns,color:sc.color}));
   c.hitBy=s.hitBy.map(h=>({target:h.target,attacker:h.attacker}));
   c.acted=s.acted.slice();
   c.animals=s.animals.map(a=>Object.assign({},a));
@@ -324,7 +326,22 @@ function slide(s,i,dirs,len,out){
 function visible(s,i,color){
   const B=s.board;
   if(B[i]&&B[i].color===color)return true;
+  if(s.scans&&s.scans.some(sc=>sc.color===color&&sc.tiles.indexOf(i)>=0))return true; // a bishop is looking at it
   return geo(s).r2[i].some(j=>B[j]&&B[j].color===color);
+}
+// the 3x3 a scry lights, and how far a bishop can throw its sight (scryBox in constants.js)
+const SCRY_RANGE=4, SCRY_TURNS=2;
+function scryBox(s,i){
+  const g=geo(s),r=Math.floor(i/s.cols),c=i%s.cols,res=[];
+  for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+    const nr=r+dr,nc=c+dc;
+    if(nr>=0&&nr<s.rows&&nc>=0&&nc<s.cols)res.push(nr*s.cols+nc);
+  }
+  return res;
+}
+// the scans of the side whose turn is starting burn down by one
+function tickScans(s,color){
+  if(s.scans&&s.scans.length)s.scans=s.scans.filter(sc=>sc.color!==color||--sc.turns>0);
 }
 // classic mode hides fogged enemies from White only (the AI ignores fog); in PvP each side is limited
 function fogFor(s,color){return s.fog&&(s.mode==='pvp'||color==='w');}
@@ -429,6 +446,10 @@ function legalActions(s,opts){
       if(p.type==='bishop'&&(p.mana||0)>0&&B[j].hp<B[j].maxHp)out.push({type:'healLock',from:i,to:j});
     });
     d.heal.forEach(j=>{if(!d.merge.has(j))out.push({type:'heal',from:i,to:j});});
+    // a bishop with both its mana can light a 3x3 it cannot see, up to SCRY_RANGE away
+    if(p.type==='bishop'&&(p.mana||0)>=2)
+      for(let j=0;j<B.length;j++)
+        if(cheb(s,i,j)<=SCRY_RANGE&&!visible(s,j,color))out.push({type:'scry',from:i,to:j});
     if(opts.anyTarget){
       for(let j=0;j<B.length;j++)if(B[j]&&B[j].color!==color&&!concealed(s,j,color))out.push({type:'target',from:i,to:j});
     }else d.attack.forEach(j=>out.push({type:'target',from:i,to:j}));
@@ -580,6 +601,14 @@ function applyAction(s,a,events){
       events.push({type:'heal',from:a.from,to:a.to,hp:t.hp});
       return false;
     }
+    case'scry':{
+      p.mana=Math.max(0,(p.mana||0)-2);
+      p.lastHealTurn=clock(s,color);       // scrying resets the same refill clock a heal does
+      s.scans.push({tiles:scryBox(s,a.to),turns:SCRY_TURNS,color});
+      s.moved=a.from;                       // the bishop looked instead of shooting
+      events.push({type:'scry',from:a.from,to:a.to});
+      return false;
+    }
     case'spawn':
       B[a.to]={type:'pawn',color,hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,newborn:true,firstMove:true};
       s.spawns[color]++;
@@ -611,7 +640,7 @@ function finishTurn(s,color,events){
   if(s.mode==='pvp'){
     // the side that acted fires, except the piece that moved or healed; then the other side starts
     applyAttacks(s,computeActions(s,color).filter(a=>a.attacker!==justMoved),color,events);
-    if(!s.over){s.turn=other(color);upkeep(s,s.turn);}
+    if(!s.over){s.turn=other(color);upkeep(s,s.turn);tickScans(s,s.turn);}
   }else if(color==='w'){
     // White fires (except the mover), then Black fires, then Black acts
     s.hitBy=[];
@@ -621,10 +650,10 @@ function finishTurn(s,color,events){
       s.acted=bActs.map(a=>a.attacker);
       applyAttacks(s,bActs,'b',events);
     }
-    if(!s.over)s.turn='b';
+    if(!s.over){s.turn='b';tickScans(s,'b');}
   }else if(!s.over){
     upkeep(s,null);
-    s.turn='w';
+    s.turn='w';tickScans(s,'w');
   }
   if(!s.over&&s.level){const r=campaignResult(s);if(r){s.over=true;s.winner=r==='win'?'w':'b';}}
   if(!s.over&&s.maxTurns&&s.turnCount.w+s.turnCount.b>=s.maxTurns){s.over=true;s.winner='draw';}
@@ -1063,6 +1092,7 @@ function fromSnapshot(o){
     board:o.board.map(p=>p&&Object.assign({},p)),tiles:null,blocked:null,turn:o.turn||'w',over:false,winner:null,
     turnCount:{w:o.turnCount.w,b:o.turnCount.b},spawns:{w:o.spawns.w,b:o.spawns.b},
     targets:{w:Object.assign({},o.targets.w),b:Object.assign({},o.targets.b)},moved:-1,
+    scans:(o.scans||[]).map(sc=>({tiles:sc.tiles.slice(),turns:sc.turns,color:sc.color})),
     hitBy:(o.hitBy||[]).map(h=>({target:h.target,attacker:h.attacker})),acted:(o.acted||[]).slice(),
     level:o.level||null,fog:!!o.fog,maxTurns:o.maxTurns||0,strategy:o.strategy||null,animals:[],rng:o.seed|0};
   const n=s.cols*s.rows;

@@ -50,7 +50,8 @@ function choose(acts,pick){
 function applyOriginal(a,s){
   const p=a.from!==undefined?s.board[a.from]:null;
   const drop='executeDrop('+a.from+','+a.to+',getDragDests('+a.from+'))';
-  if(a.type==='spawn')game.run('kingSelected=true;handleClick('+a.to+')');
+  if(a.type==='scry')game.run('castScry('+a.from+','+a.to+')');
+  else if(a.type==='spawn')game.run('kingSelected=true;handleClick('+a.to+')');
   else if(a.type==='unsiege')game.run('unsiegePiece('+a.from+')');
   else if(a.type==='skip')game.run('doSkip()');
   else if(p&&p.type==='bishop'&&(a.type==='merge'||a.type==='healLock')){

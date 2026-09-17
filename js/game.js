@@ -29,6 +29,7 @@ function initGame(){
   turn='w'; over=false; thinking=false; logLines=[]; kingSelected=false;
   whiteTargets={}; blackTargets={};
   spawnHistory=[]; blackSpawnHistory=[]; whiteTurnCount=0; blackTurnCount=0; movedThisTurn=-1;
+  scans=[];
   exploredTiles=new Set();
   // regular games start fogged (the tutorial and campaign set their own default)
   mapCheat=false;
@@ -114,6 +115,7 @@ function startWhiteTurn(){
       }
     }
   }
+  tickScans('w');
   turnUpkeep();
   syncUI(); render();
   showMoveHint();
@@ -172,6 +174,7 @@ function endTurn(){
         return;
       }
       turn=mover==='w'?'b':'w';
+      tickScans(turn);
       broadcastState(null);syncUI();render();
       setStatus(isMyTurn()?'Your turn':'Opponent turn...');
     };
@@ -186,6 +189,7 @@ function endTurn(){
     movedThisTurn=-1;
     const wActions=computeActions('w').filter(a=>a.attacker!==justMoved);
     const runBlack=()=>{
+      tickScans('b');
       thinking=true;syncUI();render();
       document.getElementById('thinking-dot').classList.add('on');
       setStatus('Enemy thinking...');

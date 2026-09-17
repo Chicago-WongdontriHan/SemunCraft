@@ -5,37 +5,26 @@
 //   leads          recorder, shawm, fiddle (vielle), harp
 //   accompaniment  lute chords or harp arpeggios, a bass on the strong beats, a drone,
 //                  bells on phrase starts and a parallel-fifth second voice on repeats
-//   drums          frame drum, rim clicks, woodblock, tambourine, finger cymbals,
-//                  with a fill at the end of every second phrase
+//   drums          a pop kit: kick, a snare backbeat and hi-hats (on the beat in the quiet
+//                  section, every eighth note in the full one), tom fills and crash cymbals
 // Everything is synthesized with Web Audio and scheduled slightly ahead of the
 // audio clock so the beat stays steady; stopBgm() cancels anything still queued.
 const MUSIC_MODES={dorian:[0,2,3,5,7,9,10],phrygian:[0,1,3,5,7,8,10],aeolian:[0,2,3,5,7,8,10],mixolydian:[0,2,4,5,7,9,10]};
 // notes: [scale degree (0 = tonic, 7 = octave up, -1 = below), length in units]
 // chords: one root degree per bar
-// grooves: [offset in units within the bar, drum, velocity]
 const MEDIEVAL_TUNES={
   // forest: lively estampie in D Dorian
   forest:{tonic:293.66,mode:'dorian',unit:0.28,bar:4,
-    sections:[{lead:'recorder',accomp:'lute',groove:'light'},{lead:'fiddle',accomp:'harp',groove:'full'}],
-    grooves:{
-      light:[[0,'dum',1],[2,'tek',.7],[3,'tek',.5],[3.5,'tok',.45]],
-      full:[[0,'dum',1],[1,'tok',.6],[1.5,'tok',.4],[2,'dum',.8],[2.5,'jingle',.55],[3,'tek',.75],[3.5,'jingle',.45]],
-      fill:[[0,'dum',1],[1,'tek',.6],[1.5,'tek',.6],[2,'roll',.9],[3,'dum',1],[3.5,'dum',.8]],
-    },
+    sections:[{lead:'recorder',accomp:'lute',drums:'light'},{lead:'fiddle',accomp:'harp',drums:'full'}],
     phrases:[
       {notes:[[0,1],[2,.5],[3,.5],[4,1],[3,.5],[2,.5],[1,1],[2,.5],[1,.5],[0,2]],chords:[0,6]},
       {notes:[[4,1],[5,.5],[6,.5],[7,1],[6,.5],[5,.5],[4,1.5],[3,.5],[4,2]],chords:[3,4]},
       {notes:[[7,1.5],[6,.5],[5,1],[4,1],[5,.5],[6,.5],[7,.5],[6,.5],[5,2]],chords:[2,4]},
       {notes:[[4,.5],[3,.5],[2,1],[3,.5],[4,.5],[2,1],[1,.5],[0,.5],[1,1],[0,2]],chords:[6,0]},
     ]},
-  // desert: slow Phrygian lament in E with a darbuka-style groove
+  // desert: slow Phrygian lament in E
   desert:{tonic:329.63,mode:'phrygian',unit:0.36,bar:4,
-    sections:[{lead:'shawm',accomp:'lute',groove:'light'},{lead:'fiddle',accomp:'harp',groove:'full'}],
-    grooves:{
-      light:[[0,'dum',1],[1,'tek',.6],[2.5,'dum',.7],[3,'tek',.6]],
-      full:[[0,'dum',1],[0,'zill',.5],[1,'tek',.7],[1.5,'tek',.4],[2,'tek',.5],[2.5,'dum',.8],[3,'tek',.7],[3.5,'zill',.35]],
-      fill:[[0,'dum',1],[.5,'tek',.5],[1,'tek',.7],[1.5,'tek',.6],[2,'roll',.9],[3,'dum',1],[3,'zill',.6]],
-    },
+    sections:[{lead:'shawm',accomp:'lute',drums:'light'},{lead:'fiddle',accomp:'harp',drums:'full'}],
     phrases:[
       {notes:[[0,1],[1,.5],[0,.5],[-1,1],[0,1],[2,1],[1,1],[0,2]],chords:[0,1]},
       {notes:[[3,1],[4,1],[5,.5],[4,.5],[3,1],[2,1],[1,.5],[2,.5],[1,2]],chords:[3,1]},
@@ -44,12 +33,7 @@ const MEDIEVAL_TUNES={
     ]},
   // ocean: lilting 6/8 carol in A Aeolian
   ocean:{tonic:440,mode:'aeolian',unit:0.22,bar:6,
-    sections:[{lead:'harp',accomp:'lute',groove:'light'},{lead:'recorder',accomp:'harp',groove:'full'}],
-    grooves:{
-      light:[[0,'dum',.9],[3,'tek',.5],[5,'jingle',.35]],
-      full:[[0,'dum',1],[2,'jingle',.4],[3,'tek',.6],[4,'tok',.4],[5,'jingle',.5]],
-      fill:[[0,'dum',1],[2,'tek',.5],[3,'roll',.8],[5,'dum',.9]],
-    },
+    sections:[{lead:'harp',accomp:'lute',drums:'light'},{lead:'recorder',accomp:'harp',drums:'full'}],
     phrases:[
       {notes:[[0,2],[2,1],[4,2],[3,1],[2,2],[1,1],[2,3],[4,2],[5,1],[4,2],[2,1],[1,2],[2,1],[0,3]],chords:[0,2,4,0]},
       {notes:[[0,2],[2,1],[4,2],[3,1],[2,2],[1,1],[2,3],[4,2],[5,1],[4,2],[3,1],[4,2],[-1,1],[0,3]],chords:[0,2,6,0]},
@@ -125,7 +109,9 @@ function bgmNoiseHit(t,peak,len,filters){
   const src=ctx.createBufferSource(),amp=ctx.createGain();src.buffer=bgmNoise;
   let out=src;
   filters.forEach(([type,freq,q])=>{const f=ctx.createBiquadFilter();f.type=type;f.frequency.value=freq;if(q)f.Q.value=q;out.connect(f);out=f;});
-  amp.gain.setValueAtTime(peak,t);amp.gain.exponentialRampToValueAtTime(.0001,t+len);
+  // silent until the hit: a gain node starts at 1, and when the noise's first sample landed a hair before the
+  // envelope's start time it went out at full volume, a sharp click like a stove igniter
+  amp.gain.value=0;amp.gain.setValueAtTime(peak,t);amp.gain.exponentialRampToValueAtTime(.0001,t+len);
   out.connect(amp);amp.connect(bgmGain);src.start(t);src.stop(t+len+.02);bgmTrack(src);
 }
 function bgmThump(t,f0,f1,peak,len){
@@ -134,31 +120,48 @@ function bgmThump(t,f0,f1,peak,len){
   amp.gain.setValueAtTime(.0001,t);amp.gain.linearRampToValueAtTime(peak,t+.004);amp.gain.exponentialRampToValueAtTime(.0001,t+len);
   osc.connect(amp);amp.connect(bgmGain);osc.start(t);osc.stop(t+len+.02);bgmTrack(osc);
 }
+// cymbal metal: six square waves at clashing pitches through a high-pass, the way drum machines make
+// hi-hats; a ring of partials with a soft 3 ms attack rather than a burst of noise, so no igniter tick
+function bgmMetal(t,peak,len){
+  const ctx=audioCtx,hp=ctx.createBiquadFilter(),amp=ctx.createGain();
+  hp.type='highpass';hp.frequency.value=7000;
+  amp.gain.setValueAtTime(.0001,t);amp.gain.linearRampToValueAtTime(peak,t+.003);amp.gain.exponentialRampToValueAtTime(.0001,t+len);
+  hp.connect(amp);amp.connect(bgmGain);
+  [410,608,739,1045,1080,1600].forEach(fq=>{const o=ctx.createOscillator();o.type='square';o.frequency.value=fq;
+    o.connect(hp);o.start(t);o.stop(t+len+.02);bgmTrack(o);});
+}
 // (start time, velocity 0..1)
-// Every hit is a tuned drum or a ringing metal partial: short bright noise bursts sounded like a gas
-// stove's igniter clicking, so the only noise left is a little low skin rustle under the drums.
 const PERC={
-  // frame drum: low thump with a little skin noise
-  dum:(t,v)=>{bgmThump(t,130,48,.17*v,.42);bgmNoiseHit(t,.02*v,.05,[['lowpass',600]]);},
-  // tap on the drum's rim: a short tuned knock
-  tek:(t,v)=>bgmThump(t,340,230,.075*v,.1),
-  // woodblock
-  tok:(t,v)=>bgmThump(t,1000,760,.07*v,.07),
-  // tambourine: the jingles' metal ring, without the hiss
-  jingle:(t,v)=>[[3150,.012],[4720,.008],[6300,.005]].forEach(([f,a])=>bgmTone({type:'sine',f,t,d:.25,peak:a*v,attack:.002,decay:true})),
-  // finger cymbals
-  zill:(t,v)=>[[2380,.022],[3620,.014],[5170,.008]].forEach(([f,a])=>bgmTone({type:'sine',f,t,d:1.2,peak:a*v,attack:.003,decay:true})),
-  // a roll on the low drum that swells into the next beat
-  roll:(t,v)=>{for(let k=0;k<6;k++)bgmThump(t+k*.07,150+k*6,95,(.05+k*.018)*v,.12);},
-  // war drum under the dance: a deep boom, with a mid punch so small speakers still hear it
-  boom:(t,v)=>{bgmThump(t,95,42,.24*v,.5);bgmThump(t,180,90,.06*v,.07);bgmNoiseHit(t,.012*v,.04,[['lowpass',300]]);},
-  // the off-beat drum: a tuned body with a soft low rustle
-  snap:(t,v)=>{bgmThump(t,210,150,.1*v,.14);bgmNoiseHit(t,.015*v,.08,[['lowpass',1000]]);},
+  // kick: a deep pitch drop for the thump and a short knock for the punch
+  kick:(t,v)=>{bgmThump(t,160,45,.26*v,.34);bgmThump(t,900,260,.035*v,.02);},
+  // snare: a tuned drum body and a broad, soft rattle of wires with a little room after it
+  snare:(t,v)=>{bgmThump(t,210,170,.085*v,.13);bgmNoiseHit(t,.045*v,.17,[['highpass',1100],['lowpass',7000]]);
+    bgmNoiseHit(t,.008*v,.4,[['bandpass',2400,.7]]);},
+  hat:(t,v)=>bgmMetal(t,.011*v,.07),
+  openHat:(t,v)=>bgmMetal(t,.009*v,.28),
+  crash:(t,v)=>{bgmMetal(t,.013*v,1.6);bgmNoiseHit(t,.009*v,1.2,[['highpass',4000]]);},
+  tomHi:(t,v)=>bgmThump(t,240,170,.12*v,.22),
+  tomMid:(t,v)=>bgmThump(t,190,130,.13*v,.26),
+  tomLo:(t,v)=>bgmThump(t,150,95,.14*v,.3),
 };
-// the steady drum beat under every bar: boom on the strong beats, snap between them
-const DRUM_BEAT={
-  4:[[0,'boom',1],[1,'snap',.75],[2,'boom',.85],[3,'snap',.8]],
-  6:[[0,'boom',1],[1.5,'snap',.6],[3,'boom',.8],[4.5,'snap',.7]],
+// Pop grooves: [offset in units, drum, velocity]. A tune's unit is an eighth note here, so two bars
+// of 4 make one pop bar (the forest tune runs at about 107 beats a minute) and a bar of 6 is a bar of
+// 6/8. span: bars per groove; fillEvery: phrases per fill; fillFrom: where a fill takes over.
+const POP_BEAT={
+  4:{span:2,fillEvery:4,fillFrom:4,
+    light:[[0,'kick',1],[4,'kick',.9],[2,'snare',.85],[6,'snare',.85],
+      [0,'hat',.8],[2,'hat',.6],[4,'hat',.8],[6,'hat',.6],[7,'hat',.35]],
+    full:[[0,'kick',1],[3,'kick',.7],[4,'kick',.95],[2,'snare',1],[6,'snare',1],
+      [0,'hat',.9],[1,'hat',.5],[2,'hat',.8],[3,'hat',.5],[4,'hat',.9],[5,'hat',.5],[6,'hat',.8],[7,'openHat',.7]],
+    fill:[[4,'kick',.9],[4,'snare',.6],[4.5,'snare',.45],[5,'snare',.7],[5.5,'snare',.6],
+      [6,'tomHi',1],[6.5,'tomHi',.8],[7,'tomMid',.9],[7.5,'tomLo',.95]],
+    breath:[[0,'kick',.7],[2,'snare',.5],[0,'hat',.6],[2,'hat',.45],[3,'openHat',.4]]},
+  6:{span:1,fillEvery:2,fillFrom:3,
+    light:[[0,'kick',1],[3,'snare',.8],[0,'hat',.7],[2,'hat',.4],[3,'hat',.6],[5,'hat',.4]],
+    full:[[0,'kick',1],[5,'kick',.55],[3,'snare',1],
+      [0,'hat',.8],[1,'hat',.45],[2,'hat',.5],[3,'hat',.8],[4,'hat',.45],[5,'openHat',.55]],
+    fill:[[3,'snare',.85],[4,'tomHi',.9],[4.5,'tomMid',.85],[5,'tomLo',.95],[5.5,'tomLo',.8]],
+    breath:[[0,'kick',.7],[3,'snare',.5],[0,'hat',.6],[3,'hat',.45],[5,'openHat',.4]]},
 };
 
 // hurdy-gurdy style drone on the tonic and fifth, retuned when the map theme changes
@@ -203,11 +206,16 @@ function bgmPlayPhrase(tune,step,t,round){
     }
     // bass on the two strong beats of the bar
     [0,tune.bar/2].forEach(off=>INSTRUMENTS.bass(tuneFreq(tune,root-14),bt+off*u,u*tune.bar/2*0.9,1));
-    // drums, with a fill closing every second phrase, over the steady beat
-    const groove=tune.grooves[step%2===1&&b===bars-1?'fill':sec.groove];
-    groove.forEach(([off,hit,v])=>PERC[hit](bt+off*u,v));
-    (DRUM_BEAT[tune.bar]||DRUM_BEAT[4]).forEach(([off,hit,v])=>PERC[hit](bt+off*u,v));
   });
+  // drums: the section's pop groove, a tom fill ending the last groove of every fillEvery-th phrase,
+  // and a crash opening each section (except the very first bar of the song)
+  const kit=POP_BEAT[tune.bar]||POP_BEAT[4];
+  for(let b=0;b<bars;b+=kit.span){
+    const bt=t+b*tune.bar*u,fill=(step+1)%kit.fillEvery===0&&b+kit.span>=bars;
+    kit[sec.drums].forEach(([off,hit,v])=>{if(!fill||off<kit.fillFrom)PERC[hit](bt+off*u,v);});
+    if(fill)kit.fill.forEach(([off,hit,v])=>PERC[hit](bt+off*u,v));
+  }
+  if(step===4||(step===0&&round>0))PERC.crash(t,1);
   return bars*tune.bar*u;
 }
 
@@ -220,8 +228,7 @@ function bgmTick(){
     if(s.theme!==mapTheme){s.theme=mapTheme;s.step=0;s.round=0;bgmSetDrone(tune,s.t);}
     if(s.step>=TUNE_FORM.length){
       // one breathing bar of drone and soft drums, then the dance comes around again
-      tune.grooves.light.forEach(([off,hit,v])=>PERC[hit](s.t+off*tune.unit,v*.7));
-      PERC.boom(s.t,.6);
+      (POP_BEAT[tune.bar]||POP_BEAT[4]).breath.forEach(([off,hit,v])=>PERC[hit](s.t+off*tune.unit,v));
       s.t+=tune.bar*tune.unit;s.step=0;s.round++;
       continue;
     }

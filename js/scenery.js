@@ -260,82 +260,21 @@ function tileArt(i){
 }
 
 // ── FOG OF WAR ───────────────────────────────────────────────────────────────
-// Squares out of sight lie under grey cloud tinged with the map's own weather: morning mist in the
-// forest, steamy haze in the jungle, drifting dust in the desert, sea fog on the ocean. Unexplored squares are under thick
-// cloud, explored ones under a thin veil of it so their terrain still shows. The cloud is one picture
-// repeating every FOG_TILES squares and pinned to the board, so it runs on from square to square.
-// Colours are opaque with a separate opacity: the puffs of one layer are drawn inside a group with
-// that opacity, so they don't darken where they overlap.
-const FOG_TILES=4, FOG_P=160; // the picture spans 4 squares, at 40 units a square
+// Squares out of sight are plain grey with a slight tint of the map's colour. Unexplored squares are
+// covered solid; explored ones get a see-through veil over faded terrain (the fade is CSS), so they
+// never pass for squares in sight.
 const FOG_STYLE={
-  forest:{sky:'#AAB0A8',back:'#CACEC6',front:'#F0F2EE',ink:'#363E34',accent:'#FFFFFF',accentA:.6,
-    veil:'rgba(212,217,209,.6)',wisp:'#F4F6F3',wispA:.55,text:'rgba(48,55,46,.8)'},
-  jungle:{sky:'#99A7A2',back:'#BDC8C3',front:'#ECF1EE',ink:'#2B3A35',accent:'#FFFFFF',accentA:.6,
-    veil:'rgba(210,221,217,.58)',wisp:'#F3F7F6',wispA:.55,text:'rgba(36,50,45,.8)'},
-  desert:{sky:'#B3A99A',back:'#D0C8BB',front:'#EEEAE1',ink:'#53483B',accent:'#7E6F5E',accentA:.5,
-    veil:'rgba(228,223,212,.6)',wisp:'#F4F1EB',wispA:.55,text:'rgba(71,62,50,.8)'},
-  ocean:{sky:'#9CA4AC',back:'#C2C8CE',front:'#EEF1F3',ink:'#2C3541',accent:'#3E4854',accentA:.5,
-    veil:'rgba(217,222,227,.6)',wisp:'#F6F7F8',wispA:.55,text:'rgba(40,47,58,.8)'},
+  forest:{solid:'#AAB0A8',veil:'rgba(212,217,209,.6)',text:'rgba(48,55,46,.8)'},
+  jungle:{solid:'#99A7A2',veil:'rgba(210,221,217,.58)',text:'rgba(36,50,45,.8)'},
+  desert:{solid:'#B3A99A',veil:'rgba(228,223,212,.6)',text:'rgba(71,62,50,.8)'},
+  ocean:{solid:'#9CA4AC',veil:'rgba(217,222,227,.6)',text:'rgba(40,47,58,.8)'},
 };
 function fogStyle(){return FOG_STYLE[mapTheme]||FOG_STYLE.forest;}
 
-// where the clouds sit in the picture: [x, y, scale]
-const FOG_BACK=[[26,46,1.25],[104,24,1.1],[72,108,1.35],[146,98,1],[34,146,1.05]];
-const FOG_FRONT=[[58,64,1],[130,58,.9],[16,104,.85],[104,142,1.1],[150,150,.7]];
-const FOG_WISPS=[[40,50,1.1],[120,90,1.2],[70,140,.9]];
-// the weather's own touch, drawn over the clouds: mist streaks, steam curls, dust swirls, gulls
-const FOG_ACCENT={
-  forest:'M12 86 H38 M22 93 H50 M94 122 H128 M106 129 H122',
-  jungle:'M44 92 C49 86 40 82 45 75 M118 126 C123 120 114 116 119 109 M136 30 C140 25 133 22 137 16',
-  desert:'M36 92 C44 92 46 84 40 82 C33 80 29 88 34 94 C40 100 54 96 54 84 '
-    +'M112 130 C118 130 120 124 115 122 C109 121 106 127 110 132 C115 136 126 133 126 123',
-  ocean:'M40 28 Q45 22 50 28 Q55 22 60 28 M112 88 Q116 83 120 88 Q124 83 128 88',
-};
-
-// a cute cloud at (x,y) and scale s: three puffs in a row and two bigger ones on top
-const fogPuffs=(x,y,s)=>[[x-13*s,y,9*s],[x,y+s,10*s],[x+13*s,y,9*s],[x-6*s,y-8*s,11*s],[x+7*s,y-6*s,9.5*s]];
-// every puff, and its copies across the picture's edges so the picture repeats without a seam
-function fogWrap(clouds){
-  const out=[];
-  clouds.forEach(([x,y,s])=>fogPuffs(x,y,s).forEach(([px,py,r])=>{
-    for(const dx of [-FOG_P,0,FOG_P])for(const dy of [-FOG_P,0,FOG_P]){
-      const X=px+dx,Y=py+dy;
-      if(X+r+2>0&&X-r-2<FOG_P&&Y+r+2>0&&Y-r-2<FOG_P)out.push([X,Y,r]);
-    }
-  }));
-  return out;
-}
-const fogCircles=(cs,attrs)=>cs.map(([x,y,r])=>'<circle cx="'+scR(x)+'" cy="'+scR(y)+'" r="'+scR(r)+'" '+attrs+'/>').join('');
-// a layer of clouds; with ink, one outline runs round the whole layer (every puff drawn wide in ink,
-// then every puff's fill over that)
-function fogLayer(clouds,fill,ink,inkA,alpha){
-  const cs=fogWrap(clouds);
-  return (ink?'<g opacity="'+inkA+'">'+fogCircles(cs,'fill="'+ink+'" stroke="'+ink+'" stroke-width="3.2"')+'</g>':'')
-    +'<g opacity="'+alpha+'">'+fogCircles(cs,'fill="'+fill+'"')+'</g>';
-}
-
-const fogTextures={};
-function fogTexture(theme,state){
-  const key=theme+'|'+state;
-  if(fogTextures[key])return fogTextures[key];
-  const st=FOG_STYLE[theme];
-  const body=state==='unknown'
-    ?fogLayer(FOG_BACK,st.back,st.ink,.2,1)+fogLayer(FOG_FRONT,st.front,st.ink,.3,1)
-      +'<path d="'+FOG_ACCENT[theme]+'" fill="none" stroke="'+st.accent+'" stroke-opacity="'+st.accentA
-      +'" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'
-    :fogLayer(FOG_WISPS,st.wisp,null,0,st.wispA);
-  const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+FOG_P+' '+FOG_P+'">'+body+'</svg>';
-  return fogTextures[key]='url("data:image/svg+xml,'+encodeURIComponent(svg)+'")';
-}
-
-// the cover over a square out of sight: state 'unknown' (thick cloud) or 'explored' (a veil)
+// the cover over a square out of sight: state 'unknown' (solid) or 'explored' (a veil)
 function fogCover(i,state){
-  const theme=FOG_STYLE[mapTheme]?mapTheme:'forest',st=FOG_STYLE[theme];
-  const cov=document.createElement('div');cov.className='fog-cover';
-  const size=FOG_TILES*sqPx;
-  cov.style.backgroundColor=state==='unknown'?st.sky:st.veil;
-  cov.style.backgroundImage=fogTexture(theme,state);
-  cov.style.backgroundSize=size+'px '+size+'px';
-  cov.style.backgroundPosition=(-(COL(i)%FOG_TILES)*sqPx)+'px '+(-(ROW(i)%FOG_TILES)*sqPx)+'px';
+  const st=fogStyle(),cov=document.createElement('div');
+  cov.className='fog-cover';
+  cov.style.background=state==='unknown'?st.solid:st.veil;
   return cov;
 }

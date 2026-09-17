@@ -358,9 +358,8 @@ function renderMinimap(){
       // fog of war: 3 states
       const vis=tileVisibility(i);
       if(vis==='unknown'){
-        // under cloud, in the map's weather colours as on the board
-        const fog=fogStyle();
-        d.style.background='radial-gradient(circle at 35% 35%,'+fog.front+','+fog.sky+' 75%)';
+        // the same grey as the board's fog
+        d.style.background=fogStyle().solid;
         if(r>=viewRow0&&r<viewRow0+viewRowsN()&&c>=viewCol0&&c<viewCol0+viewColsN()){
           d.style.outline='1px solid rgba(200,240,80,.9)';
         }
@@ -381,7 +380,7 @@ function renderMinimap(){
             d.appendChild(ic);
           }
         }
-        // partial fog overlay: the board's veil of cloud
+        // partial fog overlay: the board's veil
         const overlay=document.createElement('div');
         overlay.style.cssText='position:absolute;inset:0;background:'+fogStyle().veil+';pointer-events:none;';
         d.appendChild(overlay);

@@ -82,8 +82,8 @@ The core progression mechanic. Drag one piece onto an adjacent ally to merge the
 ## Fog of War
 
 - You only see tiles within 2 squares of your own pieces.
-- Tiles you've never seen are under thick cloud. Tiles you've seen before but can't see now are under a thin veil of it: terrain shows, enemy pieces don't.
-- The clouds are grey, tinged with the map's own weather: morning mist in the forest, steamy haze in the jungle, drifting dust in the desert and sea fog on the ocean (`fogCover` in `js/scenery.js`). Explored squares also have their terrain faded, so they never pass for squares in sight. They run on from square to square, and the minimap shows fog in the same colours.
+- Tiles you've never seen are covered in solid grey. Tiles you've seen before but can't see now are under a see-through grey veil with their terrain faded: terrain shows, enemy pieces don't.
+- The grey has a slight tint of each map's colour (`fogCover` in `js/scenery.js`), and the minimap shows fog in the same colours.
 - The AI is not affected by fog.
 - **Map Cheat** turns fog off. Regular games start with it off; the tutorial and most campaign levels start with it on.
 

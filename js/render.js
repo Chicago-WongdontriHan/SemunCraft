@@ -7,6 +7,8 @@ function render(){
   boardEl.style.gridTemplateColumns='repeat('+vCols+',1fr)';
   // the gap between tiles, thin but never thinner than a pixel
   boardEl.style.setProperty('--tile-ring',Math.max(1,Math.round(sqPx*0.018))+'px');
+  // coordinates on a clouded square take the colour of the map's weather
+  boardEl.style.setProperty('--fog-text',fogStyle().text);
   const mc=myColor();
   const ki=pieces.findIndex(p=>p&&p.color===mc&&p.type==='king');
   const prodTgts=kingSelected&&ki>=0?new Set(adj8(ki).filter(i=>!pieces[i]&&!isTileBlocked(i))):new Set();
@@ -36,9 +38,9 @@ function render(){
       // theme scenery / obstacle sticker, under everything else the square holds
       if(vis!=='unknown'&&typeof tileArt==='function'){const art=tileArt(i);if(art)sq.appendChild(art);}
       if(vis==='unknown'){
-        // unexplored — opaque fog cover hides everything
+        // unexplored — thick cloud hides everything
         sq.classList.add('fog','fog-unknown');
-        const cov=document.createElement('div');cov.className='fog-cover';sq.appendChild(cov);
+        sq.appendChild(fogCover(i,'unknown'));
         if(c===viewCol0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
         if(r===viewRow0+vRows-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
         boardEl.appendChild(sq);
@@ -56,7 +58,7 @@ function render(){
           }
         }
         sq.classList.add('fog','fog-explored');
-        const cov2=document.createElement('div');cov2.className='fog-cover';sq.appendChild(cov2);
+        sq.appendChild(fogCover(i,'explored'));
         if(c===viewCol0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
         if(r===viewRow0+vRows-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
         boardEl.appendChild(sq);

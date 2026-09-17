@@ -337,6 +337,9 @@ function renderMinimap(){
     // only where the panel's minimap can't be seen, and only when there is a view to point out
     const show=boardZoom>1.01&&(!panel||panel.offsetParent===null);
     corner.style.display=show?'grid':'none';
+    // the strip the map sits in makes room for it at its left
+    const rp=document.getElementById('right-panel');
+    if(rp)rp.classList.toggle('with-map',show);
     if(show)drawMinimap(corner,Math.max(3,Math.floor(Math.min(84/COLS,84/ROWS))));
   }
 }

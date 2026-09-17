@@ -103,6 +103,7 @@ function newGame(o){
   if(lv){
     const obs=((THEME_TILES[lv.theme]||THEME_TILES.forest).find(t=>t[2])||['tree'])[0];
     (lv.obstacles||[]).forEach(([r,c])=>{if(r>=0&&r<s.rows&&c>=0&&c<s.cols)setTile(s,r*s.cols+c,obs);});
+    (lv.tiles||[]).forEach(([r,c,t])=>{if(r>=0&&r<s.rows&&c>=0&&c<s.cols)setTile(s,r*s.cols+c,t);});
     [['w',lv.white],['b',lv.black]].forEach(([color,list])=>(list||[]).forEach(pd=>{
       const p=makePiece(pd.type,color);
       if(pd.type==='bishop')p.mana=2;
@@ -507,17 +508,27 @@ function applyAttacks(s,acts,color,events){
   }
 }
 
-// checkCampaignWin in campaign.js, from White's side: 'win', 'lose' or null
+// checkCampaignWin in campaign.js, from White's side: 'win', 'lose' or null. The objectives are
+// destroy_all, destroy_king, reach, survive and hold, plus protect (a piece you must not lose).
 function campaignResult(s){
   const lv=s.level,B=s.board;
-  if(B.some(p=>p&&p.type==='king')||lv.winType==='destroy_king'){
-    if(!B.some(p=>p&&p.color==='b'&&p.type==='king'))return'win';
-    if(!B.some(p=>p&&p.color==='w'&&p.type==='king'))return'lose';
+  const mine=p=>p&&p.color==='w';
+  if(lv.protect&&!B.some(p=>mine(p)&&p.type===lv.protect))return'lose';
+  const onGoal=t=>(lv.squares||[]).some(([r,c])=>{const p=B[r*s.cols+c];return mine(p)&&(!t||p.type===t);});
+  if(lv.winType==='reach'&&onGoal(lv.reachType))return'win';
+  if((lv.winType==='survive'||lv.winType==='hold')&&s.turnCount.w>=(lv.surviveTurns||lv.turnLimit)){
+    if(lv.winType==='survive')return'win';
+    if(onGoal(null))return'win';
   }
+  // whoever started the level with a King loses it by losing him
+  if(lv.winType==='destroy_king'||(lv.black||[]).some(p=>p.type==='king')){
+    if(!B.some(p=>p&&p.color==='b'&&p.type==='king'))return'win';
+  }
+  if((lv.white||[]).some(p=>p.type==='king')&&!B.some(p=>p&&p.color==='w'&&p.type==='king'))return'lose';
   if(lv.winType==='destroy_all'&&!B.some(p=>p&&p.color==='b'))return'win';
   if(!B.some(p=>p&&p.color==='w'))return'lose';
   // the level's turn limit is a deadline, not just a par time (checkCampaignWin in campaign.js)
-  if(lv.turnLimit&&s.turn==='w'&&s.turnCount.w>=lv.turnLimit)return'lose';
+  if(lv.turnLimit&&s.turnCount.w>=lv.turnLimit)return'lose';
   return null;
 }
 

@@ -75,11 +75,10 @@ function initGame(){
 // ── TURN MANAGEMENT ───────────────────────────────────────────────────────────
 function startWhiteTurn(){
   turn='w';
-  // a campaign level's turn limit is a real deadline, not just a star
-  if(campaignLevel&&!over&&checkCampaignWin()==='lose'){
-    over=true;
-    setTimeout(()=>handleCampaignEnd('lose'),300);
-    return;
+  // the level may already be decided: its turns ran out, or the objective was met while Black moved
+  if(campaignLevel&&!over){
+    const r=checkCampaignWin();
+    if(r){over=true;setTimeout(()=>handleCampaignEnd(r),300);return;}
   }
   if(isTutorialActive()){
     const step=TUTORIAL_STEPS[tutStep];
@@ -140,6 +139,17 @@ function turnUpkeep(){
   }
 }
 
+// a campaign level can be decided by White's own turn — the objective met, or the last enemy gone —
+// before Black moves; the engine checks at the same point, so both end a level on the same turn
+function campaignCheckpoint(){
+  if(!campaignLevel||over)return false;
+  const r=checkCampaignWin();
+  if(!r)return false;
+  over=true;
+  setTimeout(()=>handleCampaignEnd(r),600);
+  return true;
+}
+
 function endTurn(){
   if(over)return;
   whiteTurnCount++;
@@ -184,10 +194,12 @@ function endTurn(){
       if(bActions.length){
         setTimeout(()=>executeActions(bActions,'b',()=>{
           render();if(over){if(campaignLevel){const cr=checkCampaignWin();setTimeout(()=>handleCampaignEnd(cr||'lose'),600);}else{setStatus('Black wins! ♚');SFX.lose();syncUI();setTimeout(()=>showGameOver(myColor()==='b'?'win':'lose'),600);}return;}
+          if(campaignCheckpoint())return;
           setTimeout(aiAct,200);
         }),200);
       }else{
         blackActed=new Set();
+        if(campaignCheckpoint())return;
         setTimeout(aiAct,300);
       }
     };

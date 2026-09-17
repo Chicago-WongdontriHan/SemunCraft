@@ -150,21 +150,25 @@ Four selectable themes that change visuals, obstacles, ambient wildlife, and bac
 
 ## Campaign
 
-10 hand-built levels, unlocked in order. Progress is saved in the browser (localStorage).
+Twelve hand-built levels in four acts, unlocked in order. Progress is saved in the browser (localStorage).
 
-| # | Level | Board | Theme | Goal |
-|---|-------|-------|-------|------|
-| 1 | Pawn School | 5x5 | Forest | Destroy all enemies |
-| 2 | Narrow Pass | 3x7 | Forest | Destroy all enemies |
-| 3 | Clash in the Dunes | 8x8 | Desert | Destroy the enemy King (no merging; armies set up as in chess) |
-| 4 | Desert Crossing | 9x5 | Desert | Destroy all enemies |
-| 5 | Island Siege | 5x9 | Ocean | Destroy all enemies |
-| 6 | The Maze | 9x9 | Forest | Destroy all enemies |
-| 7 | Twin Forts | 11x7 | Desert | Destroy all enemies |
-| 8 | Canyon Battle | 5x11 | Ocean | Destroy all enemies |
-| 9 | Open War | 9x9 | Forest | Destroy all enemies (fog of war on) |
-| 10 | Last Stand | 11x11 | Desert | Destroy all enemies |
+| # | Level | Board | Map | Objective |
+|---|-------|-------|-----|-----------|
+| 1 | The Last Three | 5x5 | Forest | Destroy the raider |
+| 2 | The Narrow Pass | 3x7 | Forest | Hold the pass for 10 turns |
+| 3 | The Maze | 9x9 | Forest | Walk the Queen to the far edge |
+| 4 | Open War | 9x9 | Forest | Destroy every enemy piece (fog of war) |
+| 5 | Desert Crossing | 9x5 | Desert | Reach the gate on the far side |
+| 6 | The Mint | 9x9 | Desert | Hold the Mint floor for 10 turns — **spawning unlocks here** |
+| 7 | Clash in the Dunes | 8x8 | Desert | Destroy the enemy King (no merging; armies set up as in chess) |
+| 8 | Twin Forts | 11x7 | Desert | Destroy every enemy piece |
+| 9 | Green Silence | 9x9 | Jungle | Destroy every enemy piece (they hide in undergrowth) |
+| 10 | The Spring | 9x9 | Jungle | Walk Wren to the spring — and keep her alive |
+| 11 | Island Siege | 5x9 | Ocean | Destroy every enemy piece |
+| 12 | The Mirror Citadel | 11x11 | Ocean | Destroy the Mirror King |
 
+- **Objectives** (`checkCampaignWin` in campaign.js, mirrored by `campaignResult` in engine.js, both reading only the board and the turn count): `destroy_all`, `destroy_king`, `reach` (a piece — of `reachType`, if set — stands on one of the level's `squares`), `survive` (last `surviveTurns` turns out), `hold` (stand on a goal square once those turns are up), plus `protect` (losing your last piece of that type loses the level). Goal squares glow gold on the board. A level can also place named ground with `tiles`, which is how the jungle levels grow their undergrowth.
+- Whoever **started** the level with a King loses it by losing him — a level where only you have a King is not already won.
 - You lose if all your pieces (or your King, on levels with Kings) are destroyed, **or if the level's turns run out**. The deadline is a rule, checked in `checkCampaignWin` (campaign.js) and mirrored in `campaignResult` (engine.js), so the engine ends a level exactly where the game does.
 - **Three stars**, shown before the level and scored after it (`levelStars` in campaign.js): winning at all, winning inside `par` (well inside the deadline), and the level's own challenge — lose no piece, keep your King untouched, or beat a tighter turn count (`CHALLENGES`). The counters behind them (`campaignLost`, `campaignKingHit`) are in state.js.
 - **The briefing card** (`showBriefing`) is a level's front page: where you are, two lines of dialogue, the objective with its deadline, and the three stars. Choosing a level opens it instead of starting at once, so a finished level can be read again without replaying it. Defeat says what went wrong ("Out of turns", "Your King has fallen").

@@ -73,6 +73,8 @@ function render(){
         }
       }
 
+      // a campaign level's goal squares: the gate to reach, the floor to hold
+      if(campaignLevel&&campaignLevel.squares&&campaignLevel.squares.some(([gr,gc])=>gr===r&&gc===c))sq.classList.add('goal-tile');
       // action guide: what the tapped or dragged piece can do on this square (drawn over the piece below)
       let guide=null;
       if(dragging&&dragDests){

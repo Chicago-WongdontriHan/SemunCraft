@@ -157,12 +157,13 @@ function aiVsAiFinish(){
   document.getElementById('thinking-dot').classList.remove('on');
   const winner=s.winner==='draw'?0:s.winner==='w'?g.white:g.black;
   if(winner)aiVsAiScore[winner]++;else aiVsAiScore.draw++;
-  const result=winner?'AI #'+winner+' wins':'Draw';
+  // the headline names the side; which AI played it goes underneath
+  const result=winner?(s.winner==='w'?'White':'Black')+' wins':'Draw';
   const title=document.getElementById('go-title'),sub=document.getElementById('go-sub'),btns=document.getElementById('go-buttons');
   title.className=winner?'win':'draw';
   title.textContent=result;
   const draws=aiVsAiScore.draw?' ('+aiVsAiScore.draw+(aiVsAiScore.draw>1?' draws)':' draw)'):'';
-  sub.textContent=(winner?'as '+(s.winner==='w'?'White':'Black'):'turn limit')+' after '+(s.turnCount.w+s.turnCount.b)
+  sub.textContent=(winner?'AI #'+winner+' wins':'turn limit')+' after '+(s.turnCount.w+s.turnCount.b)
     +' turns · score AI #1 '+aiVsAiScore[1]+' – '+aiVsAiScore[2]+' AI #2'+draws;
   btns.innerHTML='';
   const next=document.createElement('button');

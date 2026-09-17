@@ -345,8 +345,11 @@ function reactiveAI(){
 }
 
 function campaignAI(){
-  // campaign AI: no spawning, move pieces toward nearest white piece
+  // campaign AI: no spawning; answer threats, then move by the level's enemy profile — hunter walks at
+  // the King, turtle holds its ground, raider goes for your weakest piece (campaignAI in engine.js)
   if(reactiveAI())return;
+  const profile=(campaignLevel&&campaignLevel.enemy)||'hunter';
+  if(profile==='turtle'){finishBlackTurn();return;}
   // find nearest white piece as target for each black piece
   // exclude pieces that already auto-attacked this turn
   const allB=[];
@@ -355,7 +358,12 @@ function campaignAI(){
 
   // prioritize the white king as the strategic target (win condition in king levels)
   const wKi=pieces.findIndex(p=>p&&p.color==='w'&&p.type==='king');
-  let target=wKi;
+  let target=profile==='raider'?-1:wKi;
+  if(profile==='raider'){
+    // the weakest piece on the board, by hit points and then by square, so both sides pick the same one
+    let worst=99;
+    for(let j=0;j<ROWS*COLS;j++){const wp=pieces[j];if(!wp||wp.color!=='w')continue;if(wp.hp<worst){worst=wp.hp;target=j;}}
+  }
   if(target<0){
     // no king — find nearest white piece as fallback
     let bestDist=999;
@@ -580,6 +588,8 @@ async function askClaude(){
 // entered, and otherwise the trained network for the chosen difficulty (js/netai.js)
 function aiAct(){
   if(isTutorialActive()){tutMoveEnemyOnce();setTimeout(()=>finishBlackTurn(),220);return;}
+  // a level can hand Black to a trained network — the Mirror King plays the way you do
+  if(campaignLevel&&campaignLevel.enemy==='net'&&typeof netAiTurn==='function'){netAiTurn();return;}
   const claude=difficulty==='hard'&&document.getElementById('api-key').value.trim();
   if(!campaignLevel&&!claude&&typeof netAiTurn==='function'){netAiTurn();return;}
   askClaude();

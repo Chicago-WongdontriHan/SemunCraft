@@ -930,14 +930,25 @@ function reactiveAI(s,events){
   return false;
 }
 
-// campaign levels: no spawning; answer threats, otherwise advance on White's king (or nearest piece)
+// campaign levels: no spawning; answer threats, then move by the level's enemy profile (campaignAI in
+// ai.js does the same):
+//   hunter (default) walk at White's King, or the nearest piece when there is none
+//   turtle            hold the ground they were given and only answer threats
+//   raider            go for White's weakest piece instead of the King
 function campaignAI(s,events){
   if(reactiveAI(s,events))return;
+  const profile=(s.level&&s.level.enemy)||'hunter';
+  if(profile==='turtle')return;
   const B=s.board,g=geo(s);
   const allB=[];
   B.forEach((p,i)=>{if(p&&p.color==='b'&&p.type!=='siege'&&!s.acted.includes(i))allB.push(i);});
   if(!allB.length)return;
-  let target=findKing(s,'w');
+  let target=profile==='raider'?-1:findKing(s,'w');
+  if(profile==='raider'){
+    // the weakest piece on the board, by hit points and then by square, so both sides pick the same one
+    let worst=99;
+    for(let j=0;j<B.length;j++){const wp=B[j];if(!wp||wp.color!=='w')continue;if(wp.hp<worst){worst=wp.hp;target=j;}}
+  }
   if(target<0){
     let best=999;
     for(const bi of allB)for(let j=0;j<B.length;j++){

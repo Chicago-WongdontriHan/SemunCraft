@@ -57,7 +57,9 @@ function netAiPreload(){
 
 // the game's variables as an engine state with Black to move
 function netAiSnapshot(){
+  // a campaign level's own rules (no merging, no spawning, its objective) go with the snapshot
   return SemunEngine.fromSnapshot({cols:COLS,rows:ROWS,theme:mapTheme,mode:'classic',board:pieces,tiles:tileData,turn:'b',
+    level:campaignLevel||null,
     turnCount:{w:whiteTurnCount,b:blackTurnCount},spawns:{w:spawnHistory.length,b:blackSpawnHistory.length},
     targets:{w:whiteTargets,b:blackTargets},hitBy:blackHitBy,acted:[...blackActed],maxTurns:300});
 }

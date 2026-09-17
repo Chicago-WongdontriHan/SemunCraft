@@ -118,7 +118,7 @@ const CAMPAIGN_LEVELS=[
       lose:[['mirror','Mine held. Yours was only ever a reflection.']]},
   },
   {
-    id:7, name:'Twin Forts', desc:'Two sandstone forts, one road between them.',
+    id:7, enemy:'turtle', name:'Twin Forts', desc:'Two sandstone forts, one road between them.',
     cols:11, rows:7, theme:'desert',
     allowSpawn:true, par:30, turnLimit:48,
     winType:'destroy_all', goal:'Destroy every enemy piece', challenge:{type:'noLoss'},
@@ -135,7 +135,7 @@ const CAMPAIGN_LEVELS=[
   // Undergrowth hides whatever stands in it: this is where the Mirror Court stops marching at you
   // and starts waiting for you.
   {
-    id:8, name:'Green Silence', desc:'They are in the undergrowth, and they saw you first.',
+    id:8, enemy:'raider', name:'Green Silence', desc:'They are in the undergrowth, and they saw you first.',
     cols:9, rows:9, theme:'jungle',
     allowSpawn:true, par:18, turnLimit:30,
     winType:'destroy_all', goal:'Destroy every enemy piece', challenge:{type:'kingSafe'},
@@ -168,7 +168,7 @@ const CAMPAIGN_LEVELS=[
   },
   // ── ACT IV · THE MIRROR SEA ─────────────────────────────────────────────────
   {
-    id:10, name:'Island Siege', desc:'Break the sea wall with rooks before the garrison forms up.',
+    id:10, enemy:'turtle', name:'Island Siege', desc:'Break the sea wall with rooks before the garrison forms up.',
     cols:5, rows:9, theme:'ocean',
     allowSpawn:false, par:18, turnLimit:29,
     winType:'destroy_all', goal:'Destroy every enemy piece', challenge:{type:'underTurns',n:12},
@@ -183,7 +183,7 @@ const CAMPAIGN_LEVELS=[
       lose:[['mirror','You came across my water with two rooks.']]},
   },
   {
-    id:11, name:'The Mirror Citadel', desc:'His court, his walls, his face. End it.',
+    id:11, enemy:'net', name:'The Mirror Citadel', desc:'His court, his walls, his face. End it.',
     cols:11, rows:11, theme:'ocean',
     allowSpawn:true, par:24, turnLimit:40,
     winType:'destroy_king', goal:'Destroy the Mirror King', challenge:{type:'kingSafe'},

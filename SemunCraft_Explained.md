@@ -165,8 +165,13 @@ Four selectable themes that change visuals, obstacles, ambient wildlife, and bac
 | 9 | Open War | 9x9 | Forest | Destroy all enemies (fog of war on) |
 | 10 | Last Stand | 11x11 | Desert | Destroy all enemies |
 
-- You lose if all your pieces (or your King, on levels with Kings) are destroyed.
-- Winning within the level's turn limit earns ★★; winning over the limit earns ★☆.
+- You lose if all your pieces (or your King, on levels with Kings) are destroyed, **or if the level's turns run out**. The deadline is a rule, checked in `checkCampaignWin` (campaign.js) and mirrored in `campaignResult` (engine.js), so the engine ends a level exactly where the game does.
+- **Three stars**, shown before the level and scored after it (`levelStars` in campaign.js): winning at all, winning inside `par` (well inside the deadline), and the level's own challenge — lose no piece, keep your King untouched, or beat a tighter turn count (`CHALLENGES`). The counters behind them (`campaignLost`, `campaignKingHit`) are in state.js.
+- **The briefing card** (`showBriefing`) is a level's front page: where you are, two lines of dialogue, the objective with its deadline, and the three stars. Choosing a level opens it instead of starting at once, so a finished level can be read again without replaying it. Defeat says what went wrong ("Out of turns", "Your King has fallen").
+
+### The story: The Hollow Crown
+
+The King's Coin is stolen, so no new pawns can be minted — which is why the early levels have no spawning — and the Mirror Court, your own pieces in black, marches out of the wood. A small cast carries it (`SPEAKERS` in campaign.js, each drawn with its own piece art): the **King** (tired, practical), **Pip** the first pawn (eager, asks what the player is thinking), **Wren** the bishop (keeper of the Elixir spring) and the **Mirror King** (your words, turned cold; he speaks when you lose). A level shows at most two lines before it and one after.
 
 ---
 

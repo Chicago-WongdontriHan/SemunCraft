@@ -516,6 +516,8 @@ function campaignResult(s){
   }
   if(lv.winType==='destroy_all'&&!B.some(p=>p&&p.color==='b'))return'win';
   if(!B.some(p=>p&&p.color==='w'))return'lose';
+  // the level's turn limit is a deadline, not just a par time (checkCampaignWin in campaign.js)
+  if(lv.turnLimit&&s.turn==='w'&&s.turnCount.w>=lv.turnLimit)return'lose';
   return null;
 }
 
@@ -613,6 +615,7 @@ function finishTurn(s,color,events){
     upkeep(s,null);
     s.turn='w';
   }
+  if(!s.over&&s.level){const r=campaignResult(s);if(r){s.over=true;s.winner=r==='win'?'w':'b';}}
   if(!s.over&&s.maxTurns&&s.turnCount.w+s.turnCount.b>=s.maxTurns){s.over=true;s.winner='draw';}
 }
 

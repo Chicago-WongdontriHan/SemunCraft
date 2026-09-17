@@ -75,6 +75,12 @@ function initGame(){
 // ── TURN MANAGEMENT ───────────────────────────────────────────────────────────
 function startWhiteTurn(){
   turn='w';
+  // a campaign level's turn limit is a real deadline, not just a star
+  if(campaignLevel&&!over&&checkCampaignWin()==='lose'){
+    over=true;
+    setTimeout(()=>handleCampaignEnd('lose'),300);
+    return;
+  }
   if(isTutorialActive()){
     const step=TUTORIAL_STEPS[tutStep];
     if(step&&step._healPhase){

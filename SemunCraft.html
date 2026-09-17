@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>SemunCraft</title>
 <!-- fetch the UI font with the page, so the title does not flash in a fallback face -->
-<link rel="preload" href="fonts/LilitaOne.woff2?v=20260917k" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/LilitaOne.woff2?v=20260917l" as="font" type="font/woff2" crossorigin>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 /* a double tap must not zoom the page: the board has its own pinch and zoom (js/drag.js) */
@@ -61,13 +61,13 @@ html,body{width:100%;height:100%;overflow:hidden;}
 body{font-family:var(--ui-font);background:#0c1a08;color:#c8d4a0;display:flex;flex-direction:column;align-items:center;height:100vh;height:100dvh;padding:6px 10px 4px;gap:5px;background-image:radial-gradient(ellipse at 20% 10%,rgba(30,60,10,.6) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(10,40,5,.7) 0%,transparent 50%);}
 
 /* ── INTRO ── */
-@font-face{font-family:'Lilita One';src:url(fonts/LilitaOne.woff2?v=20260917k) format('woff2');font-display:swap;}
+@font-face{font-family:'Lilita One';src:url(fonts/LilitaOne.woff2?v=20260917l) format('woff2');font-display:swap;}
 /* the title screen: a war scene behind (Battle Lines on wide screens, The Clash on tall ones, from
    img/make-title-wallpapers.js), the SemunCraft title, and the menu on a translucent card. Every
    size follows --tw, the title's width, so the whole menu scales with the screen and still fits. */
 #intro{--tw:min(92vw,640px,60vh);position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;gap:calc(var(--tw)*.02);padding:12px 8px;overflow-y:auto;
-  background:#8ED6F2 url(img/title-wide.svg?v=20260917k) center bottom/cover no-repeat;}
-@media (orientation:portrait){#intro{background-image:url(img/title-tall.svg?v=20260917k);}}
+  background:#8ED6F2 url(img/title-wide.svg?v=20260917l) center bottom/cover no-repeat;}
+@media (orientation:portrait){#intro{background-image:url(img/title-tall.svg?v=20260917l);}}
 #intro-title{width:var(--tw);height:auto;display:block;flex-shrink:0;overflow:visible;}
 #intro-title text{font-family:'Lilita One',Georgia,serif;font-size:120px;text-anchor:middle;stroke-linejoin:round;}
 #intro-title .title-shadow{fill:#2A1706;stroke:#2A1706;stroke-width:20px;}
@@ -355,6 +355,31 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 .clb-size{font-size:10px;color:var(--parch-dim);font-family:var(--ui-font);}
 .clb-stars{font-size:14px;color:var(--gold-lit);}
 
+/* ── CAMPAIGN BRIEFING ── */
+#briefing{display:none;position:fixed;inset:0;z-index:170;background:rgba(0,0,0,.72);align-items:center;justify-content:center;padding:12px;}
+#briefing.show{display:flex;}
+#briefing-box{background:linear-gradient(var(--leather-a),var(--leather-b));border:2px solid var(--gold);border-radius:var(--ui-r);
+  box-shadow:inset 0 0 0 2px rgba(201,162,39,.22),0 12px 40px rgba(0,0,0,.9);color:var(--parch);
+  padding:0 20px 18px;width:clamp(290px,44vw,540px);max-height:88vh;overflow-y:auto;
+  display:flex;flex-direction:column;gap:10px;font-family:var(--ui-font);}
+#briefing-box .panel-label{margin:0 -20px;font-size:13px;}
+#briefing-where{font-size:12px;color:var(--parch-dim);font-style:italic;text-align:center;letter-spacing:.04em;}
+.story-line{display:flex;align-items:flex-start;gap:10px;font-size:14px;line-height:1.5;}
+.story-face{flex-shrink:0;background:var(--inset);border:1px solid rgba(201,162,39,.4);border-radius:3px;padding:2px;}
+.story-face svg{display:block;}
+.story-text b{display:block;color:var(--gold-lit);font-size:11px;letter-spacing:.12em;text-transform:uppercase;}
+.story-dim{color:var(--parch-dim);}
+#briefing-goal{font-size:13px;}
+#briefing-goal b{color:var(--gold-lit);font-size:11px;letter-spacing:.12em;text-transform:uppercase;margin-right:6px;}
+#briefing-stars{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--parch-dim);}
+.briefing-star{letter-spacing:.04em;}
+#briefing-btns{display:flex;gap:10px;justify-content:center;margin-top:2px;}
+.go-stars{display:flex;flex-direction:column;gap:2px;font-size:clamp(12px,1.6vw,16px);}
+.go-star-on{color:var(--gold-lit);}
+.go-star-off{color:var(--parch-dim);opacity:.7;}
+.go-note{font-size:clamp(11px,1.4vw,14px);color:var(--parch-dim);margin-top:4px;}
+#go-sub .story-line{max-width:520px;text-align:left;margin:8px auto 0;}
+
 /* ── PAN ARROWS + MINIMAP ── */
 .pan-arrow{position:absolute;display:none;font-size:32px;line-height:44px;color:#c8e860;
   background:rgba(14,31,8,.9);border:2px solid #6a9830;border-radius:6px;
@@ -585,6 +610,22 @@ body.theme-ocean{--tile-frame:#1e3c74;}
   </div>
 </div>
 
+<!-- ── CAMPAIGN BRIEFING ── -->
+<div id="briefing">
+  <div id="briefing-box">
+    <div class="panel-label" id="briefing-title">Level</div>
+    <div id="briefing-where"></div>
+    <div id="briefing-lines"></div>
+    <div class="tier-divider"></div>
+    <div id="briefing-goal"></div>
+    <div id="briefing-stars"></div>
+    <div id="briefing-btns">
+      <button class="go-btn secondary" onclick="hideBriefing()">↺ Back</button>
+      <button class="go-btn primary" onclick="briefingBegin()">▶ Begin</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── GAME OVER OVERLAY ── -->
 <div id="game-over">
   <div id="go-title">You Win!</div>
@@ -699,32 +740,32 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 <!-- ?v= is the release version: bump it on every release so browsers (GitHub Pages lets them
      cache files for 10 minutes) never mix old cached scripts with new ones -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-<script src="js/constants.js?v=20260917k"></script>
-<script src="js/state.js?v=20260917k"></script>
-<script src="js/audio.js?v=20260917k"></script>
-<script src="js/music.js?v=20260917k"></script>
-<script src="pieces/pieces.js?v=20260917k"></script>
-<script src="pieces/forest.js?v=20260917k"></script>
-<script src="pieces/jungle.js?v=20260917k"></script>
-<script src="pieces/desert.js?v=20260917k"></script>
-<script src="pieces/ocean.js?v=20260917k"></script>
-<script src="js/movement.js?v=20260917k"></script>
-<script src="js/themes.js?v=20260917k"></script>
-<script src="js/scenery.js?v=20260917k"></script>
-<script src="js/render.js?v=20260917k"></script>
-<script src="js/combat.js?v=20260917k"></script>
-<script src="js/animals.js?v=20260917k"></script>
-<script src="js/actions.js?v=20260917k"></script>
-<script src="js/ui.js?v=20260917k"></script>
-<script src="js/tutorial.js?v=20260917k"></script>
-<script src="js/campaign.js?v=20260917k"></script>
-<script src="js/pvp.js?v=20260917k"></script>
-<script src="js/ai.js?v=20260917k"></script>
-<script src="js/game.js?v=20260917k"></script>
-<script src="js/drag.js?v=20260917k"></script>
-<script src="js/resize.js?v=20260917k"></script>
+<script src="js/constants.js?v=20260917l"></script>
+<script src="js/state.js?v=20260917l"></script>
+<script src="js/audio.js?v=20260917l"></script>
+<script src="js/music.js?v=20260917l"></script>
+<script src="pieces/pieces.js?v=20260917l"></script>
+<script src="pieces/forest.js?v=20260917l"></script>
+<script src="pieces/jungle.js?v=20260917l"></script>
+<script src="pieces/desert.js?v=20260917l"></script>
+<script src="pieces/ocean.js?v=20260917l"></script>
+<script src="js/movement.js?v=20260917l"></script>
+<script src="js/themes.js?v=20260917l"></script>
+<script src="js/scenery.js?v=20260917l"></script>
+<script src="js/render.js?v=20260917l"></script>
+<script src="js/combat.js?v=20260917l"></script>
+<script src="js/animals.js?v=20260917l"></script>
+<script src="js/actions.js?v=20260917l"></script>
+<script src="js/ui.js?v=20260917l"></script>
+<script src="js/tutorial.js?v=20260917l"></script>
+<script src="js/campaign.js?v=20260917l"></script>
+<script src="js/pvp.js?v=20260917l"></script>
+<script src="js/ai.js?v=20260917l"></script>
+<script src="js/game.js?v=20260917l"></script>
+<script src="js/drag.js?v=20260917l"></script>
+<script src="js/resize.js?v=20260917l"></script>
 <!-- trained AI (Single Player difficulties, AI vs AI); the engine, network and weights load only when needed -->
-<script src="js/netai.js?v=20260917k"></script>
-<script src="js/aivsai.js?v=20260917k"></script>
+<script src="js/netai.js?v=20260917l"></script>
+<script src="js/aivsai.js?v=20260917l"></script>
 </body>
 </html>

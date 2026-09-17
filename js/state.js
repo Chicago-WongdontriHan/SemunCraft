@@ -110,7 +110,12 @@ function canPanE(){return boardPanX>boardFrameW()-sqPx*COLS+.5;}
 
 // ── CAMPAIGN STATE ───────────────────────────────────────────────────────────
 let campaignLevel=null; // current level config object, or null for normal game
-let campaignLevelId=-1; // current level index (0-9)
+let campaignLevelId=-1; // current level index
+// what this run of a level is scored on: the first star is the win, the second is beating par,
+// the third is the level's own challenge (see CHALLENGES in campaign.js)
+let campaignLost=0;        // pieces of yours that died this level
+let campaignKingHit=false; // your King took a hit
+let campaignDefeat='';     // why the level was lost, shown on the defeat card
 
 // ── PVP STATE ────────────────────────────────────────────────────────────────
 let peer=null,conn=null,pvpRole=null,pvpActive=false,myPeerId=null;

@@ -275,6 +275,7 @@ function executeActions(actions,color,cb){
 
 // ── DEATH ANIMATION ──────────────────────────────────────────────────────────
 function showDeath(sqIdx, color, type){
+  if(campaignLevel&&color===myColor())campaignLost++;
   const el=sqElAt(sqIdx);if(!el)return;
   const rect=el.getBoundingClientRect();
   const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
@@ -310,6 +311,7 @@ function applyActions(actions,color){
       const ap=pieces[attacker];
       const dmg=(ap&&ap.type==='siege')?2:1;
       t.hp-=dmg;flashSq(target,'hit-flash');
+      if(campaignLevel&&t.color===myColor()&&t.type==='king')campaignKingHit=true;
       // track hits on black pieces for reactive AI
       if(color==='w'&&t.color==='b'&&t.hp>0)blackHitBy.push({target,attacker});
       if(t.hp<=0){

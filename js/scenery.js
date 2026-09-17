@@ -269,13 +269,13 @@ function tileArt(i){
 const FOG_TILES=4, FOG_P=160; // the picture spans 4 squares, at 40 units a square
 const FOG_STYLE={
   forest:{sky:'#A3B79A',back:'#C4D4B9',front:'#EEF5E7',ink:'#2C4624',accent:'#FFFFFF',accentA:.6,
-    veil:'rgba(200,218,190,.4)',wisp:'#F2F8EE',wispA:.4,text:'rgba(40,62,32,.8)'},
+    veil:'rgba(206,222,196,.6)',wisp:'#F2F8EE',wispA:.55,text:'rgba(40,62,32,.8)'},
   jungle:{sky:'#82B3A0',back:'#ABD2C1',front:'#E4F5ED',ink:'#144634',accent:'#FFFFFF',accentA:.6,
-    veil:'rgba(186,226,210,.38)',wisp:'#EEFAF5',wispA:.4,text:'rgba(16,60,44,.8)'},
+    veil:'rgba(194,230,215,.58)',wisp:'#EEFAF5',wispA:.55,text:'rgba(16,60,44,.8)'},
   desert:{sky:'#C8A673',back:'#E0C69C',front:'#F7E9CB',ink:'#684418',accent:'#9A6A30',accentA:.5,
-    veil:'rgba(236,214,172,.4)',wisp:'#FBF1DC',wispA:.4,text:'rgba(90,58,20,.8)'},
+    veil:'rgba(240,222,186,.6)',wisp:'#FBF1DC',wispA:.55,text:'rgba(90,58,20,.8)'},
   ocean:{sky:'#8CA8C3',back:'#B6CBDE',front:'#EAF2F9',ink:'#1A3860',accent:'#2B4C74',accentA:.5,
-    veil:'rgba(202,220,237,.42)',wisp:'#F3F8FC',wispA:.45,text:'rgba(24,50,86,.8)'},
+    veil:'rgba(208,224,240,.6)',wisp:'#F3F8FC',wispA:.55,text:'rgba(24,50,86,.8)'},
 };
 function fogStyle(){return FOG_STYLE[mapTheme]||FOG_STYLE.forest;}
 

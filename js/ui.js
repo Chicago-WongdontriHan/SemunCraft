@@ -14,9 +14,9 @@ function syncUI(){
       spawnBtn.disabled=true;
       spawnBtn.textContent='Spawn (N/A)';
     }else{
+      // how many are left is on the Coin counter in the resources panel
       const rem=spawnRemaining();
-      const turnsToNext=6-(whiteTurnCount%6)||6;
-      spawnBtn.textContent='Spawn ('+rem+') (+1 in '+turnsToNext+'t)';
+      spawnBtn.textContent='🌱 Spawn';
       if(!locked&&rem<=0)spawnBtn.disabled=true;
     }
   }
@@ -29,6 +29,7 @@ function syncUI(){
       mergeBtn.textContent='⚗ Merge';
     }
   }
+  renderResources();
   updateViewportControls();
 }
 
@@ -98,13 +99,40 @@ function renderPcCards(){
   }
 }
 
-// merge chart, drawn with the same piece art as the board
-const MERGE_RECIPES=[['pawn','pawn','knight'],['pawn','knight','bishop'],['knight','bishop','queen'],['knight','knight','rook'],['rook','rook','siege']];
-function renderMergeGuide(){
-  const el=document.querySelector('.merge-guide');if(!el)return;
-  const px=Math.max(14,Math.round(parseFloat(getComputedStyle(el).fontSize)*1.3));
-  const icon=t=>`<span class="mg-icon">${pieceSVG(t,'w',mapTheme,px,true)}</span>`;
-  el.innerHTML=MERGE_RECIPES.map(([a,b,r])=>`<span class="mg-row">${icon(a)}+${icon(b)}→${icon(r)}</span>`).join('');
+// ── RESOURCES ────────────────────────────────────────────────────────────────
+// Coin pays for the pawns the King spawns and Elixir is the magic the army holds. The rules don't
+// keep either as a pool yet, so the panel reads them off what the game already tracks: Coin is the
+// spawn allowance (8, and one more every 6 turns) and Elixir the mana on that side's bishops.
+const RES_COIN='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.4" fill="#F5C443" stroke="#3A2614" stroke-width="2.3"/>'
+  +'<circle cx="12" cy="12" r="5.2" fill="none" stroke="#3A2614" stroke-width="1.5" opacity=".5"/>'
+  +'<ellipse cx="9" cy="8.4" rx="2" ry="1.2" fill="#fff" opacity=".6" transform="rotate(-28 9 8.4)"/></svg>';
+const RES_ELIXIR='<svg viewBox="0 0 24 24"><path d="M12 2.4 C16.6 8 19 11.1 19 14.3 A7 7 0 0 1 5 14.3 C5 11.1 7.4 8 12 2.4 Z" '
+  +'fill="#43C45A" stroke="#14351C" stroke-width="2.2" stroke-linejoin="round"/>'
+  +'<path d="M9 13.4 C9 11.6 10 10 11.2 8.8" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".55"/></svg>';
+
+// the engine's own numbers while two networks play each other, the game's otherwise
+function coinCount(color){
+  if(gameMode==='aivsai'&&aiVsAi&&typeof SemunEngine!=='undefined')return SemunEngine.spawnRemaining(aiVsAi.s,color);
+  return color===myColor()?spawnRemaining():blackSpawnRemaining();
+}
+function elixirCount(color){
+  const board=(gameMode==='aivsai'&&aiVsAi)?aiVsAi.s.board:pieces;
+  return board.reduce((n,p)=>n+(p&&p.color===color&&p.type==='bishop'?(p.mana||0):0),0);
+}
+function renderResources(){
+  const el=document.getElementById('resources');if(!el)return;
+  const noSpawn=campaignLevel&&campaignLevel.allowSpawn===false;
+  const both=gameMode==='aivsai'&&aiVsAi;
+  const sides=both?['w','b']:[myColor()];
+  const chip=(icon,text)=>'<span class="res-chip">'+icon+'<b>'+text+'</b></span>';
+  el.innerHTML=sides.map(color=>{
+    const coin=noSpawn?'—':coinCount(color);
+    // when the next coin arrives, for the side that is counting turns
+    const turns=color==='w'?6-(whiteTurnCount%6)||6:6-(blackTurnCount%6)||6;
+    return '<div class="res-side">'+(both?'<span class="res-team">'+(color==='w'?'White':'Black')+'</span>':'')
+      +chip(RES_COIN,coin)+chip(RES_ELIXIR,elixirCount(color))
+      +(noSpawn?'':'<span class="res-note">+1 in '+turns+'t</span>')+'</div>';
+  }).join('');
 }
 
 function pcPage(dir){

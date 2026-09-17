@@ -72,6 +72,7 @@ function aiVsAiSync(){
   blackLastFrom=g.lastFrom;blackLastTo=g.lastTo;
   turn=s.turn;
   const tc=document.getElementById('turn-counter');if(tc)tc.textContent='Turn '+(s.turnCount.w+s.turnCount.b);
+  renderResources();
 }
 
 function aiVsAiLabel(n){

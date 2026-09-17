@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>SemunCraft</title>
 <!-- fetch the UI font with the page, so the title does not flash in a fallback face -->
-<link rel="preload" href="fonts/LilitaOne.woff2?v=20260917b" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/LilitaOne.woff2?v=20260917c" as="font" type="font/woff2" crossorigin>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 /* a double tap must not zoom the page: the board has its own pinch and zoom (js/drag.js) */
@@ -17,13 +17,13 @@ html,body{width:100%;height:100%;overflow:hidden;}
 body{font-family:var(--ui-font);background:#0c1a08;color:#c8d4a0;display:flex;flex-direction:column;align-items:center;height:100vh;height:100dvh;padding:6px 10px 4px;gap:5px;background-image:radial-gradient(ellipse at 20% 10%,rgba(30,60,10,.6) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(10,40,5,.7) 0%,transparent 50%);}
 
 /* ── INTRO ── */
-@font-face{font-family:'Lilita One';src:url(fonts/LilitaOne.woff2?v=20260917b) format('woff2');font-display:swap;}
+@font-face{font-family:'Lilita One';src:url(fonts/LilitaOne.woff2?v=20260917c) format('woff2');font-display:swap;}
 /* the title screen: a war scene behind (Battle Lines on wide screens, The Clash on tall ones, from
    img/make-title-wallpapers.js), the SemunCraft title, and the menu on a translucent card. Every
    size follows --tw, the title's width, so the whole menu scales with the screen and still fits. */
 #intro{--tw:min(92vw,640px,60vh);position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;gap:calc(var(--tw)*.02);padding:12px 8px;overflow-y:auto;
-  background:#8ED6F2 url(img/title-wide.svg?v=20260917b) center bottom/cover no-repeat;}
-@media (orientation:portrait){#intro{background-image:url(img/title-tall.svg?v=20260917b);}}
+  background:#8ED6F2 url(img/title-wide.svg?v=20260917c) center bottom/cover no-repeat;}
+@media (orientation:portrait){#intro{background-image:url(img/title-tall.svg?v=20260917c);}}
 #intro-title{width:var(--tw);height:auto;display:block;flex-shrink:0;overflow:visible;}
 #intro-title text{font-family:'Lilita One',Georgia,serif;font-size:120px;text-anchor:middle;stroke-linejoin:round;}
 #intro-title .title-shadow{fill:#2A1706;stroke:#2A1706;stroke-width:20px;}
@@ -67,9 +67,13 @@ h1{font-size:18px;font-weight:400;font-family:'Lilita One',Georgia,serif;letter-
 .pc-glyph-b{color:#ffe090;text-shadow:0 0 5px rgba(0,0,0,.9),0 1px 2px #000;}
 .pc-name{font-size:10px;color:#90c840;font-family:var(--ui-font);font-weight:400;}
 .pc-stats{font-size:7.5px;color:#6a8848;font-family:var(--ui-font);text-align:center;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.merge-guide{font-size:13px;color:#c8d860;text-align:center;line-height:2;font-family:var(--ui-font);letter-spacing:.04em;font-weight:400;}
-.mg-row{display:flex;align-items:center;justify-content:center;gap:1px;}
-.mg-icon svg{display:block;}
+#resources{font-size:13px;color:#c8d860;text-align:center;font-family:var(--ui-font);letter-spacing:.04em;
+  display:flex;flex-direction:column;align-items:center;gap:3px;}
+.res-side{display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap;line-height:1.5;}
+.res-team{font-size:.78em;opacity:.75;}
+.res-chip{display:inline-flex;align-items:center;gap:3px;}
+.res-chip svg{width:1.25em;height:1.25em;display:block;}
+.res-note{font-size:.72em;opacity:.65;}
 
 /* ── BOARD ── */
 #board-wrap{position:relative;flex-shrink:0;align-self:flex-start;border:3px solid #3a2810;border-radius:3px;box-shadow:0 0 0 1px #1a1008,0 6px 24px rgba(0,0,0,.7),inset 0 0 0 1px #5a4020;}
@@ -275,14 +279,14 @@ body.theme-ocean  #bottom-bar{background:rgba(4,8,22,.70);}
 body.theme-desert .panel-label{color:#8a6028;}
 body.theme-desert .pc-name{color:#d4a050;}
 body.theme-desert .pc-stats{color:#8a6028;}
-body.theme-desert .merge-guide{color:#e8c060;}
+body.theme-desert #resources{color:#e8c060;}
 body.theme-desert .tier-divider{background:#3a2810;}
 body.theme-desert .act-btn{background:#2a1808;border-color:#7a4820;color:#c8902a;}
 body.theme-desert .act-btn:hover{background:#3a2010;color:#e8b050;}
 body.theme-ocean .panel-label{color:#2a5080;}
 body.theme-ocean .pc-name{color:#60a8d0;}
 body.theme-ocean .pc-stats{color:#2a5070;}
-body.theme-ocean .merge-guide{color:#80c8f0;}
+body.theme-ocean #resources{color:#80c8f0;}
 body.theme-ocean .tier-divider{background:#0e2040;}
 body.theme-ocean .act-btn{background:#070e1a;border-color:#1a4070;color:#4090c0;}
 body.theme-ocean .act-btn:hover{background:#0e1a2e;color:#70c0e8;}
@@ -407,7 +411,7 @@ body.theme-ocean{--tile-frame:#1e3c74;}
   #left-panel{width:100% !important;height:auto !important;max-height:none !important;flex-direction:row;flex-wrap:nowrap;
     padding:2px 8px;gap:4px;justify-content:center;align-items:center;order:0;overflow:hidden;}
   /* merge chart as a row of recipes (wraps to two rows on narrow phones) */
-  #left-panel .merge-guide{display:flex;flex-wrap:wrap;gap:2px 8px;justify-content:center;line-height:1;white-space:nowrap;}
+  #left-panel #resources{flex-direction:row;flex-wrap:wrap;gap:4px 12px;justify-content:center;line-height:1;white-space:nowrap;}
   #left-panel .panel-label{display:none;}
   #left-panel .tier-divider{display:none;}
   #pc-cards-wrap{display:none !important;} /* hide unit cards in portrait */
@@ -464,7 +468,7 @@ body.theme-ocean{--tile-frame:#1e3c74;}
   #api-wrap{display:none;}
   /* shrink panels to minimum */
   #left-panel{max-width:80px !important;padding:3px 2px;}
-  #left-panel .merge-guide{font-size:9px;line-height:1.5;}
+  #left-panel #resources{font-size:9px;line-height:1.5;}
   #pc-cards-wrap{display:none !important;}
   #pc-prev,#pc-next{display:none;}
   #right-panel{max-width:100px !important;padding:3px 2px;}
@@ -602,8 +606,8 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 
 <div id="main">
   <div id="left-panel">
-    <div class="panel-label">Merges</div>
-    <div class="merge-guide"><!-- filled by renderMergeGuide() with the piece art --></div>
+    <div class="panel-label">Resources</div>
+    <div id="resources"><!-- filled by renderResources(): Coin and Elixir --></div>
     <div class="tier-divider"></div>
     <div class="panel-label">Units <span id="pc-page-label" style="color:#3a5828;font-size:7px;">1/2</span></div>
     <div id="pc-cards-wrap" style="display:flex;flex-direction:column;gap:3px;flex:1;min-height:0;justify-content:space-evenly;"></div>
@@ -692,32 +696,32 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 <!-- ?v= is the release version: bump it on every release so browsers (GitHub Pages lets them
      cache files for 10 minutes) never mix old cached scripts with new ones -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-<script src="js/constants.js?v=20260917b"></script>
-<script src="js/state.js?v=20260917b"></script>
-<script src="js/audio.js?v=20260917b"></script>
-<script src="js/music.js?v=20260917b"></script>
-<script src="pieces/pieces.js?v=20260917b"></script>
-<script src="pieces/forest.js?v=20260917b"></script>
-<script src="pieces/jungle.js?v=20260917b"></script>
-<script src="pieces/desert.js?v=20260917b"></script>
-<script src="pieces/ocean.js?v=20260917b"></script>
-<script src="js/movement.js?v=20260917b"></script>
-<script src="js/themes.js?v=20260917b"></script>
-<script src="js/scenery.js?v=20260917b"></script>
-<script src="js/render.js?v=20260917b"></script>
-<script src="js/combat.js?v=20260917b"></script>
-<script src="js/animals.js?v=20260917b"></script>
-<script src="js/actions.js?v=20260917b"></script>
-<script src="js/ui.js?v=20260917b"></script>
-<script src="js/tutorial.js?v=20260917b"></script>
-<script src="js/campaign.js?v=20260917b"></script>
-<script src="js/pvp.js?v=20260917b"></script>
-<script src="js/ai.js?v=20260917b"></script>
-<script src="js/game.js?v=20260917b"></script>
-<script src="js/drag.js?v=20260917b"></script>
-<script src="js/resize.js?v=20260917b"></script>
+<script src="js/constants.js?v=20260917c"></script>
+<script src="js/state.js?v=20260917c"></script>
+<script src="js/audio.js?v=20260917c"></script>
+<script src="js/music.js?v=20260917c"></script>
+<script src="pieces/pieces.js?v=20260917c"></script>
+<script src="pieces/forest.js?v=20260917c"></script>
+<script src="pieces/jungle.js?v=20260917c"></script>
+<script src="pieces/desert.js?v=20260917c"></script>
+<script src="pieces/ocean.js?v=20260917c"></script>
+<script src="js/movement.js?v=20260917c"></script>
+<script src="js/themes.js?v=20260917c"></script>
+<script src="js/scenery.js?v=20260917c"></script>
+<script src="js/render.js?v=20260917c"></script>
+<script src="js/combat.js?v=20260917c"></script>
+<script src="js/animals.js?v=20260917c"></script>
+<script src="js/actions.js?v=20260917c"></script>
+<script src="js/ui.js?v=20260917c"></script>
+<script src="js/tutorial.js?v=20260917c"></script>
+<script src="js/campaign.js?v=20260917c"></script>
+<script src="js/pvp.js?v=20260917c"></script>
+<script src="js/ai.js?v=20260917c"></script>
+<script src="js/game.js?v=20260917c"></script>
+<script src="js/drag.js?v=20260917c"></script>
+<script src="js/resize.js?v=20260917c"></script>
 <!-- trained AI (Single Player difficulties, AI vs AI); the engine, network and weights load only when needed -->
-<script src="js/netai.js?v=20260917b"></script>
-<script src="js/aivsai.js?v=20260917b"></script>
+<script src="js/netai.js?v=20260917c"></script>
+<script src="js/aivsai.js?v=20260917c"></script>
 </body>
 </html>

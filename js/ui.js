@@ -154,12 +154,16 @@ function renderResources(){
   const noSpawn=campaignLevel&&campaignLevel.allowSpawn===false;
   const both=gameMode==='aivsai'&&aiVsAi;
   const sides=both?['w','b']:[myColor()];
-  const chip=(icon,text)=>'<span class="res-chip">'+icon+'<b>'+text+'</b></span>';
+  // the income sits inside the Coin chip, so it reads as Coin's rate and not Elixir's
+  const rate='+'+(1/COIN_TURNS).toFixed(2);
+  const chip=(icon,text,note)=>'<span class="res-chip">'+icon+'<b>'+text+'</b>'
+    +(note?'<span class="res-note">'+note+'</span>':'')+'</span>';
+  // AI vs AI shows both sides; the strip stays one line either way
+  el.classList.toggle('two-sides',!!both);
   el.innerHTML=sides.map(color=>{
     const coin=noSpawn?'—':coinText(coinCount(color));
     return '<div class="res-side">'+(both?'<span class="res-team">'+(color==='w'?'White':'Black')+'</span>':'')
-      +chip(RES_COIN,coin)+chip(RES_ELIXIR,elixirCount(color))
-      +(noSpawn?'':'<span class="res-note">+1/'+COIN_TURNS+' a turn</span>')+'</div>';
+      +chip(RES_COIN,coin,noSpawn?'':rate)+chip(RES_ELIXIR,elixirCount(color))+'</div>';
   }).join('');
 }
 

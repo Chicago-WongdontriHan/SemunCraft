@@ -159,7 +159,7 @@ function renderResources(){
     const coin=noSpawn?'—':coinText(coinCount(color));
     return '<div class="res-side">'+(both?'<span class="res-team">'+(color==='w'?'White':'Black')+'</span>':'')
       +chip(RES_COIN,coin)+chip(RES_ELIXIR,elixirCount(color))
-      +(noSpawn?'':'<span class="res-note">+'+COIN_PER_TURN+'/turn</span>')+'</div>';
+      +(noSpawn?'':'<span class="res-note">+1/'+COIN_TURNS+' a turn</span>')+'</div>';
   }).join('');
 }
 

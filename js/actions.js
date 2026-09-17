@@ -435,7 +435,7 @@ function syncKingChooser(){
 function doSpawn(){
   if(over||thinking||!isMyTurn())return;
   const mc=myColor();
-  if(spawnRemaining()<1){setStatus('Not enough Coin for a pawn (+0.25 a turn)');return;}
+  if(spawnRemaining()<1){setStatus('Not enough Coin for a pawn (+1/'+COIN_TURNS+' a turn)');return;}
   const ki=pieces.findIndex(p=>p&&p.color===mc&&p.type==='king');
   const bKi=pieces.findIndex(p=>p&&p.color!==mc&&p.type==='king');
   if(ki<0)return;

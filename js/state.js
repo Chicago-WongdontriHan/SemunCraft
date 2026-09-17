@@ -7,10 +7,11 @@ let blackSpawnHistory=[]; // how many total spawns used (black)
 let whiteTurnCount=0; // total white turns this game
 let blackTurnCount=0; // total black turns this game
 let movedThisTurn=-1; // idx of white piece that acted this turn (cannot auto-attack)
-// Coin: 8 to start and a quarter more each turn; a pawn from the King costs one, so spawning waits
-// until a whole Coin is in hand (COIN_PER_TURN is mirrored in js/engine.js)
-const COIN_START=8, COIN_PER_TURN=0.25;
-function spawnQuota(){ if(campaignLevel&&campaignLevel.spawnLimit)return campaignLevel.spawnLimit; return COIN_START+whiteTurnCount*COIN_PER_TURN; }
+// Coin: 8 to start, and one more every COIN_TURNS turns — earned a sixth at a time rather than in
+// jumps. A pawn from the King costs one, so spawning waits until a whole Coin is in hand.
+// The same sum is in js/engine.js, written the same way so both sides land on the same number.
+const COIN_START=8, COIN_TURNS=6;
+function spawnQuota(){ if(campaignLevel&&campaignLevel.spawnLimit)return campaignLevel.spawnLimit; return COIN_START+whiteTurnCount/COIN_TURNS; }
 function spawnUsed(){ return spawnHistory.length; }
 // a quarter Coin a turn means the count is often a fraction; whole numbers stay plain
 function coinText(n){ return Number.isInteger(n)?String(n):n.toFixed(2); }
@@ -22,7 +23,7 @@ function spawnRemaining(){
   }
   return Math.max(0,spawnQuota()-spawnUsed());
 }
-function blackSpawnQuota(){ return COIN_START+blackTurnCount*COIN_PER_TURN; }
+function blackSpawnQuota(){ return COIN_START+blackTurnCount/COIN_TURNS; }
 function blackSpawnUsed(){ return blackSpawnHistory.length; }
 function blackSpawnRemaining(){ return Math.max(0,blackSpawnQuota()-blackSpawnUsed()); }
 let whiteTargets={};  // pieceIdx -> targetIdx (enemy for attackers, friendly for bishops)

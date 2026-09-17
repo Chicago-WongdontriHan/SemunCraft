@@ -342,8 +342,8 @@ function clock(s,color){return s.mode==='pvp'?s.turnCount[color]:s.turnCount.w;}
 
 function spawnRemaining(s,color){
   const lv=s.level;
-  // 8 Coin to start and a quarter a turn (COIN_START / COIN_PER_TURN in js/state.js)
-  const quota=lv&&lv.spawnLimit?lv.spawnLimit:8+s.turnCount[color]*0.25;
+  // 8 Coin to start and one more every 6 turns, a sixth at a time (COIN_START / COIN_TURNS in js/state.js)
+  const quota=lv&&lv.spawnLimit?lv.spawnLimit:8+s.turnCount[color]/6;
   return Math.max(0,quota-s.spawns[color]);
 }
 
@@ -693,7 +693,7 @@ function botMove(s,from,to,events){
 function bSpawn(s,cands,events){
   if(!cands.length)return false;
   // Black's quota ignores campaign spawn limits (blackSpawnQuota in state.js)
-  if(8+s.turnCount.b*0.25-s.spawns.b<1)return false;
+  if(8+s.turnCount.b/6-s.spawns.b<1)return false;
   const wK=findKing(s,'w');
   const sorted=wK>=0?[...cands].sort((a,b)=>cheb(s,a,wK)-cheb(s,b,wK)):cands;
   s.board[sorted[0]]={type:'pawn',color:'b',hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,firstMove:true};

@@ -197,6 +197,18 @@ The King's Gold is stolen, so no new pawns can be minted — which is why the ea
 
 ---
 
+## Playing It as a Phone App
+
+The game installs as a home-screen app (a Progressive Web App): no App Store, no Apple account, and every commit reaches the phone by itself.
+
+- **iPhone / iPad**: open https://chicago-wongdontrihan.github.io/SemunCraft/SemunCraft.html in **Safari**, tap **Share** (the square with an arrow), then **Add to Home Screen** (if there is an **Open as Web App** switch, leave it on), then **Add**. The SemunCraft icon opens the game full-screen, without Safari's bars.
+- **Android**: open the same link in Chrome and choose **Install app** (or **Add to Home screen**) from the menu.
+- **Updates**: the app loads the live site, so a new commit shows up the next time it is opened (GitHub Pages takes about a minute to publish, and a copy of the old page can linger for up to ten minutes). A game left open in the background checks when it comes back to the front, and every ten minutes, and offers **A new version of SemunCraft is ready → Reload** (`js/update.js`, which compares the `?v=` tag of the live page with its own).
+- **Saved progress**: the installed app keeps its own storage, separate from Safari's, so campaign stars earned in the browser don't carry over.
+- **Files**: `manifest.webmanifest` (name, start page, standalone display, colours, icons), the `<link rel="manifest">` / `apple-touch-icon` / `apple-mobile-web-app-*` tags in `SemunCraft.html` and `index.html`, and `icons/` — the White King and a pawn on a Forest board, drawn from the game's own pieces by `node img/make-app-icons.js` (it renders the PNGs with a headless Chrome or Edge). There is no service worker, so the game needs a connection; that is also what keeps every launch on the newest version.
+
+---
+
 ## Multiplayer (PvP)
 
 - Uses **PeerJS** (WebRTC) for peer-to-peer connections, with public STUN/TURN servers so players on different networks can connect.
@@ -262,6 +274,9 @@ The codebase is split into functional files for maintainability. All JS files us
 ```
 SemunCraft/
   SemunCraft.html       -- Entry point: HTML structure, CSS, loads all scripts
+  index.html            -- the site root: opens SemunCraft.html
+  manifest.webmanifest  -- makes the game installable on a phone's home screen
+  icons/                -- the app icons (SVG sources and PNGs), from img/make-app-icons.js
   SemunCraft_Explained.md
   arXiv/
     SemunCraft_old.html -- Original single-file version (untracked backup)
@@ -332,6 +347,7 @@ SemunCraft/
                            plays Black's turn in Single Player (see Trained AI Opponents below)
     aivsai.js           -- AI vs AI mode: watch the two most-trained networks play (see
                            AI vs AI below)
+    update.js           -- offers a reload when a newer version is live (the phone app)
   models/               -- trained networks for the browser, written by rl/export_web.py
     easy.js, medium.js  -- early checkpoints, played by the Easy and Medium difficulties
     ai-1.js, ai-2.js    -- the two most-trained networks (Hard plays ai-1)
@@ -474,6 +490,7 @@ The scripts are loaded in a specific order in `SemunCraft.html` because later fi
 19. `resize.js` -- window listeners (calls resizeBoard, render)
 20. `netai.js` -- trained AI (called by `ai.js` and `game.js` during play; loads `engine.js`, `rl/encoding.js`, `nn.js` and the trained weights only when a game needs them)
 21. `aivsai.js` -- AI vs AI mode (calls render, UI and animation helpers; gets the networks from `netai.js`)
+22. `update.js` -- stands alone: checks the live page's version and shows the reload banner
 
 ---
 

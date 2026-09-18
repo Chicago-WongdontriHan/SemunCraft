@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SemunCraft</title>
+<!-- the same app details as SemunCraft.html, so Add to Home Screen works from the site root too -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#0c1a08">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SemunCraft">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <!-- the game lives in SemunCraft.html; this makes the site's root link open it -->
 <meta http-equiv="refresh" content="0; url=SemunCraft.html">
 <script>location.replace('SemunCraft.html'+location.search+location.hash);</script>

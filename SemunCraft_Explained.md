@@ -31,6 +31,7 @@ The goal: **destroy the enemy King** while building up your army through a merge
 | **Queen** | ♛ | 5 | All 8 directions up to 2 squares (sliding) | All 8 directions up to 2 squares (not L-shapes); not blocked by pieces or obstacles |
 | **King** | ♔/♚ | 5 | Adjacent 1 step | Adjacent; also **spawns new pawns** |
 | **Siege Tower** | 🏰 | 4 | **Cannot move** | Cardinal up to 4 squares, 2 damage, piercing. Right-click it (or tap it twice) to un-siege back into two rooks, each with the tower's current HP (one rook if no tile next to it is free). |
+| **Mage** | ✦ | 3 | Diagonal up to 2 squares (sliding), like a bishop | **Any square within 3**, over pieces and obstacles alike; no heal, no merges |
 
 ---
 
@@ -44,12 +45,15 @@ The core progression mechanic. Drag one piece onto an adjacent ally to merge the
 ♘ + ♘  -->  ♖  (Knight + Knight = Rook)
 ♘ + ♗  -->  ♛  (Knight + Bishop = Queen)
 ♖ + ♖  -->  🏰  (Rook + Rook = Siege Tower)
+♗ + ♖  -->  ✦  (Bishop + Rook = Mage, for 2 Elixir)
 ```
 
 - Merged pieces spawn at full HP for their new type; a new Bishop starts with 1 mana.
 - A Knight can also merge with a piece one L-jump away, and that merge doesn't use up your turn.
-- Dragging a Bishop onto a Knight asks whether to heal it or merge into a Queen.
-- The **Merge** button merges the first adjacent pair it finds (Rook + Rook is drag-only).
+- Dragging a Bishop onto a Knight asks whether to heal it or merge into a Queen; onto a Rook, whether to heal it or merge into a **Mage**.
+- **The Mage costs 2 Elixir**, paid at the moment of merging (a Bishop and a Rook next to each other, either one dragged onto the other). Without the Elixir the two simply don't merge (`MAGE_ELIXIR` in `js/state.js` and `js/engine.js`). It is drawn as the Bishop rising out of a short tower, the design from the title screen (`pieces/combined/make.js`, shipped to the game in `pieces/units-art.js` by `node pieces/combined/make-game-units.js`), and it fires a violet spark.
+- A fortified pawn takes part in no merge.
+- The **Merge** button merges the first adjacent pair it finds (Rook + Rook and the Mage are drag-only).
 
 ---
 
@@ -68,10 +72,10 @@ Two tiles on the board are worth holding (`RESOURCE_TILES` in `js/state.js`), an
 
 - The **gold mine** (h2) pays by being held: every turn that ends with a pawn of yours on it adds **another sixth of Gold**, so your income doubles from +0.17 to **+0.33** a turn (`mineTurns`, `pawnOnMine`; credited in `endTurn` / `finishBlackTurn` and in the engine’s `finishTurn`). While a pawn stands there the tile pulses gold with a large **+0.16** badge on its top edge (the extra sixth, shown so that +0.17 and +0.16 add up to the +0.33 in the panel), and the Gold line in the panel lights up with the doubled rate.
 - The **Elixir spring** (b8) pays only for work: a pawn standing on it can **spend its whole turn extracting one Elixir**, every turn, with **no limit** on how much is banked — tap the pawn and press **Extract Elixir** on the board (or in the side panel) (`extractAt` in `js/actions.js`, the `extract` action in `js/engine.js`). That is the point of the rule: banking Elixir costs tempo and leaves a pawn standing still in the open, so the side that is ahead cannot extract without giving the other side a turn to come back.
-- Elixir is banked on its own (`elixir`) and will pay for the strongest merges.
+- Elixir is banked on its own (`elixir`) and pays for the **Mage** (Bishop + Rook, 2 Elixir); there is no cap on how much can be banked.
 - Both tiles only work for a **plain pawn** (a fortified pawn can't extract or earn), and say so: until one stands on a tile, it carries a badge with **the game's own pawn, in your colour** (white or black), ringed green (spring) or gold (mine) — a knight or a fortified pawn parked there still shows it, because it earns nothing. Under fog the badge sits larger in the middle of the square, as the tile's landmark, and hovering the square explains the tile (`pawnNeededBadge`, `RESOURCE_TIPS` in `js/render.js`).
 - Both tiles are **landmarks**: a coloured dot marks each one through the fog, because both sides know where they are from the start.
-- Black extracts too: the built-in AI does it before anything else on its turn (`fallbackAI` in `js/ai.js`, `botTurn` in `js/engine.js`), and because the trained networks were trained before the rule existed, the same check runs for them in `netAiChoose` and in AI vs AI (`freeExtract`). The mine pays either side automatically. `extract` and `fortify` are left out of the networks’ action map (`legalMap` in `rl/encoding.js`) until they are trained again.
+- Black extracts too: the built-in AI does it before anything else on its turn (`fallbackAI` in `js/ai.js`, `botTurn` in `js/engine.js`), and because the trained networks were trained before the rule existed, the same check runs for them in `netAiChoose` and in AI vs AI (`freeExtract`). The mine pays either side automatically. `extract` and `fortify` are left out of the networks’ action map (`legalMap` in `rl/encoding.js`) until they are trained again. Likewise the networks see a Mage on the queen’s channels (`TYPE_ALIAS` in the same file) until they are trained with one of its own, and Black’s built-in AI treats a Mage like a short-range piece in its own heuristics.
 
 ---
 
@@ -260,7 +264,7 @@ An interactive 7-step tutorial:
 
 - Drag a piece onto a highlighted tile. On touch screens you can also tap a piece, then tap a tile.
 - Click the King, then an adjacent tile, to spawn. The King opens an on-board **Spawn / Move** chooser.
-- Dropping (or tapping) a bishop onto one of your knights asks **Heal** or **Merge → Queen** on the same kind of on-board chooser (`showDropChoice` in `js/actions.js`); a tap anywhere else puts it away.
+- Dropping (or tapping) a bishop onto one of your knights asks **Heal** or **Merge → Queen** (onto a rook, with the Elixir: **Merge → Mage (2 Elixir)**) on the same kind of on-board chooser (`showDropChoice` in `js/actions.js`); a tap anywhere else puts it away.
 - Tapping one of your pawns or bishops opens the same kind of chooser for it: **Extract Elixir** while a pawn stands on the spring, **Fortify (1 Gold)** while it is a plain pawn, **Scry (2 mana)** for a bishop (`syncPieceChooser` in `js/actions.js`). It sits past the piece’s reach (a pawn’s 3x3, a bishop’s 5x5) on its own side of the board, so it never covers a square the piece can act on. The side panel’s buttons follow every tap too (`syncPieceButtons`, called from `render`).
 - Select 2-3 pawns/knights (click them, or drag a box over them from an empty tile) and drag one to move them together.
 - Right-click a piece, then click a target, to lock a target. Right-click (or tap twice) a Siege Tower to un-siege.

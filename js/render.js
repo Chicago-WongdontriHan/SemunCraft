@@ -111,7 +111,7 @@ function render(){
         if(p.type==='bishop'){
           if(pieces[i]&&pieces[i].color===mc&&i!==targetSrc)sq.classList.add('drop-heal');
         }else{
-          const atk=p.type==='queen'?new Set(queenRange(targetSrc).filter(j=>pieces[j]&&pieces[j].color!==mc)):p.type==='rook'?new Set(rookRange(targetSrc).filter(j=>pieces[j]&&pieces[j].color!==mc)):new Set(adj8(targetSrc).filter(j=>pieces[j]&&pieces[j].color!==mc));
+          const atk=p.type==='queen'?new Set(queenRange(targetSrc).filter(j=>pieces[j]&&pieces[j].color!==mc)):p.type==='mage'?new Set(mageRange(targetSrc).filter(j=>pieces[j]&&pieces[j].color!==mc)):p.type==='rook'?new Set(rookRange(targetSrc).filter(j=>pieces[j]&&pieces[j].color!==mc)):new Set(adj8(targetSrc).filter(j=>pieces[j]&&pieces[j].color!==mc));
           if(atk.has(i))sq.classList.add('drop-atk');
         }
       }else{

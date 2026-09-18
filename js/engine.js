@@ -10,7 +10,7 @@
 'use strict';
 
 // ── DATA ─────────────────────────────────────────────────────────────────────
-const STATS={king:{hp:5,maxHp:5},pawn:{hp:1,maxHp:1},knight:{hp:4,maxHp:4},bishop:{hp:2,maxHp:2},rook:{hp:4,maxHp:4},queen:{hp:5,maxHp:5},siege:{hp:4,maxHp:4}};
+const STATS={king:{hp:5,maxHp:5},pawn:{hp:1,maxHp:1},knight:{hp:4,maxHp:4},bishop:{hp:2,maxHp:2},rook:{hp:4,maxHp:4},queen:{hp:5,maxHp:5},siege:{hp:4,maxHp:4},mage:{hp:3,maxHp:3}};
 // each theme's terrain, in the order themes.js places it: [tile, share of the board, blocks]
 const THEME_TILES={
   forest:[['tree',.12,true]],
@@ -321,6 +321,12 @@ function lineRange(s,i,dirs,len){
   return res;
 }
 // bishop: diagonal up to 2, stopped by obstacles; the first piece is included, then the ray stops
+// the Mage strikes any square within 3, over pieces and obstacles (mageRange in movement.js; same order)
+function mageRange(s,i){
+  const g=geo(s),r=rowOf(s,i),c=colOf(s,i),res=[];
+  for(let dr=-3;dr<=3;dr++)for(let dc=-3;dc<=3;dc++){if(!dr&&!dc)continue;const nr=r+dr,nc=c+dc;if(g.inB(nr,nc))res.push(nr*s.cols+nc);}
+  return res;
+}
 function bishopRange(s,i){
   const g=geo(s),r=rowOf(s,i),c=colOf(s,i),res=[];
   for(const[dr,dc]of DIAG)for(let k=1;k<=2;k++){
@@ -414,13 +420,16 @@ function getDests(s,i){
       if(!t)move.add(j);
       else{if(t.color===ec)attack.add(j);else if(hasMana&&t.color===p.color&&t.hp<t.maxHp)heal.add(j);break;}
     }
-    g.adj8[i].forEach(j=>{const t=B[j];if(t&&t.color===p.color&&t.type==='knight')merge.add(j);});
+    g.adj8[i].forEach(j=>{const t=B[j];if(t&&t.color===p.color&&(t.type==='knight'||(t.type==='rook'&&s.elixir[p.color]>=MAGE_ELIXIR)))merge.add(j);});
   }else if(p.type==='rook'){
     slide(s,i,CARD,2,move);
-    g.adj8[i].forEach(j=>{const t=B[j];if(t&&t.color===p.color&&t.type==='rook')merge.add(j);});
+    g.adj8[i].forEach(j=>{const t=B[j];if(t&&t.color===p.color&&(t.type==='rook'||(t.type==='bishop'&&s.elixir[p.color]>=MAGE_ELIXIR)))merge.add(j);});
     lineRange(s,i,CARD,3).forEach(j=>{if(B[j]&&B[j].color===ec)attack.add(j);});
   }else if(p.type==='siege'){
     lineRange(s,i,CARD,4).forEach(j=>{if(B[j]&&B[j].color===ec)attack.add(j);});
+  }else if(p.type==='mage'){
+    slide(s,i,DIAG,2,move);
+    mageRange(s,i).forEach(j=>{if(B[j]&&B[j].color===ec)attack.add(j);});
   }else if(p.type==='queen'){
     slide(s,i,ALL8,2,move);
     g.qr[i].forEach(j=>{if(B[j]&&B[j].color===ec)attack.add(j);});
@@ -436,7 +445,9 @@ function getDests(s,i){
   return{move,merge,attack,heal};
 }
 
-const MERGES={'pawn+pawn':'knight','pawn+knight':'bishop','knight+pawn':'bishop','knight+bishop':'queen','bishop+knight':'queen','rook+rook':'siege','knight+knight':'rook'};
+const MERGES={'pawn+pawn':'knight','pawn+knight':'bishop','knight+pawn':'bishop','knight+bishop':'queen','bishop+knight':'queen','rook+rook':'siege','knight+knight':'rook',
+  'bishop+rook':'mage','rook+bishop':'mage'};   // the Mage costs its side MAGE_ELIXIR
+const MAGE_ELIXIR=2;
 
 // ── RULES: LEGAL ACTIONS ─────────────────────────────────────────────────────
 // Actions ({type, from, to}) mirror what the player can do by drag, tap or click:
@@ -511,7 +522,7 @@ function computeActions(s,color){
         }
       }
     }else{
-      const range=p.type==='queen'?g.qr[i]:p.type==='siege'?lineRange(s,i,CARD,4):p.type==='rook'?lineRange(s,i,CARD,3):p.type==='knight'?g.kj[i]:g.adj8[i];
+      const range=p.type==='queen'?g.qr[i]:p.type==='mage'?mageRange(s,i):p.type==='siege'?lineRange(s,i,CARD,4):p.type==='rook'?lineRange(s,i,CARD,3):p.type==='knight'?g.kj[i]:g.adj8[i];
       let foes=range.filter(j=>B[j]&&B[j].color===enemy);
       if(fog)foes=foes.filter(j=>visible(s,j,color));
       foes=foes.filter(j=>!concealed(s,j,color));
@@ -600,14 +611,15 @@ function applyAction(s,a,events){
       const t=B[a.to];
       let np;
       if(p.type==='bishop'){
-        // the bishop-onto-knight popup's Merge keeps both pieces' target locks
-        np=makePiece('queen',p.color);
+        // the bishop-onto-knight (or rook) popup's Merge keeps both pieces' target locks
+        np=makePiece(t.type==='rook'?'mage':'queen',p.color);
       }else{
         delete tg[a.from];delete tg[a.to];
         np=makePiece(MERGES[p.type+'+'+t.type],p.color);
         if(np.type==='bishop')np.mana=1;
         if(np.type==='siege')np.sieged=true;
       }
+      if(np.type==='mage')s.elixir[color]-=MAGE_ELIXIR;
       B[a.from]=null;B[a.to]=np;s.moved=-1;
       events.push({type:'merge',from:a.from,to:a.to,piece:np.type});
       return p.type==='knight'&&geo(s).kj[a.from].includes(a.to);
@@ -971,7 +983,8 @@ function reactiveAI(s,events){
         }else if(bp.type==='pawn'){
           const st=g.adj8[bi].find(j=>!B[j]&&!s.blocked[j]&&g.adj8[j].includes(attacker));
           if(st!==undefined){bp.firstMove=false;botMove(s,bi,st,events);return true;}
-        }else{
+        }else if(bp.type==='rook'||bp.type==='bishop'||bp.type==='queen'){
+          // only the sliding pieces step in (ai.js lists them by name, so a Mage stays put)
           const dest=stepFor(s,bp.type,bi,attacker);
           if(dest>=0&&!B[dest]&&!s.blocked[dest]){
             // range from the new tile, measured before the piece leaves its old one (as ai.js does)

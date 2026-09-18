@@ -1,5 +1,12 @@
 // ── MOVEMENT HELPERS ─────────────────────────────────────────────────────────
 
+// the Mage strikes any square within 3 — over pieces and obstacles alike (mageRange in engine.js)
+function mageRange(i){
+  const r=ROW(i),c=COL(i),res=[];
+  for(let dr=-3;dr<=3;dr++)for(let dc=-3;dc<=3;dc++){if(!dr&&!dc)continue;const nr=r+dr,nc=c+dc;if(inB(nr,nc))res.push(idx(nr,nc));}
+  return res;
+}
+
 function queenRange(i){
   const lJumps=new Set(kJumps(i));
   return range2(i).filter(j=>!lJumps.has(j));
@@ -77,10 +84,11 @@ function getDragDests(i){
         if(!t)move.add(j);else{if(t.color===ec)attack.add(j);else if(hasMana&&t.color===p.color&&t.hp<t.maxHp)heal.add(j);break;}
       }
     });
-    // bishop can merge with adjacent knight (bishop dragged to knight)
+    // bishop can merge with adjacent knight (bishop dragged to knight), and with an adjacent rook into a
+    // Mage when its side holds the Elixir for it
     adj8(i).forEach(j=>{
       const t=pieces[j];
-      if(t&&t.color===p.color&&t.type==='knight')merge.add(j);
+      if(t&&t.color===p.color&&(t.type==='knight'||(t.type==='rook'&&elixir[p.color]>=MAGE_ELIXIR)))merge.add(j);
     });
   }else if(p.type==='rook'){
     // move: up to 2 steps cardinally, sliding
@@ -91,13 +99,24 @@ function getDragDests(i){
         const t=pieces[j];if(!t)move.add(j);else break;
       }
     });
-    // merge with adjacent friendly rook → siege
-    adj8(i).filter(j=>pieces[j]&&pieces[j].color===p.color&&pieces[j].type==='rook').forEach(j=>merge.add(j));
+    // merge with adjacent friendly rook → siege, or with an adjacent bishop → Mage (for its Elixir)
+    adj8(i).filter(j=>pieces[j]&&pieces[j].color===p.color&&(pieces[j].type==='rook'||(pieces[j].type==='bishop'&&elixir[p.color]>=MAGE_ELIXIR))).forEach(j=>merge.add(j));
     rookRange(i).filter(j=>pieces[j]&&pieces[j].color===ec).forEach(j=>attack.add(j));
   }else if(p.type==='siege'){
     // siege: CANNOT move, attacks 2 dmg, range 4 piercing
     siegeRange(i).filter(j=>pieces[j]&&pieces[j].color===ec).forEach(j=>attack.add(j));
     // right-click to unsiege (handled in handleRightClick)
+  }else if(p.type==='mage'){
+    // the Mage moves like a bishop, up to 2 diagonally (sliding, blocked by pieces and obstacles), and
+    // strikes any enemy within 3 — over pieces and obstacles; it merges with nothing
+    [[-1,-1],[-1,1],[1,-1],[1,1]].forEach(([dr,dc])=>{
+      for(let s=1;s<=2;s++){
+        const nr=ROW(i)+dr*s,nc=COL(i)+dc*s;if(!inB(nr,nc))break;
+        const j=idx(nr,nc);if(isTileBlocked(j))break;
+        if(!pieces[j])move.add(j);else break;
+      }
+    });
+    mageRange(i).filter(j=>pieces[j]&&pieces[j].color===ec).forEach(j=>attack.add(j));
   }else if(p.type==='queen'){
     // queen moves up to 2 in any direction (sliding, blocked by pieces+obstacles)
     [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]].forEach(([dr,dc])=>{

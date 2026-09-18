@@ -20,6 +20,7 @@ let elixir={w:0,b:0};     // Elixir extracted at the spring
 let mineTurns={w:0,b:0};  // turns that ended with a pawn of that side on the gold mine
 let goldSpent={w:0,b:0};  // Gold spent on anything but spawning: fortified pawns
 const FORTIFIED_HP=3;     // a fortified pawn is a pawn in a helmet, with three life
+const MAGE_ELIXIR=2;      // a bishop and a rook merge into a Mage for 2 Elixir (engine.js)
 // only a plain pawn works the spring or the mine; a fortified one can't (pawnOnMine in engine.js)
 function canExtract(i){ const p=pieces[i]; return !!p&&p.type==='pawn'&&!p.fortified&&tileData[i]==='spring'; }
 function pawnOnMine(color){ return pieces.some((p,i)=>p&&p.color===color&&p.type==='pawn'&&!p.fortified&&tileData[i]==='mine'); }
@@ -160,6 +161,7 @@ const PC_DATA=[
   {gw:'♗',gb:'♝',name:'Bishop', stats:'2HP · diagonal 2 · heals (mana)'},
   {gw:'♖',gb:'♜',name:'Rook',   stats:'4HP · card2 · pierce rng3'},
   {gw:'♛',gb:'♛',name:'Queen',  stats:'5HP · all dir rng2'},
+  {gw:'♗',gb:'♝',name:'Mage',   stats:'3HP · diag 2 · atk rng3 · 2 Elixir'},
   {gw:'♔',gb:'♚',name:'King',   stats:'5HP · spawns pawns'},
 ];
 let pcPageIdx=0;

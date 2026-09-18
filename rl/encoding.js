@@ -10,7 +10,10 @@ const E=typeof module!=='undefined'&&module.exports?require('../js/engine.js'):r
 
 const TYPES=['pawn','knight','bishop','rook','queen','king','siege'];
 // piece values for reward shaping: merge cost in pawns (the King counts through its health)
-const PIECE_VALUE={pawn:1,knight:2,bishop:3,rook:4,queen:5,siege:8,king:0};
+const PIECE_VALUE={pawn:1,knight:2,bishop:3,rook:4,queen:5,siege:8,king:0,mage:7};
+// the Mage came after these networks were trained: it shows on the queen's channels, the nearest
+// strong ranged piece, until they are trained again with a channel of its own
+const TYPE_ALIAS={mage:'queen'};
 const CHANNEL_NAMES=[
   ...TYPES.map(t=>'own '+t),...TYPES.map(t=>'enemy '+t),
   'hp / max hp','hp / 5','bishop mana / 2','pawn can double-step','obstacle','on the board',
@@ -61,7 +64,7 @@ function createEncoder(opts){
       if(vis)set(CH.visible,g,1);
       // fog hides enemy pieces, not terrain
       if(!p||(p.color===enemy&&!vis))continue;
-      set((p.color===side?CH.own:CH.enemy)+TYPES.indexOf(p.type),g,1);
+      set((p.color===side?CH.own:CH.enemy)+TYPES.indexOf(TYPE_ALIAS[p.type]||p.type),g,1);
       set(CH.hp,g,p.hp/p.maxHp);
       set(CH.hp5,g,p.hp/5);
       if(p.type==='bishop')set(CH.mana,g,(p.mana||0)/2);

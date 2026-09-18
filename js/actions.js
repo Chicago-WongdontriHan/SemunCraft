@@ -89,6 +89,7 @@ function mergeResultType(a,b){
   if((a==='pawn'&&b==='knight')||(a==='knight'&&b==='pawn'))return 'bishop';
   if((a==='knight'&&b==='bishop')||(a==='bishop'&&b==='knight'))return 'queen';
   if(a==='rook'&&b==='rook')return 'siege';
+  if((a==='bishop'&&b==='rook')||(a==='rook'&&b==='bishop'))return 'mage';   // for 2 Elixir
   if(a==='knight'&&b==='knight')return 'rook';
   return null;
 }
@@ -148,9 +149,10 @@ function executeDrop(from,to,dests){
     }
   }
 
-  // bishop dragged onto a friendly knight: ask Merge or Heal, on the same on-board chooser as the King's
-  // and the pieces' (a tap anywhere else puts it away)
-  if(p.type==='bishop'&&dests.merge.has(to)&&pieces[to]&&pieces[to].type==='knight'){
+  // bishop dragged onto a friendly knight (or, with the Elixir, a rook): ask Merge or Heal, on the same
+  // on-board chooser as the King's and the pieces' (a tap anywhere else puts it away)
+  if(p.type==='bishop'&&dests.merge.has(to)&&pieces[to]&&(pieces[to].type==='knight'||pieces[to].type==='rook')){
+    const nt=pieces[to].type==='rook'?'mage':'queen';
     const canHeal=(p.mana||0)>0&&pieces[to].hp<pieces[to].maxHp;
     showDropChoice(to,[
       canHeal&&['heal','Heal '+pieces[to].type+' (1 mana)',()=>{
@@ -159,8 +161,8 @@ function executeDrop(from,to,dests){
         setStatus('Bishop locked on heal target — fires at turn end.');
         SFX.select();tutCheckAction('heal');render();endTurn();
       }],
-      ['merge','Merge \u2192 Queen',()=>{
-        const nt='queen';
+      ['merge',nt==='mage'?'Merge \u2192 Mage ('+MAGE_ELIXIR+' Elixir)':'Merge \u2192 Queen',()=>{
+        if(nt==='mage')elixir[p.color]-=MAGE_ELIXIR;
         pieces[from]=null;pieces[to]={type:nt,color:p.color,hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};
         addLog('Merged to '+nt+'@'+sqName(to));SFX.arrive(nt);tutCheckAction('merge');
         movedThisTurn=-1;
@@ -197,6 +199,7 @@ function executeDrop(from,to,dests){
       const newPiece={type:nt,color:p.color,hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};
       if(nt==='bishop')newPiece.mana=1;
       if(nt==='siege')newPiece.sieged=true;
+      if(nt==='mage')elixir[p.color]-=MAGE_ELIXIR;
       pieces[from]=null;pieces[to]=newPiece;
       addLog('Merged to '+nt+'@'+sqName(to));SFX.arrive(nt);tutCheckAction('merge');
       movedThisTurn=-1;

@@ -110,7 +110,7 @@ function applyOriginal(a,s){
 // tier, wounded pieces, bishops with and without mana, kings anywhere
 function scatter(s,seed){
   const pick=E.makeRandom(seed*31+7);
-  const types=['pawn','pawn','knight','knight','bishop','bishop','rook','rook','queen','siege'];
+  const types=['pawn','pawn','knight','knight','bishop','bishop','rook','rook','queen','siege','mage'];
   const B=s.board.map(()=>null),free=[];
   for(let i=0;i<B.length;i++)if(!s.blocked[i])free.push(i);
   const take=()=>free.splice(Math.floor(pick()*free.length),1)[0];
@@ -122,12 +122,16 @@ function scatter(s,seed){
       const p={type,color,hp:1+Math.floor(pick()*E.STATS[type].maxHp),maxHp:E.STATS[type].maxHp};
       if(type==='bishop')p.mana=Math.floor(pick()*3);
       if(type==='pawn'&&pick()<0.5)p.firstMove=true;
+      if(type==='pawn'&&pick()<0.25){p.fortified=true;p.maxHp=3;p.hp=1+Math.floor(pick()*3);}
       if(type==='siege')p.sieged=true;
       B[take()]=p;
     }
   }
   s.board=B;
   game.set('pieces',B.map(p=>p&&Object.assign({},p)));
+  // some Elixir on each side, so a bishop and a rook can become a Mage
+  s.elixir={w:Math.floor(pick()*5),b:Math.floor(pick()*5)};
+  game.set('elixir',{w:s.elixir.w,b:s.elixir.b});
 }
 
 function playClassic(opts,label,stats){

@@ -168,6 +168,23 @@ function attackAnim(attacker,target,type,cb){
       em.style.transform='translate(-50%,-50%) scale('+(1.2-s*.4)+')';
       if(s<1)requestAnimationFrame(step);else{em.remove();cb();}
     };requestAnimationFrame(step);
+  }else if(type==='mage'){
+    // a violet spark flying straight from the Mage to its target
+    const em=document.createElement('div');em.className='atk-emoji';em.textContent='\u2726';
+    em.style.position='fixed';em.style.pointerEvents='none';em.style.zIndex='600';
+    em.style.color='#E6B8FF';em.style.fontSize=Math.max(18,Math.floor(sqPx*.55))+'px';
+    em.style.transform='translate(-50%,-50%)';
+    em.style.textShadow='0 0 10px rgba(190,120,255,.95),0 0 22px rgba(150,80,255,.6)';
+    document.body.appendChild(em);
+    const start=performance.now();const dur=340;
+    const step=ts=>{
+      const s=Math.min(1,(ts-start)/dur);
+      const ease=s<.35?s/.35:1;
+      em.style.left=(a.x+(t.x-a.x)*ease)+'px';em.style.top=(a.y+(t.y-a.y)*ease)+'px';
+      em.style.opacity=s<.8?'1':(1-(s-.8)/.2)+'';
+      em.style.transform='translate(-50%,-50%) scale('+(1.3-s*.5)+') rotate('+(s*220)+'deg)';
+      if(s<1)requestAnimationFrame(step);else{em.remove();cb();}
+    };requestAnimationFrame(step);
   }else if(type==='siege'){
     // siege: cannonball same as rook
     svgCannonball(a.sx,a.sy,t.sx,t.sy,cb);
@@ -209,7 +226,7 @@ function computeActions(color){
         }
       }
     }else{
-      const range=p.type==='queen'?queenRange(i):p.type==='siege'?siegeRange(i):p.type==='rook'?rookRange(i):p.type==='knight'?kJumps(i):p.type==='bishop'?bishopRange(i):adj8(i);
+      const range=p.type==='queen'?queenRange(i):p.type==='mage'?mageRange(i):p.type==='siege'?siegeRange(i):p.type==='rook'?rookRange(i):p.type==='knight'?kJumps(i):p.type==='bishop'?bishopRange(i):adj8(i);
       let enemies=range.filter(j=>pieces[j]&&pieces[j].color===enemy);
       if(color===myColor()&&!mapCheat)enemies=enemies.filter(j=>isTileVisible(j));
       enemies=enemies.filter(j=>!isConcealedFrom(j,color));

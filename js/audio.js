@@ -182,6 +182,15 @@ const PIECE_VOICES={
     fall:t=>{[[196,0,.3],[147,.25,.3],[110,.5,.8]].forEach(([f,o,d])=>sfxTone({type:'sawtooth',f,t:t+o,d,vol:.4,low:900,attack:.04,vib:[4.5,.012]}));
       sfxBell(110,t+.5,2,.45);sfxTone({f:90,to:40,t:t+.5,d:.6,vol:1});},
   },
+  mage:{
+    // the stone of the tower settles, then a rising shimmer of bells: the bishop's light, made bigger
+    arrive:t=>{sfxTone({f:130,to:70,t,d:.3,vol:.9});
+      [784,988,1175,1568,1976].forEach((f,k)=>sfxBell(f,t+.08+k*.06,.9,.26));
+      sfxTone({f:392,t:t+.1,d:.9,vol:.2,attack:.2,vib:[5,.01]});},
+    // the light goes out: the bells fall and a low note sinks away
+    fall:t=>{[1976,1568,1175,784].forEach((f,k)=>sfxBell(f,t+k*.1,.8,.22));
+      sfxTone({f:330,to:110,t:t+.1,d:.8,vol:.4,vib:[7,.02]});},
+  },
   siege:{
     // iron clanks as the tower is bolted together, then the cannon's boom
     arrive:t=>{[0,.11].forEach(o=>{sfxTone({type:'triangle',f:1180,to:1020,t:t+o,d:.12,vol:.3});

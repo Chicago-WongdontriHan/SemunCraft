@@ -9,6 +9,8 @@
 //   queen   slim gown, long hair, a tall three-point crown and a sceptre
 //   king    the broadest piece: square-shouldered robe, beard, flat crown with a cross
 //   siege   a stub tower with a cannon barrel out of the roof
+//   mage    a bishop rising out of a short tower, staff in hand (drawn by pieces/combined/make.js,
+//           shipped in pieces/units-art.js)
 // Team colour fills the body (light White, dark Black) with a slight per-type tint, and
 // the base ring; a dark outline plus a contrasting halo keeps pieces readable on any tile.
 // Theme sets (forest.js, jungle.js, desert.js, ocean.js) register in PIECE_SETS with
@@ -153,6 +155,11 @@ function pieceFace(shape,team){
 // type: pawn|fortified|knight|bishop|rook|queen|king|siege, color: 'w'|'b', theme: a PIECE_SETS key, size in px,
 // plain: leave out the theme's ground decoration (for small icons like the merge chart)
 function pieceSVG(type,color,theme,size,plain){
+  // combined units (the Mage) are drawn by pieces/combined/make.js and shipped as markup in units-art.js
+  if(typeof UNIT_ART!=='undefined'&&UNIT_ART[type]){
+    const art=UNIT_ART[type][theme]||UNIT_ART[type].forest;
+    return '<svg viewBox="'+UNIT_VIEWBOX+'" width="'+size+'" height="'+size+'" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible">'+(art[color]||art.w)+'</svg>';
+  }
   const shape=PIECE_SHAPES[type];if(!shape)return '';
   const set=PIECE_SETS[theme]||PIECE_SETS.forest||{colors:{}};
   const tint=(PIECE_TINTS[color]||PIECE_TINTS.w)[type];

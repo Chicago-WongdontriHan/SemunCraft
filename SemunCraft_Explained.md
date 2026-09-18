@@ -101,7 +101,7 @@ Two tiles on the board are worth holding (`RESOURCE_TILES` in `js/state.js`), an
 - Tiles you've never seen are covered in solid grey. Tiles you've seen before but can't see now are under a see-through grey veil with their terrain faded: terrain shows, enemy pieces don't.
 - The grey has a slight tint of each map's colour (`fogCover` in `js/scenery.js`), and the minimap shows fog in the same colours.
 - The AI is not affected by fog.
-- **Scrying** (`scry` in engine.js, `castScry` in actions.js): a bishop may spend **both** its mana to light a **3x3** it cannot see, up to 4 squares away, for its next **2 turns**. It costs the bishop's turn, like a heal, so its mana is a fork: heal 2 HP, or see nine tiles. The lit squares carry a blue ring and a countdown. It lifts fog only — a piece in the jungle's undergrowth stays hidden until someone stands next to it — and the opponent isn't told.
+- **Scrying** (`scry` in engine.js, `castScry` in actions.js): a bishop may spend **both** its mana to light a **3x3** it cannot see, up to 4 squares away, for its next **2 turns**. It costs the bishop's turn, like a heal, so its mana is a fork: heal 2 HP, or see nine tiles. The lit squares carry a blue ring and a countdown. To cast, tap the bishop and press **Scry** on the board (or in the panel): every square out of sight it can light glows through the fog, and a tap on any of them lights the 3x3 around it. A tap on the board’s edge lights the full 3x3 just inside it, which is how the far rank and file are reached — the aim itself still obeys the 4-square reach — and with a mouse the 3x3 is previewed before the click (`scryArea`, `scryCenterFor` in `js/actions.js`). It lifts fog only — a piece in the jungle's undergrowth stays hidden until someone stands next to it — and the opponent isn't told.
 - **Map Cheat** turns fog off. Regular games start with it off; the tutorial and most campaign levels start with it on.
 
 ---
@@ -248,7 +248,7 @@ An interactive 7-step tutorial:
 
 - Drag a piece onto a highlighted tile. On touch screens you can also tap a piece, then tap a tile.
 - Click the King, then an adjacent tile, to spawn. The King opens an on-board **Spawn / Move** chooser.
-- Tapping one of your pawns opens the same kind of chooser for it: **Extract Elixir** while it stands on the spring, **Fortify (1 Gold)** while it is a plain pawn (`syncPawnChooser` in `js/actions.js`). It sits past the pawn’s 3x3 on the side away from its forward push, so it never covers a square the pawn can move to. The side panel’s buttons follow every tap too (`syncPieceButtons`, called from `render`).
+- Tapping one of your pawns or bishops opens the same kind of chooser for it: **Extract Elixir** while a pawn stands on the spring, **Fortify (1 Gold)** while it is a plain pawn, **Scry (2 mana)** for a bishop (`syncPieceChooser` in `js/actions.js`). It sits past the piece’s reach (a pawn’s 3x3, a bishop’s 5x5) on its own side of the board, so it never covers a square the piece can act on. The side panel’s buttons follow every tap too (`syncPieceButtons`, called from `render`).
 - Select 2-3 pawns/knights (click them, or drag a box over them from an empty tile) and drag one to move them together.
 - Right-click a piece, then click a target, to lock a target. Right-click (or tap twice) a Siege Tower to un-siege.
 - **Esc** clears the current selection.

@@ -19,6 +19,9 @@ function render(){
     const selP=pieces[selIdx];
     if(selP&&selP.color===mc)selDests=getDragDests(selIdx);
   }
+  // scrying: every square out of sight the bishop can light, drawn over the fog (scryArea in actions.js)
+  const scryZone=typeof scryMode!=='undefined'&&scryMode&&scrySrc>=0?scryArea(scrySrc):null;
+  const scryMark=(sq,i)=>{if(scryZone&&scryZone.has(i)){sq.classList.add('scry-zone');const m=document.createElement('span');m.className='scry-mark';sq.appendChild(m);}};
   // the piece the action guide is for: the one being dragged, else the one selected
   const guideSrc=dragging&&dragDests?dragSrc:selDests?[...selectedPieces][0]:-1;
   const pipW=Math.max(2,Math.floor(sqPx*.10))+'px';
@@ -43,6 +46,7 @@ function render(){
         // unexplored — thick cloud hides everything
         sq.classList.add('fog','fog-unknown');
         sq.appendChild(fogCover(i,'unknown'));
+        scryMark(sq,i);
         if(res){const m=document.createElement('span');m.className='res-ghost res-'+res;sq.appendChild(m);}
         if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
         if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
@@ -62,6 +66,7 @@ function render(){
         }
         sq.classList.add('fog','fog-explored');
         sq.appendChild(fogCover(i,'explored'));
+        scryMark(sq,i);
         if(res){const m=document.createElement('span');m.className='res-ghost res-'+res;sq.appendChild(m);}
         if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
         if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
@@ -90,7 +95,7 @@ function render(){
         if(!(pieces[i]&&pieces[i].type==='pawn'))sq.appendChild(pawnNeededBadge(ttype));
       }
       // scrying: the squares this bishop may light, and the ones already burning
-      if(typeof scryMode!=='undefined'&&scryMode&&scrySrc>=0&&scryTargets(scrySrc).has(i))sq.classList.add('scry-target');
+      scryMark(sq,i);
       const lit=typeof scryLit==='function'&&scryLit(i,mc);
       if(lit)sq.classList.add('scry-lit');
       // a campaign level's goal squares: the gate to reach, the floor to hold
@@ -172,10 +177,10 @@ function render(){
       boardEl.appendChild(sq);
     }
   }
-  // the king's Spawn / Move chooser follows the king, and goes once the king is put down; a pawn's
-  // Fortify / Extract chooser does the same, and the side buttons follow the selection
+  // the king's Spawn / Move chooser follows the king, and goes once the king is put down; a pawn's or
+  // bishop's chooser does the same, and the side buttons follow the selection
   if(typeof syncKingChooser==='function')syncKingChooser();
-  if(typeof syncPawnChooser==='function')syncPawnChooser();
+  if(typeof syncPieceChooser==='function')syncPieceChooser();
   if(typeof syncPieceButtons==='function')syncPieceButtons();
 }
 

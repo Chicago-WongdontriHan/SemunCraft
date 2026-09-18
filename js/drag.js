@@ -127,7 +127,24 @@ boardInput.addEventListener('pointerdown',e=>{
   try{boardInput.setPointerCapture(e.pointerId);}catch(err){}
 });
 
+// scrying with a mouse: the 3x3 a click would light, previewed under the pointer (render redraws the
+// squares, which clears it; the next move puts it back)
+let scryPreview=[];
+function clearScryPreview(){scryPreview.forEach(j=>{const el=sqElAt(j);if(el)el.classList.remove('scry-preview');});scryPreview=[];}
+function showScryPreview(x,y){
+  const t=sqIdxFromPoint(x,y);
+  const c=t>=0&&scryArea(scrySrc).has(t)?scryCenterFor(scrySrc,t):-1;
+  const box=c>=0?scryBox(c):[];
+  if(box.length===scryPreview.length&&box.every(j=>scryPreview.includes(j)))return;
+  clearScryPreview();
+  box.forEach(j=>{const el=sqElAt(j);if(el)el.classList.add('scry-preview');});
+  scryPreview=box;
+}
+boardInput.addEventListener('pointerleave',()=>{if(scryPreview.length)clearScryPreview();});
+
 boardInput.addEventListener('pointermove',e=>{
+  if(scryMode&&scrySrc>=0&&e.pointerType==='mouse'&&!press)showScryPreview(e.clientX,e.clientY);
+  else if(scryPreview.length&&!scryMode)clearScryPreview();
   const pt=pointers.get(e.pointerId);
   if(pt){pt.x=e.clientX;pt.y=e.clientY;}
   if(gesture){e.preventDefault();moveGesture();return;}

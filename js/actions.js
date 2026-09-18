@@ -317,8 +317,9 @@ function executeDrop(from,to,dests){
 function handleClick(i,additive){
   const p=pieces[i];const mc=myColor();
   if(scryMode){
-    if(scrySrc>=0&&scryTargets(scrySrc).has(i))castScry(scrySrc,i);
-    else cancelScry();
+    // any glowing square casts, aimed at the valid 3x3 that covers it; anywhere else puts the scry away
+    const c=scrySrc>=0&&scryArea(scrySrc).has(i)?scryCenterFor(scrySrc,i):-1;
+    if(c>=0)castScry(scrySrc,c);else cancelScry();
     return;
   }
   const ki=pieces.findIndex(q=>q&&q.color===mc&&q.type==='king');
@@ -440,14 +441,37 @@ function startScry(){
   if(!p||p.color!==myColor()||p.type!=='bishop'||(p.mana||0)<2){setStatus('Select a bishop with full mana');return;}
   scryMode=true;scrySrc=i;targetMode=false;
   render();syncUI();
-  setStatus('Tap a square out of sight to scry it (2 mana)');
+  setStatus('Tap a glowing square: the bishop lights the 3x3 around it (2 mana)');
 }
 function cancelScry(){scryMode=false;scrySrc=-1;render();syncUI();}
-// the squares a bishop may light: within reach, and somewhere it cannot already see
+// the centres a bishop may aim at: within reach, and somewhere it cannot already see (the engine's rule)
 function scryTargets(i){
-  const mc=myColor(),out=new Set();
+  const out=new Set();
   for(let j=0;j<ROWS*COLS;j++)if(cheb(i,j)<=SCRY_RANGE&&!isTileVisible(j))out.add(j);
   return out;
+}
+// every square out of sight that one of those 3x3s would light — the board glows on all of them, and a
+// tap on any casts. A square one past the reach still counts when a 3x3 inside the reach covers it, which
+// is how the board's edge rows and files are reached.
+function scryArea(i){
+  const area=new Set();
+  scryTargets(i).forEach(c=>scryBox(c).forEach(j=>{if(!isTileVisible(j))area.add(j);}));
+  return area;
+}
+// the centre a tap on square t aims at: t itself when it is a valid centre with a whole 3x3 on the board,
+// otherwise the valid centre next to it that fits on the board — a tap on the edge lights the full 3x3
+// just inside it — preferring the one straight in, then the one nearest the bishop
+function scryCenterFor(i,t){
+  const d2=(a,b)=>(ROW(a)-ROW(b))**2+(COL(a)-COL(b))**2;
+  const score=c=>[scryBox(c).length,-d2(c,t),-cheb(c,i),-c];
+  const better=(a,b)=>{for(let k=0;k<a.length;k++)if(a[k]!==b[k])return a[k]>b[k];return false;};
+  let best=-1,bs=null;
+  scryTargets(i).forEach(c=>{
+    if(cheb(c,t)>1)return;
+    const sc=score(c);
+    if(!bs||better(sc,bs)){best=c;bs=sc;}
+  });
+  return best;
 }
 function castScry(from,to){
   const p=pieces[from];
@@ -510,46 +534,53 @@ function syncKingChooser(){
   if(kingUp)placeKingChooser(ki);else closeKingChooser();
 }
 
-// ── PAWN: THE FORTIFY / EXTRACT CHOOSER ─────────────────────────────────────
-// A selected pawn of yours gets the same kind of chooser as the King: Extract Elixir while it stands
-// on the spring, as often as you like, and Fortify (1 Gold) while it is a plain pawn. It sits past the
-// pawn's 3x3 on the side away from its forward push, so it never covers a square the pawn can reach.
-let pawnChooser=null;
-function closePawnChooser(){if(pawnChooser){pawnChooser.remove();pawnChooser=null;}}
-function pawnChoices(i){
+// ── THE PIECE CHOOSER: PAWNS AND BISHOPS ────────────────────────────────────
+// A selected pawn or bishop of yours gets the same kind of on-board chooser as the King. A pawn: Extract
+// Elixir while it stands on the spring (as often as you like), Fortify (1 Gold) while it is a plain
+// pawn. A bishop: Scry, lit once it holds both its mana. The chooser sits past the piece's reach (the
+// pawn's 3x3, the bishop's 5x5) on its own side of the board, so it never covers a square it can act on.
+let pieceChooser=null;
+function closePieceChooser(){if(pieceChooser){pieceChooser.remove();pieceChooser=null;}}
+function pieceChoices(i){
   const p=pieces[i],out=[];
-  if(!p||p.type!=='pawn')return out;
-  if(canExtract(i))out.push(['extract','Extract Elixir',true,()=>extractAt(i)]);
-  if(!p.fortified&&goldAllowed())out.push(['fortify','Fortify (1 Gold)',spawnRemaining()>=1,()=>fortifyAt(i)]);
+  if(!p)return out;
+  if(p.type==='pawn'){
+    if(canExtract(i))out.push(['extract','Extract Elixir',true,()=>extractAt(i)]);
+    if(!p.fortified&&goldAllowed())out.push(['fortify','Fortify (1 Gold)',spawnRemaining()>=1,()=>fortifyAt(i)]);
+  }else if(p.type==='bishop'){
+    const ready=(p.mana||0)>=2;
+    out.push(['scry',ready?'Scry (2 mana)':'Scry (needs 2 mana)',ready,()=>{selectedPieces=new Set([i]);startScry();}]);
+  }
   return out;
 }
 // called after every render, like syncKingChooser
-function syncPawnChooser(){
+function syncPieceChooser(){
   const i=selectedPieces.size===1&&!kingSelected?[...selectedPieces][0]:-1,p=i>=0?pieces[i]:null;
-  const up=!!p&&p.color===myColor()&&p.type==='pawn'&&!dragging&&!over&&!thinking&&isMyTurn()
+  const up=!!p&&p.color===myColor()&&!dragging&&!over&&!thinking&&isMyTurn()
     &&!scryMode&&!targetMode&&!isTutorialActive();
-  const choices=up?pawnChoices(i):[];
-  if(!choices.length){closePawnChooser();return;}
-  // rebuilt only when the pawn or what it offers changes, so a tap in progress survives a re-render
+  const choices=up?pieceChoices(i):[];
+  if(!choices.length){closePieceChooser();return;}
+  // rebuilt only when the piece or what it offers changes, so a tap in progress survives a re-render
   const key=i+'|'+choices.map(c=>c[0]+(c[2]?'+':'-')).join(',');
-  if(!pawnChooser||pawnChooser.dataset.key!==key){
-    closePawnChooser();
-    const box=document.createElement('div');box.id='pawn-choice';box.dataset.key=key;
+  if(!pieceChooser||pieceChooser.dataset.key!==key){
+    closePieceChooser();
+    const box=document.createElement('div');box.id='piece-choice';box.dataset.key=key;
     choices.forEach(([icon,label,enabled,act])=>{
       const b=document.createElement('button');
       b.className='king-choice-btn';b.innerHTML=uiLabel(icon,label);b.disabled=!enabled;
       b.onclick=e=>{e.stopPropagation();if(!over&&!thinking&&isMyTurn())act();};
       box.appendChild(b);
     });
-    document.body.appendChild(box);pawnChooser=box;
+    document.body.appendChild(box);pieceChooser=box;
   }
-  const sq=sqElAt(i);if(!sq){closePawnChooser();return;}
-  const r=sq.getBoundingClientRect(),bw=pawnChooser.offsetWidth,bh=pawnChooser.offsetHeight;
-  const behind=p.color==='w'?r.bottom+r.height+8:r.top-r.height-8-bh;   // White pushes up, Black down
-  const ahead=p.color==='w'?r.top-r.height-8-bh:r.bottom+r.height+8;
+  const sq=sqElAt(i);if(!sq){closePieceChooser();return;}
+  const reach=p.type==='bishop'?2:1;
+  const r=sq.getBoundingClientRect(),bw=pieceChooser.offsetWidth,bh=pieceChooser.offsetHeight;
+  const below=r.bottom+reach*r.height+8,above=r.top-reach*r.height-8-bh;
+  const behind=p.color==='w'?below:above,ahead=p.color==='w'?above:below;   // White pushes up, Black down
   const fits=t=>t>=6&&t+bh<=innerHeight-6;
-  pawnChooser.style.left=Math.min(Math.max(r.left+r.width/2-bw/2,6),innerWidth-bw-6)+'px';
-  pawnChooser.style.top=(fits(behind)||!fits(ahead)?behind:ahead)+'px';
+  pieceChooser.style.left=Math.min(Math.max(r.left+r.width/2-bw/2,6),innerWidth-bw-6)+'px';
+  pieceChooser.style.top=(fits(behind)||!fits(ahead)?behind:ahead)+'px';
 }
 
 // ── ACTIONS ──────────────────────────────────────────────────────────────────

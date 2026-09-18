@@ -347,7 +347,7 @@ function visible(s,i,color){
   return geo(s).r2[i].some(j=>B[j]&&B[j].color===color);
 }
 // the 3x3 a scry lights, and how far a bishop can throw its sight (scryBox in constants.js)
-const SCRY_RANGE=4, SCRY_TURNS=2;
+const SCRY_TURNS=2;
 function scryBox(s,i){
   const g=geo(s),r=Math.floor(i/s.cols),c=i%s.cols,res=[];
   for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
@@ -471,10 +471,10 @@ function legalActions(s,opts){
     // a pawn on the Elixir spring can spend its turn extracting; any plain pawn can be fortified for 1 Gold
     if(p.type==='pawn'&&s.tiles[i]==='spring')out.push({type:'extract',from:i,to:i});
     if(p.type==='pawn'&&!p.fortified&&goldAllowed&&spawnRemaining(s,color)>=1)out.push({type:'fortify',from:i,to:i});
-    // a bishop with both its mana can light a 3x3 it cannot see, up to SCRY_RANGE away
+    // a bishop with both its mana can light a 3x3 it cannot see, anywhere on the board
     if(p.type==='bishop'&&(p.mana||0)>=2)
       for(let j=0;j<B.length;j++)
-        if(cheb(s,i,j)<=SCRY_RANGE&&!visible(s,j,color))out.push({type:'scry',from:i,to:j});
+        if(!visible(s,j,color))out.push({type:'scry',from:i,to:j});
     if(opts.anyTarget){
       for(let j=0;j<B.length;j++)if(B[j]&&B[j].color!==color&&!concealed(s,j,color))out.push({type:'target',from:i,to:j});
     }else d.attack.forEach(j=>out.push({type:'target',from:i,to:j}));

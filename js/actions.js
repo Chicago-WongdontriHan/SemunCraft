@@ -444,15 +444,14 @@ function startScry(){
   setStatus('Tap a glowing square: the bishop lights the 3x3 around it (2 mana)');
 }
 function cancelScry(){scryMode=false;scrySrc=-1;render();syncUI();}
-// the centres a bishop may aim at: within reach, and somewhere it cannot already see (the engine's rule)
+// the centres a bishop may aim at: any square it cannot already see, however far (the engine's rule)
 function scryTargets(i){
   const out=new Set();
-  for(let j=0;j<ROWS*COLS;j++)if(cheb(i,j)<=SCRY_RANGE&&!isTileVisible(j))out.add(j);
+  for(let j=0;j<ROWS*COLS;j++)if(!isTileVisible(j))out.add(j);
   return out;
 }
 // every square out of sight that one of those 3x3s would light — the board glows on all of them, and a
-// tap on any casts. A square one past the reach still counts when a 3x3 inside the reach covers it, which
-// is how the board's edge rows and files are reached.
+// tap on any casts
 function scryArea(i){
   const area=new Set();
   scryTargets(i).forEach(c=>scryBox(c).forEach(j=>{if(!isTileVisible(j))area.add(j);}));

@@ -27,8 +27,8 @@ const siegeRange = i=>{ const r=ROW(i),c=COL(i),res=[];
 
 // Cardinal range 3 for rook — PIERCING (passes through pieces, blocked only by obstacles)
 // Bishop attack range: diagonal sliding up to 2 squares (blocked by obstacles, pierces friendly/enemy)
-// scrying: a bishop spends both its mana to light a 3x3 it cannot see, up to SCRY_RANGE away
-const SCRY_RANGE=4, SCRY_TURNS=2;
+// scrying: a bishop spends both its mana to light a 3x3 it cannot see, anywhere on the board
+const SCRY_TURNS=2;
 const scryBox = i=>{ const r=ROW(i),c=COL(i),res=[];
   for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
     const nr=r+dr,nc=c+dc;if(inB(nr,nc))res.push(idx(nr,nc));

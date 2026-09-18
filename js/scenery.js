@@ -185,7 +185,7 @@ const TERRAIN_ART={
     +scShape('M50 4 C58 16 65 25 65 31 A15 15 0 0 1 35 31 C35 25 42 16 50 4 Z','#43C45A','#12351C',3.6)
     +scStroke('M44 30 C44 25 46 21 49 17','#DFFBE6',2.6,SC_CLEAR)
     +scDot(20,50,3.6,'#9AF0B4','#12351C',2.4)+scDot(80,54,3,'#9AF0B4','#12351C',2.4),
-  // the Coin mine: a cut in the rock with gold showing through
+  // the gold mine: a cut in the rock with gold showing through
   mine:
     scShape('M2 95 C4 71 19 52 40 52 C61 52 73 71 75 95 Z','#6E7C92','#16233C',4)
     +scShape('M60 95 C60 79 70 65 82 65 C93 65 98 80 98 95 Z','#55657A','#16233C',3.6)

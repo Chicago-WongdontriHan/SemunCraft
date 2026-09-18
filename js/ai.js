@@ -21,7 +21,7 @@ function bSpawn(bKi,cands,count){
     pieces[sorted[k]]={type:'pawn',color:'b',hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,firstMove:true};
     blackSpawnHistory.push(blackTurnCount);
   }
-  addLog('Black spawns '+n+'x pawn ('+coinText(blackSpawnRemaining())+' Coin left)');SFX.arrive('pawn');
+  addLog('Black spawns '+n+'x pawn ('+goldText(blackSpawnRemaining())+' Gold left)');SFX.arrive('pawn');
   render();
   for(let k=0;k<n;k++) spawnFlash(sorted[k]);
   finishBlackTurn();return true;
@@ -530,14 +530,13 @@ function campaignAI(){
 }
 
 function fallbackAI(){
-  // a pawn of ours standing on a spring or a mine digs first of all
+  // a pawn of ours standing on the Elixir spring extracts first of all (botTurn in engine.js)
   for(let i=0;i<ROWS*COLS;i++){
     const p=pieces[i];
-    if(p&&p.color==='b'&&p.type==='pawn'&&RESOURCE_TILES[tileData[i]]){
-      const kind=RESOURCE_TILES[tileData[i]];
-      if(kind==='elixir')elixir.b++;else mined.b++;
-      addLog('Black mines '+(kind==='elixir'?'Elixir':'Coin')+' at '+sqName(i));
-      SFX.mine(kind);flashSq(i,'heal-flash');render();
+    if(p&&p.color==='b'&&p.type==='pawn'&&tileData[i]==='spring'){
+      elixir.b++;
+      addLog('Black extracts Elixir at '+sqName(i));
+      SFX.extract();flashSq(i,'heal-flash');render();
       finishBlackTurn();return;
     }
   }

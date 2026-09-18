@@ -2,7 +2,7 @@
 
 const CAMPAIGN_LEVELS=[
   // ── ACT I · THE DEEPWOOD ────────────────────────────────────────────────────
-  // The Coin is gone from the crown, so nothing can be minted: these levels are fought with
+  // The Gold is gone from the crown, so nothing can be minted: these levels are fought with
   // whatever is left standing, and merging is the only way to grow.
   {
     id:0, name:'The Last Three', desc:'Three pawns against a raider in the wood.',
@@ -16,7 +16,7 @@ const CAMPAIGN_LEVELS=[
       before:[['king','The crown is empty. Three of you left, and the wood is full of them.'],
               ['pip','Then we make more of us, sire. Somehow.']],
       win:[['pip','It ran! Did you see it? It ran.']],
-      lose:[['mirror','A king with no Coin is just a carving.']]},
+      lose:[['mirror','A king with no Gold is just a carving.']]},
   },
   {
     id:1, name:'The Narrow Pass', desc:'Hold the corridor under Grey Ridge until the column is through.',
@@ -62,7 +62,7 @@ const CAMPAIGN_LEVELS=[
       lose:[['mirror','Fog is honest. It shows a king exactly what he has left.']]},
   },
   // ── ACT II · THE SAND AND THE MINT ──────────────────────────────────────────
-  // The Coin was struck under the dunes. Taking the Mint back is what puts pawns in the King's
+  // The Gold was struck under the dunes. Taking the Mint back is what puts pawns in the King's
   // hand again: from The Mint on, spawning is allowed.
   {
     id:4, name:'Desert Crossing', desc:'Cut a way through to the gate of the old Mint.',
@@ -80,7 +80,7 @@ const CAMPAIGN_LEVELS=[
       lose:[['mirror','The sand keeps better records than your scribes.']]},
   },
   {
-    id:5, name:'The Mint', desc:'Stand on the Mint floor while the presses wake. Coin returns: the King can spawn again.',
+    id:5, name:'The Mint', desc:'Stand on the Mint floor while the presses wake. Gold returns: the King can spawn again.',
     cols:9, rows:9, theme:'desert',
     allowSpawn:true, par:10, turnLimit:14,
     winType:'hold', surviveTurns:10, squares:[[4,4]],
@@ -92,7 +92,7 @@ const CAMPAIGN_LEVELS=[
       before:[['wren','Stand a king on the floor and the presses remember him. Ten turns should do it.'],
               ['king','Ten turns with that lot on the stairs. Pip, stay close.']],
       win:[['pip','Sire — there are more of me. Where did they come from?'],
-           ['king','The Coin. Spend it well.']],
+           ['king','The Gold. Spend it well.']],
       lose:[['mirror','The presses only wake for a king who can hold a floor.']]},
   },
   {
@@ -125,11 +125,11 @@ const CAMPAIGN_LEVELS=[
     obstacles:[[2,3],[2,4],[2,6],[2,7],[4,3],[4,4],[4,6],[4,7]],
     white:[{type:'pawn',r:6,c:0},{type:'pawn',r:6,c:1},{type:'pawn',r:5,c:0},{type:'pawn',r:5,c:1},{type:'knight',r:6,c:2},{type:'rook',r:6,c:3},{type:'king',r:5,c:2}],
     black:[{type:'rook',r:0,c:9},{type:'pawn',r:1,c:8},{type:'pawn',r:1,c:9},{type:'pawn',r:1,c:10},{type:'pawn',r:0,c:8}],
-    story:{where:'The Coin road, between two sandstone forts.',
+    story:{where:'The Gold road, between two sandstone forts.',
       before:[['king','They hold both forts and the road between. Mint what you need, Pip.'],
               ['pip','Yes sire. I do like being several people.']],
       win:[['king','The road is ours. Wren says the Mirror Court runs green now — jungle.']],
-      lose:[['mirror','You spend Coin like a man who has only just got it back.']]},
+      lose:[['mirror','You spend Gold like a man who has only just got it back.']]},
   },
   // ── ACT III · THE GREEN ─────────────────────────────────────────────────────
   // Undergrowth hides whatever stands in it: this is where the Mirror Court stops marching at you
@@ -161,7 +161,7 @@ const CAMPAIGN_LEVELS=[
     white:[{type:'bishop',r:8,c:4},{type:'knight',r:8,c:3},{type:'pawn',r:8,c:5},{type:'pawn',r:7,c:4}],
     black:[{type:'knight',r:2,c:2},{type:'knight',r:2,c:6},{type:'pawn',r:3,c:4},{type:'pawn',r:4,c:3},{type:'pawn',r:4,c:5},{type:'bishop',r:0,c:0}],
     story:{where:'The spring, if the maps are honest.',
-      before:[['wren','Elixir is not Coin. It does not mint people. It changes the ones you have.'],
+      before:[['wren','Elixir is not Gold. It does not mint people. It changes the ones you have.'],
               ['king','Then get to it. We will walk in front of you the whole way.']],
       win:[['wren','It answers. Whatever the Mirror Court took, it did not take this.']],
       lose:[['mirror','Your healer. Out in front. Truly, we are the same king.']]},
@@ -190,8 +190,8 @@ const CAMPAIGN_LEVELS=[
     obstacles:[[1,3],[1,4],[1,5],[1,6],[1,7],[2,3],[2,7],[3,3],[3,7],[4,3],[4,4],[4,6],[4,7]],
     white:[{type:'king',r:10,c:5},{type:'pawn',r:10,c:4},{type:'pawn',r:10,c:6},{type:'knight',r:9,c:5},{type:'rook',r:10,c:3},{type:'bishop',r:9,c:4}],
     black:[{type:'king',r:2,c:5},{type:'queen',r:3,c:5},{type:'rook',r:2,c:4},{type:'bishop',r:3,c:4},{type:'pawn',r:4,c:5},{type:'pawn',r:3,c:6},{type:'pawn',r:5,c:3},{type:'pawn',r:5,c:7}],
-    story:{where:'The citadel, and the Coin on a table in the middle of it.',
-      before:[['mirror','You brought it all the way here. The crown, the Coin, the pawn who talks.'],
+    story:{where:'The citadel, and the Gold on a table in the middle of it.',
+      before:[['mirror','You brought it all the way here. The crown, the Gold, the pawn who talks.'],
               ['king','Pip. When this is done, mint yourself a house.']],
       win:[['pip','Sire — the crown. It\'s heavy again.'],
            ['king','Then we go home, and we spend it on people.']],
@@ -223,7 +223,7 @@ function levelStars(lv,won){
 }
 
 // ── THE STORY ────────────────────────────────────────────────────────────────
-// The Hollow Crown: the King's Coin is stolen, so no new pawns can be minted, and the Mirror Court
+// The Hollow Crown: the King's Gold is stolen, so no new pawns can be minted, and the Mirror Court
 // — your own pieces in black — marches out of the wood. A level shows two lines before it and one
 // after, spoken by a small cast so the campaign has a voice rather than a briefing document.
 const SPEAKERS={
@@ -322,7 +322,7 @@ function startCampaignLevel(levelIdx){
   // init game state
   gameMode='campaign';
   difficulty='campaign';
-  campaignLost=0;campaignKingHit=false;campaignDefeat='';scans=[];elixir={w:0,b:0};mined={w:0,b:0};
+  campaignLost=0;campaignKingHit=false;campaignDefeat='';scans=[];elixir={w:0,b:0};mineTurns={w:0,b:0};goldSpent={w:0,b:0};
   pieces=new Array(ROWS*COLS).fill(null);
   tileData=new Array(ROWS*COLS).fill('');
   // place obstacles

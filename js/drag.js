@@ -79,7 +79,7 @@ function startDrag(i,x,y,type){
   const p=pieces[i];
   dragging=true;dragSrc=i;dragDests=getDragDests(i);
   const g=document.getElementById('ghost');
-  g.textContent='';g.innerHTML=pieceSVG(p.type,p.color,mapTheme,Math.floor(sqPx*.86));
+  g.textContent='';g.innerHTML=pieceSVG(pieceArt(p),p.color,mapTheme,Math.floor(sqPx*.86));
   moveGhost(x,y,type);g.style.display='block';
   render();
 }

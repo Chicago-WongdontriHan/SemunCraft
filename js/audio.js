@@ -55,12 +55,17 @@ const SFX={
   hit:    ()=>{playNoise(.08,.8);playTone(150,.08,'square',.4);},
   kill:   ()=>{playNoise(.18,1);for(let i=0;i<3;i++)setTimeout(()=>playTone(120-i*20,.1,'sawtooth',.5),i*60);},
   merge:  ()=>{[440,550,660].forEach((f,i)=>setTimeout(()=>playTone(f,.15,'sine',.6),i*70));},
-  // mining: the pick strikes, then the resource answers — water for Elixir, struck metal for Coin
-  mine:   kind=>{const t=getAudioCtx().currentTime+.01;
-    sfxNoise({t,d:.1,vol:.4,filters:[['bandpass',1500,3]]});
-    sfxTone({f:180,to:90,t,d:.14,vol:.5});
-    if(kind==='elixir')[659,880,1175].forEach((f,k)=>sfxTone({f,t:t+.08+k*.06,d:.45,vol:.24,attack:.015,vib:[7,.005]}));
-    else{[1047,1568].forEach((f,k)=>sfxBell(f,t+.07+k*.07,.5,.22));sfxTone({f:2093,t:t+.14,d:.4,vol:.1});}},
+  // extracting: a dip into the spring, then the Elixir rising in three bright drops
+  extract:()=>{const t=getAudioCtx().currentTime+.01;
+    sfxNoise({t,d:.12,vol:.3,filters:[['bandpass',900,2]]});
+    sfxTone({f:320,to:620,glide:.08,t,d:.12,vol:.35});
+    [659,880,1175].forEach((f,k)=>sfxTone({f,t:t+.1+k*.06,d:.45,vol:.24,attack:.015,vib:[7,.005]}));},
+  // fortifying: a helmet clanks on, then the pawn's own two notes, a step higher and prouder
+  fortify:()=>{const t=getAudioCtx().currentTime+.01;
+    sfxNoise({t,d:.07,vol:.35,filters:[['highpass',2600]]});
+    sfxBell(1760,t,.3,.24);sfxBell(1320,t+.08,.4,.2);
+    sfxTone({type:'triangle',f:660,to:990,glide:.05,t:t+.18,d:.1,vol:.7});
+    sfxTone({type:'triangle',f:880,to:1480,glide:.06,t:t+.27,d:.18,vol:.6});},
   // scrying: a thin rising shimmer, like a held breath
   scry:   ()=>{const t=getAudioCtx().currentTime+.01;
     [784,1047,1319].forEach((f,k)=>sfxTone({f,t:t+k*.07,d:.5,vol:.18,attack:.02,vib:[6,.004]}));

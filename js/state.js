@@ -7,22 +7,30 @@ let blackSpawnHistory=[]; // how many total spawns used (black)
 let whiteTurnCount=0; // total white turns this game
 let blackTurnCount=0; // total black turns this game
 let movedThisTurn=-1; // idx of white piece that acted this turn (cannot auto-attack)
-// Coin: 8 to start, and one more every COIN_TURNS turns — earned a sixth at a time rather than in
-// jumps. A pawn from the King costs one, so spawning waits until a whole Coin is in hand.
-// The same sum is in js/engine.js, written the same way so both sides land on the same number.
-const COIN_START=8, COIN_TURNS=6;
-// The spring and the mine: a pawn standing on one spends its whole turn digging, which is what makes
-// banking a resource risky — the pawn stands still, in the open, while the other side moves.
-// Mined Coin is added to the turn income; Elixir is banked on its own. ('mine' in js/engine.js)
-const RESOURCE_TILES={spring:'elixir',mine:'coin'};
-let elixir={w:0,b:0};   // Elixir dug at a spring
-let mined={w:0,b:0};    // Coin dug at a mine, on top of the turn income
-function canMine(i){ const p=pieces[i]; return !!p&&p.type==='pawn'&&!!RESOURCE_TILES[tileData[i]]; }
+// Gold: 8 to start and a sixth a turn — a sixth more for every turn that ends with a pawn of yours
+// on the gold mine. A pawn from the King costs one, and so does fortifying a pawn, so both wait until
+// a whole Gold is in hand. The same sums are in js/engine.js, written the same way so both sides land
+// on the same number: turns are counted as whole numbers and divided once, never added up in sixths.
+const GOLD_START=8, GOLD_TURNS=6;
+// The spring and the mine: a pawn on the gold mine earns just by standing there; a pawn on the Elixir
+// spring can spend its whole turn extracting one Elixir, which is what makes banking it risky — the
+// pawn stands still, in the open, while the other side moves. ('extract' in js/engine.js)
+const RESOURCE_TILES={spring:'elixir',mine:'gold'};
+let elixir={w:0,b:0};     // Elixir extracted at the spring
+let mineTurns={w:0,b:0};  // turns that ended with a pawn of that side on the gold mine
+let goldSpent={w:0,b:0};  // Gold spent on anything but spawning: fortified pawns
+const FORTIFIED_HP=3;     // a fortified pawn is a pawn in a helmet, with three life
+function canExtract(i){ const p=pieces[i]; return !!p&&p.type==='pawn'&&tileData[i]==='spring'; }
+function pawnOnMine(color){ return pieces.some((p,i)=>p&&p.color===color&&p.type==='pawn'&&tileData[i]==='mine'); }
+// Gold income this turn: a sixth, doubled while a pawn of that side stands on the mine
+function goldRate(color){ return (pawnOnMine(color)?2:1)/GOLD_TURNS; }
+function goldAllowed(){ return !campaignLevel||campaignLevel.allowSpawn!==false; }
+function canFortify(i){ const p=pieces[i]; return !!p&&p.type==='pawn'&&!p.fortified&&goldAllowed()&&spawnRemaining()>=1; }
 function oppColor(){ return myColor()==='w'?'b':'w'; }
-function spawnQuota(){ const base=campaignLevel&&campaignLevel.spawnLimit?campaignLevel.spawnLimit:COIN_START+whiteTurnCount/COIN_TURNS; return base+mined[myColor()]; }
-function spawnUsed(){ return spawnHistory.length; }
-// a quarter Coin a turn means the count is often a fraction; whole numbers stay plain
-function coinText(n){ return Number.isInteger(n)?String(n):n.toFixed(2); }
+function spawnQuota(){ if(campaignLevel&&campaignLevel.spawnLimit)return campaignLevel.spawnLimit; return GOLD_START+(whiteTurnCount+mineTurns[myColor()])/GOLD_TURNS; }
+function spawnUsed(){ return spawnHistory.length+goldSpent[myColor()]; }
+// a sixth of Gold a turn means the count is often a fraction; whole numbers stay plain
+function goldText(n){ return Number.isInteger(n)?String(n):n.toFixed(2); }
 function spawnRemaining(){
   // tutorial: exactly 1 pawn allowed on the board at a time
   if(typeof isTutorialActive==='function'&&isTutorialActive()){
@@ -31,8 +39,8 @@ function spawnRemaining(){
   }
   return Math.max(0,spawnQuota()-spawnUsed());
 }
-function blackSpawnQuota(){ return COIN_START+blackTurnCount/COIN_TURNS+mined[oppColor()]; }
-function blackSpawnUsed(){ return blackSpawnHistory.length; }
+function blackSpawnQuota(){ return GOLD_START+(blackTurnCount+mineTurns[oppColor()])/GOLD_TURNS; }
+function blackSpawnUsed(){ return blackSpawnHistory.length+goldSpent[oppColor()]; }
 function blackSpawnRemaining(){ return Math.max(0,blackSpawnQuota()-blackSpawnUsed()); }
 let whiteTargets={};  // pieceIdx -> targetIdx (enemy for attackers, friendly for bishops)
 let blackTargets={};
@@ -146,6 +154,7 @@ let lastPf=12;
 // ── PIECE CARD DATA ──────────────────────────────────────────────────────────
 const PC_DATA=[
   {gw:'♙',gb:'♟',name:'Pawn',   stats:'1HP · any dir · atk adj · mines'},
+  {gw:'♙',gb:'♟',name:'Fortified',stats:'3HP · a pawn in a helmet · 1 Gold'},
   {gw:'♘',gb:'♞',name:'Knight', stats:'4HP · L-jump · atk L-dist'},
   {gw:'♗',gb:'♝',name:'Bishop', stats:'2HP · diagonal 2 · heals (mana)'},
   {gw:'♖',gb:'♜',name:'Rook',   stats:'4HP · card2 · pierce rng3'},

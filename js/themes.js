@@ -251,7 +251,7 @@ function generateMap(){
     blockers.forEach(ti=>{tileData[ti]='';tileData[mirrorOf(ti)]='';});
   }
 
-  // The Elixir spring and the Coin mine, on the two corners the kings left empty: each is exactly as
+  // The Elixir spring and the gold mine, on the two corners the kings left empty: each is exactly as
   // far from one king as from the other, so the race for them starts even. (generateMap in engine.js)
   if(ROWS===9&&COLS===9&&!campaignLevel){tileData[idx(1,1)]='spring';tileData[idx(7,7)]='mine';}
 

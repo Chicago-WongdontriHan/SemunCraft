@@ -17,7 +17,8 @@ const UI_ICONS={
     +'<path d="M5.4 4.4a9.4 9.4 0 0 0 0 13.2M18.6 4.4a9.4 9.4 0 0 1 0 13.2"/><path d="M12 13v7"/>',
   refresh:'<path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v4h-4"/>',
   scry:'<path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/>',
-  mine:'<path d="M3.5 20.5 L13.5 10.5"/><path d="M4 10.2 C8 5.6 15 4.6 20 7.6"/><path d="M20 7.6 C17 2.6 8.6 4 4 10.2"/>',
+  fortify:'<path d="M4.5 15 C4.5 8.6 7.8 4.8 12 4.8 C16.2 4.8 19.5 8.6 19.5 15 Z"/><path d="M2.8 15 H21.2"/><path d="M12 15 V19.5"/>',
+  extract:'<path d="M12 3.5 C15.6 8 18 11 18 14.2 A6 6 0 0 1 6 14.2 C6 11 8.4 8 12 3.5 Z"/><path d="M9.5 14 C9.5 12.4 10.3 11.2 11.3 10.3"/>',
   prev:'<path d="M14.5 6l-6 6 6 6"/>',
   next:'<path d="M9.5 6l6 6-6 6"/>',
 };
@@ -47,23 +48,28 @@ function syncUI(){
       spawnBtn.disabled=true;
       spawnBtn.innerHTML=uiLabel('spawn','Spawn (N/A)');
     }else{
-      // how many are left is on the Coin counter in the resources panel
+      // how many are left is on the Gold counter in the resources panel
       const rem=spawnRemaining();
       spawnBtn.innerHTML=uiLabel('spawn','Spawn');
       if(!locked&&rem<1)spawnBtn.disabled=true;
     }
   }
-  // one button for the selected piece's own action: a pawn digs where it stands, a bishop scries
+  const selIdx=selectedPieces.size===1?[...selectedPieces][0]:-1;
+  const sel=selIdx>=0&&pieces[selIdx]&&pieces[selIdx].color===myColor()?pieces[selIdx]:null;
+  // fortifying: one plain pawn of yours selected, and a whole Gold in hand
+  const fortBtn=document.getElementById('btn-fortify');
+  if(fortBtn){
+    fortBtn.disabled=locked||!sel||!canFortify(selIdx);
+    fortBtn.innerHTML=uiLabel('fortify',goldAllowed()?'Fortify':'Fortify (N/A)');
+  }
+  // one button for the selected piece's own action: a pawn on the spring extracts, a bishop scries
   const spBtn=document.getElementById('btn-special');
   if(spBtn){
-    const i=selectedPieces.size===1?[...selectedPieces][0]:-1;
-    const sel=i>=0?pieces[i]:null;
-    const mine=!!sel&&sel.color===myColor()&&canMine(i);
-    const scry=!!sel&&sel.color===myColor()&&sel.type==='bishop'&&(sel.mana||0)>=2;
-    spBtn.disabled=locked||!(mine||scry);
+    const extract=!!sel&&canExtract(selIdx);
+    const scry=!!sel&&sel.type==='bishop'&&(sel.mana||0)>=2;
+    spBtn.disabled=locked||!(extract||scry);
     spBtn.classList.toggle('active-mode',!!scryMode);
-    spBtn.innerHTML=uiLabel(mine?'mine':'scry',
-      scryMode?'Pick a square':mine?(tileData[i]==='spring'?'Mine Elixir':'Mine Coin'):'Scry (2)');
+    spBtn.innerHTML=uiLabel(extract?'extract':'scry',scryMode?'Pick a square':extract?'Extract Elixir':'Scry (2)');
   }
   const mergeBtn=document.getElementById('btn-merge');
   if(mergeBtn){
@@ -85,11 +91,9 @@ function showMoveHint(){
   const mc=myColor();
   const bp2=[];for(let i=0;i<ROWS*COLS;i++){const p=pieces[i];if(p&&p.color===mc)bp2.push({i,p});}
   let hint='';
-  // a pawn standing on a spring or a mine: worth a turn, and easy to miss
+  // a pawn standing on the spring: worth a turn, and easy to miss
   for(const {i,p} of bp2){
-    if(p.type==='pawn'&&RESOURCE_TILES[tileData[i]]){
-      hint='pawn at '+sqName(i)+' can mine '+(tileData[i]==='spring'?'Elixir':'Coin');break;
-    }
+    if(p.type==='pawn'&&tileData[i]==='spring'){hint='pawn at '+sqName(i)+' can extract Elixir';break;}
   }
   // check merges
   if(!hint)for(const {i,p} of bp2){
@@ -151,10 +155,9 @@ function renderPcCards(){
 }
 
 // ── RESOURCES ────────────────────────────────────────────────────────────────
-// Coin pays for the pawns the King spawns and Elixir is meant for the magic units. Neither is a pool
-// the rules keep yet: Coin reads the spawn allowance the game already tracks (8, and one more every
-// 6 turns), and Elixir has no rule behind it at all, so it reads 0 until one is written.
-const RES_COIN='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.4" fill="#F5C443" stroke="#3A2614" stroke-width="2.3"/>'
+// Gold pays for the pawns the King spawns and for fortifying pawns; Elixir, extracted at the spring,
+// is meant for the magic units.
+const RES_GOLD='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.4" fill="#F5C443" stroke="#3A2614" stroke-width="2.3"/>'
   +'<circle cx="12" cy="12" r="5.2" fill="none" stroke="#3A2614" stroke-width="1.5" opacity=".5"/>'
   +'<ellipse cx="9" cy="8.4" rx="2" ry="1.2" fill="#fff" opacity=".6" transform="rotate(-28 9 8.4)"/></svg>';
 const RES_ELIXIR='<svg viewBox="0 0 24 24"><path d="M12 2.4 C16.6 8 19 11.1 19 14.3 A7 7 0 0 1 5 14.3 C5 11.1 7.4 8 12 2.4 Z" '
@@ -162,30 +165,33 @@ const RES_ELIXIR='<svg viewBox="0 0 24 24"><path d="M12 2.4 C16.6 8 19 11.1 19 1
   +'<path d="M9 13.4 C9 11.6 10 10 11.2 8.8" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".55"/></svg>';
 
 // the engine's own numbers while two networks play each other, the game's otherwise
-function coinCount(color){
+function goldCount(color){
   if(gameMode==='aivsai'&&aiVsAi&&typeof SemunEngine!=='undefined')return SemunEngine.spawnRemaining(aiVsAi.s,color);
   return color===myColor()?spawnRemaining():blackSpawnRemaining();
 }
-// Elixir is what a pawn digs at a spring; a bishop's mana is its own heal charge and is not this.
+// Elixir is what a pawn extracts at the spring; a bishop's mana is its own heal charge and is not this.
 function elixirCount(color){
   if(gameMode==='aivsai'&&aiVsAi&&aiVsAi.s.elixir)return aiVsAi.s.elixir[color]||0;
   return (typeof elixir!=='undefined'&&elixir[color])||0;
 }
 function renderResources(){
   const el=document.getElementById('resources');if(!el)return;
-  const noSpawn=campaignLevel&&campaignLevel.allowSpawn===false;
+  const noGold=campaignLevel&&campaignLevel.allowSpawn===false;
   const both=gameMode==='aivsai'&&aiVsAi;
   const sides=both?['w','b']:[myColor()];
-  // the income sits inside the Coin chip, so it reads as Coin's rate and not Elixir's
-  const rate='+'+(1/COIN_TURNS).toFixed(2);
-  const chip=(icon,text,note)=>'<span class="res-chip">'+icon+'<b>'+text+'</b>'
-    +(note?'<span class="res-note">'+note+'</span>':'')+'</span>';
-  // AI vs AI shows both sides; the strip stays one line either way
+  // a line per resource: icon, name, count, and for Gold this turn's income beside it, so it reads as
+  // Gold's rate and not Elixir's; it doubles, and lights up, while a pawn stands on the mine. The
+  // desktop panel stacks the two lines; the phone strip puts them side by side on one line.
+  const line=(cls,icon,name,text,note,boost)=>'<span class="res-chip '+cls+'">'+icon
+    +'<span class="res-name">'+name+'</span><b>'+text+'</b>'
+    +(note?'<span class="res-note'+(boost?' res-boost':'')+'">'+note+'</span>':'')+'</span>';
   el.classList.toggle('two-sides',!!both);
   el.innerHTML=sides.map(color=>{
-    const coin=noSpawn?'—':coinText(coinCount(color));
+    const gold=noGold?'—':goldText(goldCount(color));
+    const boost=!noGold&&pawnOnMine(color);
     return '<div class="res-side">'+(both?'<span class="res-team">'+(color==='w'?'White':'Black')+'</span>':'')
-      +chip(RES_COIN,coin,noSpawn?'':rate)+chip(RES_ELIXIR,elixirCount(color))+'</div>';
+      +line('res-line-gold',RES_GOLD,'Gold',gold,noGold?'':'+'+goldRate(color).toFixed(2),boost)
+      +line('res-line-elixir',RES_ELIXIR,'Elixir',elixirCount(color))+'</div>';
   }).join('');
 }
 

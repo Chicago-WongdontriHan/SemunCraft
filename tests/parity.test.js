@@ -63,7 +63,7 @@ section('map generation and strategy pick match themes.js / ai.js',()=>{
 // White's actions (and both sides' in PvP) are picked at random from the engine's
 // legal actions, then played through the original code's own input handlers.
 const LEVELS=game.get('CAMPAIGN_LEVELS');
-game.run(`function __snap(){return{board:pieces,tiles:tileData,over,turn,whiteTurnCount,blackTurnCount,scans,elixir,mined,
+game.run(`function __snap(){return{board:pieces,tiles:tileData,over,turn,whiteTurnCount,blackTurnCount,scans,elixir,mineTurns,goldSpent,
   whiteSpawns:spawnHistory.length,blackSpawns:blackSpawnHistory.length,whiteTargets,blackTargets,
   moved:movedThisTurn,hitBy:blackHitBy,acted:[...blackActed]};}
 function __dests(i){const d=getDragDests(i),o={};for(const k of ['move','merge','attack','heal'])o[k]=[...d[k]].sort((a,b)=>a-b);return o;}`,'snapshot');
@@ -88,7 +88,8 @@ function choose(acts,pick){
 function applyOriginal(a,s){
   const p=a.from!==undefined?s.board[a.from]:null;
   const drop='executeDrop('+a.from+','+a.to+',getDragDests('+a.from+'))';
-  if(a.type==='mine')game.run('mineAt('+a.from+')');
+  if(a.type==='extract')game.run('extractAt('+a.from+')');
+  else if(a.type==='fortify')game.run('fortifyAt('+a.from+')');
   else if(a.type==='scry')game.run('castScry('+a.from+','+a.to+')');
   else if(a.type==='spawn')game.run('kingSelected=true;handleClick('+a.to+')');
   else if(a.type==='unsiege')game.run('unsiegePiece('+a.from+')');
@@ -164,7 +165,7 @@ function playClassic(opts,label,stats){
     if(!check(label+': after action '+n+' '+q(a),o,{board:s.board,tiles:s.tiles,over:s.over,
       whiteTurnCount:s.turnCount.w,blackTurnCount:s.turnCount.b,whiteSpawns:s.spawns.w,blackSpawns:s.spawns.b,
       whiteTargets:s.targets.w,blackTargets:s.targets.b,moved:s.moved,hitBy:s.hitBy,acted:s.acted,scans:s.scans,
-      elixir:s.elixir,mined:s.mined,winner:s.winner}))return;
+      elixir:s.elixir,mineTurns:s.mineTurns,goldSpent:s.goldSpent,winner:s.winner}))return;
   }
 }
 
@@ -198,9 +199,9 @@ function playPvp(opts,label,stats){
     if(!check(label+': after action '+n+' '+q(a),
       {board:o.board,tiles:o.tiles,over:o.over,turn:o.turn,winner:origWinner(o),
         turns:{w:client.w.whiteTurnCount,b:client.b.whiteTurnCount},spawns:{w:client.w.spawnHistory.length,b:client.b.spawnHistory.length},
-        whiteTargets:o.whiteTargets,blackTargets:o.blackTargets,moved:o.moved,elixir:o.elixir,mined:o.mined},
+        whiteTargets:o.whiteTargets,blackTargets:o.blackTargets,moved:o.moved,elixir:o.elixir,mineTurns:o.mineTurns,goldSpent:o.goldSpent},
       {board:s.board,tiles:s.tiles,over:s.over,turn:s.turn,winner:s.winner,turns:s.turnCount,spawns:s.spawns,
-        whiteTargets:s.targets.w,blackTargets:s.targets.b,moved:s.moved,elixir:s.elixir,mined:s.mined}))return;
+        whiteTargets:s.targets.w,blackTargets:s.targets.b,moved:s.moved,elixir:s.elixir,mineTurns:s.mineTurns,goldSpent:s.goldSpent}))return;
   }
   game.run('pvpActive=false;pvpRole=null;');
 }

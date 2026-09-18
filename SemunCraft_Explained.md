@@ -15,7 +15,7 @@ The goal: **destroy the enemy King** while building up your army through a merge
 - **9x9 grid** with alternating light/dark tiles (like a chess board, but larger). Campaign levels use their own board sizes.
 - Coordinate system uses algebraic notation (a-i columns, 1-9 rows).
 - **White King** starts on b2 (bottom-left area); **Black King** starts on h8 (top-right area). Each King starts with 3 pawns on the adjacent tiles closest to the enemy King.
-- The other two corners hold the resources: an **Elixir spring on b8** and a **Coin mine on h2**. Each is exactly as far from one King as from the other, so the race for them starts even, and the obstacles are mirrored through the board’s centre for the same reason.
+- The other two corners hold the resources: an **Elixir spring on b8** and a **gold mine on h2**. Each is exactly as far from one King as from the other, so the race for them starts even, and the obstacles are mirrored through the board’s centre for the same reason.
 
 ---
 
@@ -24,6 +24,7 @@ The goal: **destroy the enemy King** while building up your army through a merge
 | Piece | Glyph | HP | Movement | Attack |
 |-------|-------|----|----------|--------|
 | **Pawn** | ♙/♟ | 1 | 1 step, any of 8 directions; 2 straight forward on its first move | Adjacent (8 dirs) |
+| **Fortified Pawn** | ♙/♟ in a helmet | 3 | As a pawn | As a pawn |
 | **Knight** | ♘/♞ | 4 | L-shape jump (2+1), jumps over pieces | L-shape range |
 | **Bishop** | ♗/♝ | 2 | Diagonal up to 2 squares (sliding) | Diagonal up to 2 (sliding); also heals allies with mana |
 | **Rook** | ♖/♜ | 4 | Cardinal up to 2 squares (sliding) | Cardinal up to 3 squares, **piercing** (goes through pieces) |
@@ -55,21 +56,21 @@ The core progression mechanic. Drag one piece onto an adjacent ally to merge the
 ## Spawning
 
 - The **King** spawns pawns on adjacent empty tiles: click the King, then an empty tile next to it (or press **Spawn** to place one on the free tile closest to the enemy King).
-- Coin starts at **8** and earns **a sixth a turn** — the old rate of one every 6 turns, now arriving continuously instead of in jumps (`8 + turnCount / 6`, `COIN_START` / `COIN_TURNS` in `js/state.js`, written the same way in `js/engine.js` so both land on the same number). A pawn from the King costs 1 Coin, so spawning waits until a whole Coin is in hand. The AI earns Coin on the same terms.
-- A **Coin mine** dug by a pawn (below) adds to the same purse, permanently.
+- **Gold** starts at **8** and earns **a sixth a turn**, and a sixth more for every turn that ends with a pawn of yours on the **gold mine** (`8 + (turnCount + mineTurns) / 6`, `GOLD_START` / `GOLD_TURNS` in `js/state.js`, written the same way in `js/engine.js` so both land on the same number — turns are counted as whole numbers and divided once, never summed in sixths). A pawn from the King costs 1 Gold, so spawning waits until a whole Gold is in hand. The AI earns Gold on the same terms.
+- **Fortify** spends 1 Gold from the same purse: the selected pawn becomes a **fortified pawn** — the same pawn in every rule (moves, attack, merges, can extract), but with **3 HP**, drawn with an iron helmet and a heater shield in its team’s colour. It takes the pawn’s turn, as spawning takes the King’s, and a pawn is fortified only once (`fortifyAt` in `js/actions.js`, `fortify` in `js/engine.js`; `goldSpent` keeps the count). Levels without spawning have no Gold, so no fortifying either. The AI doesn’t fortify yet.
 - Spawning is your only way to create new units -- everything else comes from merging. Campaign levels don't allow spawning.
 
 ---
 
 ## The Spring and the Mine
 
-Two tiles on the board are worth a turn of standing still (`RESOURCE_TILES` in `js/state.js`, the `mine` action in `js/engine.js`):
+Two tiles on the board are worth holding (`RESOURCE_TILES` in `js/state.js`), and only **pawns** work them:
 
-- The **Elixir spring** (b8) and the **Coin mine** (h2). Only a **pawn** can work them, and only by **spending its whole turn**: select the pawn and press the action button, which reads **Mine Elixir** or **Mine Coin**.
-- That is the point of the rule. Banking a resource costs you tempo and leaves a 1 HP pawn standing still in the open, so the side that is ahead cannot mine without giving the other side a turn to come back.
-- Mined Coin is added to the King’s purse for good (`mined` in `js/state.js`, added to `spawnQuota`); Elixir is banked on its own (`elixir`) and will pay for the strongest merges.
+- The **gold mine** (h2) pays by being held: every turn that ends with a pawn of yours on it adds **another sixth of Gold**, so your income doubles from +0.17 to **+0.33** a turn (`mineTurns`, `pawnOnMine`; credited in `endTurn` / `finishBlackTurn` and in the engine’s `finishTurn`). While a pawn stands there the tile pulses gold with a **+1/6** badge, and the Gold line in the panel lights up with the doubled rate.
+- The **Elixir spring** (b8) pays only for work: a pawn standing on it can **spend its whole turn extracting one Elixir** — select it and press **Extract Elixir** (`extractAt` in `js/actions.js`, the `extract` action in `js/engine.js`). That is the point of the rule: banking Elixir costs tempo and leaves a pawn standing still in the open, so the side that is ahead cannot extract without giving the other side a turn to come back.
+- Elixir is banked on its own (`elixir`) and will pay for the strongest merges.
 - Both tiles are **landmarks**: a coloured dot marks each one through the fog, because both sides know where they are from the start.
-- Black digs too: the built-in AI takes it before anything else on its turn (`fallbackAI` in `js/ai.js`, `botTurn` in `js/engine.js`), and because the trained networks were trained before the rule existed, the same check runs for them in `netAiChoose` and in AI vs AI (`freeMine`).
+- Black extracts too: the built-in AI does it before anything else on its turn (`fallbackAI` in `js/ai.js`, `botTurn` in `js/engine.js`), and because the trained networks were trained before the rule existed, the same check runs for them in `netAiChoose` and in AI vs AI (`freeExtract`). The mine pays either side automatically. `extract` and `fortify` are left out of the networks’ action map (`legalMap` in `rl/encoding.js`) until they are trained again.
 
 ---
 
@@ -191,7 +192,7 @@ Twelve hand-built levels in four acts, unlocked in order. Progress is saved in t
 
 ### The story: The Hollow Crown
 
-The King's Coin is stolen, so no new pawns can be minted — which is why the early levels have no spawning — and the Mirror Court, your own pieces in black, marches out of the wood. A small cast carries it (`SPEAKERS` in campaign.js, each drawn with its own piece art): the **King** (tired, practical), **Pip** the first pawn (eager, asks what the player is thinking), **Wren** the bishop (keeper of the Elixir spring) and the **Mirror King** (your words, turned cold; he speaks when you lose). A level shows at most two lines before it and one after.
+The King's Gold is stolen, so no new pawns can be minted — which is why the early levels have no spawning — and the Mirror Court, your own pieces in black, marches out of the wood. A small cast carries it (`SPEAKERS` in campaign.js, each drawn with its own piece art): the **King** (tired, practical), **Pip** the first pawn (eager, asks what the player is thinking), **Wren** the bishop (keeper of the Elixir spring) and the **Mirror King** (your words, turned cold; he speaks when you lose). A level shows at most two lines before it and one after.
 
 ---
 
@@ -235,10 +236,10 @@ An interactive 7-step tutorial:
 - **Design** (the `--leather-*`, `--gold*`, `--parch*` and `--btn-*` tokens at the top of `SemunCraft.html`): everything outside the board is one system — leather panels in the map's own colour behind a gold frame, section headers on gold ribbons with a notched foot, bevelled plaque buttons (solid gold for the main one on a panel), and sunken boxes for anything that shows a value. A map theme only re-sets the tokens, so the panels, bars, buttons, popups, the settings card, the tutorial card and the overlays all follow it. Button icons are drawn in one line style in `UI_ICONS` (`js/ui.js`) and requested with `data-icon`, so no button falls back to an emoji.
 - **Font**: all UI text uses Lilita One (`fonts/LilitaOne.woff2`, SIL Open Font License in `fonts/OFL.txt`) through the `--ui-font` variable; room/peer IDs and the API key field stay monospace so similar characters stay distinct.
 - **Top bar**: Game title, optional Anthropic API key (Claude plays Black on Hard), status text, turn counter, and ⚙ Audio settings.
-- **Left panel**: The Coin and Elixir counters and paginated unit reference cards.
-- **Resources** (`renderResources` in `js/ui.js`): **Coin** is what the King spends to spawn pawns (8 to start, a sixth a turn, 1 a pawn, so the count is often a fraction; the rate sits inside the Coin chip as a decimal, +0.17, so it reads as Coin's income and not Elixir's) and **Elixir** is what a pawn digs at the spring — the count is real now, and a bishop’s mana is its own heal charge, not this. AI vs AI shows both sides’ numbers, and the strip stays one line.
+- **Left panel**: The Gold and Elixir counters and paginated unit reference cards (the fortified pawn has a card of its own).
+- **Resources** (`renderResources` in `js/ui.js`): **Gold** is what the King spends to spawn pawns and what fortifying costs (8 to start, a sixth a turn, a sixth more while a pawn holds the mine, 1 each, so the count is often a fraction), and **Elixir** is what a pawn extracts at the spring — a bishop’s mana is its own heal charge, not this. On desktop each resource has **a line of its own** — icon, name, count, and for Gold this turn’s income (+0.17, or +0.33 lit gold while the mine is held) — and AI vs AI shows White and Black in two columns. On a phone the two sit side by side in the strip above the board, which stays one line.
 - **Center**: The game board with HP pips, bishop mana pips, coordinate labels, and pan arrows when zoomed in (the board can also be dragged to slide it).
-- **Right panel**: Move hint (Easy mode), action buttons (Spawn, Merge, the selected piece’s own action, Skip, Menu), and Map View (minimap, zoom, Map Cheat). The third button is whatever the one selected piece can do where it stands: **Mine Elixir** / **Mine Coin** for a pawn on a resource tile, **Scry (2)** for a bishop holding both its mana.
+- **Right panel**: Move hint (Easy mode), six action buttons in pairs — Spawn | Fortify, Merge | the selected piece’s own action, Skip | Menu — and Map View (minimap, zoom, Map Cheat). The piece’s own action is whatever the one selected piece can do where it stands: **Extract Elixir** for a pawn on the spring, **Scry (2)** for a bishop holding both its mana. AI vs AI swaps the player’s buttons for Pause, Speed and New Match.
 - **Bottom bar**: Game log and an AI "thinking" indicator dot.
 - **Mobile**: In portrait, the resource counters become a strip above the board, kept to one line (two in AI vs AI would push the board down), and the status line is clipped to one line for the same reason and the buttons wrap into finger-sized rows below it (unit cards, minimap and hint are hidden). The status line wraps, and the board keeps its full size when zoomed in: the pan arrows are hidden (drag the board instead) and the small map in the button strip below shows where the view is. A double tap never zooms the page (the board has its own pinch zoom). On short landscape screens the side panels shrink and the layout is centered. Touch devices get touch wording (tap a siege tower twice instead of right-clicking).
 
@@ -484,4 +485,4 @@ The scripts are loaded in a specific order in `SemunCraft.html` because later fi
 - Drag-and-drop is implemented via mouse/touch events with a floating ghost element; on touch screens the drag starts on touchstart so iOS doesn't cancel the gesture.
 - Attack animations use flying emoji projectiles, SVG spears and cannonballs, and SVG arrow overlays.
 - Board auto-resizes to fit the viewport, with separate portrait and landscape mobile layouts.
-- Pieces are drawn as SVG from the `pieces/` folder. Each type has its own cute silhouette and size: a small round pawn holding a sword and a buckler, a horse-head knight, a mitred bishop with a green healing cross and a staff, a castle rook, a slim queen with long hair, a tall three-point crown and a sceptre, a broad bearded king under a flat crown with a cross, and a stub tower with a cannon barrel out of the roof for the siege tower. Bodies use the team colour (light White, dark Black) with a slight tint per type -- knights bluish, bishops greenish, rooks brick, queens pink, kings gold, siege towers stone. A dark outline plus a contrasting halo keeps them readable on any tile. Map themes only change crown/gem colours and the ground under each piece: grass and a flower (jungle), sand and a cactus (desert), ripples and bubbles (ocean). Open `pieces/preview.html` to see every set, including a solid-silhouette check.
+- Pieces are drawn as SVG from the `pieces/` folder. Each type has its own cute silhouette and size: a small round pawn holding a sword and a buckler (fortified: an iron helmet and a heater shield in its team’s colour), a horse-head knight, a mitred bishop with a green healing cross and a staff, a castle rook, a slim queen with long hair, a tall three-point crown and a sceptre, a broad bearded king under a flat crown with a cross, and a stub tower with a cannon barrel out of the roof for the siege tower. Bodies use the team colour (light White, dark Black) with a slight tint per type -- knights bluish, bishops greenish, rooks brick, queens pink, kings gold, siege towers stone. A dark outline plus a contrasting halo keeps them readable on any tile. Map themes only change crown/gem colours and the ground under each piece: grass and a flower (jungle), sand and a cactus (desert), ripples and bubbles (ocean). Open `pieces/preview.html` to see every set, including a solid-silhouette check.

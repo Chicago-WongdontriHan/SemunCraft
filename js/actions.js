@@ -137,7 +137,7 @@ function executeDrop(from,to,dests){
           movers.forEach(({si,di})=>{
             const mv=pieces[si];
             if(mv.type==='pawn')mv.firstMove=false;
-            animatePieceMove(si,di,mv.type,mv.color,false,()=>{
+            animatePieceMove(si,di,pieceArt(mv),mv.color,false,()=>{
               pieces[si]=null;pieces[di]=mv;
               done++;if(done===movers.length){render();endTurn();}
             },mv.type==='knight'?260:180);
@@ -305,7 +305,7 @@ function executeDrop(from,to,dests){
     if(_mv.type==='pawn')_mv.firstMove=false;
     movedThisTurn=from;
     render();
-    animatePieceMove(from,to,_mv.type,_mv.color,false,()=>{
+    animatePieceMove(from,to,pieceArt(_mv),_mv.color,false,()=>{
       pieces[from]=null; pieces[to]=_mv; movedThisTurn=to; render(); endTurn();
     },_mv.type==='knight'?260:180);
     return;
@@ -357,11 +357,11 @@ function handleClick(i,additive){
   if(!p&&kingSelected){
     if(ki>=0&&adj8(ki).includes(i)){
       const rs=spawnRemaining();
-      if(rs<1){setStatus('Not enough Coin for a pawn');kingSelected=false;render();return;}
+      if(rs<1){setStatus('Not enough Gold for a pawn');kingSelected=false;render();return;}
       if(isTileBlocked(i)){setStatus('Cannot spawn on obstacle');kingSelected=false;render();return;}
       pieces[i]={type:'pawn',color:mc,hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,newborn:true,firstMove:true};
       spawnHistory.push(whiteTurnCount);
-      addLog('Spawned pawn ('+coinText(spawnRemaining())+' Coin left)');spawnFlash(i);SFX.arrive('pawn');kingSelected=false;tutCheckAction('spawn');endTurn();}
+      addLog('Spawned pawn ('+goldText(spawnRemaining())+' Gold left)');spawnFlash(i);SFX.arrive('pawn');kingSelected=false;tutCheckAction('spawn');endTurn();}
     else{kingSelected=false;render();setStatus('Your turn');}
     return;
   }
@@ -389,22 +389,43 @@ function handleClick(i,additive){
   kingSelected=false;selectedPieces=new Set();render();
 }
 
-// ── PAWN: MINING ─────────────────────────────────────────────────────────────
-// A pawn on a spring or a mine digs out one resource, and that is its whole turn. ('mine' in engine.js)
-function mineAt(i){
-  const p=pieces[i],kind=RESOURCE_TILES[tileData[i]];
-  if(!p||p.type!=='pawn'||!kind)return;
-  if(kind==='elixir')elixir[p.color]++;else mined[p.color]++;
+// ── PAWN: THE SPRING, AND FORTIFYING ────────────────────────────────────────
+// A pawn on the Elixir spring extracts one Elixir, and that is its whole turn. ('extract' in engine.js)
+function extractAt(i){
+  const p=pieces[i];
+  if(!p||p.type!=='pawn'||tileData[i]!=='spring')return;
+  elixir[p.color]++;
   movedThisTurn=i;
-  addLog('Pawn mines '+(kind==='elixir'?'Elixir':'Coin')+' at '+sqName(i));
-  SFX.mine(kind);flashSq(i,'heal-flash');
+  addLog('Pawn extracts Elixir at '+sqName(i));
+  SFX.extract();flashSq(i,'heal-flash');
   render();endTurn();
 }
-// the special-action button: whatever the one selected piece can do here
+// One Gold turns a pawn into a fortified pawn: the same pawn in a helmet, with three life. It takes
+// the pawn's turn, as spawning takes the King's. ('fortify' in engine.js)
+function fortifyAt(i){
+  const p=pieces[i];
+  if(!p||p.type!=='pawn'||p.fortified||!goldAllowed()||spawnRemaining()<1)return;
+  p.fortified=true;p.hp=FORTIFIED_HP;p.maxHp=FORTIFIED_HP;
+  goldSpent[p.color]++;
+  movedThisTurn=i;
+  addLog('Pawn fortified at '+sqName(i)+' ('+goldText(spawnRemaining())+' Gold left)');
+  SFX.fortify();flashSq(i,'heal-flash');
+  render();endTurn();
+}
+function doFortify(){
+  if(over||thinking||!isMyTurn())return;
+  const i=selectedPieces.size===1?[...selectedPieces][0]:-1;
+  const p=i<0?null:pieces[i];
+  if(!p||p.color!==myColor()||p.type!=='pawn'){setStatus('Select one of your pawns to fortify it');return;}
+  if(p.fortified){setStatus('That pawn is already fortified');return;}
+  if(!goldAllowed()||spawnRemaining()<1){setStatus('Not enough Gold to fortify (1 Gold)');return;}
+  fortifyAt(i);
+}
+// the special-action button: whatever the one selected piece can do where it stands
 function doSpecial(){
   const i=selectedPieces.size===1?[...selectedPieces][0]:-1;
   const p=i<0?null:pieces[i];
-  if(p&&p.color===myColor()&&canMine(i)){mineAt(i);return;}
+  if(p&&p.color===myColor()&&canExtract(i)){extractAt(i);return;}
   startScry();
 }
 
@@ -449,7 +470,7 @@ let kingChooser=null;
 function setKingMode(ki,mode){
   if(mode==='spawn'){
     selectedPieces=new Set();kingSelected=true;
-    setStatus('Tap a ghost pawn to spawn it ('+coinText(spawnRemaining())+' Coin)');
+    setStatus('Tap a ghost pawn to spawn it ('+goldText(spawnRemaining())+' Gold)');
   }else{
     kingSelected=false;selectedPieces=new Set([ki]);
     setStatus('Tap a marker to move the king');
@@ -492,7 +513,7 @@ function syncKingChooser(){
 function doSpawn(){
   if(over||thinking||!isMyTurn())return;
   const mc=myColor();
-  if(spawnRemaining()<1){setStatus('Not enough Coin for a pawn (+1/'+COIN_TURNS+' a turn)');return;}
+  if(spawnRemaining()<1){setStatus('Not enough Gold for a pawn (+1/'+GOLD_TURNS+' a turn)');return;}
   const ki=pieces.findIndex(p=>p&&p.color===mc&&p.type==='king');
   const bKi=pieces.findIndex(p=>p&&p.color!==mc&&p.type==='king');
   if(ki<0)return;
@@ -500,7 +521,7 @@ function doSpawn(){
   const best=bKi>=0?cands.reduce((a,b)=>cheb(a,bKi)<cheb(b,bKi)?a:b):cands[0];
   pieces[best]={type:'pawn',color:mc,hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,newborn:true,firstMove:true};
   spawnHistory.push(whiteTurnCount);
-  addLog('Spawned pawn ('+coinText(spawnRemaining())+' Coin left)');spawnFlash(best);SFX.arrive('pawn');tutCheckAction('spawn');endTurn();
+  addLog('Spawned pawn ('+goldText(spawnRemaining())+' Gold left)');spawnFlash(best);SFX.arrive('pawn');tutCheckAction('spawn');endTurn();
 }
 
 // arrow keys: pieces only move by drag or tap, so point the player there

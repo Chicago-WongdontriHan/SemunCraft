@@ -55,11 +55,11 @@ function netAiPreload(){
   if(level)netAiLoadModel(level.model).catch(()=>{});
 }
 
-// a pawn of the side to move standing on a spring or a mine, as an action (botTurn does this itself)
-function freeMine(state){
+// a pawn of the side to move standing on the Elixir spring, as an action (botTurn does this itself)
+function freeExtract(state){
   for(let i=0;i<state.board.length;i++){
     const p=state.board[i];
-    if(p&&p.color===state.turn&&p.type==='pawn'&&RESOURCE_TILES[state.tiles[i]])return{type:'mine',from:i,to:i};
+    if(p&&p.color===state.turn&&p.type==='pawn'&&state.tiles[i]==='spring')return{type:'extract',from:i,to:i};
   }
   return null;
 }
@@ -71,14 +71,14 @@ function netAiSnapshot(){
     level:campaignLevel||null,
     turnCount:{w:whiteTurnCount,b:blackTurnCount},spawns:{w:spawnHistory.length,b:blackSpawnHistory.length},
     targets:{w:whiteTargets,b:blackTargets},hitBy:blackHitBy,acted:[...blackActed],scans,
-    elixir:{w:elixir.w,b:elixir.b},mined:{w:mined.w,b:mined.b},maxTurns:300});
+    elixir:{w:elixir.w,b:elixir.b},mineTurns:{w:mineTurns.w,b:mineTurns.b},goldSpent:{w:goldSpent.w,b:goldSpent.b},maxTurns:300});
 }
 
 // Black's move at this difficulty (tests/netai.test.js replaces this with random legal moves)
 function netAiChoose(state,level){
-  // digging came after these networks were trained, so it is not one of the moves they can pick:
-  // a pawn of theirs standing on a spring or a mine digs, the way the built-in AI does
-  const dig=freeMine(state);
+  // extracting came after these networks were trained, so it is not one of the moves they can pick:
+  // a pawn of theirs standing on the spring extracts, the way the built-in AI does
+  const dig=freeExtract(state);
   if(dig)return dig;
   const cfg=NETAI_LEVELS[level];
   return SemunNet.choose(netAiNets[cfg.model],netAiEncoder,state,{temperature:cfg.temperature}).action;
@@ -91,7 +91,7 @@ function netAiApply(action){
   pieces=s.board;
   whiteTargets=s.targets.w;blackTargets=s.targets.b;
   scans=s.scans; // a scry Black cast lives in the engine's state: bring it back with the board
-  elixir=s.elixir;mined=s.mined;
+  elixir=s.elixir;mineTurns=s.mineTurns;goldSpent=s.goldSpent;
   for(let k=spawned;k<s.spawns.b;k++)blackSpawnHistory.push(blackTurnCount);
   return result;
 }
@@ -119,6 +119,7 @@ function netAiMove(level,chain){
   render();
   if(a.type==='move'&&p)animatePieceMove(a.from,a.to,p.type,'b',true,()=>{},p.type==='knight'?260:180);
   else if(a.type==='spawn'){spawnFlash(a.to);SFX.arrive('pawn');}
+  else if(a.type==='extract'){flashSq(a.from,'heal-flash');SFX.extract();}
   else if(a.type==='merge'||a.type==='unsiege'){
     mergeFlash(a.type==='merge'?a.to:a.from);
     const m=events.find(e=>e.type==='merge');SFX.arrive(a.type==='unsiege'?'rook':m&&m.piece);
@@ -139,6 +140,7 @@ function netAiDescribe(a,p,events){
     case'target':return p.type+' targets '+sqName(a.to);
     case'heal':case'healLock':return 'bishop heals '+sqName(a.to);
     case'unsiege':return 'unsieges@'+sqName(a.from);
+    case'extract':return 'extracts Elixir@'+sqName(a.from);
   }
   return 'skips';
 }

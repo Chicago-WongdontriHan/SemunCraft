@@ -2,6 +2,7 @@
 // Every piece is an SVG in a 100x100 box, standing on a base at y=86.
 // Types are told apart by silhouette and size, and look the same in every set:
 //   pawn    a foot soldier: small and round, a sword at her side and a buckler on her arm
+//           (fortified: the same pawn in an iron helmet, with a heater shield for the buckler)
 //   knight  horse head with a mane
 //   bishop  tall pointed mitre with a green healing cross, holding a crook staff
 //   rook    castle tower with battlements and a door
@@ -119,6 +120,26 @@ const PIECE_SHAPES={
       +siegeBarrel(true)},
 };
 
+// the fortified pawn: the same pawn and sword, under an iron kettle helmet with a wide brim, and a
+// heater shield in the team's colour in place of the buckler. The helmet rises past the head, so the
+// halo follows the helmet too.
+PIECE_SHAPES.fortified=Object.assign({},PIECE_SHAPES.pawn,{
+  halo:PIECE_SHAPES.pawn.body+'<path d="M34.5 48.5 C34.5 38 41.5 32.5 50 32.5 C58.5 32.5 65.5 38 65.5 48.5 Z"/>',
+  crown:'<path d="M34.5 48.5 C34.5 38 41.5 32.5 50 32.5 C58.5 32.5 65.5 38 65.5 48.5 Z" fill="#B4BEC9" stroke="{line}" stroke-width="3.2" stroke-linejoin="round"/>'
+    +'<path d="M50 33 V47" stroke="{line}" stroke-width="2.2" opacity=".4"/>'
+    +'<path d="M40 44 C40.5 40 43 37 46.5 35.8" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" opacity=".6"/>'
+    +'<path d="M31.5 48.5 H68.5" stroke="{line}" stroke-width="6.2" stroke-linecap="round"/>'
+    +'<path d="M31.5 48.5 H68.5" stroke="#8E99A6" stroke-width="2.6" stroke-linecap="round"/>',
+  detail:'<path d="M19 64 H42 V72 C42 80 37.5 85 30.5 88.5 C23.5 85 19 80 19 72 Z" fill="{ring}" stroke="{line}" stroke-width="3.2" stroke-linejoin="round"/>'
+    +'<path d="M27.6 65.5 H33.4 V85.6 L30.5 87.2 L27.6 85.6 Z" fill="#FFF8E6" opacity=".8"/>'
+    +'<path d="M22.4 67.4 H38.6 V72.4 C38.6 78.4 35.2 82.4 30.5 84.8 C25.8 82.4 22.4 78.4 22.4 72.4 Z" fill="none" stroke="{metal}" stroke-width="1.9" stroke-linejoin="round"/>'
+    +'<path d="M19 64 H42 V72 C42 80 37.5 85 30.5 88.5 C23.5 85 19 80 19 72 Z" fill="none" stroke="{line}" stroke-width="3.2" stroke-linejoin="round"/>',
+});
+PIECE_TINTS.w.fortified=PIECE_TINTS.w.pawn;
+PIECE_TINTS.b.fortified=PIECE_TINTS.b.pawn;
+// what a piece on the board is drawn as: a fortified pawn keeps type 'pawn' and wears the helmet
+function pieceArt(p){return p.fortified?'fortified':p.type;}
+
 function pieceFace(shape,team){
   let s='';
   (shape.blush||[]).forEach(([x,y])=>{s+=`<ellipse cx="${x}" cy="${y}" rx="3.8" ry="2.3" fill="#FF8FA3" opacity=".6"/>`;});
@@ -129,7 +150,7 @@ function pieceFace(shape,team){
   return s;
 }
 
-// type: pawn|knight|bishop|rook|queen|king|siege, color: 'w'|'b', theme: a PIECE_SETS key, size in px,
+// type: pawn|fortified|knight|bishop|rook|queen|king|siege, color: 'w'|'b', theme: a PIECE_SETS key, size in px,
 // plain: leave out the theme's ground decoration (for small icons like the merge chart)
 function pieceSVG(type,color,theme,size,plain){
   const shape=PIECE_SHAPES[type];if(!shape)return '';

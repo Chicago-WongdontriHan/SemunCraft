@@ -90,7 +90,9 @@ function newGame(o){
     board:null,tiles:null,blocked:null,
     turn:'w',over:false,winner:null,
     turnCount:{w:0,b:0},spawns:{w:0,b:0},targets:{w:{},b:{}},
-    elixir:{w:0,b:0},mined:{w:0,b:0},   // dug at a spring and at a mine ('mine' action)
+    elixir:{w:0,b:0},       // extracted at the spring ('extract')
+    mineTurns:{w:0,b:0},    // turns ended with a pawn on the gold mine: a sixth of Gold each
+    goldSpent:{w:0,b:0},    // Gold spent on anything but spawning ('fortify')
     moved:-1,   // square of the piece that moved or healed this turn (it doesn't auto-attack)
     scans:[],   // bishops' scrying: [{tiles, turns, color}] (see the 'scry' action)
     hitBy:[],   // classic: Black pieces White hit this round, for the reactive AI
@@ -142,7 +144,8 @@ function clone(s){
   c.turnCount={w:s.turnCount.w,b:s.turnCount.b};
   c.spawns={w:s.spawns.w,b:s.spawns.b};
   c.elixir={w:s.elixir.w,b:s.elixir.b};
-  c.mined={w:s.mined.w,b:s.mined.b};
+  c.mineTurns={w:s.mineTurns.w,b:s.mineTurns.b};
+  c.goldSpent={w:s.goldSpent.w,b:s.goldSpent.b};
   c.targets={w:Object.assign({},s.targets.w),b:Object.assign({},s.targets.b)};
   c.scans=s.scans.map(sc=>({tiles:sc.tiles.slice(),turns:sc.turns,color:sc.color}));
   c.hitBy=s.hitBy.map(h=>({target:h.target,attacker:h.attacker}));
@@ -255,7 +258,7 @@ function generateMap(s){
   [[[0,1],[0,-1],[1,0],[-1,0]],[[1,1],[1,-1],[-1,1],[-1,-1]]].forEach(dirs=>{
     if(!hasPath(dirs))findBlockers(dirs).forEach(ti=>{setTile(s,ti,'');setTile(s,mirrorOf(ti),'');});
   });
-  // the Elixir spring and the Coin mine, each the same distance from both kings (themes.js)
+  // the Elixir spring and the gold mine, each the same distance from both kings (themes.js)
   if(R===9&&C===9){setTile(s,1*C+1,'spring');setTile(s,7*C+7,'mine');}
   // desert: one sandstone becomes the pyramid, with the mummy beside it
   if(s.theme==='desert'){
@@ -295,8 +298,11 @@ function generateMap(s){
   if(th.attacker)place(th.attacker,true);
 }
 
-// a pawn digs a spring for Elixir and a mine for Coin, at the cost of its turn (RESOURCE_TILES in state.js)
-const RESOURCE_TILES={spring:'elixir',mine:'coin'};
+// the Elixir spring and the gold mine (RESOURCE_TILES in state.js): a pawn extracts Elixir at the spring
+// at the cost of its turn, and earns a sixth of Gold more for every turn it ends on the mine
+const RESOURCE_TILES={spring:'elixir',mine:'gold'};
+const FORTIFIED_HP=3;
+function pawnOnMine(s,color){return s.board.some((p,i)=>p&&p.color===color&&p.type==='pawn'&&s.tiles[i]==='mine');}
 
 // ── RULES: RANGES AND VISIBILITY (constants.js, state.js) ────────────────────
 const CARD=[[-1,0],[1,0],[0,-1],[0,1]];
@@ -371,9 +377,10 @@ function clock(s,color){return s.mode==='pvp'?s.turnCount[color]:s.turnCount.w;}
 
 function spawnRemaining(s,color){
   const lv=s.level;
-  // 8 Coin to start and one more every 6 turns, a sixth at a time (COIN_START / COIN_TURNS in js/state.js)
-  const quota=(lv&&lv.spawnLimit?lv.spawnLimit:8+s.turnCount[color]/6)+s.mined[color];
-  return Math.max(0,quota-s.spawns[color]);
+  // 8 Gold to start and a sixth a turn, a sixth more for each turn a pawn held the mine; spawning and
+  // fortifying spend it (GOLD_START / GOLD_TURNS, spawnQuota and spawnUsed in js/state.js)
+  const quota=lv&&lv.spawnLimit?lv.spawnLimit:8+(s.turnCount[color]+s.mineTurns[color])/6;
+  return Math.max(0,quota-s.spawns[color]-s.goldSpent[color]);
 }
 
 // ── RULES: DESTINATIONS (getDragDests in movement.js) ────────────────────────
@@ -439,6 +446,9 @@ const MERGES={'pawn+pawn':'knight','pawn+knight':'bishop','knight+pawn':'bishop'
 //   healLock  bishop dropped on a wounded adjacent knight, choosing "Heal": locks the knight
 //             as its heal target, and the heal fires with the end-of-turn attacks
 //   spawn     king places a pawn on an adjacent empty tile
+//   fortify   a pawn becomes a fortified pawn, 3 HP, for 1 Gold (from === to)
+//   extract   a pawn on the Elixir spring spends its turn extracting one Elixir (from === to)
+//   scry      a bishop with both its mana lights a 3x3 it cannot see
 //   unsiege   siege tower splits back into rooks (from === to)
 //   skip      pass the turn
 // Not modelled yet: group moves, free right-click targeting, animals.
@@ -447,6 +457,7 @@ function legalActions(s,opts){
   if(s.over)return[];
   const color=s.turn,B=s.board,g=geo(s),out=[];
   const noMerge=!!(s.level&&s.level.noMerge);
+  const goldAllowed=!s.level||s.level.allowSpawn!==false;   // a level with no spawning has no Gold
   for(let i=0;i<B.length;i++){
     const p=B[i];if(!p||p.color!==color)continue;
     if(p.type==='siege')out.push({type:'unsiege',from:i,to:i});
@@ -457,8 +468,9 @@ function legalActions(s,opts){
       if(p.type==='bishop'&&(p.mana||0)>0&&B[j].hp<B[j].maxHp)out.push({type:'healLock',from:i,to:j});
     });
     d.heal.forEach(j=>{if(!d.merge.has(j))out.push({type:'heal',from:i,to:j});});
-    // a pawn standing on a spring or a mine can spend its turn digging
-    if(p.type==='pawn'&&RESOURCE_TILES[s.tiles[i]])out.push({type:'mine',from:i,to:i});
+    // a pawn on the Elixir spring can spend its turn extracting; any plain pawn can be fortified for 1 Gold
+    if(p.type==='pawn'&&s.tiles[i]==='spring')out.push({type:'extract',from:i,to:i});
+    if(p.type==='pawn'&&!p.fortified&&goldAllowed&&spawnRemaining(s,color)>=1)out.push({type:'fortify',from:i,to:i});
     // a bishop with both its mana can light a 3x3 it cannot see, up to SCRY_RANGE away
     if(p.type==='bishop'&&(p.mana||0)>=2)
       for(let j=0;j<B.length;j++)
@@ -468,8 +480,7 @@ function legalActions(s,opts){
     }else d.attack.forEach(j=>out.push({type:'target',from:i,to:j}));
   }
   const king=B.findIndex(p=>p&&p.color===color&&p.type==='king');
-  const spawnAllowed=!s.level||s.level.allowSpawn!==false;
-  if(king>=0&&spawnAllowed&&spawnRemaining(s,color)>=1)
+  if(king>=0&&goldAllowed&&spawnRemaining(s,color)>=1)
     g.adj8[king].forEach(j=>{if(!B[j]&&!s.blocked[j])out.push({type:'spawn',from:king,to:j});});
   out.push({type:'skip'});
   return out;
@@ -614,12 +625,17 @@ function applyAction(s,a,events){
       events.push({type:'heal',from:a.from,to:a.to,hp:t.hp});
       return false;
     }
-    case'mine':{
-      if(RESOURCE_TILES[s.tiles[a.from]]==='elixir')s.elixir[color]++;else s.mined[color]++;
-      s.moved=a.from;                       // the pawn dug instead of shooting
-      events.push({type:'mine',at:a.from,kind:RESOURCE_TILES[s.tiles[a.from]]});
+    case'extract':
+      s.elixir[color]++;
+      s.moved=a.from;                       // the pawn worked instead of shooting
+      events.push({type:'extract',at:a.from});
       return false;
-    }
+    case'fortify':
+      p.fortified=true;p.hp=FORTIFIED_HP;p.maxHp=FORTIFIED_HP;
+      s.goldSpent[color]++;
+      s.moved=a.from;
+      events.push({type:'fortify',at:a.from});
+      return false;
     case'scry':{
       p.mana=Math.max(0,(p.mana||0)-2);
       p.lastHealTurn=clock(s,color);       // scrying resets the same refill clock a heal does
@@ -656,6 +672,7 @@ function finishTurn(s,color,events){
   const justMoved=s.moved;
   s.moved=-1;
   s.turnCount[color]++;
+  if(pawnOnMine(s,color))s.mineTurns[color]++;   // the mine pays for the turn it was held
   if(s.mode==='pvp'){
     // the side that acted fires, except the piece that moved or healed; then the other side starts
     applyAttacks(s,computeActions(s,color).filter(a=>a.attacker!==justMoved),color,events);
@@ -754,8 +771,9 @@ function botMove(s,from,to,events){
 
 function bSpawn(s,cands,events){
   if(!cands.length)return false;
-  // Black's quota ignores campaign spawn limits (blackSpawnQuota in state.js)
-  if(8+s.turnCount.b/6-s.spawns.b<1)return false;
+  // Black's quota ignores campaign spawn limits, and counts the mine and fortified pawns (blackSpawnQuota
+  // and blackSpawnUsed in state.js)
+  if(8+(s.turnCount.b+s.mineTurns.b)/6-s.spawns.b-s.goldSpent.b<1)return false;
   const wK=findKing(s,'w');
   const sorted=wK>=0?[...cands].sort((a,b)=>cheb(s,a,wK)-cheb(s,b,wK)):cands;
   s.board[sorted[0]]={type:'pawn',color:'b',hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,firstMove:true};
@@ -1089,11 +1107,11 @@ function botTurn(s){
   if(s.over)throw new Error('the game is over');
   if(s.mode!=='classic'||s.turn!=='b')throw new Error('botTurn plays Black in classic mode');
   const events=[];
-  // a pawn of ours standing on a spring or a mine digs first of all (fallbackAI in ai.js)
-  const dig=s.board.findIndex((p,i)=>p&&p.color==='b'&&p.type==='pawn'&&RESOURCE_TILES[s.tiles[i]]);
+  // a pawn of ours standing on the Elixir spring extracts first of all (fallbackAI in ai.js)
+  const dig=s.board.findIndex((p,i)=>p&&p.color==='b'&&p.type==='pawn'&&s.tiles[i]==='spring');
   if(dig>=0){
-    if(RESOURCE_TILES[s.tiles[dig]]==='elixir')s.elixir.b++;else s.mined.b++;
-    events.push({type:'mine',at:dig,kind:RESOURCE_TILES[s.tiles[dig]]});
+    s.elixir.b++;
+    events.push({type:'extract',at:dig});
     finishTurn(s,'b',events);
     return events;
   }
@@ -1119,7 +1137,8 @@ function fromSnapshot(o){
     board:o.board.map(p=>p&&Object.assign({},p)),tiles:null,blocked:null,turn:o.turn||'w',over:false,winner:null,
     turnCount:{w:o.turnCount.w,b:o.turnCount.b},spawns:{w:o.spawns.w,b:o.spawns.b},
     elixir:{w:(o.elixir&&o.elixir.w)||0,b:(o.elixir&&o.elixir.b)||0},
-    mined:{w:(o.mined&&o.mined.w)||0,b:(o.mined&&o.mined.b)||0},
+    mineTurns:{w:(o.mineTurns&&o.mineTurns.w)||0,b:(o.mineTurns&&o.mineTurns.b)||0},
+    goldSpent:{w:(o.goldSpent&&o.goldSpent.w)||0,b:(o.goldSpent&&o.goldSpent.b)||0},
     targets:{w:Object.assign({},o.targets.w),b:Object.assign({},o.targets.b)},moved:-1,
     scans:(o.scans||[]).map(sc=>({tiles:sc.tiles.slice(),turns:sc.turns,color:sc.color})),
     hitBy:(o.hitBy||[]).map(h=>({target:h.target,attacker:h.attacker})),acted:(o.acted||[]).slice(),
@@ -1146,7 +1165,7 @@ const SemunEngine={
   // playing
   newGame,legalActions,step,botTurn,clone,isLegal,fromSnapshot,act,
   // rule queries
-  getDests,computeActions,spawnRemaining,visible,fogFor,inCover,concealed,campaignResult,
+  getDests,computeActions,spawnRemaining,pawnOnMine,visible,fogFor,inCover,concealed,campaignResult,
   // helpers and data
   generateMap,makeRandom,nextRandom,sqName,cheb,geo,STATS,STRATEGIES,THEME_TILES,
 };

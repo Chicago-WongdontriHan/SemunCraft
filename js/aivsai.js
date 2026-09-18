@@ -49,7 +49,7 @@ function aiVsAiNewMatch(){
   COLS=s.cols;ROWS=s.rows;
   document.body.className='theme-'+s.theme;
   tileData=s.tiles.slice();
-  mapCheat=true;exploredTiles=new Set();scans=[];elixir={w:0,b:0};mined={w:0,b:0};
+  mapCheat=true;exploredTiles=new Set();scans=[];elixir={w:0,b:0};mineTurns={w:0,b:0};goldSpent={w:0,b:0};
   const cheat=document.getElementById('btn-mapcheat');if(cheat)cheat.innerHTML=uiLabel('map','Map Cheat: ON');
   resetView();
   logLines=[];document.getElementById('log').textContent='';
@@ -99,7 +99,7 @@ function aiVsAiStep(){
   if(s.over){aiVsAiFinish();return;}
   const color=s.turn,ai=color==='w'?g.white:g.black;
   const before=s.board.map(p=>p&&Object.assign({},p));
-  const a=freeMine(s)||SemunNet.choose(aiVsAiNets[ai],aiVsAiEncoder,s).action;
+  const a=freeExtract(s)||SemunNet.choose(aiVsAiNets[ai],aiVsAiEncoder,s).action;
   const events=SemunEngine.step(s,a);
   g.lastFrom=a.from===undefined?-1:a.from;
   g.lastTo=a.to===undefined?-1:a.to;
@@ -132,6 +132,7 @@ function aiVsAiSound(a,events,before){
   if(a.type==='merge')SFX.arrive(merge&&merge.piece);
   else if(a.type==='unsiege')SFX.arrive('rook');
   else if(a.type==='spawn')SFX.arrive('pawn');
+  else if(a.type==='extract')SFX.extract();
   else if(a.type==='heal'||events.some(e=>e.type==='heal'))SFX.heal();
   else if(!kills.length&&events.some(e=>e.type==='attack'))SFX.attack();
   else if(!kills.length)SFX.move();
@@ -148,6 +149,7 @@ function aiVsAiDescribe(color,ai,a,events,before){
     case'target':text=p.type+' '+sq(a.from)+' targets '+sq(a.to);break;
     case'heal':case'healLock':text='bishop '+sq(a.from)+' heals '+sq(a.to);break;
     case'unsiege':text='unsiege '+sq(a.from);break;
+    case'extract':text='extracts Elixir '+sq(a.from);break;
     default:text='skip';
   }
   const hits=events.filter(e=>e.type==='attack'),kills=hits.filter(e=>e.killed).length;
@@ -182,7 +184,8 @@ function aiVsAiFinish(){
 
 // AI vs AI buttons take the place of Spawn, Merge and Skip in the actions panel
 function aiVsAiControls(on){
-  ['btn-spawn','btn-merge','btn-skip'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=on?'none':'';});
+  // the player's own buttons make way for the match controls
+  ['btn-spawn','btn-fortify','btn-merge','btn-special','btn-skip'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=on?'none':'';});
   let box=document.getElementById('aivsai-controls');
   if(!on){if(box)box.remove();return;}
   if(box)return;

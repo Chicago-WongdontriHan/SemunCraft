@@ -29,7 +29,7 @@ function initGame(){
   turn='w'; over=false; thinking=false; logLines=[]; kingSelected=false;
   whiteTargets={}; blackTargets={};
   spawnHistory=[]; blackSpawnHistory=[]; whiteTurnCount=0; blackTurnCount=0; movedThisTurn=-1;
-  scans=[];elixir={w:0,b:0};mined={w:0,b:0};
+  scans=[];elixir={w:0,b:0};mineTurns={w:0,b:0};goldSpent={w:0,b:0};
   exploredTiles=new Set();
   // regular games start fogged (the tutorial and campaign set their own default)
   mapCheat=false;
@@ -155,6 +155,7 @@ function campaignCheckpoint(){
 function endTurn(){
   if(over)return;
   whiteTurnCount++;
+  if(pawnOnMine(turn))mineTurns[turn]++;   // the mine pays for the turn it was held (finishTurn in engine.js)
   blackHitBy=[]; // reset hit tracker before white auto-attacks populate it
   const tc=document.getElementById('turn-counter');if(tc)tc.textContent='Turn '+whiteTurnCount;
   targetMode=false;targetSrc=-1;kingSelected=false;selectedPieces=new Set();boxSelecting=false;boxMouseDownOnEmpty=false;clearBoxSelect();
@@ -223,6 +224,7 @@ function endTurn(){
 function finishBlackTurn(){
   thinking=false;
   blackTurnCount++;
+  if(pawnOnMine('b'))mineTurns.b++;
   document.getElementById('thinking-dot').classList.remove('on');
   if(!over){startWhiteTurn();}
 }

@@ -78,6 +78,11 @@ function render(){
         }
       }
 
+      // the gold mine while a pawn works it: it pulses, and a badge says what it adds each turn
+      if(ttype==='mine'&&pieces[i]&&pieces[i].type==='pawn'){
+        sq.classList.add('mine-worked');
+        const b=document.createElement('span');b.className='mine-badge';b.textContent='+1/6';sq.appendChild(b);
+      }
       // scrying: the squares this bishop may light, and the ones already burning
       if(typeof scryMode!=='undefined'&&scryMode&&scrySrc>=0&&scryTargets(scrySrc).has(i))sq.classList.add('scry-target');
       const lit=typeof scryLit==='function'&&scryLit(i,mc);
@@ -125,7 +130,7 @@ function render(){
         // piece artwork comes from the map theme's set in pieces/
         const svgWrap=document.createElement('div');svgWrap.className='piece-art';
         svgWrap.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:1;';
-        svgWrap.innerHTML=pieceSVG(p.type,p.color,mapTheme,Math.floor(sqPx*.86));
+        svgWrap.innerHTML=pieceSVG(pieceArt(p),p.color,mapTheme,Math.floor(sqPx*.86));
         div.appendChild(svgWrap);
         // standing in undergrowth: leaves in front of the piece, under its HP pips
         if(tileData[i]==='undergrowth'&&typeof undergrowthFront==='function')div.appendChild(undergrowthFront());
@@ -197,7 +202,7 @@ function guideEl(kind,src,i){
   const sp=pieces[src];if(!sp)return el;
   const size=Math.floor(sqPx*.86);
   if(kind==='move'){
-    el.innerHTML='<div class="guide-piece">'+pieceSVG(sp.type,sp.color,mapTheme,size)+'</div>';
+    el.innerHTML='<div class="guide-piece">'+pieceSVG(pieceArt(sp),sp.color,mapTheme,size)+'</div>';
   }else if(kind==='spawn'){
     // src is the king: a ghost pawn of its colour with a gold +
     el.innerHTML='<div class="guide-piece">'+pieceSVG('pawn',sp.color,mapTheme,size)+'</div>'+GUIDE_SPAWN_BADGE;

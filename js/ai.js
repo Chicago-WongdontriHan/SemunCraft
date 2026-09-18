@@ -533,7 +533,7 @@ function fallbackAI(){
   // a pawn of ours standing on the Elixir spring extracts first of all (botTurn in engine.js)
   for(let i=0;i<ROWS*COLS;i++){
     const p=pieces[i];
-    if(p&&p.color==='b'&&p.type==='pawn'&&tileData[i]==='spring'){
+    if(p&&p.color==='b'&&p.type==='pawn'&&!p.fortified&&tileData[i]==='spring'){
       elixir.b++;
       addLog('Black extracts Elixir at '+sqName(i));
       SFX.extract();flashSq(i,'heal-flash');render();

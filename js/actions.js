@@ -148,60 +148,25 @@ function executeDrop(from,to,dests){
     }
   }
 
-  // bishop dragged onto a friendly knight: always ask merge vs heal
+  // bishop dragged onto a friendly knight: ask Merge or Heal, on the same on-board chooser as the King's
+  // and the pieces' (a tap anywhere else puts it away)
   if(p.type==='bishop'&&dests.merge.has(to)&&pieces[to]&&pieces[to].type==='knight'){
-    const hasMana=(p.mana||0)>0;
-    const canHeal=hasMana&&pieces[to].hp<pieces[to].maxHp;
-    const sq=sqElAt(to);
-    if(sq){
-      const existing=document.getElementById('bishop-choice');
-      if(existing)existing.remove();
-      const box=document.createElement('div');
-      box.id='bishop-choice';
-      box.style.cssText='position:fixed;z-index:900;background:#0e1f08;border:2px solid #4a8020;border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;box-shadow:0 6px 20px rgba(0,0,0,.8);font-family:var(--ui-font);font-size:13px;';
-      const rect=sq.getBoundingClientRect();
-      box.style.left=(rect.left+rect.width/2)+'px';
-      box.style.top=(rect.bottom+6)+'px';
-      box.style.transform='translateX(-50%)';
-      const cancelBtn=document.createElement('button');
-      cancelBtn.textContent='✕';
-      cancelBtn.style.cssText='padding:2px 8px;background:transparent;border:none;color:#4a6828;cursor:pointer;font-size:11px;align-self:flex-end;';
-      cancelBtn.onclick=()=>{box.remove();render();};
-      box.appendChild(cancelBtn);
-      if(canHeal){
-        const healBtn=document.createElement('button');
-        healBtn.textContent='\u2665 Heal '+pieces[to].type;
-        healBtn.style.cssText='padding:5px 12px;background:#0a2008;border:1px solid #3a7820;color:#80e040;border-radius:4px;cursor:pointer;font-size:12px;';
-        healBtn.onclick=()=>{
-          box.remove();
-          tgts[from]=to;
-          addLog('Bishop will heal '+pieces[to].type+'@'+sqName(to));
-          setStatus('Bishop locked on heal target — fires at turn end.');
-          SFX.select();tutCheckAction('heal');render();endTurn();
-        };
-        box.appendChild(healBtn);
-      }
-      const mergeBtn=document.createElement('button');
-      mergeBtn.textContent='\u2694 Merge \u2192 \u265B';
-      mergeBtn.style.cssText='padding:5px 12px;background:#0a1808;border:1px solid #2a5010;color:#60a030;border-radius:4px;cursor:pointer;font-size:12px;';
-      mergeBtn.onclick=()=>{
-        box.remove();
+    const canHeal=(p.mana||0)>0&&pieces[to].hp<pieces[to].maxHp;
+    showDropChoice(to,[
+      canHeal&&['heal','Heal '+pieces[to].type+' (1 mana)',()=>{
+        tgts[from]=to;
+        addLog('Bishop will heal '+pieces[to].type+'@'+sqName(to));
+        setStatus('Bishop locked on heal target — fires at turn end.');
+        SFX.select();tutCheckAction('heal');render();endTurn();
+      }],
+      ['merge','Merge \u2192 Queen',()=>{
         const nt='queen';
-        const newPiece={type:nt,color:p.color,hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};
-        pieces[from]=null;pieces[to]=newPiece;
+        pieces[from]=null;pieces[to]={type:nt,color:p.color,hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};
         addLog('Merged to '+nt+'@'+sqName(to));SFX.arrive(nt);tutCheckAction('merge');
         movedThisTurn=-1;
         setTimeout(()=>mergeFlash(to),50);endTurn();
-      };
-      box.appendChild(mergeBtn);
-      document.body.appendChild(box);
-      // keep the popup on screen next to board edges (small phones)
-      const bw=box.offsetWidth,bh=box.offsetHeight;
-      box.style.left=Math.min(Math.max(rect.left+rect.width/2,bw/2+6),innerWidth-bw/2-6)+'px';
-      if(rect.bottom+6+bh>innerHeight-6)box.style.top=Math.max(6,rect.top-6-bh)+'px';
-      // a tap or click anywhere else closes it (pointerdown covers touch as well as the mouse)
-      setTimeout(()=>document.addEventListener('pointerdown',function h(e){if(!box.contains(e.target)){box.remove();document.removeEventListener('pointerdown',h,true);}},true),10);
-    }
+      }],
+    ].filter(Boolean));
     render();return;
   }
   // bishop drag onto healable ally: execute heal with animation
@@ -441,22 +406,17 @@ function startScry(){
   if(!p||p.color!==myColor()||p.type!=='bishop'||(p.mana||0)<2){setStatus('Select a bishop with full mana');return;}
   scryMode=true;scrySrc=i;targetMode=false;
   render();syncUI();
-  setStatus('Tap a glowing square: the bishop lights the 3x3 around it (2 mana)');
+  setStatus('Tap any square: the bishop lights the 3x3 around it (2 mana)');
 }
 function cancelScry(){scryMode=false;scrySrc=-1;render();syncUI();}
-// the centres a bishop may aim at: any square it cannot already see, however far (the engine's rule)
+// the centres a bishop may aim at: any square on the board, seen or not, however far (the engine's rule)
 function scryTargets(i){
   const out=new Set();
-  for(let j=0;j<ROWS*COLS;j++)if(!isTileVisible(j))out.add(j);
+  for(let j=0;j<ROWS*COLS;j++)out.add(j);
   return out;
 }
-// every square out of sight that one of those 3x3s would light — the board glows on all of them, and a
-// tap on any casts
-function scryArea(i){
-  const area=new Set();
-  scryTargets(i).forEach(c=>scryBox(c).forEach(j=>{if(!isTileVisible(j))area.add(j);}));
-  return area;
-}
+// the squares a tap can aim at — every one, so the whole board glows while the bishop picks
+function scryArea(i){return scryTargets(i);}
 // the centre a tap on square t aims at: t itself when it is a valid centre with a whole 3x3 on the board,
 // otherwise the valid centre next to it that fits on the board — a tap on the edge lights the full 3x3
 // just inside it — preferring the one straight in, then the one nearest the bishop
@@ -531,6 +491,27 @@ function syncKingChooser(){
   const kingUp=ki>=0&&!dragging&&!over&&!thinking&&isMyTurn()
     &&(kingSelected||(selectedPieces.size===1&&selectedPieces.has(ki)));
   if(kingUp)placeKingChooser(ki);else closeKingChooser();
+}
+
+// ── A CHOICE WHERE A PIECE WAS DROPPED ──────────────────────────────────────
+// A bishop dropped on a knight can merge or heal: the choice comes up on the same on-board chooser as
+// the King's and the pieces', under the square it was dropped on, and a tap anywhere else puts it away.
+function showDropChoice(at,choices){
+  const old=document.getElementById('bishop-choice');if(old)old.remove();
+  const sq=sqElAt(at);if(!sq)return;
+  const box=document.createElement('div');box.id='bishop-choice';
+  choices.forEach(([icon,label,act])=>{
+    const b=document.createElement('button');b.className='king-choice-btn';b.innerHTML=uiLabel(icon,label);
+    b.onclick=e=>{if(e)e.stopPropagation();box.remove();act();};
+    box.appendChild(b);
+  });
+  document.body.appendChild(box);
+  const r=sq.getBoundingClientRect(),bw=box.offsetWidth,bh=box.offsetHeight;
+  box.style.left=Math.min(Math.max(r.left+r.width/2-bw/2,6),innerWidth-bw-6)+'px';
+  box.style.top=(r.bottom+8+bh<=innerHeight-6?r.bottom+8:Math.max(6,r.top-8-bh))+'px';
+  setTimeout(()=>document.addEventListener('pointerdown',function h(e){
+    if(!box.contains(e.target)){box.remove();document.removeEventListener('pointerdown',h,true);}
+  },true),10);
 }
 
 // ── THE PIECE CHOOSER: PAWNS AND BISHOPS ────────────────────────────────────
@@ -620,6 +601,7 @@ function doMergeAll(){
         const pj=pieces[j];if(!pj||pj.color!==mc)continue;
         const match=(pi.type===a&&pj.type===b)||(a!==b&&pi.type===b&&pj.type===a);
         if(!match)continue;
+        if(pi.fortified||pj.fortified)continue;   // a fortified pawn takes part in no merge
         pieces[i]=null;pieces[j]={type:r,color:mc,hp:STATS[r].hp,maxHp:STATS[r].maxHp};
         addLog('Merged '+a+'+'+b+' -> '+r+'@'+sqName(j));SFX.arrive(r);
         movedThisTurn=-1;

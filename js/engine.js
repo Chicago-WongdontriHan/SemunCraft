@@ -302,7 +302,8 @@ function generateMap(s){
 // at the cost of its turn, and earns a sixth of Gold more for every turn it ends on the mine
 const RESOURCE_TILES={spring:'elixir',mine:'gold'};
 const FORTIFIED_HP=3;
-function pawnOnMine(s,color){return s.board.some((p,i)=>p&&p.color===color&&p.type==='pawn'&&s.tiles[i]==='mine');}
+// only a plain pawn works it: a fortified one, like any other piece, earns nothing there
+function pawnOnMine(s,color){return s.board.some((p,i)=>p&&p.color===color&&p.type==='pawn'&&!p.fortified&&s.tiles[i]==='mine');}
 
 // ── RULES: RANGES AND VISIBILITY (constants.js, state.js) ────────────────────
 const CARD=[[-1,0],[1,0],[0,-1],[0,1]];
@@ -368,6 +369,7 @@ function inCover(s,i,color){
   if(s.tiles[i]!=='undergrowth')return false;
   const B=s.board;
   if(B[i]&&B[i].color===color)return false;
+  if(s.scans.some(sc=>sc.color===color&&sc.tiles.includes(i)))return false;   // a scry sees into it too
   return !geo(s).adj8[i].some(j=>B[j]&&B[j].color===color);
 }
 // an enemy of `color` hidden in undergrowth: it can't be targeted or attacked, though it can attack out
@@ -390,7 +392,8 @@ function getDests(s,i){
   if(!p)return{move,merge,attack,heal};
   const ec=other(p.color);
   if(p.type==='pawn'){
-    g.adj8[i].forEach(j=>{const t=B[j];if(!t)move.add(j);else if(t.color===p.color){if(t.type==='pawn'||t.type==='knight')merge.add(j);}else attack.add(j);});
+    // a fortified pawn takes part in no merge, either way round (movement.js)
+    g.adj8[i].forEach(j=>{const t=B[j];if(!t)move.add(j);else if(t.color===p.color){if(!p.fortified&&!t.fortified&&(t.type==='pawn'||t.type==='knight'))merge.add(j);}else attack.add(j);});
     // first move: two squares straight toward the enemy side
     if(p.firstMove){
       const fwd=p.color==='w'?-1:1,r1=rowOf(s,i)+fwd,r2=rowOf(s,i)+fwd*2,c=colOf(s,i);
@@ -401,7 +404,7 @@ function getDests(s,i){
     }
   }else if(p.type==='knight'){
     g.kj[i].forEach(j=>{if(s.blocked[j])return;const t=B[j];if(!t)move.add(j);else if(t.color===ec)attack.add(j);});
-    new Set([...g.adj8[i],...g.kj[i]]).forEach(j=>{const t=B[j];if(t&&t.color===p.color&&(t.type==='pawn'||t.type==='knight'||t.type==='bishop'))merge.add(j);});
+    new Set([...g.adj8[i],...g.kj[i]]).forEach(j=>{const t=B[j];if(t&&t.color===p.color&&((t.type==='pawn'&&!t.fortified)||t.type==='knight'||t.type==='bishop'))merge.add(j);});
   }else if(p.type==='bishop'){
     const hasMana=(p.mana||0)>0,r=rowOf(s,i),c=colOf(s,i);
     for(const[dr,dc]of DIAG)for(let k=1;k<=2;k++){
@@ -469,12 +472,11 @@ function legalActions(s,opts){
     });
     d.heal.forEach(j=>{if(!d.merge.has(j))out.push({type:'heal',from:i,to:j});});
     // a pawn on the Elixir spring can spend its turn extracting; any plain pawn can be fortified for 1 Gold
-    if(p.type==='pawn'&&s.tiles[i]==='spring')out.push({type:'extract',from:i,to:i});
+    if(p.type==='pawn'&&!p.fortified&&s.tiles[i]==='spring')out.push({type:'extract',from:i,to:i});
     if(p.type==='pawn'&&!p.fortified&&goldAllowed&&spawnRemaining(s,color)>=1)out.push({type:'fortify',from:i,to:i});
-    // a bishop with both its mana can light a 3x3 it cannot see, anywhere on the board
+    // a bishop with both its mana can light any 3x3 on the board, seen or not
     if(p.type==='bishop'&&(p.mana||0)>=2)
-      for(let j=0;j<B.length;j++)
-        if(!visible(s,j,color))out.push({type:'scry',from:i,to:j});
+      for(let j=0;j<B.length;j++)out.push({type:'scry',from:i,to:j});
     if(opts.anyTarget){
       for(let j=0;j<B.length;j++)if(B[j]&&B[j].color!==color&&!concealed(s,j,color))out.push({type:'target',from:i,to:j});
     }else d.attack.forEach(j=>out.push({type:'target',from:i,to:j}));
@@ -1108,7 +1110,7 @@ function botTurn(s){
   if(s.mode!=='classic'||s.turn!=='b')throw new Error('botTurn plays Black in classic mode');
   const events=[];
   // a pawn of ours standing on the Elixir spring extracts first of all (fallbackAI in ai.js)
-  const dig=s.board.findIndex((p,i)=>p&&p.color==='b'&&p.type==='pawn'&&s.tiles[i]==='spring');
+  const dig=s.board.findIndex((p,i)=>p&&p.color==='b'&&p.type==='pawn'&&!p.fortified&&s.tiles[i]==='spring');
   if(dig>=0){
     s.elixir.b++;
     events.push({type:'extract',at:dig});

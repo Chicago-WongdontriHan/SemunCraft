@@ -59,7 +59,7 @@ function netAiPreload(){
 function freeExtract(state){
   for(let i=0;i<state.board.length;i++){
     const p=state.board[i];
-    if(p&&p.color===state.turn&&p.type==='pawn'&&state.tiles[i]==='spring')return{type:'extract',from:i,to:i};
+    if(p&&p.color===state.turn&&p.type==='pawn'&&!p.fortified&&state.tiles[i]==='spring')return{type:'extract',from:i,to:i};
   }
   return null;
 }

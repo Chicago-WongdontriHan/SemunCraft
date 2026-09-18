@@ -20,8 +20,9 @@ let elixir={w:0,b:0};     // Elixir extracted at the spring
 let mineTurns={w:0,b:0};  // turns that ended with a pawn of that side on the gold mine
 let goldSpent={w:0,b:0};  // Gold spent on anything but spawning: fortified pawns
 const FORTIFIED_HP=3;     // a fortified pawn is a pawn in a helmet, with three life
-function canExtract(i){ const p=pieces[i]; return !!p&&p.type==='pawn'&&tileData[i]==='spring'; }
-function pawnOnMine(color){ return pieces.some((p,i)=>p&&p.color===color&&p.type==='pawn'&&tileData[i]==='mine'); }
+// only a plain pawn works the spring or the mine; a fortified one can't (pawnOnMine in engine.js)
+function canExtract(i){ const p=pieces[i]; return !!p&&p.type==='pawn'&&!p.fortified&&tileData[i]==='spring'; }
+function pawnOnMine(color){ return pieces.some((p,i)=>p&&p.color===color&&p.type==='pawn'&&!p.fortified&&tileData[i]==='mine'); }
 // Gold income this turn: a sixth, doubled while a pawn of that side stands on the mine
 function goldRate(color){ return (pawnOnMine(color)?2:1)/GOLD_TURNS; }
 function goldAllowed(){ return !campaignLevel||campaignLevel.allowSpawn!==false; }

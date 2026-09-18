@@ -18,6 +18,7 @@ function isTileBlocked(i){
 function inCover(i,color){
   if(tileData[i]!=='undergrowth')return false;
   if(pieces[i]&&pieces[i].color===color)return false;
+  if(scryLit(i,color))return false;   // a bishop's scry sees into the undergrowth too
   return !adj8(i).some(j=>pieces[j]&&pieces[j].color===color);
 }
 // an enemy of `color` hidden in undergrowth: it can't be seen, targeted or attacked, though it can attack out
@@ -38,7 +39,8 @@ function getDragDests(i){
   const move=new Set(),merge=new Set(),attack=new Set(),heal=new Set();
   const ec=p.color==='w'?'b':'w';
   if(p.type==='pawn'){
-    adj8(i).forEach(j=>{const t=pieces[j];if(!t)move.add(j);else if(t.color===p.color){if(t.type==='pawn'||t.type==='knight')merge.add(j);}else attack.add(j);});
+    // a fortified pawn takes part in no merge, either way round: its helmet was paid for
+    adj8(i).forEach(j=>{const t=pieces[j];if(!t)move.add(j);else if(t.color===p.color){if(!p.fortified&&!t.fortified&&(t.type==='pawn'||t.type==='knight'))merge.add(j);}else attack.add(j);});
     // first move: allow 2-tile forward push (toward enemy king side)
     if(p.firstMove){
       // "forward" = toward the opposite side of the board relative to pawn color
@@ -61,7 +63,8 @@ function getDragDests(i){
     });
     // merge: adjacent AND L-jump locations (knight teleports to merge without spending turn)
     const mergeRange=new Set([...adj8(i),...kJumps(i)]);
-    mergeRange.forEach(j=>{const t=pieces[j];if(t&&t.color===p.color&&(t.type==='pawn'||t.type==='knight'||t.type==='bishop'))merge.add(j);});
+    // (never with a fortified pawn)
+    mergeRange.forEach(j=>{const t=pieces[j];if(t&&t.color===p.color&&((t.type==='pawn'&&!t.fortified)||t.type==='knight'||t.type==='bishop'))merge.add(j);});
   }else if(p.type==='bishop'){
     const hasMana=(p.mana||0)>0;
     // diagonal: up to 2 squares, sliding (blocked by obstacles/pieces)

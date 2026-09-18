@@ -47,7 +47,7 @@ function render(){
         sq.classList.add('fog','fog-unknown');
         sq.appendChild(fogCover(i,'unknown'));
         scryMark(sq,i);
-        if(res){const m=document.createElement('span');m.className='res-ghost res-'+res;sq.appendChild(m);}
+        if(res){sq.title=RESOURCE_TIPS[tileData[i]];sq.appendChild(pawnNeededBadge(tileData[i],true));}
         if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
         if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
         boardEl.appendChild(sq);
@@ -67,7 +67,7 @@ function render(){
         sq.classList.add('fog','fog-explored');
         sq.appendChild(fogCover(i,'explored'));
         scryMark(sq,i);
-        if(res){const m=document.createElement('span');m.className='res-ghost res-'+res;sq.appendChild(m);}
+        if(res){sq.title=RESOURCE_TIPS[tileData[i]];sq.appendChild(pawnNeededBadge(tileData[i],true));}
         if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
         if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
         boardEl.appendChild(sq);
@@ -84,15 +84,16 @@ function render(){
       }
 
       // the gold mine while a pawn works it: it pulses, and a badge says what it adds each turn
-      if(ttype==='mine'&&pieces[i]&&pieces[i].type==='pawn'){
+      if(ttype==='mine'&&pieces[i]&&pieces[i].type==='pawn'&&!pieces[i].fortified){
         sq.classList.add('mine-worked');
         const b=document.createElement('span');b.className='mine-badge';b.textContent='+0.16';
         b.style.fontSize=Math.max(11,Math.round(sqPx*.28))+'px';sq.appendChild(b);
       }
-      // the spring and the mine need a pawn: say so until one stands there (a knight on it earns nothing)
+      // the spring and the mine need a plain pawn: say so until one stands there (a knight or a fortified
+      // pawn on it earns nothing)
       if(RESOURCE_TILES[ttype]){
         sq.title=RESOURCE_TIPS[ttype];
-        if(!(pieces[i]&&pieces[i].type==='pawn'))sq.appendChild(pawnNeededBadge(ttype));
+        if(!(pieces[i]&&pieces[i].type==='pawn'&&!pieces[i].fortified))sq.appendChild(pawnNeededBadge(ttype,false));
       }
       // scrying: the squares this bishop may light, and the ones already burning
       scryMark(sq,i);
@@ -188,12 +189,13 @@ function render(){
 // Both only work for a pawn, so until one stands there each carries a small pawn badge, ringed in its
 // resource's colour; hovering the square says what it does.
 const RESOURCE_TIPS={
-  spring:'Elixir spring: a pawn standing here can extract 1 Elixir, using its turn',
-  mine:'Gold mine: a pawn standing here earns +0.16 Gold at the end of each of your turns'};
-const PAWN_NEEDED='<svg viewBox="0 0 24 24"><circle cx="12" cy="8.2" r="4.3" fill="#3A2614"/>'
-  +'<path d="M5.2 21 C5.2 15.4 8.2 12.9 12 12.9 C15.8 12.9 18.8 15.4 18.8 21 Z" fill="#3A2614"/></svg>';
-function pawnNeededBadge(tile){
-  const b=document.createElement('span');b.className='res-need res-need-'+RESOURCE_TILES[tile];b.innerHTML=PAWN_NEEDED;
+  spring:'Elixir spring: a plain pawn standing here can extract 1 Elixir, using its turn',
+  mine:'Gold mine: a plain pawn standing here earns +0.16 Gold at the end of each of your turns'};
+// the badge shows the game's own pawn, in your colour; under fog it sits in the middle of the square,
+// where it also marks the tile as a landmark
+function pawnNeededBadge(tile,fog){
+  const b=document.createElement('span');b.className='res-need res-need-'+RESOURCE_TILES[tile]+(fog?' res-need-fog':'');
+  b.innerHTML=pieceSVG('pawn',myColor(),mapTheme,48,true);
   return b;
 }
 

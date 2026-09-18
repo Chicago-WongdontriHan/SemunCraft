@@ -99,7 +99,7 @@ function applyOriginal(a,s){
     const n=game.created.length;
     game.run(drop);
     const want=a.type==='merge'?'Merge':'Heal';
-    const btn=game.created.slice(n).find(el=>el.tagName==='button'&&String(el.textContent).includes(want));
+    const btn=game.created.slice(n).find(el=>el.tagName==='button'&&String(el.textContent+el.innerHTML).includes(want));
     if(!btn)throw new Error('no '+want+' button in the bishop popup');
     btn.onclick();
   }else game.run(drop);

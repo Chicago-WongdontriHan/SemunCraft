@@ -36,6 +36,30 @@ function fillUiIcons(){
 function setStatus(t){document.getElementById('status').textContent=t;}
 function addLog(msg){logLines.push(msg);if(logLines.length>4)logLines.shift();document.getElementById('log').textContent=logLines.join(' · ');}
 
+// the buttons that depend on the selected piece. render() calls this as well, so they change the moment
+// a piece is tapped — before, they only caught up at the next turn, and a pawn tapped again on the
+// spring showed no Extract button at all.
+function syncPieceButtons(){
+  const locked=over||thinking||!isMyTurn();
+  const selIdx=selectedPieces.size===1?[...selectedPieces][0]:-1;
+  const sel=selIdx>=0&&pieces[selIdx]&&pieces[selIdx].color===myColor()?pieces[selIdx]:null;
+  // fortifying: one plain pawn of yours selected, and a whole Gold in hand
+  const fortBtn=document.getElementById('btn-fortify');
+  if(fortBtn){
+    fortBtn.disabled=locked||!sel||!canFortify(selIdx);
+    fortBtn.innerHTML=uiLabel('fortify',goldAllowed()?'Fortify':'Fortify (N/A)');
+  }
+  // one button for the selected piece's own action: a pawn on the spring extracts, a bishop scries
+  const spBtn=document.getElementById('btn-special');
+  if(spBtn){
+    const extract=!!sel&&canExtract(selIdx);
+    const scry=!!sel&&sel.type==='bishop'&&(sel.mana||0)>=2;
+    spBtn.disabled=locked||!(extract||scry);
+    spBtn.classList.toggle('active-mode',!!scryMode);
+    spBtn.innerHTML=uiLabel(extract?'extract':'scry',scryMode?'Pick a square':extract?'Extract Elixir':'Scry (2)');
+  }
+}
+
 function syncUI(){
   const locked=over||thinking||!isMyTurn();
   ['spawn','merge','target','skip'].forEach(id=>{const b=document.getElementById('btn-'+id);if(b)b.disabled=locked;});
@@ -54,23 +78,7 @@ function syncUI(){
       if(!locked&&rem<1)spawnBtn.disabled=true;
     }
   }
-  const selIdx=selectedPieces.size===1?[...selectedPieces][0]:-1;
-  const sel=selIdx>=0&&pieces[selIdx]&&pieces[selIdx].color===myColor()?pieces[selIdx]:null;
-  // fortifying: one plain pawn of yours selected, and a whole Gold in hand
-  const fortBtn=document.getElementById('btn-fortify');
-  if(fortBtn){
-    fortBtn.disabled=locked||!sel||!canFortify(selIdx);
-    fortBtn.innerHTML=uiLabel('fortify',goldAllowed()?'Fortify':'Fortify (N/A)');
-  }
-  // one button for the selected piece's own action: a pawn on the spring extracts, a bishop scries
-  const spBtn=document.getElementById('btn-special');
-  if(spBtn){
-    const extract=!!sel&&canExtract(selIdx);
-    const scry=!!sel&&sel.type==='bishop'&&(sel.mana||0)>=2;
-    spBtn.disabled=locked||!(extract||scry);
-    spBtn.classList.toggle('active-mode',!!scryMode);
-    spBtn.innerHTML=uiLabel(extract?'extract':'scry',scryMode?'Pick a square':extract?'Extract Elixir':'Scry (2)');
-  }
+  syncPieceButtons();
   const mergeBtn=document.getElementById('btn-merge');
   if(mergeBtn){
     if(campaignLevel&&campaignLevel.noMerge){

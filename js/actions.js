@@ -494,9 +494,10 @@ function showKingChooser(ki,mode){
 }
 function placeKingChooser(ki){
   const sq=sqElAt(ki);if(!sq){closeKingChooser();return;}
+  // (the square's own height, not sqPx, so it still clears the 3x3 when the board is zoomed)
   const r=sq.getBoundingClientRect(),bw=kingChooser.offsetWidth,bh=kingChooser.offsetHeight;
-  let top=r.top-sqPx-8-bh;                       // above the king's 3x3...
-  if(top<6)top=r.bottom+sqPx+8;                  // ...or below it when there is no room
+  let top=r.top-r.height-8-bh;                   // above the king's 3x3...
+  if(top<6)top=r.bottom+r.height+8;              // ...or below it when there is no room
   kingChooser.style.left=Math.min(Math.max(r.left+r.width/2-bw/2,6),innerWidth-bw-6)+'px';
   kingChooser.style.top=top+'px';
 }
@@ -507,6 +508,48 @@ function syncKingChooser(){
   const kingUp=ki>=0&&!dragging&&!over&&!thinking&&isMyTurn()
     &&(kingSelected||(selectedPieces.size===1&&selectedPieces.has(ki)));
   if(kingUp)placeKingChooser(ki);else closeKingChooser();
+}
+
+// ── PAWN: THE FORTIFY / EXTRACT CHOOSER ─────────────────────────────────────
+// A selected pawn of yours gets the same kind of chooser as the King: Extract Elixir while it stands
+// on the spring, as often as you like, and Fortify (1 Gold) while it is a plain pawn. It sits past the
+// pawn's 3x3 on the side away from its forward push, so it never covers a square the pawn can reach.
+let pawnChooser=null;
+function closePawnChooser(){if(pawnChooser){pawnChooser.remove();pawnChooser=null;}}
+function pawnChoices(i){
+  const p=pieces[i],out=[];
+  if(!p||p.type!=='pawn')return out;
+  if(canExtract(i))out.push(['extract','Extract Elixir',true,()=>extractAt(i)]);
+  if(!p.fortified&&goldAllowed())out.push(['fortify','Fortify (1 Gold)',spawnRemaining()>=1,()=>fortifyAt(i)]);
+  return out;
+}
+// called after every render, like syncKingChooser
+function syncPawnChooser(){
+  const i=selectedPieces.size===1&&!kingSelected?[...selectedPieces][0]:-1,p=i>=0?pieces[i]:null;
+  const up=!!p&&p.color===myColor()&&p.type==='pawn'&&!dragging&&!over&&!thinking&&isMyTurn()
+    &&!scryMode&&!targetMode&&!isTutorialActive();
+  const choices=up?pawnChoices(i):[];
+  if(!choices.length){closePawnChooser();return;}
+  // rebuilt only when the pawn or what it offers changes, so a tap in progress survives a re-render
+  const key=i+'|'+choices.map(c=>c[0]+(c[2]?'+':'-')).join(',');
+  if(!pawnChooser||pawnChooser.dataset.key!==key){
+    closePawnChooser();
+    const box=document.createElement('div');box.id='pawn-choice';box.dataset.key=key;
+    choices.forEach(([icon,label,enabled,act])=>{
+      const b=document.createElement('button');
+      b.className='king-choice-btn';b.innerHTML=uiLabel(icon,label);b.disabled=!enabled;
+      b.onclick=e=>{e.stopPropagation();if(!over&&!thinking&&isMyTurn())act();};
+      box.appendChild(b);
+    });
+    document.body.appendChild(box);pawnChooser=box;
+  }
+  const sq=sqElAt(i);if(!sq){closePawnChooser();return;}
+  const r=sq.getBoundingClientRect(),bw=pawnChooser.offsetWidth,bh=pawnChooser.offsetHeight;
+  const behind=p.color==='w'?r.bottom+r.height+8:r.top-r.height-8-bh;   // White pushes up, Black down
+  const ahead=p.color==='w'?r.top-r.height-8-bh:r.bottom+r.height+8;
+  const fits=t=>t>=6&&t+bh<=innerHeight-6;
+  pawnChooser.style.left=Math.min(Math.max(r.left+r.width/2-bw/2,6),innerWidth-bw-6)+'px';
+  pawnChooser.style.top=(fits(behind)||!fits(ahead)?behind:ahead)+'px';
 }
 
 // ── ACTIONS ──────────────────────────────────────────────────────────────────

@@ -81,7 +81,13 @@ function render(){
       // the gold mine while a pawn works it: it pulses, and a badge says what it adds each turn
       if(ttype==='mine'&&pieces[i]&&pieces[i].type==='pawn'){
         sq.classList.add('mine-worked');
-        const b=document.createElement('span');b.className='mine-badge';b.textContent='+1/6';sq.appendChild(b);
+        const b=document.createElement('span');b.className='mine-badge';b.textContent='+0.16';
+        b.style.fontSize=Math.max(11,Math.round(sqPx*.28))+'px';sq.appendChild(b);
+      }
+      // the spring and the mine need a pawn: say so until one stands there (a knight on it earns nothing)
+      if(RESOURCE_TILES[ttype]){
+        sq.title=RESOURCE_TIPS[ttype];
+        if(!(pieces[i]&&pieces[i].type==='pawn'))sq.appendChild(pawnNeededBadge(ttype));
       }
       // scrying: the squares this bishop may light, and the ones already burning
       if(typeof scryMode!=='undefined'&&scryMode&&scrySrc>=0&&scryTargets(scrySrc).has(i))sq.classList.add('scry-target');
@@ -166,8 +172,24 @@ function render(){
       boardEl.appendChild(sq);
     }
   }
-  // the king's Spawn / Move chooser follows the king, and goes once the king is put down
+  // the king's Spawn / Move chooser follows the king, and goes once the king is put down; a pawn's
+  // Fortify / Extract chooser does the same, and the side buttons follow the selection
   if(typeof syncKingChooser==='function')syncKingChooser();
+  if(typeof syncPawnChooser==='function')syncPawnChooser();
+  if(typeof syncPieceButtons==='function')syncPieceButtons();
+}
+
+// ── THE SPRING AND THE MINE ──────────────────────────────────────────────────
+// Both only work for a pawn, so until one stands there each carries a small pawn badge, ringed in its
+// resource's colour; hovering the square says what it does.
+const RESOURCE_TIPS={
+  spring:'Elixir spring: a pawn standing here can extract 1 Elixir, using its turn',
+  mine:'Gold mine: a pawn standing here earns +0.16 Gold at the end of each of your turns'};
+const PAWN_NEEDED='<svg viewBox="0 0 24 24"><circle cx="12" cy="8.2" r="4.3" fill="#3A2614"/>'
+  +'<path d="M5.2 21 C5.2 15.4 8.2 12.9 12 12.9 C15.8 12.9 18.8 15.4 18.8 21 Z" fill="#3A2614"/></svg>';
+function pawnNeededBadge(tile){
+  const b=document.createElement('span');b.className='res-need res-need-'+RESOURCE_TILES[tile];b.innerHTML=PAWN_NEEDED;
+  return b;
 }
 
 // ── ACTION GUIDE ─────────────────────────────────────────────────────────────

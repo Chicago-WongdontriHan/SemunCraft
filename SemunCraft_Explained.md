@@ -66,9 +66,10 @@ The core progression mechanic. Drag one piece onto an adjacent ally to merge the
 
 Two tiles on the board are worth holding (`RESOURCE_TILES` in `js/state.js`), and only **pawns** work them:
 
-- The **gold mine** (h2) pays by being held: every turn that ends with a pawn of yours on it adds **another sixth of Gold**, so your income doubles from +0.17 to **+0.33** a turn (`mineTurns`, `pawnOnMine`; credited in `endTurn` / `finishBlackTurn` and in the engine’s `finishTurn`). While a pawn stands there the tile pulses gold with a **+1/6** badge, and the Gold line in the panel lights up with the doubled rate.
-- The **Elixir spring** (b8) pays only for work: a pawn standing on it can **spend its whole turn extracting one Elixir** — select it and press **Extract Elixir** (`extractAt` in `js/actions.js`, the `extract` action in `js/engine.js`). That is the point of the rule: banking Elixir costs tempo and leaves a pawn standing still in the open, so the side that is ahead cannot extract without giving the other side a turn to come back.
+- The **gold mine** (h2) pays by being held: every turn that ends with a pawn of yours on it adds **another sixth of Gold**, so your income doubles from +0.17 to **+0.33** a turn (`mineTurns`, `pawnOnMine`; credited in `endTurn` / `finishBlackTurn` and in the engine’s `finishTurn`). While a pawn stands there the tile pulses gold with a large **+0.16** badge on its top edge (the extra sixth, shown so that +0.17 and +0.16 add up to the +0.33 in the panel), and the Gold line in the panel lights up with the doubled rate.
+- The **Elixir spring** (b8) pays only for work: a pawn standing on it can **spend its whole turn extracting one Elixir**, every turn, with **no limit** on how much is banked — tap the pawn and press **Extract Elixir** on the board (or in the side panel) (`extractAt` in `js/actions.js`, the `extract` action in `js/engine.js`). That is the point of the rule: banking Elixir costs tempo and leaves a pawn standing still in the open, so the side that is ahead cannot extract without giving the other side a turn to come back.
 - Elixir is banked on its own (`elixir`) and will pay for the strongest merges.
+- Both tiles only work for a **pawn**, and say so: until a pawn stands on one, it carries a small **pawn badge** in its corner, ringed green (spring) or gold (mine) — a knight parked there still shows it, because it earns nothing — and hovering the square explains the tile (`pawnNeededBadge`, `RESOURCE_TIPS` in `js/render.js`).
 - Both tiles are **landmarks**: a coloured dot marks each one through the fog, because both sides know where they are from the start.
 - Black extracts too: the built-in AI does it before anything else on its turn (`fallbackAI` in `js/ai.js`, `botTurn` in `js/engine.js`), and because the trained networks were trained before the rule existed, the same check runs for them in `netAiChoose` and in AI vs AI (`freeExtract`). The mine pays either side automatically. `extract` and `fortify` are left out of the networks’ action map (`legalMap` in `rl/encoding.js`) until they are trained again.
 
@@ -246,7 +247,8 @@ An interactive 7-step tutorial:
 ### Controls
 
 - Drag a piece onto a highlighted tile. On touch screens you can also tap a piece, then tap a tile.
-- Click the King, then an adjacent tile, to spawn.
+- Click the King, then an adjacent tile, to spawn. The King opens an on-board **Spawn / Move** chooser.
+- Tapping one of your pawns opens the same kind of chooser for it: **Extract Elixir** while it stands on the spring, **Fortify (1 Gold)** while it is a plain pawn (`syncPawnChooser` in `js/actions.js`). It sits past the pawn’s 3x3 on the side away from its forward push, so it never covers a square the pawn can move to. The side panel’s buttons follow every tap too (`syncPieceButtons`, called from `render`).
 - Select 2-3 pawns/knights (click them, or drag a box over them from an empty tile) and drag one to move them together.
 - Right-click a piece, then click a target, to lock a target. Right-click (or tap twice) a Siege Tower to un-siege.
 - **Esc** clears the current selection.

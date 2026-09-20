@@ -41,12 +41,24 @@ const MEDIEVAL_TUNES={
       {notes:[[7,3],[6,2],[5,1],[4,2],[5,1],[4,3],[3,2],[2,1],[1,2],[-1,1],[0,6]],chords:[5,3,4,0]},
     ]},
 };
-// jungle: the forest estampie, brighter (Mixolydian) and a little quicker
-MEDIEVAL_TUNES.jungle=Object.assign({},MEDIEVAL_TUNES.forest,{mode:'mixolydian',unit:0.25});
+// jungle: a piphat cycle in the Thai manner, with none of the others' harmony. Thai instruments are
+// tuned to seven equal steps of the octave, so every degree falls between the Western ones — that
+// tuning, more than the notes, is what makes it sound Thai. The melody (the thang) moves one note to
+// the beat and turns around itself pentatonically; thaiPhrase() gives it its ensemble.
+MEDIEVAL_TUNES.jungle={tonic:277.18,tuning:'equal7',style:'thai',unit:0.44,bar:4,
+  sections:[{drums:'light'},{drums:'full'}],
+  phrases:[
+    [0,1,3,4,5,4,3,1],
+    [0,1,3,4,3,1,0,0],
+    [5,7,8,7,5,4,3,4],
+    [5,4,3,1,0,1,0,0],
+  ]};
 const TUNE_FORM=[0,1,0,1,2,3,2,3]; // AA'AA' BB'BB'
 let bgmTimer=null,bgmState=null,bgmNoise=null;
 
 function tuneFreq(tune,deg){
+  // Thai tuning: seven equal steps to the octave, so a degree is simply that many sevenths up
+  if(tune.tuning==='equal7')return tune.tonic*Math.pow(2,deg/7);
   const steps=MUSIC_MODES[tune.mode],oct=Math.floor(deg/7);
   return tune.tonic*Math.pow(2,oct+steps[deg-oct*7]/12);
 }
@@ -130,6 +142,54 @@ function bgmMetal(t,peak,len){
   [410,608,739,1045,1080,1600].forEach(fq=>{const o=ctx.createOscillator();o.type='square';o.frequency.value=fq;
     o.connect(hp);o.start(t);o.stop(t+len+.02);bgmTrack(o);});
 }
+// ── THE JUNGLE'S PIPHAT ─────────────────────────────────────────────────────
+// A struck hardwood bar (ranat ek): the note, a bar's inharmonic partial well above it, and the knock
+// of the mallet. Short and bright, so a run of them stays clear.
+function bgmWoodBar(f,t,d,peak){
+  bgmTone({type:'sine',f,t,d,peak,attack:.002,decay:true});
+  bgmTone({type:'sine',f:f*3.93,t,d:d*.4,peak:peak*.3,attack:.002,decay:true});
+  bgmTone({type:'sine',f:f*9.2,t,d:d*.15,peak:peak*.1,attack:.002,decay:true});
+  bgmNoiseHit(t,peak*.2,.012,[['bandpass',3400,1.2]]);
+}
+// A tuned gong of the khong wong circle: heavier partials, a longer swell, no mallet knock.
+function bgmGong(f,t,d,peak){
+  [[1,1],[1.48,.2],[2.72,.3],[5.1,.1]].forEach(([m,a])=>
+    bgmTone({type:'sine',f:f*m,t,d:m>2?d*.5:d,peak:peak*a,attack:.008,decay:true}));
+}
+// The ching, a pair of small cupped cymbals: a bright ring, damped to a tick for the closed stroke.
+function bgmChing(t,peak,len){
+  [[1,1],[2.41,.55],[3.83,.3],[5.72,.16]].forEach(([m,a])=>
+    bgmTone({type:'sine',f:2180*m,t,d:len,peak:peak*a,attack:.002,decay:true}));
+}
+// (freq, start time, length, velocity 0..1)
+const THAI={
+  // ranat ek: hardwood bars under quick mallets
+  ranat:(f,t,d,v)=>bgmWoodBar(f,t,Math.max(d,.5),.05*v),
+  // khong wong yai: the gong circle carrying the melody
+  khong:(f,t,d,v)=>bgmGong(f,t,Math.max(d,1.1),.065*v),
+  // pi nai: the reed over the top, nasal and held
+  pi:(f,t,d,v)=>{bgmTone({type:'sawtooth',f,t,d,peak:.03*v,attack:.06,vib:[5.4,.007],band:[2.2,2.4]});
+    bgmTone({type:'square',f:f*2,t,d,peak:.008*v,attack:.07,low:2800});},
+  // (start time, velocity)
+  ching:(t,v)=>bgmChing(t,.016*v,.55),    // open: left to ring
+  chap:(t,v)=>bgmChing(t,.013*v,.055),    // closed: damped on the beat
+  klong:(t,v)=>{bgmThump(t,150,68,.19*v,.3);bgmNoiseHit(t,.016*v,.06,[['lowpass',1700]]);},
+  klongSlap:(t,v)=>{bgmThump(t,330,210,.07*v,.08);bgmNoiseHit(t,.04*v,.09,[['bandpass',1900,1.1]]);},
+};
+// what the ranat plays over one beat of the melody: [offset in beats, degrees above the melody note]
+const THAI_RUNS=[
+  [[0,0],[.5,7]],
+  [[0,7],[.5,0]],
+  [[0,0],[.25,1],[.5,0],[.75,-1]],
+  [[0,7],[.25,0],[.5,7],[.75,0]],
+];
+// the drum cycle under one turn of eight beats: [beat, drum, velocity]
+const THAI_DRUMS={
+  light:[[0,'klong',1],[2,'klongSlap',.7],[4,'klong',.85],[6,'klongSlap',.7]],
+  full:[[0,'klong',1],[1.5,'klongSlap',.5],[2,'klongSlap',.85],[3.5,'klongSlap',.45],
+    [4,'klong',.95],[5.5,'klongSlap',.5],[6,'klongSlap',.85],[7,'klong',.5],[7.5,'klongSlap',.6]],
+};
+
 // (start time, velocity 0..1)
 const PERC={
   // kick: a deep pitch drop for the thump and a short knock for the punch
@@ -166,17 +226,45 @@ const POP_BEAT={
 
 // hurdy-gurdy style drone on the tonic and fifth, retuned when the map theme changes
 function bgmSetDrone(tune,t){
+  const level=tune.style==='thai'?0:0.018;   // a piphat has no drone under it
   const freqs=[tune.tonic/2,tune.tonic*0.75];
-  if(bgmState.drone){bgmState.drone.forEach((o,k)=>o.frequency.setTargetAtTime(freqs[k],t,0.2));return;}
+  if(bgmState.drone){
+    bgmState.drone.forEach((o,k)=>o.frequency.setTargetAtTime(freqs[k],t,0.2));
+    if(bgmState.droneAmp)bgmState.droneAmp.gain.setTargetAtTime(level,t,0.4);
+    return;
+  }
   const ctx=audioCtx,tone=ctx.createBiquadFilter(),amp=ctx.createGain();
   tone.type='lowpass';tone.frequency.value=700;
-  amp.gain.setValueAtTime(0.0001,t);amp.gain.linearRampToValueAtTime(0.018,t+1.5);
+  amp.gain.setValueAtTime(0.0001,t);amp.gain.linearRampToValueAtTime(level,t+1.5);
+  bgmState.droneAmp=amp;
   tone.connect(amp);amp.connect(bgmGain);
   bgmState.drone=freqs.map(f=>{const o=ctx.createOscillator();o.type='sawtooth';o.frequency.value=f;o.connect(tone);o.start(t);bgmNodes.push(o);return o;});
 }
 
+// One turn of the jungle's cycle. The khong wong carries the melody a note to the beat, the ranat ek
+// runs above it in octaves and neighbours, the pi nai holds a line over every fourth beat, and the
+// ching keeps time: ringing on the weak beats, damped on the strong ones, the way a piphat counts.
+function thaiPhrase(tune,step,t,round){
+  const u=tune.unit,core=tune.phrases[TUNE_FORM[step]],beats=core.length;
+  const full=((step<4?0:1)+round)%2===1;   // the cycle comes around busier every other time
+  core.forEach((deg,b)=>{
+    const bt=t+b*u;
+    THAI.khong(tuneFreq(tune,deg),bt,u*1.7,1);
+    // the ranat's figure over this beat, unless the melody is resting on a repeated note
+    const run=THAI_RUNS[(b+step+(full?2:0))%THAI_RUNS.length];
+    run.forEach(([off,up])=>THAI.ranat(tuneFreq(tune,deg+up),bt+off*u,u*.55,off?.75:1));
+    // the reed takes the beat's note and holds it across the next three
+    if(b%4===0)THAI.pi(tuneFreq(tune,deg+7),bt,u*3.6,full?1:.75);
+    // ching: open on the weak beat, damped on the strong
+    (b%2?THAI.chap:THAI.ching)(bt,b%4===0?1:.8);
+  });
+  THAI_DRUMS[full?'full':'light'].forEach(([b,hit,v])=>THAI[hit](t+b*u,v));
+  return beats*u;
+}
+
 // schedules one phrase of the form starting at time t; returns its length in seconds
 function bgmPlayPhrase(tune,step,t,round){
+  if(tune.style==='thai')return thaiPhrase(tune,step,t,round);
   const u=tune.unit,phrase=tune.phrases[TUNE_FORM[step]];
   // sections trade ensembles each time the tune comes around
   const sec=tune.sections[((step<4?0:1)+round)%2];

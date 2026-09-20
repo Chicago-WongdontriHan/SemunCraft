@@ -81,6 +81,14 @@ const SFX={
   hit:    ()=>{playNoise(.08,.8);playTone(150,.08,'square',.4);},
   kill:   ()=>{playNoise(.18,1);for(let i=0;i<3;i++)setTimeout(()=>playTone(120-i*20,.1,'sawtooth',.5),i*60);},
   merge:  ()=>{[440,550,660].forEach((f,i)=>setTimeout(()=>playTone(f,.15,'sine',.6),i*70));},
+  // a sword cutting the air: the rush brightens as the blade comes round and drops away behind it,
+  // with a thin ring of steel at the end. The offsets follow the swing itself (attackAnim in
+  // js/combat.js): the wind-up takes the first 150ms, the blade goes through over the next 150ms.
+  swing:  ()=>{const t=getAudioCtx().currentTime+.01;
+    sfxNoise({t:t+.10,d:.16,vol:.22,attack:.06,filters:[['bandpass',1200,1.1]]});
+    sfxNoise({t:t+.17,d:.16,vol:.40,attack:.02,filters:[['bandpass',2500,1.4]]});
+    sfxNoise({t:t+.25,d:.20,vol:.26,attack:.01,filters:[['bandpass',900,1.2]]});
+    sfxTone({type:'triangle',f:2100,to:1150,glide:.18,t:t+.2,d:.2,vol:.06});},
   // extracting: a dip into the spring, then the Elixir rising in three bright drops
   extract:()=>{const t=getAudioCtx().currentTime+.01;
     sfxNoise({t,d:.12,vol:.3,filters:[['bandpass',900,2]]});

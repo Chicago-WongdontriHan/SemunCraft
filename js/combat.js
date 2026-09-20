@@ -87,6 +87,7 @@ function attackAnim(attacker,target,type,cb){
     const lean=(dx,dy,deg)=>mid+'translate('+dx.toFixed(1)+'px,'+dy.toFixed(1)+'px) rotate('+deg.toFixed(1)+'deg)'+mirror;
     const fx=t.x-a.x,fy=t.y-a.y,DUR=500;
     const done=()=>{box.remove();if(onBoard)onBoard.style.opacity='';cb();};
+    SFX.swing();   // the rush of the blade, timed to the strike below
     // the pawn goes with its sword: it steps back as the blade lifts, drives forward through the blow,
     // holds there a moment, then comes back to its square — the same keyframes as the blade below
     box.animate([

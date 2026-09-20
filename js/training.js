@@ -173,11 +173,18 @@ function trainPlay(){
 }
 // One pending turn at a time. Every path that wants the AI to move goes through here, so a turn that
 // passes while another timer is still out does not end up playing two moves at once.
-function trainSchedule(ms){
+function trainSchedule(ms,stamp){
   clearTimeout(trainTimer);trainTimer=null;
   if(!trainingMode||over||trainPaused||!trainAI[turn])return;
-  trainTimer=setTimeout(trainAiTurn,ms);
+  trainTimer=setTimeout(()=>{
+    // a wait that belongs to one turn is no good once that turn has passed: the side comes round again
+    // and the wait would play a second move on it
+    if(stamp&&stamp!==trainStamp())return;
+    trainAiTurn();
+  },ms);
 }
+// which turn this is: the side, and how many turns that side has had
+function trainStamp(){return turn+':'+(turn==='w'?whiteTurnCount:blackTurnCount);}
 function trainStopAI(){clearTimeout(trainTimer);trainTimer=null;}
 function trainNudgeAI(){trainSchedule(TRAIN_BEAT/trainSpeed);}
 // the mouse builds or plays; picking anything out of the palette means building, and a board that is
@@ -198,11 +205,11 @@ function trainSetColor(c){trainColor=c;trainingPalette();render();syncUI();}
 function trainAddGold(d){
   goldSpent[trainColor]-=d;
   if(goldCount(trainColor)<0)goldSpent[trainColor]+=d;
-  render();syncUI();
+  trainingPalette();render();syncUI();   // the counter in the palette shows it too
 }
 function trainAddElixir(d){
   elixir[trainColor]=Math.max(0,(elixir[trainColor]||0)+d);
-  render();syncUI();
+  trainingPalette();render();syncUI();
 }
 function trainBottomless(){
   const rich=goldCount('w')>=TRAIN_RICH||goldCount('b')>=TRAIN_RICH;
@@ -359,16 +366,16 @@ function trainAiTurn(){
   if(thinking){trainSchedule(120);return;}      // the attacks are still playing out
   if(typeof SemunEngine==='undefined'){
     trainEngineReady().then(ok=>{
-      if(ok)trainAiTurn();
+      if(ok)trainSchedule(80);          // through the one timer, so nothing else is left pending
       else{addLog('The AI could not be loaded');trainAI.w=trainAI.b=false;trainingPalette();}
     });
     return;
   }
   const side=turn;
   // an action that leaves the turn in hand (an order) would stall the match: look again in a moment
-  // an action that leaves the turn in hand (an order) would stall the match: look again in a moment.
-  // A turn that passes schedules its own next move, which replaces this one.
-  trainSchedule(TRAIN_BEAT*2/trainSpeed);
+  // an action that leaves the turn in hand (an order) would stall the match: look again in a moment,
+  // but only while this same turn is still in hand
+  trainSchedule(TRAIN_BEAT*2/trainSpeed,trainStamp());
   // a trained network needs its model on the page; while that arrives the built-in bot stands in
   if(trainLevel!=='bot'&&typeof netAiLoadModel==='function'&&NETAI_LEVELS[trainLevel]
      &&!netAiNets[NETAI_LEVELS[trainLevel].model]){

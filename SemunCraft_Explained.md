@@ -267,17 +267,25 @@ says so and play carries on.
   the unit first, the tile under it next. On an empty square a drag slides a zoomed-in board, as it does
   in a game.
 - **Play**: every click is an ordinary game move again — move, merge, order, target, spawn.
-- **The palette** takes the left panel's place, where the unit cards normally are: Edit / Play, then
-  **AI White** and **AI Black**, **which AI** they are (Easy, Med, Hard — the same trained networks
-  Single Player uses — or Bot, the engine's built-in one, which needs no download) and how fast it plays
-  (**Speed 1× to 8×**), the **board's two sides** on their own counters (**3 to 12 each way**; a new size
-  lays out fresh ground with the two kings on it, since the pieces cannot follow it), **Gold** and
-  **Elixir** for the side in hand with a **∞ Purses** switch that fills both sides' and empties them
-  again, then the four **maps**, a **White / Black** switch, every unit in the
-  game (pawn, fortified pawn, knight, bishop, rook, siege, queen, mage, king), then the **Elixir
-  spring**, the **gold mine** and the map's own tiles — the impassable ones carry a no-entry mark — and
-  an **eraser**, with **Clear units** and **Drop brush** at the foot. Pick something and tap a square, or
-  drag it from the palette onto the board. A unit replaces whatever stands there, a tile is taken away by
+- **The palette** takes the left panel's place, where the unit cards normally are, and reads at the same
+  size as the Gold and Elixir counts above it. **Edit / Play** sits above everything — the Play button
+  turns into **Pause** once the AI has a side, so a match can be stopped from wherever you are — and
+  under it three tabs, **Units**, **Map** and **Play**, whose names the panel's header takes:
+  - **Units**: a **White / Black** switch, every unit in the game (pawn, fortified pawn, knight, bishop,
+    rook, siege, queen, mage, king), **Default** — the line-up a normal game opens with, dealt onto
+    whatever board is laid out — and **Clear units**.
+  - **Map**: the board's two sides on their own counters (**3 to 12 each way**; a new size lays out fresh
+    ground with the two kings on it, since the pieces cannot follow it), the four **maps**, and the
+    ground itself: the **Elixir spring**, the **gold mine** and the map's own tiles, the impassable ones
+    carrying a no-entry mark.
+  - **Play**: **AI White** and **AI Black**, **which AI** they are (Easy, Med, Hard — the same trained
+    networks Single Player uses — or Bot, the engine's built-in one, which needs no download), how fast
+    it plays (**Speed 1× to 8×**, off the same 700 ms beat an AI vs AI match keeps, and on a single timer
+    so the turns cannot stack up), and the two purses: **Gold** and **Elixir** for the side in hand, with
+    a **∞ Purses** switch that fills both and empties them again.
+
+  An **eraser** and **Drop brush** sit at the foot of every tab. Pick something and tap a square, or drag
+  it from the palette onto the board. A unit replaces whatever stands there, a tile is taken away by
   tapping it again, and only one king a side: placing another moves it.
 - **Changing the map** draws fresh ground for that theme, spring and mine included, and leaves the units
   where they are (anything left inside a rock has the rock taken out from under it). The music follows
@@ -293,6 +301,9 @@ says so and play carries on.
 - **Both sides' resources** are on show here, as they are in an AI vs AI match — a game shows only your
   own. Each colour keeps its own Gold, its own turn count and its own spawn ledger (`turnsOf`,
   `spawnLedger` in `js/state.js`), so one king spawning does not empty the other's purse.
+- **The window stays filled** whatever shape the board is: the panels keep the height the screen gives
+  them, and a wide, shallow board sits in the middle of that rather than shrinking the whole UI into a
+  strip (`resizeBoard` in `js/resize.js`).
 - On a phone the palette wraps into the strip above the board rather than disappearing with the cards.
 - The fog is lifted at the start (Map Cheat is on) — a sandbox with fog over it would hide its own
   experiment — and the ordinary panel, resources, merges, orders and auto-attacks all behave exactly as

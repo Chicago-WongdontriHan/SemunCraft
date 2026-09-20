@@ -14,11 +14,17 @@ let trainColor='w';
 let trainAI={w:false,b:false};// the sides the AI plays; both is a match from your own arrangement
 let trainLevel='easy';        // which AI that is: one of the trained networks, or the built-in bot
 let trainSpeed=1;             // how fast it plays when it has a side: 1, 2, 4 or 8 times
+let trainTimer=null;          // the one timer the AI keeps: two of them and the match races
+const TRAIN_BEAT=700;         // ms between the AI's moves at 1x — the beat an AI vs AI match keeps
+let trainPaused=false;        // a match with the AI in it is held still while the board is being built
+let trainTab='units';         // which part of the box is open: the army, the ground, or the match
 let trainLift=-1;             // the square the pointer went down on, while it is still down
 let trainLiftXY=null;         // where it went down, so a tap can be told from a drag
 let trainCarry=false;         // the pointer has moved: a piece is being carried, not tapped
 let trainFromPalette=false;   // the gesture started on a palette button, so its pointerup does the placing
 // trainMouse ('edit' | 'play') and trainEditing() are in js/state.js, where the board's own files see them
+
+const TRAIN_TABS=[['units','Units'],['map','Map'],['play','Play']];
 
 // the AI a side is handed to, and how big a board to lay out
 const TRAIN_LEVELS=[['easy','Easy'],['medium','Med'],['hard','Hard'],['bot','Bot']];
@@ -44,7 +50,7 @@ const TRAIN_UNITS=[
 function startTraining(){
   gameMode='training';difficulty='easy';
   trainingMode=true;trainBrush=null;trainColor='w';trainMouse='edit';
-  trainAI={w:false,b:false};trainLift=-1;trainCarry=false;trainLevel='easy';trainSpeed=1;
+  trainAI={w:false,b:false};trainLift=-1;trainCarry=false;trainLevel='easy';trainSpeed=1;trainPaused=false;trainTab='units';
   campaignLevel=null;campaignLevelId=-1;
   COLS=9;ROWS=9;
   document.getElementById('intro').classList.add('hidden');
@@ -62,6 +68,9 @@ function startTraining(){
 }
 
 function leaveTraining(){
+  trainStopAI();
+  const label=document.getElementById('units-label');
+  if(label&&label.firstChild)label.firstChild.nodeValue='Units ';
   trainingMode=false;trainBrush=null;trainAI={w:false,b:false};trainLift=-1;trainCarry=false;
   document.body.classList.remove('training');
 }
@@ -74,59 +83,107 @@ function trainingPalette(){
   const btn=(inner,label,on,click,title)=>'<button class="tp-btn'+(on?' tp-on':'')+'" title="'+title+'" '
     +'onpointerdown="'+click+'">'+inner+'<span class="tp-label">'+label+'</span></button>';
   const wide=(text,on,click,title)=>'<button class="tp-wide'+(on?' tp-on':'')+'" onclick="'+click+'" title="'+title+'">'+text+'</button>';
-  // what the mouse is for: building the board, or playing on it
+  // What the mouse is for, above everything else: it belongs to no one tab, and the Pause it turns into
+  // has to be within reach whichever half of the box is open.
   let h='<div class="tp-grid tp-mode">'
-    +wide('✎ Edit',trainMouse==='edit',"trainSetMouse('edit')",'Clicks build the board: the left button puts down what is in hand or drags a piece about, the right button lifts what is there')
-    +wide('▶ Play',trainMouse==='play',"trainSetMouse('play')",'Clicks play the game: move, merge, order and target as usual')
-    +'</div><div class="tp-grid tp-mode">'
-    +wide('AI White',trainAI.w,"trainToggleAI('w')",'Let the AI take White. Both sides on plays a match out of the board you built')
-    +wide('AI Black',trainAI.b,"trainToggleAI('b')",'Let the AI take Black. Both sides on plays a match out of the board you built')
-    +'</div><div class="tp-grid tp-quad">';
-  TRAIN_LEVELS.forEach(([lv,name])=>{
-    h+=wide(name,trainLevel===lv,"trainSetLevel('"+lv+"')",
-      lv==='bot'?'The built-in AI: no network to fetch':'The '+name+' trained network, the one Single Player plays');
-  });
-  h+=wide('Speed '+trainSpeed+'×',trainSpeed>1,'trainCycleSpeed()','How fast a side the AI has is played: 1, 2, 4 or 8 times');
-  h+='</div>'+trainStepper('Rows',ROWS,'trainStepSize(1,')+trainStepper('Cols',COLS,'trainStepSize(0,')
-    +'<div class="tp-grid tp-themes">';
-  TRAIN_THEMES.forEach(([t,icon,name])=>{
-    h+=btn('<span class="tp-emoji">'+icon+'</span>',name,mapTheme===t,"trainSetTheme('"+t+"')",name+': new ground, and the units stay where they are');
-  });
-  // which side the units come out in — the words themselves, in their own colours
-  h+='</div><div class="tp-grid tp-mode">'
-    +'<button class="tp-wide tp-side-w'+(trainColor==='w'?' tp-on':'')+'" onclick="trainSetColor(\'w\')" title="Place White units">White</button>'
-    +'<button class="tp-wide tp-side-b'+(trainColor==='b'?' tp-on':'')+'" onclick="trainSetColor(\'b\')" title="Place Black units">Black</button>'
-    +'</div><div class="tp-grid tp-units">';
-  TRAIN_UNITS.forEach((u,k)=>{
-    const on=trainBrush&&trainBrush.kind==='unit'&&trainBrush.idx===k;
-    h+=btn(pieceSVG(u.art,trainColor,mapTheme,px,true),u.name,on,'trainPickUnit('+k+')',u.name);
-  });
-  h+='</div><div class="tp-grid tp-tiles">';
-  // the two resource tiles, then whatever this map puts on the ground — the impassable ones marked
-  const tiles=[{key:'spring',icon:RES_ELIXIR,name:'Spring',effect:'a pawn standing here can spend its turn extracting Elixir'},
-               {key:'mine',icon:RES_GOLD,name:'Mine',effect:'a pawn standing here earns Gold while it holds it'}];
-  const th=THEMES[mapTheme];
-  if(th&&th.tiles)Object.keys(th.tiles).forEach(k=>tiles.push({key:k,icon:'<span class="tp-emoji">'+th.tiles[k].icon+'</span>',
-    name:th.tiles[k].label,effect:th.tiles[k].effect,block:th.tiles[k].block}));
-  tiles.forEach(t=>{
-    const on=trainBrush&&trainBrush.kind==='tile'&&trainBrush.tile===t.key;
-    const mark=t.block?'<span class="tp-block" aria-hidden="true">⛔</span>':'';
-    h+=btn(t.icon+mark,t.name,on,"trainPickTile('"+t.key+"')",t.name+' — '+(t.effect||'')+'. Tap it again on the board to take it away');
-  });
-  h+=btn('<span class="tp-emoji">✕</span>','Erase',!!(trainBrush&&trainBrush.kind==='erase'),'trainPickErase()','Take the unit off a square, or the tile under it (the right button does this too)');
-  h+='</div>'
-    +trainStepper('Gold',goldText(Math.floor(goldCount(trainColor))),'trainAddGold(')
-    +trainStepper('Elixir',elixirCount(trainColor)>=TRAIN_RICH?'\u221E':elixirCount(trainColor),'trainAddElixir(')
-    +'<div class="tp-grid tp-tools">'
-    +wide('\u221E Purses',goldCount('w')>=TRAIN_RICH,'trainBottomless()','Gold and Elixir without end for both sides, and off again')
-    +wide('Clear units',false,'trainClearUnits()','Take every unit off the board')
+    +wide('\u270E Edit',trainMouse==='edit',"trainSetMouse('edit')",'Clicks build the board: the left button puts down what is in hand or drags a piece about, the right button lifts what is there')
+    +wide(trainRunning()?'\u23F8 Pause':'\u25B6 Play',trainMouse==='play'&&!trainPaused,'trainPlay()',
+      'Clicks play the game: move, merge, order and target as usual \u2014 and with the AI on a side, this starts the match and stops it again')
+    +'</div><div class="tp-grid tp-tabs">'
+    +TRAIN_TABS.map(([t,name])=>'<button class="tp-tab'+(trainTab===t?' tp-on':'')+'" onclick="trainSetTab(\''+t+'\')">'+name+'</button>').join('')
+    +'</div>';
+
+  if(trainTab==='units'){
+    // which side the units come out in — the words themselves, in their own colours
+    h+='<div class="tp-grid tp-mode">'
+      +'<button class="tp-wide tp-side-w'+(trainColor==='w'?' tp-on':'')+'" onclick="trainSetColor(\'w\')" title="Place White units">White</button>'
+      +'<button class="tp-wide tp-side-b'+(trainColor==='b'?' tp-on':'')+'" onclick="trainSetColor(\'b\')" title="Place Black units">Black</button>'
+      +'</div><div class="tp-grid tp-units">';
+    TRAIN_UNITS.forEach((u,k)=>{
+      const on=trainBrush&&trainBrush.kind==='unit'&&trainBrush.idx===k;
+      h+=btn(pieceSVG(u.art,trainColor,mapTheme,px,true),u.name,on,'trainPickUnit('+k+')',u.name);
+    });
+    h+='</div><div class="tp-grid tp-tools">'
+      +wide('Default',false,'trainDefaultUnits()','The line-up a normal game starts with: the two kings, three pawns each')
+      +wide('Clear units',false,'trainClearUnits()','Take every unit off the board');
+  }else if(trainTab==='map'){
+    h+=trainStepper('Rows',ROWS,'trainStepSize(1,')+trainStepper('Cols',COLS,'trainStepSize(0,')
+      +'<div class="tp-grid tp-themes">';
+    TRAIN_THEMES.forEach(([t,icon,name])=>{
+      h+=btn('<span class="tp-emoji">'+icon+'</span>',name,mapTheme===t,"trainSetTheme('"+t+"')",name+': new ground, and the units stay where they are');
+    });
+    h+='</div><div class="tp-grid tp-tiles">';
+    // the two resource tiles, then whatever this map puts on the ground — the impassable ones marked
+    const tiles=[{key:'spring',icon:RES_ELIXIR,name:'Spring',effect:'a pawn standing here can spend its turn extracting Elixir'},
+                 {key:'mine',icon:RES_GOLD,name:'Mine',effect:'a pawn standing here earns Gold while it holds it'}];
+    const th=THEMES[mapTheme];
+    if(th&&th.tiles)Object.keys(th.tiles).forEach(k=>tiles.push({key:k,icon:'<span class="tp-emoji">'+th.tiles[k].icon+'</span>',
+      name:th.tiles[k].label,effect:th.tiles[k].effect,block:th.tiles[k].block}));
+    tiles.forEach(t=>{
+      const on=trainBrush&&trainBrush.kind==='tile'&&trainBrush.tile===t.key;
+      const mark=t.block?'<span class="tp-block" aria-hidden="true">\u26D4</span>':'';
+      h+=btn(t.icon+mark,t.name,on,"trainPickTile('"+t.key+"')",t.name+' \u2014 '+(t.effect||'')+'. Tap it again on the board to take it away');
+    });
+    h+='</div><div class="tp-grid tp-tools">';
+  }else{
+    // the match itself: who plays which side, which AI it is, how fast, and what the two sides own
+    h+='<div class="tp-grid tp-mode">'
+      +wide('AI White',trainAI.w,"trainToggleAI('w')",'Let the AI take White. Both sides on plays a match out of the board you built')
+      +wide('AI Black',trainAI.b,"trainToggleAI('b')",'Let the AI take Black. Both sides on plays a match out of the board you built')
+      +'</div><div class="tp-grid tp-quad">';
+    TRAIN_LEVELS.forEach(([lv,name])=>{
+      h+=wide(name,trainLevel===lv,"trainSetLevel('"+lv+"')",
+        lv==='bot'?'The built-in AI: no network to fetch':'The '+name+' trained network, the one Single Player plays');
+    });
+    h+=wide('Speed '+trainSpeed+'\u00D7',trainSpeed>1,'trainCycleSpeed()','How fast a side the AI has is played: 1, 2, 4 or 8 times');
+    h+='</div>'
+      +'<div class="tp-grid tp-mode">'
+      +'<button class="tp-wide tp-side-w'+(trainColor==='w'?' tp-on':'')+'" onclick="trainSetColor(\'w\')" title="The side the purse below belongs to">White</button>'
+      +'<button class="tp-wide tp-side-b'+(trainColor==='b'?' tp-on':'')+'" onclick="trainSetColor(\'b\')" title="The side the purse below belongs to">Black</button>'
+      +'</div>'
+      +trainStepper('Gold',goldText(Math.floor(goldCount(trainColor))),'trainAddGold(')
+      +trainStepper('Elixir',elixirCount(trainColor)>=TRAIN_RICH?'\u221E':elixirCount(trainColor),'trainAddElixir(')
+      +'<div class="tp-grid tp-tools">'
+      +wide('\u221E Purses',goldCount('w')>=TRAIN_RICH,'trainBottomless()','Gold and Elixir without end for both sides, and off again');
+  }
+  // the eraser and the empty hand belong to every half
+  h+=wide('\u2715 Erase',!!(trainBrush&&trainBrush.kind==='erase'),'trainPickErase()','Take the unit off a square, or the tile under it (the right button does this too)')
     +wide('Drop brush',false,'trainPickNone()','Nothing in hand: the board is left alone until you pick something up')
     +'</div>';
   wrap.innerHTML=h;
+  const label=document.getElementById('units-label');
+  const name=(TRAIN_TABS.find(t=>t[0]===trainTab)||['','Units'])[1];
+  if(label&&label.firstChild)label.firstChild.nodeValue=name+' ';
 }
+function trainSetTab(t){trainTab=t;trainPickNone();trainingPalette();}
 
-// the mouse builds or plays; picking anything out of the palette means building
+// is a match actually running — the AI has a side, and nothing is holding it?
+function trainRunning(){return trainMouse==='play'&&!trainPaused&&(trainAI.w||trainAI.b);}
+// the Play button: it hands the mouse back to the game, and once the AI has a side it also starts the
+// match and stops it again
+function trainPlay(){
+  if(trainMouse!=='play'){trainPaused=false;trainSetMouse('play');trainNudgeAI();return;}
+  if(!trainAI.w&&!trainAI.b)return;
+  trainPaused=!trainPaused;
+  if(trainPaused)trainStopAI();
+  trainingPalette();syncUI();
+  setStatus(trainPaused?'Match paused':'Match running');
+  addLog(trainPaused?'Paused':'Playing on');
+  if(!trainPaused)trainNudgeAI();
+}
+// One pending turn at a time. Every path that wants the AI to move goes through here, so a turn that
+// passes while another timer is still out does not end up playing two moves at once.
+function trainSchedule(ms){
+  clearTimeout(trainTimer);trainTimer=null;
+  if(!trainingMode||over||trainPaused||!trainAI[turn])return;
+  trainTimer=setTimeout(trainAiTurn,ms);
+}
+function trainStopAI(){clearTimeout(trainTimer);trainTimer=null;}
+function trainNudgeAI(){trainSchedule(TRAIN_BEAT/trainSpeed);}
+// the mouse builds or plays; picking anything out of the palette means building, and a board that is
+// being built is a board standing still
 function trainSetMouse(m){
+  if(m==='edit')trainPaused=true;
   trainMouse=m;trainLift=-1;trainCarry=false;
   selectedPieces=new Set();kingSelected=false;
   trainingPalette();render();syncUI();
@@ -240,6 +297,22 @@ function trainPickErase(){
 function trainPickNone(){trainBrush=null;trainingPalette();trainStatus('');}
 function trainStatus(msg){setStatus(msg||((turn==='w'?"White's":"Black's")+' turn'));}
 
+// the line-up a normal game opens with, on whatever board is laid out: the two kings as far apart as
+// it allows, and three pawns each on the squares beside a king that face the other one (initGame)
+function trainDefaultUnits(){
+  for(let i=0;i<ROWS*COLS;i++)pieces[i]=null;
+  whiteTargets={};blackTargets={};selectedPieces=new Set();kingSelected=false;
+  const roomy=ROWS>3&&COLS>3;
+  const wk=roomy?idx(ROWS-2,1):idx(ROWS-1,0),bk=roomy?idx(1,COLS-2):idx(0,COLS-1);
+  tileData[wk]='';tileData[bk]='';
+  pieces[wk]={type:'king',color:'w',hp:STATS.king.hp,maxHp:STATS.king.maxHp};
+  pieces[bk]={type:'king',color:'b',hp:STATS.king.hp,maxHp:STATS.king.maxHp};
+  const line=(king,foe,color)=>adj8(king).filter(j=>!pieces[j]&&!isTileBlocked(j))
+    .sort((a,b)=>cheb(a,foe)-cheb(b,foe)).slice(0,3)
+    .forEach(j=>{pieces[j]={type:'pawn',color,hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,firstMove:true};});
+  line(wk,bk,'w');line(bk,wk,'b');
+  addLog('The usual line-up');render();syncUI();
+}
 function trainClearUnits(){
   for(let i=0;i<ROWS*COLS;i++)pieces[i]=null;
   whiteTargets={};blackTargets={};selectedPieces=new Set();kingSelected=false;
@@ -252,11 +325,12 @@ function trainClearUnits(){
 // the game's own handlers, exactly as a tap would be. With both sides on it plays itself.
 function trainToggleAI(c){
   trainAI[c]=!trainAI[c];
+  if(trainAI[c]&&trainMouse==='play')trainPaused=false;
   trainingPalette();syncUI();render();   // the fog now belongs to the side the AI has not taken
   addLog((c==='w'?'White':'Black')+' is played by '+(trainAI[c]?'the AI':'you'));
   if(!trainAI[c])return;
   trainEngineReady();                    // the engine is fetched on demand, as the networks are
-  if(turn===c&&!thinking)setTimeout(trainAiTurn,300/trainSpeed);
+  if(turn===c)trainSchedule(TRAIN_BEAT/trainSpeed);
 }
 // js/engine.js is not on the page until something asks for it (netai.js loads it the same way)
 function trainEngineReady(){
@@ -267,7 +341,7 @@ function trainEngineReady(){
 // called by endTurn once the turn has changed hands (js/game.js)
 function trainAfterPass(){
   if(!trainingMode||over)return;
-  if(trainAI[turn])setTimeout(trainAiTurn,450/trainSpeed);
+  trainSchedule(TRAIN_BEAT/trainSpeed);
 }
 function trainEngineState(side){
   const flip=side==='w';                 // the engine's bot plays Black: White borrows its side
@@ -281,7 +355,8 @@ function trainEngineState(side){
     elixir:sw(elixir),mineTurns:sw(mineTurns),goldSpent:sw(goldSpent),orderLeft:sw(orderLeft)});
 }
 function trainAiTurn(){
-  if(!trainingMode||over||!trainAI[turn]||thinking)return;
+  if(!trainingMode||over||trainPaused||!trainAI[turn])return;
+  if(thinking){trainSchedule(120);return;}      // the attacks are still playing out
   if(typeof SemunEngine==='undefined'){
     trainEngineReady().then(ok=>{
       if(ok)trainAiTurn();
@@ -291,7 +366,9 @@ function trainAiTurn(){
   }
   const side=turn;
   // an action that leaves the turn in hand (an order) would stall the match: look again in a moment
-  setTimeout(()=>{if(trainingMode&&!over&&turn===side&&trainAI[side]&&!thinking)trainAiTurn();},900/trainSpeed);
+  // an action that leaves the turn in hand (an order) would stall the match: look again in a moment.
+  // A turn that passes schedules its own next move, which replaces this one.
+  trainSchedule(TRAIN_BEAT*2/trainSpeed);
   // a trained network needs its model on the page; while that arrives the built-in bot stands in
   if(trainLevel!=='bot'&&typeof netAiLoadModel==='function'&&NETAI_LEVELS[trainLevel]
      &&!netAiNets[NETAI_LEVELS[trainLevel].model]){

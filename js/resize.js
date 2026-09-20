@@ -70,7 +70,10 @@ function resizeBoard(){
   const innerEl=document.getElementById('board-inner');
   if(innerEl){innerEl.style.width=boardW+'px';innerEl.style.height=boardH+'px';}
   applyBoardView();
-  const ph=frameH+6;
+  // The panels keep the height the window gives them, whatever shape the board is: a wide, shallow
+  // board leaves space above and below it rather than shrinking the whole UI into a strip.
+  const ph=isPortrait?frameH+6:Math.max(frameH+6,availH);
+  if(!isPortrait)wrap.style.alignSelf='center';
   const lp=document.getElementById('left-panel'),rp=document.getElementById('right-panel');
   if(isPortrait){
     // portrait: panels are full-width strips, height is auto (set by CSS)

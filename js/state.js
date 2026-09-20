@@ -57,10 +57,19 @@ function goldRate(color){ return (pawnOnMine(color)?2:1)/GOLD_TURNS; }
 function goldAllowed(){ return !campaignLevel||campaignLevel.allowSpawn!==false; }
 function canFortify(i){ const p=pieces[i]; return !!p&&p.type==='pawn'&&!p.fortified&&goldAllowed()&&spawnRemaining()>=1; }
 function oppColor(){ return myColor()==='w'?'b':'w'; }
-function spawnQuota(){ if(campaignLevel&&campaignLevel.spawnLimit)return campaignLevel.spawnLimit; return GOLD_START+(whiteTurnCount+mineTurns[myColor()])/GOLD_TURNS; }
-function spawnUsed(){ return spawnHistory.length+goldSpent[myColor()]; }
+// The clock a side's Gold grows on is its own turns. This seat takes one side's turns in a game (so
+// whiteTurnCount is that side's count, whichever colour it is playing), but the training ground plays
+// both from here, and there each colour keeps its own count.
+function turnsOf(color){ return trainingMode?(color==='w'?whiteTurnCount:blackTurnCount):whiteTurnCount; }
+function spawnQuota(){ if(campaignLevel&&campaignLevel.spawnLimit)return campaignLevel.spawnLimit; return GOLD_START+(turnsOf(myColor())+mineTurns[myColor()])/GOLD_TURNS; }
+// Which side's ledger a spawn is written in. A game has one side at this seat, so it is always the
+// white one; the training ground plays both, and Black's pawns must come out of Black's own Gold —
+// otherwise one king's spawning would leave the other with nothing to spend.
+function spawnLedger(){ return trainingMode&&myColor()==='b'?blackSpawnHistory:spawnHistory; }
+function spawnUsed(){ return spawnLedger().length+goldSpent[myColor()]; }
 // a sixth of Gold a turn means the count is often a fraction; whole numbers stay plain
-function goldText(n){ return Number.isInteger(n)?String(n):n.toFixed(2); }
+function goldText(n){ return n>=TRAIN_RICH?'\u221E':Number.isInteger(n)?String(n):n.toFixed(2); }
+const TRAIN_RICH=900;   // the training ground's bottomless purse: anything this deep is drawn as \u221E
 function spawnRemaining(){
   // tutorial: exactly 1 pawn allowed on the board at a time
   if(typeof isTutorialActive==='function'&&isTutorialActive()){

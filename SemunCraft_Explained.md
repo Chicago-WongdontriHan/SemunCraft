@@ -30,7 +30,7 @@ The goal: **destroy the enemy King** while building up your army through a merge
 | **Rook** | ♖/♜ | 4 | Cardinal up to 2 squares (sliding) | Cardinal up to 3 squares, **piercing** (goes through pieces) |
 | **Queen** | ♛ | 5 | All 8 directions up to 2 squares (sliding) | All 8 directions up to 2 squares (not L-shapes); not blocked by pieces or obstacles |
 | **King** | ♔/♚ | 5 | Adjacent 1 step | Adjacent; also **spawns new pawns** |
-| **Siege Tower** | 🏰 | 4 | **Cannot move** | Cardinal up to 4 squares, 2 damage, piercing. Right-click it (or tap it twice) to un-siege back into two rooks, each with the tower's current HP (one rook if no tile next to it is free). |
+| **Siege Tower** | 🏰 | 4 | **One square, ordered a turn ahead** | Cardinal up to **5 squares, 2 damage, lobbed clean over everything** — obstacles and pieces alike. It never steps anywhere of its own accord: a move is given as a **delayed order** to an adjacent square (`orderTargets` in `js/actions.js`), it rolls there at the end of the next turn, and **it does not fire on the turn it moves** (`runOrders` hands that square back, and the attack that turn passes it over). Right-click it (or tap it twice) to un-siege back into two rooks, each with the tower's current HP (one rook if no tile next to it is free). |
 | **Mage** | ✦ | 3 | Diagonal up to 2 squares (sliding), like a bishop | **Any square within 3**, over pieces and obstacles alike; no heal, no merges |
 
 ---
@@ -116,9 +116,10 @@ stacked so they land together (`MAX_DELAY`, `ORDER_BUDGET`, `orderCost` in `js/s
   When the budget can no longer pay for another order **the turn passes by itself** — one order from a
   knight, or two from pawns, and play moves on without pressing Skip (`placeOrder`; in the engine the
   `order` action simply stops keeping the turn).
-- **Where**: any square the piece could move to **if the enemy were not in the way** (`orderTargets`,
-  which takes the enemy off the board and asks the ordinary movement code). An order reserves a square,
-  not a path, and the piece standing there today may well be gone by the time the order comes due.
+- **Where**: any square the piece could move to **if the board were empty** (`orderTargets`, which takes
+  every other piece off and asks the ordinary movement code). An order reserves a square, not a path, and
+  whoever is standing there today may well be gone by the time it comes due — so a pawn ordered onto
+  another pawn does not merge with it now, it goes there later if the square has cleared.
 - **When it comes due**: an order counts down at the start of its side's turn (`countOrders`) and is
   carried out at the **end** of the turn it reaches nought on (`runOrders`, from `endTurn` /
   `finishBlackTurn`, mirrored at the top of the engine's `finishTurn`) — so the ordered piece and this
@@ -268,9 +269,11 @@ says so and play carries on.
 - **Play**: every click is an ordinary game move again — move, merge, order, target, spawn.
 - **The palette** takes the left panel's place, where the unit cards normally are: Edit / Play, then
   **AI White** and **AI Black**, **which AI** they are (Easy, Med, Hard — the same trained networks
-  Single Player uses — or Bot, the engine's built-in one, which needs no download), the **board size**
-  (7×7 to 13×13; a new size lays out fresh ground with the two kings on it, since the pieces cannot
-  follow it), then the four **maps**, a **White / Black** switch, every unit in the
+  Single Player uses — or Bot, the engine's built-in one, which needs no download) and how fast it plays
+  (**Speed 1× to 8×**), the **board's two sides** on their own counters (**3 to 12 each way**; a new size
+  lays out fresh ground with the two kings on it, since the pieces cannot follow it), **Gold** and
+  **Elixir** for the side in hand with a **∞ Purses** switch that fills both sides' and empties them
+  again, then the four **maps**, a **White / Black** switch, every unit in the
   game (pawn, fortified pawn, knight, bishop, rook, siege, queen, mage, king), then the **Elixir
   spring**, the **gold mine** and the map's own tiles — the impassable ones carry a no-entry mark — and
   an **eraser**, with **Clear units** and **Drop brush** at the foot. Pick something and tap a square, or
@@ -287,6 +290,9 @@ says so and play carries on.
 - **With one side yours and the fog on**, the board stays at **your** view while the AI takes its turn:
   `viewColor()` (js/state.js) is the side the AI has *not* taken, and the fog, the explored squares and
   the board's own marks all follow it rather than the side to move.
+- **Both sides' resources** are on show here, as they are in an AI vs AI match — a game shows only your
+  own. Each colour keeps its own Gold, its own turn count and its own spawn ledger (`turnsOf`,
+  `spawnLedger` in `js/state.js`), so one king spawning does not empty the other's purse.
 - On a phone the palette wraps into the strip above the board rather than disappearing with the cards.
 - The fog is lifted at the start (Map Cheat is on) — a sandbox with fog over it would hide its own
   experiment — and the ordinary panel, resources, merges, orders and auto-attacks all behave exactly as

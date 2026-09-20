@@ -20,7 +20,8 @@ function render(){
     if(selP&&selP.color===mc)selDests=getDragDests(selIdx);
   }
   // delayed orders: the squares an order can reserve, and where the orders already out are going
-  const orderSel=typeof orderTurns!=='undefined'&&orderTurns>0?pieceInHand():-1;
+  const inHand=typeof pieceInHand==='function'?pieceInHand():-1;
+  const orderSel=typeof orderTurns!=='undefined'&&(orderTurns>0||(inHand>=0&&pieces[inHand].type==='siege'))?inHand:-1;
   const orderZone=orderSel>=0?orderTargets(orderSel):null;
   const orderMarks=new Map();
   for(let k=0;k<ROWS*COLS;k++){const q=pieces[k];if(!q||q.color!==mc||!q.order)continue;

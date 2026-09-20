@@ -162,6 +162,11 @@ const RES_ELIXIR='<svg viewBox="0 0 24 24"><path d="M12 2.4 C16.6 8 19 11.1 19 1
 // the engine's own numbers while two networks play each other, the game's otherwise
 function goldCount(color){
   if(gameMode==='aivsai'&&aiVsAi&&typeof SemunEngine!=='undefined')return SemunEngine.spawnRemaining(aiVsAi.s,color);
+  // the training ground keeps both sides' books, so either colour can be asked for directly
+  if(trainingMode){
+    const used=(color==='w'?spawnHistory.length:blackSpawnHistory.length)+goldSpent[color];
+    return Math.max(0,GOLD_START+(turnsOf(color)+mineTurns[color])/GOLD_TURNS-used);
+  }
   return color===myColor()?spawnRemaining():blackSpawnRemaining();
 }
 // Elixir is what a pawn extracts at the spring; a bishop's mana is its own heal charge and is not this.
@@ -185,7 +190,7 @@ function fitResources(){
 function renderResources(){
   const el=document.getElementById('resources');if(!el)return;
   const noGold=campaignLevel&&campaignLevel.allowSpawn===false;
-  const both=gameMode==='aivsai'&&aiVsAi;
+  const both=(gameMode==='aivsai'&&aiVsAi)||trainingMode;   // both sides are yours in the sandbox
   const sides=both?['w','b']:[myColor()];
   // a line per resource: icon, name, count, and for Gold this turn's income beside it, so it reads as
   // Gold's rate and not Elixir's; it doubles, and lights up, while a pawn stands on the mine. The
@@ -199,7 +204,7 @@ function renderResources(){
     const boost=!noGold&&pawnOnMine(color);
     return '<div class="res-side">'+(both?'<span class="res-team">'+(color==='w'?'White':'Black')+'</span>':'')
       +line('res-line-gold',RES_GOLD,'Gold',gold,noGold?'':'+'+goldRate(color).toFixed(2),boost)
-      +line('res-line-elixir',RES_ELIXIR,'Elixir',elixirCount(color))+'</div>';
+      +line('res-line-elixir',RES_ELIXIR,'Elixir',elixirCount(color)>=TRAIN_RICH?'\u221E':elixirCount(color))+'</div>';
   }).join('');
   fitResources();
 }

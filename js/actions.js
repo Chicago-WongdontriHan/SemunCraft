@@ -98,10 +98,15 @@ function mergeResultType(a,b){
 
 function executeDrop(from,to,dests){
   if(!dests){render();return;}
-  // the Delay counter stands: this move is written down for later instead of being made now
-  if(orderTurns>0&&isMyTurn()&&!dests.merge.has(to)&&!dests.heal.has(to)&&orderTargets(from).has(to)){
+  // the Delay counter stands — or the piece is a siege tower, which only ever moves a turn ahead:
+  // this move is written down for later instead of being made now
+  // A square with a friend in it can be reserved too: the order is a move for later, not a merge now —
+  // it is the standing Delay counter that says so, and clearing it merges and heals as usual.
+  const siegeRoll=pieces[from]&&pieces[from].type==='siege';
+  // (a siege dropped straight onto an enemy still locks it as a target, as any piece does)
+  if((orderTurns>0||(siegeRoll&&!dests.attack.has(to)))&&isMyTurn()&&orderTargets(from).has(to)){
     if(!canOrder(from)){setStatus('No orders left this turn');render();return;}
-    placeOrder(from,to,orderTurns);
+    placeOrder(from,to,Math.max(1,orderTurns));
     return;
   }
   const p=pieces[from];
@@ -339,7 +344,7 @@ function handleClick(i,additive){
       if(rs<1){setStatus('Not enough Gold for a pawn');kingSelected=false;render();return;}
       if(isTileBlocked(i)){setStatus('Cannot spawn on obstacle');kingSelected=false;render();return;}
       pieces[i]={type:'pawn',color:mc,hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,newborn:true,firstMove:true};
-      spawnHistory.push(whiteTurnCount);
+      spawnLedger().push(whiteTurnCount);
       addLog('Spawned pawn ('+goldText(spawnRemaining())+' Gold left)');spawnFlash(i);SFX.arrive('pawn');kingSelected=false;tutCheckAction('spawn');endTurn();}
     else{kingSelected=false;render();setStatus('Your turn');}
     return;
@@ -533,8 +538,11 @@ function bumpDelay(){
 function orderTargets(i){
   const p=pieces[i];if(!p)return new Set();
   const saved=[];
-  for(let k=0;k<ROWS*COLS;k++){const q=pieces[k];if(q&&q.color!==p.color){saved.push([k,q]);pieces[k]=null;}}
-  const m=getDragDests(i).move;
+  for(let k=0;k<ROWS*COLS;k++){if(k!==i&&pieces[k]){saved.push([k,pieces[k]]);pieces[k]=null;}}
+  // a siege tower has no move of its own: its one square is always ordered, and reached a turn later
+  const m=p.type==='siege'
+    ? new Set(adj8(i).filter(j=>!isTileBlocked(j)))
+    : getDragDests(i).move;
   for(const[k,q]of saved)pieces[k]=q;
   return m;
 }
@@ -638,7 +646,7 @@ function doSpawn(){
   const cands=adj8(ki).filter(i=>!pieces[i]&&!isTileBlocked(i));if(!cands.length){setStatus('No empty squares near king!');return;}
   const best=bKi>=0?cands.reduce((a,b)=>cheb(a,bKi)<cheb(b,bKi)?a:b):cands[0];
   pieces[best]={type:'pawn',color:mc,hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,newborn:true,firstMove:true};
-  spawnHistory.push(whiteTurnCount);
+  spawnLedger().push(whiteTurnCount);
   addLog('Spawned pawn ('+goldText(spawnRemaining())+' Gold left)');spawnFlash(best);SFX.arrive('pawn');tutCheckAction('spawn');endTurn();
 }
 

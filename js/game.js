@@ -192,6 +192,7 @@ function countOrders(own){
   }
 }
 function runOrders(own){
+  const noFire=[];                       // a siege tower that rolled this turn does not fire this turn
   for(let i=0;i<ROWS*COLS;i++){
     const p=pieces[i];
     if(!p||!p.order||(own&&p.color!==own))continue;
@@ -210,14 +211,16 @@ function runOrders(own){
         if(campaignLevel){const cr=checkCampaignWin();if(cr)over=true;}
         else if(t.type==='king'){over=true;}
       }
-    }else if(!t&&d.move.has(to)){
+    }else if(!t&&(d.move.has(to)||(p.type==='siege'&&adj8(i).includes(to)&&!isTileBlocked(to)))){
       delete tgts[i];
       if(p.type==='pawn')p.firstMove=false;
       pieces[to]=p;pieces[i]=null;
+      if(p.type==='siege')noFire.push(to);
       flashSq(to,'order-flash');SFX.move();
       addLog(p.type+' moves to '+sqName(to)+' as ordered');
     }else addLog(p.type+"'s order at "+sqName(to)+' lapses');
   }
+  return noFire;
 }
 
 // a campaign level can be decided by White's own turn — the objective met, or the last enemy gone —
@@ -237,10 +240,11 @@ function endTurn(){
   // takes the same note at the same moment, before the orders go off
   const justMoved=movedThisTurn;
   movedThisTurn=-1;
-  whiteTurnCount++;
+  // one seat, two sides: in the training ground each colour's turns are counted on its own clock
+  if(trainingMode&&turn==='b')blackTurnCount++;else whiteTurnCount++;
   if(pawnOnMine(turn))mineTurns[turn]++;   // the mine pays for the turn it was held (finishTurn in engine.js)
   // the orders due this turn go off now, with the move that was just made, so the two animate together
-  runOrders(turn);
+  const noFire=runOrders(turn)||[];
   if(trainingMode&&over){over=false;addLog('A king has fallen — the training goes on');}
   if(over){orderEndsGame(turn);return;}
   blackHitBy=[]; // reset hit tracker before white auto-attacks populate it
@@ -251,7 +255,7 @@ function endTurn(){
     // PvP: the player who just acted fires their own side's auto-attacks, then passes the turn
     // Training: the same hand-over, with both sides in the same seat
     const mover=turn;
-    const actions=computeActions(mover).filter(a=>a.attacker!==justMoved);
+    const actions=computeActions(mover).filter(a=>a.attacker!==justMoved&&noFire.indexOf(a.attacker)<0);
     const passTurn=()=>{
       thinking=false;
       // the training ground has nothing to win: a king falling is just one more thing to watch
@@ -276,7 +280,7 @@ function endTurn(){
       passTurn();
     }
   }else{
-    const wActions=computeActions('w').filter(a=>a.attacker!==justMoved);
+    const wActions=computeActions('w').filter(a=>a.attacker!==justMoved&&noFire.indexOf(a.attacker)<0);
     const runBlack=()=>{
       tickScans('b');
       thinking=true;syncUI();render();

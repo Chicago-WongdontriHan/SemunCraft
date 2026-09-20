@@ -13,6 +13,7 @@ let trainBrush=null;          // what the next tap puts down: a unit, a tile, or
 let trainColor='w';
 let trainAI={w:false,b:false};// the sides the AI plays; both is a match from your own arrangement
 let trainLevel='easy';        // which AI that is: one of the trained networks, or the built-in bot
+let trainSpeed=1;             // how fast it plays when it has a side: 1, 2, 4 or 8 times
 let trainLift=-1;             // the square the pointer went down on, while it is still down
 let trainLiftXY=null;         // where it went down, so a tap can be told from a drag
 let trainCarry=false;         // the pointer has moved: a piece is being carried, not tapped
@@ -21,7 +22,7 @@ let trainFromPalette=false;   // the gesture started on a palette button, so its
 
 // the AI a side is handed to, and how big a board to lay out
 const TRAIN_LEVELS=[['easy','Easy'],['medium','Med'],['hard','Hard'],['bot','Bot']];
-const TRAIN_SIZES=[7,9,11,13];
+const TRAIN_MIN=3,TRAIN_MAX=12;   // the board's sides, either way: the files run a to l
 
 // the four maps, so the ground can be changed without leaving the sandbox
 const TRAIN_THEMES=[['forest','🌲','Forest'],['jungle','🌴','Jungle'],
@@ -43,7 +44,7 @@ const TRAIN_UNITS=[
 function startTraining(){
   gameMode='training';difficulty='easy';
   trainingMode=true;trainBrush=null;trainColor='w';trainMouse='edit';
-  trainAI={w:false,b:false};trainLift=-1;trainCarry=false;trainLevel='easy';
+  trainAI={w:false,b:false};trainLift=-1;trainCarry=false;trainLevel='easy';trainSpeed=1;
   campaignLevel=null;campaignLevelId=-1;
   COLS=9;ROWS=9;
   document.getElementById('intro').classList.add('hidden');
@@ -85,17 +86,16 @@ function trainingPalette(){
     h+=wide(name,trainLevel===lv,"trainSetLevel('"+lv+"')",
       lv==='bot'?'The built-in AI: no network to fetch':'The '+name+' trained network, the one Single Player plays');
   });
-  h+='</div><div class="tp-grid tp-quad">';
-  TRAIN_SIZES.forEach(n=>{
-    h+=wide(n+'\u00D7'+n,ROWS===n&&COLS===n,'trainSetSize('+n+')','Lay out a fresh '+n+' by '+n+' board with the two kings on it');
-  });
-  h+='</div><div class="tp-grid tp-themes">';
+  h+=wide('Speed '+trainSpeed+'×',trainSpeed>1,'trainCycleSpeed()','How fast a side the AI has is played: 1, 2, 4 or 8 times');
+  h+='</div>'+trainStepper('Rows',ROWS,'trainStepSize(1,')+trainStepper('Cols',COLS,'trainStepSize(0,')
+    +'<div class="tp-grid tp-themes">';
   TRAIN_THEMES.forEach(([t,icon,name])=>{
     h+=btn('<span class="tp-emoji">'+icon+'</span>',name,mapTheme===t,"trainSetTheme('"+t+"')",name+': new ground, and the units stay where they are');
   });
-  h+='</div><div class="tp-grid tp-colors">'
-    +btn(pieceSVG('pawn','w',mapTheme,px,true),'White',trainColor==='w',"trainSetColor('w')",'Place White units')
-    +btn(pieceSVG('pawn','b',mapTheme,px,true),'Black',trainColor==='b',"trainSetColor('b')",'Place Black units')
+  // which side the units come out in — the words themselves, in their own colours
+  h+='</div><div class="tp-grid tp-mode">'
+    +'<button class="tp-wide tp-side-w'+(trainColor==='w'?' tp-on':'')+'" onclick="trainSetColor(\'w\')" title="Place White units">White</button>'
+    +'<button class="tp-wide tp-side-b'+(trainColor==='b'?' tp-on':'')+'" onclick="trainSetColor(\'b\')" title="Place Black units">Black</button>'
     +'</div><div class="tp-grid tp-units">';
   TRAIN_UNITS.forEach((u,k)=>{
     const on=trainBrush&&trainBrush.kind==='unit'&&trainBrush.idx===k;
@@ -114,7 +114,11 @@ function trainingPalette(){
     h+=btn(t.icon+mark,t.name,on,"trainPickTile('"+t.key+"')",t.name+' — '+(t.effect||'')+'. Tap it again on the board to take it away');
   });
   h+=btn('<span class="tp-emoji">✕</span>','Erase',!!(trainBrush&&trainBrush.kind==='erase'),'trainPickErase()','Take the unit off a square, or the tile under it (the right button does this too)');
-  h+='</div><div class="tp-grid tp-tools">'
+  h+='</div>'
+    +trainStepper('Gold',goldText(Math.floor(goldCount(trainColor))),'trainAddGold(')
+    +trainStepper('Elixir',elixirCount(trainColor)>=TRAIN_RICH?'\u221E':elixirCount(trainColor),'trainAddElixir(')
+    +'<div class="tp-grid tp-tools">'
+    +wide('\u221E Purses',goldCount('w')>=TRAIN_RICH,'trainBottomless()','Gold and Elixir without end for both sides, and off again')
     +wide('Clear units',false,'trainClearUnits()','Take every unit off the board')
     +wide('Drop brush',false,'trainPickNone()','Nothing in hand: the board is left alone until you pick something up')
     +'</div>';
@@ -129,30 +133,72 @@ function trainSetMouse(m){
   setStatus(m==='edit'?'Editing the board — clicks place, drag moves a piece, the right button clears'
                       :(turn==='w'?"White's":"Black's")+' turn — clicks play the game');
 }
-function trainSetColor(c){trainColor=c;trainingPalette();}
+function trainSetColor(c){trainColor=c;trainingPalette();render();syncUI();}
+
+// ── the purse ────────────────────────────────────────────────────────────────
+// Gold and Elixir for the side in hand (the White / Black switch says which), and a bottomless purse
+// for both. Gold is what is left of the quota, so giving some means un-spending it.
+function trainAddGold(d){
+  goldSpent[trainColor]-=d;
+  if(goldCount(trainColor)<0)goldSpent[trainColor]+=d;
+  render();syncUI();
+}
+function trainAddElixir(d){
+  elixir[trainColor]=Math.max(0,(elixir[trainColor]||0)+d);
+  render();syncUI();
+}
+function trainBottomless(){
+  const rich=goldCount('w')>=TRAIN_RICH||goldCount('b')>=TRAIN_RICH;
+  ['w','b'].forEach(c=>{
+    goldSpent[c]=rich?0:-TRAIN_RICH-GOLD_START;
+    elixir[c]=rich?0:TRAIN_RICH+99;
+  });
+  trainingPalette();render();syncUI();
+  addLog(rich?'Purses back to normal':'Gold and Elixir without end');
+}
 // which AI takes a side here: one of the trained networks, or the engine's own built-in bot
+function trainCycleSpeed(){
+  trainSpeed=trainSpeed>=8?1:trainSpeed*2;
+  trainingPalette();
+  addLog('AI speed '+trainSpeed+'×');
+}
 function trainSetLevel(lv){
   trainLevel=lv;
   trainingPalette();
   addLog('AI: '+(lv==='bot'?'built-in':lv));
   if(lv!=='bot'&&typeof netAiLoadModel==='function'&&NETAI_LEVELS[lv])netAiLoadModel(NETAI_LEVELS[lv].model).catch(()=>{});
 }
-// a fresh board of another size: the pieces cannot follow it, so it starts with the two kings on it
-function trainSetSize(n){
-  if(n===ROWS&&n===COLS)return;
-  ROWS=n;COLS=n;
-  pieces=new Array(n*n).fill(null);
+// a counter with a minus and a plus, for a side of the board
+function trainStepper(name,val,fn){
+  return '<div class="tp-grid tp-quad tp-step">'
+    +'<span class="tp-step-name">'+name+'</span>'
+    +'<button class="tp-wide" onclick="'+fn+'-1)" title="One fewer">\u2212</button>'
+    +'<span class="tp-step-val">'+val+'</span>'
+    +'<button class="tp-wide" onclick="'+fn+'1)" title="One more">+</button>'
+    +'</div>';
+}
+function trainStepSize(isRows,d){
+  const r=isRows?ROWS+d:ROWS,c=isRows?COLS:COLS+d;
+  trainSetSize(Math.min(TRAIN_MAX,Math.max(TRAIN_MIN,r)),Math.min(TRAIN_MAX,Math.max(TRAIN_MIN,c)));
+}
+// a fresh board of another size: the pieces cannot follow it, so it starts with the two kings on it,
+// as far apart as the board allows
+function trainSetSize(rows,cols){
+  if(rows===ROWS&&cols===COLS)return;
+  ROWS=rows;COLS=cols;
+  pieces=new Array(rows*cols).fill(null);
   whiteTargets={};blackTargets={};selectedPieces=new Set();kingSelected=false;
   scans=[];exploredTiles=new Set();
   generateMap();
-  const wk=idx(n-2,1),bk=idx(1,n-2);
+  const roomy=rows>3&&cols>3;
+  const wk=roomy?idx(rows-2,1):idx(rows-1,0),bk=roomy?idx(1,cols-2):idx(0,cols-1);
   tileData[wk]='';tileData[bk]='';
   pieces[wk]={type:'king',color:'w',hp:STATS.king.hp,maxHp:STATS.king.maxHp};
   pieces[bk]={type:'king',color:'b',hp:STATS.king.hp,maxHp:STATS.king.maxHp};
   if(typeof ANIMALS_ON!=='undefined'&&ANIMALS_ON){startAnimalLoop();setTimeout(()=>renderAnimalOverlay(),50);}
   else{stopAnimalLoop();animals=[];}
   resetView();trainingPalette();resizeBoard();render();syncUI();
-  addLog('Board: '+n+' by '+n);
+  addLog('Board: '+rows+' by '+cols);
 }
 
 // a new map under the same units: the ground is drawn again for that theme (spring and mine with it),
@@ -210,7 +256,7 @@ function trainToggleAI(c){
   addLog((c==='w'?'White':'Black')+' is played by '+(trainAI[c]?'the AI':'you'));
   if(!trainAI[c])return;
   trainEngineReady();                    // the engine is fetched on demand, as the networks are
-  if(turn===c&&!thinking)setTimeout(trainAiTurn,300);
+  if(turn===c&&!thinking)setTimeout(trainAiTurn,300/trainSpeed);
 }
 // js/engine.js is not on the page until something asks for it (netai.js loads it the same way)
 function trainEngineReady(){
@@ -221,7 +267,7 @@ function trainEngineReady(){
 // called by endTurn once the turn has changed hands (js/game.js)
 function trainAfterPass(){
   if(!trainingMode||over)return;
-  if(trainAI[turn])setTimeout(trainAiTurn,450);
+  if(trainAI[turn])setTimeout(trainAiTurn,450/trainSpeed);
 }
 function trainEngineState(side){
   const flip=side==='w';                 // the engine's bot plays Black: White borrows its side
@@ -245,7 +291,7 @@ function trainAiTurn(){
   }
   const side=turn;
   // an action that leaves the turn in hand (an order) would stall the match: look again in a moment
-  setTimeout(()=>{if(trainingMode&&!over&&turn===side&&trainAI[side]&&!thinking)trainAiTurn();},900);
+  setTimeout(()=>{if(trainingMode&&!over&&turn===side&&trainAI[side]&&!thinking)trainAiTurn();},900/trainSpeed);
   // a trained network needs its model on the page; while that arrives the built-in bot stands in
   if(trainLevel!=='bot'&&typeof netAiLoadModel==='function'&&NETAI_LEVELS[trainLevel]
      &&!netAiNets[NETAI_LEVELS[trainLevel].model]){
@@ -283,7 +329,11 @@ function trainAiPlay(a){
     if(a.type==='scry'&&p.type==='bishop'&&(p.mana||0)>=2){castScry(from,a.to);return;}
     if(a.type==='order'&&canOrder(from)&&orderTargets(from).has(a.to)){placeOrder(from,a.to,a.turns||1);return;}
   }
-  if(a&&a.type==='spawn'&&a.to!==undefined&&!pieces[a.to]){kingSelected=true;handleClick(a.to);return;}
+  if(a&&a.type==='spawn'&&a.to!==undefined&&!pieces[a.to]){
+    // a pawn comes out beside its own king and nowhere else, as in any other game
+    const k=pieces.findIndex(q=>q&&q.color===turn&&q.type==='king');
+    if(k>=0&&adj8(k).includes(a.to)&&!isTileBlocked(a.to)){kingSelected=true;handleClick(a.to);return;}
+  }
   doSkip();
 }
 

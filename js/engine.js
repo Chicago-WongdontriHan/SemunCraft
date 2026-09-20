@@ -313,15 +313,20 @@ const DIAG=[[-1,-1],[-1,1],[1,-1],[1,1]];
 const ALL8=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
 
 // cardinal rays that pierce pieces and stop at obstacles (rook: 3, siege tower: 4)
-function lineRange(s,i,dirs,len){
+// a straight run of squares: an obstacle stops it, unless `thru` is set (the siege lobs over them)
+function lineRange(s,i,dirs,len,thru){
   const g=geo(s),r=rowOf(s,i),c=colOf(s,i),res=[];
   for(const[dr,dc]of dirs)for(let k=1;k<=len;k++){
     const nr=r+dr*k,nc=c+dc*k;if(!g.inB(nr,nc))break;
-    const j=nr*s.cols+nc;if(s.blocked[j])break;
+    const j=nr*s.cols+nc;
+    if(s.blocked[j]){if(thru)continue;break;}
     res.push(j);
   }
   return res;
 }
+// the siege tower's five cardinal squares, over obstacles and over anything standing in them
+// (siegeRange in js/constants.js)
+function siegeLine(s,i){return lineRange(s,i,CARD,5,true);}
 // bishop: diagonal up to 2, stopped by obstacles; the first piece is included, then the ray stops
 // the Mage strikes any square within 3, over pieces and obstacles (mageRange in movement.js; same order)
 function mageRange(s,i){
@@ -428,7 +433,8 @@ function getDests(s,i){
     g.adj8[i].forEach(j=>{const t=B[j];if(t&&t.color===p.color&&(t.type==='rook'||(t.type==='bishop'&&s.elixir[p.color]>=MAGE_ELIXIR)))merge.add(j);});
     lineRange(s,i,CARD,3).forEach(j=>{if(B[j]&&B[j].color===ec)attack.add(j);});
   }else if(p.type==='siege'){
-    lineRange(s,i,CARD,4).forEach(j=>{if(B[j]&&B[j].color===ec)attack.add(j);});
+    // it never steps anywhere of its own accord: a move of its own is ordered a turn ahead (legalActions)
+    siegeLine(s,i).forEach(j=>{if(B[j]&&B[j].color===ec)attack.add(j);});
   }else if(p.type==='mage'){
     slide(s,i,DIAG,2,move);
     mageRange(s,i).forEach(j=>{if(B[j]&&B[j].color===ec)attack.add(j);});
@@ -507,13 +513,17 @@ function legalActions(s,opts){
   // enemy holds today: it may be gone by then, and if it is not the move becomes a strike (runOrders).
   // The reach is worked out with the enemy taken off the board, as orderTargets does in js/actions.js.
   if(s.orderLeft[color]>=ORDER_MIN){
-    const off=[];
-    for(let k=0;k<B.length;k++){const q=B[k];if(q&&q.color!==color){off.push([k,q]);B[k]=null;}}
+    const all=[];
+    for(let k=0;k<B.length;k++)if(B[k])all.push([k,B[k]]);
     for(const i of mine){
-      if(s.orderLeft[color]<orderCost(B[i].type))continue;
-      getDests(s,i).move.forEach(j=>{for(let k=1;k<=MAX_DELAY;k++)out.push({type:'order',from:i,to:j,turns:k});});
+      const q=B[i];
+      if(s.orderLeft[color]<orderCost(q.type))continue;
+      for(const[k]of all)if(k!==i)B[k]=null;          // the square is reserved, not fought over
+      // a siege tower moves only this way, one square and a turn later, and cannot fire the turn it moves
+      const dests=q.type==='siege'?g.adj8[i].filter(j=>!s.blocked[j]):[...getDests(s,i).move];
+      for(const[k,p2]of all)B[k]=p2;                  // and everyone goes back where they were
+      dests.forEach(j=>{for(let k=1;k<=MAX_DELAY;k++)out.push({type:'order',from:i,to:j,turns:k});});
     }
-    for(const[k,q]of off)B[k]=q;
   }
   const king=B.findIndex(p=>p&&p.color===color&&p.type==='king');
   if(king>=0&&goldAllowed&&spawnRemaining(s,color)>=1)
@@ -545,7 +555,7 @@ function computeActions(s,color){
         }
       }
     }else{
-      const range=p.type==='queen'?g.qr[i]:p.type==='mage'?mageRange(s,i):p.type==='siege'?lineRange(s,i,CARD,4):p.type==='rook'?lineRange(s,i,CARD,3):p.type==='knight'?g.kj[i]:g.adj8[i];
+      const range=p.type==='queen'?g.qr[i]:p.type==='mage'?mageRange(s,i):p.type==='siege'?siegeLine(s,i):p.type==='rook'?lineRange(s,i,CARD,3):p.type==='knight'?g.kj[i]:g.adj8[i];
       let foes=range.filter(j=>B[j]&&B[j].color===enemy);
       if(fog)foes=foes.filter(j=>visible(s,j,color));
       foes=foes.filter(j=>!concealed(s,j,color));
@@ -717,16 +727,16 @@ function finishTurn(s,color,events){
   s.moved=-1;
   s.turnCount[color]++;
   if(pawnOnMine(s,color))s.mineTurns[color]++;   // the mine pays for the turn it was held
-  runOrders(s,color,events);   // the orders due this turn go off with the move that was just made
+  const noFire=runOrders(s,color,events)||[];   // the orders due this turn go off with the move just made
   if(s.over){}
   else if(s.mode==='pvp'){
     // the side that acted fires, except the piece that moved or healed; then the other side starts
-    applyAttacks(s,computeActions(s,color).filter(a=>a.attacker!==justMoved),color,events);
+    applyAttacks(s,computeActions(s,color).filter(a=>a.attacker!==justMoved&&noFire.indexOf(a.attacker)<0),color,events);
     if(!s.over){s.turn=other(color);upkeep(s,s.turn,events);tickScans(s,s.turn);}
   }else if(color==='w'){
     // White fires (except the mover), then Black fires, then Black acts
     s.hitBy=[];
-    applyAttacks(s,computeActions(s,'w').filter(a=>a.attacker!==justMoved),'w',events);
+    applyAttacks(s,computeActions(s,'w').filter(a=>a.attacker!==justMoved&&noFire.indexOf(a.attacker)<0),'w',events);
     if(!s.over){
       const bActs=computeActions(s,'b');
       s.acted=bActs.map(a=>a.attacker);
@@ -776,7 +786,7 @@ function countOrders(s,own){
   for(let i=0;i<B.length;i++){const p=B[i];if(!p||!p.order||(own&&p.color!==own))continue;if(p.order.turns>0)p.order.turns--;}
 }
 function runOrders(s,own,events){
-  const B=s.board;
+  const B=s.board,noFire=[];
   for(let i=0;i<B.length;i++){
     const p=B[i];
     if(!p||!p.order||(own&&p.color!==own))continue;
@@ -794,13 +804,15 @@ function runOrders(s,own,events){
         if(s.level){const r=campaignResult(s);if(r){s.over=true;s.winner=r==='win'?'w':'b';}}
         else if(t.type==='king'){s.over=true;s.winner=p.color;}
       }
-    }else if(!t&&d.move.has(to)){
+    }else if(!t&&(d.move.has(to)||(p.type==='siege'&&geo(s).adj8[i].includes(to)&&!s.blocked[to]))){
       delete s.targets[p.color][i];
       if(p.type==='pawn')p.firstMove=false;
       B[to]=p;B[i]=null;
+      if(p.type==='siege')noFire.push(to);   // it spent the turn rolling; the guns stay quiet
       if(events)events.push({type:'move',from:i,to,piece:p.type});
     }
   }
+  return noFire;
 }
 
 // step(state, action) applies an action for the side to move, including the end-of-turn
@@ -1051,7 +1063,7 @@ function reactiveAI(s,events){
   for(const{target,attacker}of s.hitBy){
     const victim=B[target],attackerP=B[attacker];
     if(!victim||victim.color!=='b'||!attackerP||attackerP.color!=='w')continue;
-    const vRange=victim.type==='siege'?lineRange(s,target,CARD,4):aiRange(s,target,victim.type);
+    const vRange=victim.type==='siege'?siegeLine(s,target):aiRange(s,target,victim.type);
     if(vRange.includes(attacker))continue;
     const preferAttack=attackerP.hp<=victim.hp||nextRandom(s)<0.4;
     if(preferAttack){

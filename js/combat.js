@@ -85,21 +85,25 @@ function attackAnim(attacker,target,type,cb){
     const sqEl=sqElAt(attacker),onBoard=sqEl&&sqEl.querySelector('.piece-art');
     if(onBoard)onBoard.style.opacity='0';
     const lean=(dx,dy,deg)=>mid+'translate('+dx.toFixed(1)+'px,'+dy.toFixed(1)+'px) rotate('+deg.toFixed(1)+'deg)'+mirror;
-    const dx=(t.x-a.x)*.3,dy=(t.y-a.y)*.3,DUR=460;
+    const fx=t.x-a.x,fy=t.y-a.y,DUR=500;
     const done=()=>{box.remove();if(onBoard)onBoard.style.opacity='';cb();};
+    // the pawn goes with its sword: it steps back as the blade lifts, drives forward through the blow,
+    // holds there a moment, then comes back to its square — the same keyframes as the blade below
     box.animate([
+      {transform:lean(0,0,0),easing:'ease-out'},
+      {transform:lean(-fx*.24,-fy*.24,-11),offset:.3,easing:'ease-in'},
+      {transform:lean(fx*.44,fy*.44,13),offset:.6},
+      {transform:lean(fx*.4,fy*.4,11),offset:.74,easing:'ease-out'},
       {transform:lean(0,0,0)},
-      {transform:lean(-dx*.3,-dy*.3,-6),offset:.3},         // rock back with the wind-up
-      {transform:lean(dx,dy,9),offset:.6},                  // lean into the blow
-      {transform:lean(0,0,0)},
-    ],{duration:DUR,easing:'ease-out'});
+    ],{duration:DUR});
     // the blade: 30° back over the shoulder, then 90° forward — 120° of swing
     const anim=sword.animate([
-      {transform:'rotate(0deg)'},
-      {transform:'rotate(-30deg)',offset:.3},
+      {transform:'rotate(0deg)',easing:'ease-out'},
+      {transform:'rotate(-30deg)',offset:.3,easing:'ease-in'},
       {transform:'rotate(90deg)',offset:.6},
+      {transform:'rotate(86deg)',offset:.74,easing:'ease-out'},
       {transform:'rotate(0deg)'},
-    ],{duration:DUR,easing:'ease-out'});
+    ],{duration:DUR});
     if(anim&&anim.finished)anim.finished.then(done,done);else setTimeout(done,DUR);
   }else if(type==='knight'){
     const angle=Math.atan2(t.y-a.y,t.x-a.x)*(180/Math.PI);

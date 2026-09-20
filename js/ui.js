@@ -17,6 +17,7 @@ const UI_ICONS={
     +'<path d="M5.4 4.4a9.4 9.4 0 0 0 0 13.2M18.6 4.4a9.4 9.4 0 0 1 0 13.2"/><path d="M12 13v7"/>',
   refresh:'<path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v4h-4"/>',
   scry:'<path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/>',
+  delay:'<circle cx="12" cy="13" r="7.4"/><path d="M12 9.2v4l2.7 1.7"/><path d="M9.4 2.8h5.2"/>',
   heal:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
   fortify:'<path d="M4.5 15 C4.5 8.6 7.8 4.8 12 4.8 C16.2 4.8 19.5 8.6 19.5 15 Z"/><path d="M2.8 15 H21.2"/><path d="M12 15 V19.5"/>',
   extract:'<path d="M12 3.5 C15.6 8 18 11 18 14.2 A6 6 0 0 1 6 14.2 C6 11 8.4 8 12 3.5 Z"/><path d="M9.5 14 C9.5 12.4 10.3 11.2 11.3 10.3"/>',
@@ -40,57 +41,80 @@ function addLog(msg){logLines.push(msg);if(logLines.length>4)logLines.shift();do
 // the buttons that depend on the selected piece. render() calls this as well, so they change the moment
 // a piece is tapped — before, they only caught up at the next turn, and a pawn tapped again on the
 // spring showed no Extract button at all.
+function orderCostText(type){return orderCost(type)===.5?'\u00BD':String(orderCost(type));}
+// is there any pair of mine ready to merge? (the Merge button only shows when there is)
+function anyMergeReady(){
+  const mc=myColor();
+  for(let i=0;i<ROWS*COLS;i++){const p=pieces[i];if(p&&p.color===mc&&getDragDests(i).merge.size)return true;}
+  return false;
+}
+
+// The action panel holds only what the piece in hand can do: the King's Spawn, a pawn's Fortify, the
+// spring's Extract or a bishop's Scry, an order for anything that can move, and Merge when a pair is
+// ready. Everything else is put away rather than shown greyed out. render() calls this as well, so the
+// panel follows every tap.
+const PIECE_BTNS=['btn-spawn','btn-fortify','btn-merge','btn-special','btn-delay','btn-delay-turns','btn-skip'];
 function syncPieceButtons(){
   const locked=over||thinking||!isMyTurn();
-  const selIdx=selectedPieces.size===1?[...selectedPieces][0]:-1;
+  let selIdx=selectedPieces.size===1?[...selectedPieces][0]:-1;
+  // the King in spawn mode holds no selection of its own, but it is still the piece in hand
+  if(selIdx<0&&kingSelected)selIdx=pieces.findIndex(q=>q&&q.color===myColor()&&q.type==='king');
   const sel=selIdx>=0&&pieces[selIdx]&&pieces[selIdx].color===myColor()?pieces[selIdx]:null;
-  // fortifying: one plain pawn of yours selected, and a whole Gold in hand
-  const fortBtn=document.getElementById('btn-fortify');
-  if(fortBtn){
-    fortBtn.disabled=locked||!sel||!canFortify(selIdx);
-    fortBtn.innerHTML=uiLabel('fortify',goldAllowed()?'Fortify':'Fortify (N/A)');
+  const show=(id,on)=>{const b=document.getElementById(id);if(b)b.style.display=on?'':'none';return on?b:null;};  // a hidden button is handed back as null: there is nothing left to set on it
+  // in an AI vs AI match the panel belongs to the match controls
+  if(gameMode==='aivsai'){PIECE_BTNS.forEach(id=>show(id,false));return;}
+  // Spawn is the King's, and comes out only while the King is the piece in hand. Playing on after the
+  // King has fallen there is nobody left to mint a pawn, and some campaign levels give you no pawns at all.
+  const hasKing=pieces.some(q=>q&&q.color===myColor()&&q.type==='king');
+  const canSpawn=goldAllowed()&&hasKing&&!(campaignLevel&&!campaignLevel.allowSpawn);
+  const kingUp=kingSelected||(!!sel&&sel.type==='king');
+  const spawnBtn=show('btn-spawn',kingUp&&canSpawn);
+  if(spawnBtn){
+    spawnBtn.disabled=locked||spawnRemaining()<1;
+    spawnBtn.innerHTML=uiLabel('spawn','Spawn');
   }
-  // one button for the selected piece's own action: a pawn on the spring extracts, a bishop scries
-  const spBtn=document.getElementById('btn-special');
+  // Fortify is a plain pawn's
+  const fortBtn=show('btn-fortify',!!sel&&sel.type==='pawn'&&!sel.fortified&&goldAllowed());
+  if(fortBtn){
+    fortBtn.disabled=locked||!canFortify(selIdx);
+    fortBtn.innerHTML=uiLabel('fortify','Fortify');
+  }
+  // the piece's own action: a pawn on the spring extracts, a bishop scries
+  const extract=!!sel&&canExtract(selIdx),scry=!!sel&&sel.type==='bishop';
+  const spBtn=show('btn-special',extract||scry);
   if(spBtn){
-    const extract=!!sel&&canExtract(selIdx);
-    const scry=!!sel&&sel.type==='bishop'&&(sel.mana||0)>=2;
-    spBtn.disabled=locked||!(extract||scry);
+    spBtn.disabled=locked||!(extract||(scry&&(sel.mana||0)>=2));
     spBtn.classList.toggle('active-mode',!!scryMode);
     spBtn.innerHTML=uiLabel(extract?'extract':'scry',scryMode?'Pick a square':extract?'Extract Elixir':'Scry (2)');
   }
+  // an order for the piece in hand, and how far ahead the next one is set
+  const delayBtn=show('btn-delay',!!sel);
+  if(delayBtn){
+    delayBtn.disabled=locked||!canOrder(selIdx);
+    delayBtn.classList.toggle('active-mode',!!orderMode);
+    delayBtn.innerHTML=uiLabel('delay',orderMode?'Pick a square':'Delay ('+orderCostText(sel.type)+')');
+    delayBtn.title='Orders left this turn: '+orderCostText2(orderLeft[myColor()]);
+  }
+  const turnsBtn=show('btn-delay-turns',!!sel);
+  if(turnsBtn){
+    turnsBtn.disabled=locked;
+    turnsBtn.innerHTML=uiLabel('refresh',orderTurns+' turn'+(orderTurns>1?'s':''));
+    turnsBtn.title='How many turns from now the order happens';
+  }
+  // Merge, when a pair is ready
+  const mergeBtn=show('btn-merge',!(campaignLevel&&campaignLevel.noMerge)&&(sel?getDragDests(selIdx).merge.size>0:anyMergeReady()));
+  if(mergeBtn){mergeBtn.disabled=locked;mergeBtn.innerHTML=uiLabel('merge','Merge');}
+  const skipBtn=show('btn-skip',true);
+  if(skipBtn)skipBtn.disabled=locked;
 }
-
+function orderCostText2(v){return v===.5?'\u00BD':String(v);}
 function syncUI(){
   const locked=over||thinking||!isMyTurn();
-  ['spawn','merge','target','skip'].forEach(id=>{const b=document.getElementById('btn-'+id);if(b)b.disabled=locked;});
+  const tb0=document.getElementById('btn-target');if(tb0)tb0.disabled=locked;   // the rest belong to syncPieceButtons
   document.getElementById('btn-new').disabled=false;
   const tb=document.getElementById('btn-target');
   if(tb){tb.classList.toggle('active-mode',targetMode);}
-  const spawnBtn=document.getElementById('btn-spawn');
-  if(spawnBtn){
-    if(campaignLevel&&!campaignLevel.allowSpawn){
-      spawnBtn.disabled=true;
-      spawnBtn.innerHTML=uiLabel('spawn','Spawn (N/A)');
-    }else{
-      // how many are left is on the Gold counter in the resources panel
-      const rem=spawnRemaining();
-      // playing on after the King fell: there is nobody left to mint a pawn
-      const hasKing=pieces.some(q=>q&&q.color===myColor()&&q.type==='king');
-      spawnBtn.innerHTML=uiLabel('spawn','Spawn');
-      if(!locked&&(rem<1||!hasKing))spawnBtn.disabled=true;
-    }
-  }
-  syncPieceButtons();
-  const mergeBtn=document.getElementById('btn-merge');
-  if(mergeBtn){
-    if(campaignLevel&&campaignLevel.noMerge){
-      mergeBtn.disabled=true;
-      mergeBtn.innerHTML=uiLabel('merge','Merge (N/A)');
-    }else{
-      mergeBtn.innerHTML=uiLabel('merge','Merge');
-    }
-  }
+  syncPieceButtons();                      // the whole piece panel, Spawn and Merge included
   renderResources();
   updateViewportControls();
 }

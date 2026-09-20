@@ -322,7 +322,7 @@ function startCampaignLevel(levelIdx){
   // init game state
   gameMode='campaign';
   difficulty='campaign';
-  campaignLost=0;campaignKingHit=false;campaignDefeat='';scans=[];elixir={w:0,b:0};mineTurns={w:0,b:0};goldSpent={w:0,b:0};
+  campaignLost=0;campaignKingHit=false;campaignDefeat='';scans=[];elixir={w:0,b:0};mineTurns={w:0,b:0};goldSpent={w:0,b:0};orderLeft={w:ORDER_BUDGET,b:ORDER_BUDGET};
   pieces=new Array(ROWS*COLS).fill(null);
   tileData=new Array(ROWS*COLS).fill('');
   // place obstacles

@@ -90,6 +90,7 @@ function newGame(o){
     board:null,tiles:null,blocked:null,
     turn:'w',over:false,winner:null,
     turnCount:{w:0,b:0},spawns:{w:0,b:0},targets:{w:{},b:{}},
+    orderLeft:{w:ORDER_BUDGET,b:ORDER_BUDGET},   // how much of this turn's orders is left ('order')
     elixir:{w:0,b:0},       // extracted at the spring ('extract')
     mineTurns:{w:0,b:0},    // turns ended with a pawn on the gold mine: a sixth of Gold each
     goldSpent:{w:0,b:0},    // Gold spent on anything but spawning ('fortify')
@@ -143,6 +144,7 @@ function clone(s){
   c.blocked=s.blocked.slice();
   c.turnCount={w:s.turnCount.w,b:s.turnCount.b};
   c.spawns={w:s.spawns.w,b:s.spawns.b};
+  c.orderLeft={w:s.orderLeft.w,b:s.orderLeft.b};
   c.elixir={w:s.elixir.w,b:s.elixir.b};
   c.mineTurns={w:s.mineTurns.w,b:s.mineTurns.b};
   c.goldSpent={w:s.goldSpent.w,b:s.goldSpent.b};
@@ -449,6 +451,10 @@ const MERGES={'pawn+pawn':'knight','pawn+knight':'bishop','knight+pawn':'bishop'
   'bishop+rook':'mage','rook+bishop':'mage'};   // the Mage costs its side MAGE_ELIXIR
 const MAGE_ELIXIR=2;
 const FORTIFIED_MEND=5;   // a fortified pawn mends 1 HP five turns after its last hit (state.js)
+// delayed orders (MAX_DELAY, ORDER_COST in js/state.js): giving one spends part of the turn's order
+// budget instead of the turn itself, and a pawn's takes half of it
+const MAX_DELAY=3, ORDER_BUDGET=1, ORDER_COST={pawn:.5};
+function orderCost(type){return ORDER_COST[type]||1;}
 
 // ── RULES: LEGAL ACTIONS ─────────────────────────────────────────────────────
 // Actions ({type, from, to}) mirror what the player can do by drag, tap or click:
@@ -483,6 +489,9 @@ function legalActions(s,opts){
       if(p.type==='bishop'&&(p.mana||0)>0&&B[j].hp<B[j].maxHp)out.push({type:'healLock',from:i,to:j});
     });
     d.heal.forEach(j=>{if(!d.merge.has(j))out.push({type:'heal',from:i,to:j});});
+    // an order sends the piece to a square a few turns from now and leaves the turn to be used
+    if(s.orderLeft[color]>=orderCost(p.type))
+      d.move.forEach(j=>{for(let k=1;k<=MAX_DELAY;k++)out.push({type:'order',from:i,to:j,turns:k});});
     // a pawn on the Elixir spring can spend its turn extracting; any plain pawn can be fortified for 1 Gold
     if(p.type==='pawn'&&!p.fortified&&s.tiles[i]==='spring')out.push({type:'extract',from:i,to:i});
     if(p.type==='pawn'&&!p.fortified&&goldAllowed&&spawnRemaining(s,color)>=1)out.push({type:'fortify',from:i,to:i});
@@ -641,6 +650,11 @@ function applyAction(s,a,events){
       events.push({type:'heal',from:a.from,to:a.to,hp:t.hp});
       return false;
     }
+    case'order':
+      p.order={to:a.to,turns:a.turns};
+      s.orderLeft[color]-=orderCost(p.type);
+      events.push({type:'order',from:a.from,to:a.to,turns:a.turns});
+      return true;                          // the turn goes on: that is what ordering ahead is for
     case'extract':
       s.elixir[color]++;
       s.moved=a.from;                       // the pawn worked instead of shooting
@@ -692,7 +706,7 @@ function finishTurn(s,color,events){
   if(s.mode==='pvp'){
     // the side that acted fires, except the piece that moved or healed; then the other side starts
     applyAttacks(s,computeActions(s,color).filter(a=>a.attacker!==justMoved),color,events);
-    if(!s.over){s.turn=other(color);upkeep(s,s.turn);tickScans(s,s.turn);}
+    if(!s.over){s.turn=other(color);upkeep(s,s.turn,events);tickScans(s,s.turn);}
   }else if(color==='w'){
     // White fires (except the mover), then Black fires, then Black acts
     s.hitBy=[];
@@ -704,7 +718,7 @@ function finishTurn(s,color,events){
     }
     if(!s.over){s.turn='b';tickScans(s,'b');}
   }else if(!s.over){
-    upkeep(s,null);
+    upkeep(s,null,events);
     s.turn='w';tickScans(s,'w');
   }
   if(!s.over&&s.level){const r=campaignResult(s);if(r){s.over=true;s.winner=r==='win'?'w':'b';}}
@@ -712,7 +726,7 @@ function finishTurn(s,color,events){
 }
 
 // start-of-turn upkeep (turnUpkeep): newborn marks clear, bishops regain mana every 3 turns
-function upkeep(s,own){
+function upkeep(s,own,events){
   const B=s.board;
   for(let i=0;i<B.length;i++){const p=B[i];if(p&&p.newborn&&(!own||p.color===own))p.newborn=false;}
   for(let i=0;i<B.length;i++){
@@ -728,6 +742,42 @@ function upkeep(s,own){
     if(p&&p.fortified&&(!own||p.color===own)&&p.hp<p.maxHp){
       const t=clock(s,own||'w'),last=p.lastHitTurn||0;
       if(t-last>=FORTIFIED_MEND&&t>0){p.hp++;p.lastHitTurn=t;}
+    }
+  }
+  // the orders that come due land now, and the side starting its turn gets its order budget back
+  runOrders(s,own,events);
+  if(!own||own==='w')s.orderLeft.w=ORDER_BUDGET;
+  if(!own||own==='b')s.orderLeft.b=ORDER_BUDGET;
+}
+
+// Delayed orders coming due (runOrders in js/game.js, which this mirrors): each counts down at the
+// start of its side's turn and, at nought, the piece moves to the square it reserved, strikes an enemy
+// standing there instead, or the order lapses — a piece of its own on the square, or a square that has
+// gone out of reach, simply cancels it.
+function runOrders(s,own,events){
+  const B=s.board;
+  for(let i=0;i<B.length;i++){
+    const p=B[i];
+    if(!p||!p.order||(own&&p.color!==own))continue;
+    if(--p.order.turns>0)continue;
+    const to=p.order.to;delete p.order;
+    const t=B[to],d=getDests(s,i);
+    if(t&&t.color!==p.color&&d.attack.has(to)){
+      const dmg=p.type==='siege'?2:1;
+      t.hp-=dmg;
+      if(t.fortified)t.lastHitTurn=clock(s,p.color);
+      const killed=t.hp<=0;
+      if(events)events.push({type:'attack',from:i,to,damage:dmg,hp:t.hp,killed});
+      if(killed){
+        B[to]=null;
+        if(s.level){const r=campaignResult(s);if(r){s.over=true;s.winner=r==='win'?'w':'b';}}
+        else if(t.type==='king'){s.over=true;s.winner=p.color;}
+      }
+    }else if(!t&&d.move.has(to)){
+      delete s.targets[p.color][i];
+      if(p.type==='pawn')p.firstMove=false;
+      B[to]=p;B[i]=null;
+      if(events)events.push({type:'move',from:i,to,piece:p.type});
     }
   }
 }
@@ -1161,6 +1211,7 @@ function fromSnapshot(o){
   const s={cols:o.cols,rows:o.rows,theme:o.theme||'forest',mode:o.mode==='pvp'?'pvp':'classic',difficulty:o.difficulty||'hard',
     board:o.board.map(p=>p&&Object.assign({},p)),tiles:null,blocked:null,turn:o.turn||'w',over:false,winner:null,
     turnCount:{w:o.turnCount.w,b:o.turnCount.b},spawns:{w:o.spawns.w,b:o.spawns.b},
+    orderLeft:{w:o.orderLeft?o.orderLeft.w:ORDER_BUDGET,b:o.orderLeft?o.orderLeft.b:ORDER_BUDGET},
     elixir:{w:(o.elixir&&o.elixir.w)||0,b:(o.elixir&&o.elixir.b)||0},
     mineTurns:{w:(o.mineTurns&&o.mineTurns.w)||0,b:(o.mineTurns&&o.mineTurns.b)||0},
     goldSpent:{w:(o.goldSpent&&o.goldSpent.w)||0,b:(o.goldSpent&&o.goldSpent.b)||0},

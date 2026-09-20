@@ -101,12 +101,13 @@ section('fromSnapshot rebuilds a state, and act() applies just the action',()=>{
       for(const k of ['board','tiles','blocked','turn','turnCount','spawns','targets','mode','fog'])
         if(JSON.stringify(r[k])!==JSON.stringify(s[k])){fail('fromSnapshot differs in '+k);return;}
       const acts=E.legalActions(s),a=acts[Math.floor(pick()*acts.length)];
-      const lJump=a.type==='merge'&&s.board[a.from].type==='knight'&&E.geo(s).kj[a.from].includes(a.to);
+      // a knight's L-jump merge and a delayed order both leave the turn to be used
+      const keeps=a.type==='order'||(a.type==='merge'&&s.board[a.from].type==='knight'&&E.geo(s).kj[a.from].includes(a.to));
       const res=E.act(r,a),events=E.step(s,a);
-      if(res.continues!==lJump)fail('continues should be '+lJump+' after '+JSON.stringify(a));
+      if(res.continues!==keeps)fail('continues should be '+keeps+' after '+JSON.stringify(a));
       if(JSON.stringify(res.events[0])!==JSON.stringify(events[0]))fail('act and step describe '+JSON.stringify(a)+' differently');
       // a merge that keeps the turn has no end-of-turn work, so both must leave the same board
-      if(lJump){kept++;if(JSON.stringify(r.board)!==JSON.stringify(s.board))fail('boards differ after an L-jump merge');}
+      if(keeps){kept++;if(JSON.stringify(r.board)!==JSON.stringify(s.board))fail('boards differ after an action that kept the turn');}
       checked++;
     }
   }

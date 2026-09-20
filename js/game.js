@@ -30,6 +30,7 @@ function initGame(){
   whiteTargets={}; blackTargets={};
   spawnHistory=[]; blackSpawnHistory=[]; whiteTurnCount=0; blackTurnCount=0; movedThisTurn=-1;
   scans=[];elixir={w:0,b:0};mineTurns={w:0,b:0};goldSpent={w:0,b:0};
+  orderLeft={w:ORDER_BUDGET,b:ORDER_BUDGET};orderMode=false;orderSrc=-1;
   exploredTiles=new Set();
   // regular games start fogged (the tutorial and campaign set their own default)
   mapCheat=false;
@@ -130,6 +131,14 @@ function startWhiteTurn(){
   }
   tickScans('w');
   turnUpkeep();
+  if(over){   // an order that came due ended it
+    const mine=pieces.some(q=>q&&q.color===myColor()&&q.type==='king');
+    syncUI();render();
+    if(campaignLevel){const cr=checkCampaignWin();setTimeout(()=>handleCampaignEnd(cr||'lose'),600);}
+    else{setStatus(mine?'White wins! \u2654':'Black wins! \u265A');mine?SFX.win():SFX.lose();
+      setTimeout(()=>showGameOver(mine?'win':'lose'),600);}
+    return;
+  }
   syncUI(); render();
   setStatus("White's turn");
 }
@@ -158,6 +167,44 @@ function turnUpkeep(){
       const last=p.lastHitTurn||0;
       if(whiteTurnCount-last>=FORTIFIED_MEND&&whiteTurnCount>0){p.hp++;p.lastHitTurn=whiteTurnCount;flashSq(i,'heal-flash');}
     }
+  }
+  // the orders that come due land now, and the side starting its turn gets its order budget back
+  runOrders(own);
+  if(!own||own==='w')orderLeft.w=ORDER_BUDGET;
+  if(!own||own==='b')orderLeft.b=ORDER_BUDGET;
+}
+
+// ── DELAYED ORDERS ───────────────────────────────────────────────────────────
+// An order counts down at the start of its side's turn, and the ones that come due all happen at once:
+// the piece moves to the square it reserved, or strikes an enemy standing there instead, or the order
+// simply lapses — when a piece of its own is on the square, or the square has gone out of its reach.
+// Mirrored by runOrders in js/engine.js, which the parity tests hold to this one.
+function runOrders(own){
+  for(let i=0;i<ROWS*COLS;i++){
+    const p=pieces[i];
+    if(!p||!p.order||(own&&p.color!==own))continue;
+    if(--p.order.turns>0)continue;
+    const to=p.order.to;delete p.order;
+    const t=pieces[to],d=getDragDests(i),tgts=p.color==='w'?whiteTargets:blackTargets;
+    if(t&&t.color!==p.color&&d.attack.has(to)){
+      const dmg=p.type==='siege'?2:1;
+      t.hp-=dmg;
+      if(t.fortified)t.lastHitTurn=whiteTurnCount;
+      flashSq(to,'hit-flash');SFX.attack();
+      addLog(p.type+' strikes '+t.type+'@'+sqName(to)+' as ordered');
+      if(t.hp<=0){
+        showDeath(to,t.color,t.type);SFX.fall(t.type);
+        pieces[to]=null;
+        if(campaignLevel){const cr=checkCampaignWin();if(cr)over=true;}
+        else if(t.type==='king'){over=true;}
+      }
+    }else if(!t&&d.move.has(to)){
+      delete tgts[i];
+      if(p.type==='pawn')p.firstMove=false;
+      pieces[to]=p;pieces[i]=null;
+      flashSq(to,'order-flash');SFX.move();
+      addLog(p.type+' moves to '+sqName(to)+' as ordered');
+    }else addLog(p.type+"'s order at "+sqName(to)+' lapses');
   }
 }
 

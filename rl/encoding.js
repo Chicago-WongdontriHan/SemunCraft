@@ -111,7 +111,7 @@ function createEncoder(opts){
     for(const a of E.legalActions(s)){
       // scrying came after these networks were trained: it shares squares with their moves, so it
       // stays out of the map until they are trained again with a slot of its own
-      if(a.type==='scry'||a.type==='extract'||a.type==='fortify')continue;
+      if(a.type==='scry'||a.type==='extract'||a.type==='fortify'||a.type==='order')continue;
       const k=actionIndex(s,a);
       if(k<0)continue;
       const prev=map.get(k);

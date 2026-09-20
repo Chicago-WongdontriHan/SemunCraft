@@ -19,6 +19,12 @@ function render(){
     const selP=pieces[selIdx];
     if(selP&&selP.color===mc)selDests=getDragDests(selIdx);
   }
+  // delayed orders: the squares an order can reserve, and where the orders already out are going
+  const orderZone=typeof orderMode!=='undefined'&&orderMode&&orderSrc>=0?orderTargets(orderSrc):null;
+  const orderMarks=new Map();
+  for(let k=0;k<ROWS*COLS;k++){const q=pieces[k];if(!q||q.color!==mc||!q.order)continue;
+    const was=orderMarks.get(q.order.to);      // two orders on one square: the one arriving first is the one drawn
+    if(!was||q.order.turns<was.turns)orderMarks.set(q.order.to,{piece:q,turns:q.order.turns,from:k});}
   // scrying: every square out of sight the bishop can light, drawn over the fog (scryArea in actions.js)
   const scryZone=typeof scryMode!=='undefined'&&scryMode&&scrySrc>=0?scryArea(scrySrc):null;
   const scryMark=(sq,i)=>{if(scryZone&&scryZone.has(i)){sq.classList.add('scry-zone');const m=document.createElement('span');m.className='scry-mark';sq.appendChild(m);}};
@@ -94,6 +100,19 @@ function render(){
       if(RESOURCE_TILES[ttype]){
         sq.title=RESOURCE_TIPS[ttype];
         if(!(pieces[i]&&pieces[i].type==='pawn'&&!pieces[i].fortified))sq.appendChild(pawnNeededBadge(ttype,false));
+      }
+      // an order's reserved square, and the piece that has one out
+      if(orderZone&&orderZone.has(i))sq.classList.add('order-target');
+      if(pieces[i]&&pieces[i].color===mc&&pieces[i].order)sq.classList.add('order-from');
+      const mark=orderMarks.get(i);
+      if(mark){
+        sq.classList.add('order-dest');
+        const g=document.createElement('span');g.className='order-mark';
+        g.innerHTML=pieceSVG(pieceArt(mark.piece),mark.piece.color,mapTheme,Math.floor(sqPx*.82));
+        sq.appendChild(g);
+        const n=document.createElement('span');n.className='order-count';n.textContent=mark.turns;
+        n.style.fontSize=Math.max(9,Math.round(sqPx*.24))+'px';
+        sq.appendChild(n);
       }
       // scrying: the squares this bishop may light, and the ones already burning
       scryMark(sq,i);

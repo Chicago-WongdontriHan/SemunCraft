@@ -33,7 +33,7 @@ function newPeerWithTurn(id){
 
 function myColor(){ if(!pvpActive)return 'w'; return pvpRole==='host'?'w':'b'; }
 function isMyTurn(){ return turn===myColor(); }
-function broadcastState(winner){ if(!pvpActive||!conn||!conn.open)return; conn.send(JSON.stringify({type:'state',pieces,turn,over,winner:winner||null,wt:whiteTargets,bt:blackTargets,blf:blackLastFrom,blt:blackLastTo,tiles:tileData,theme:mapTheme,log:logLines,el:elixir,mt:mineTurns,gs:goldSpent})); }
+function broadcastState(winner){ if(!pvpActive||!conn||!conn.open)return; conn.send(JSON.stringify({type:'state',pieces,turn,over,winner:winner||null,wt:whiteTargets,bt:blackTargets,blf:blackLastFrom,blt:blackLastTo,tiles:tileData,theme:mapTheme,log:logLines,el:elixir,mt:mineTurns,gs:goldSpent,ol:orderLeft})); }
 
 function initBC(){ try{bc=new BroadcastChannel('kingdom-pvp-lobby');}catch(e){bc=null;return;} bc.onmessage=e=>{ const msg=e.data; if(msg.type==='list?'&&myPeerId&&!pvpActive) bc.postMessage({type:'room',id:myPeerId,name:bcRoomName||'Room '+myPeerId.slice(0,6)}); if(msg.type==='room'&&collectingRooms&&!document.querySelector('.room-entry[data-id="'+msg.id+'"]')) addRoomEntry(msg.id,msg.name);
       if(msg.type==='room'&&collectingRooms) addPvpLobbyRoom(msg.id,msg.name); }; }
@@ -50,7 +50,7 @@ function onPeerData(raw){
   const wasOver=over;
   pieces=msg.pieces.map(p=>p?{...p}:null); turn=msg.turn; over=msg.over; whiteTargets=msg.wt||{}; blackTargets=msg.bt||{}; blackLastFrom=msg.blf||-1; blackLastTo=msg.blt||-1;
   // the host owns the map: adopt its terrain and theme
-  if(msg.el)elixir=msg.el; if(msg.mt)mineTurns=msg.mt; if(msg.gs)goldSpent=msg.gs;
+  if(msg.el)elixir=msg.el; if(msg.mt)mineTurns=msg.mt; if(msg.gs)goldSpent=msg.gs; if(msg.ol)orderLeft=msg.ol;
   if(msg.tiles)tileData=msg.tiles.slice();
   if(msg.theme&&msg.theme!==mapTheme){mapTheme=msg.theme;document.body.className='theme-'+mapTheme;resizeBoard();}
   if(msg.log){logLines=msg.log.slice(-4);document.getElementById('log').textContent=logLines.join(' · ');}

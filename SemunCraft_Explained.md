@@ -99,6 +99,36 @@ Two tiles on the board are worth holding (`RESOURCE_TILES` in `js/state.js`), an
 
 ---
 
+## Delayed Orders
+
+An order is a move written down for later. Give one and **the turn is still yours**: the piece keeps its
+normal action and its auto-attack this turn, and the move happens a few turns from now. Several orders
+can therefore be stacked so they land together (`MAX_DELAY`, `ORDER_BUDGET`, `orderCost` in `js/state.js`
+and `js/engine.js`).
+
+- **What it costs**: not the turn, but an **order budget** of one per turn. A pawn's order costs **half**,
+  so two pawns can be ordered in the same turn; every other piece costs the whole budget. The budget comes
+  back at the start of your turn (`orderLeft`, reset in `turnUpkeep` / `upkeep`).
+- **How far ahead**: **1 to 3 turns**, set on the **turns** button next to Delay, which cycles 1 → 2 → 3
+  (`orderTurns`, `cycleOrderTurns`). Two turns to start.
+- **Where**: any square the piece could move to **right now** — the order reserves the square, not a path.
+- **When it comes due** (`runOrders` in `js/game.js`, the same in `js/engine.js`), at the start of the
+  owner's turn, before anything else:
+  - the square is **empty and still reachable** → the piece moves there (and the square flashes amber);
+  - an **enemy** stands there and it is in reach → the move becomes an **attack** (2 damage from a siege
+    tower, 1 from anything else — it can finish a game);
+  - a **friend** stands there, or the piece can no longer reach it → the order simply **lapses**, and the
+    log says so.
+- **On the board**: your piece with an order out keeps an amber ring, and the square it is going to shows a
+  **ghost of that piece with a countdown** on it (`orderMarks` in `js/render.js`). Only your own orders are
+  drawn — an enemy's are as hidden as the rest of its plans. Two orders on one square draw the one that
+  arrives first.
+- **Black orders too**: `order` is a normal action in the engine, so the built-in AI and the trained
+  networks use it (the networks reach it through `legalActions`; `order` is left out of their action map in
+  `rl/encoding.js` until they are trained with it).
+
+---
+
 ## Fog of War
 
 - You only see tiles within 2 squares of your own pieces.
@@ -121,7 +151,8 @@ Two tiles on the board are worth holding (`RESOURCE_TILES` in `js/state.js`), an
 
 ## Turn Flow (Single-Player)
 
-1. **White's turn**: Player moves/merges/spawns/heals/sets a target.
+1. **Orders come due**: any of White's delayed orders that have counted down move or strike now, and White's order budget comes back.
+1. **White's turn**: Player moves/merges/spawns/heals/sets a target — and may write down a delayed order without using the turn.
 2. **White auto-attacks** fire (excluding the piece that moved or healed).
 3. **Black auto-attacks** fire.
 4. **Black AI** takes its action (spawn, merge, or move).
@@ -261,7 +292,7 @@ An interactive 7-step tutorial:
 - **Left panel**: The Gold and Elixir counters and paginated unit reference cards (the fortified pawn has a card of its own). The counters are measured after every render (`fitResources` in `js/ui.js`): the panel first takes any width the board isn't using, then the line shrinks a step at a time, and the names go before a number could ever be cut.
 - **Resources** (`renderResources` in `js/ui.js`): **Gold** is what the King spends to spawn pawns and what fortifying costs (8 to start, a sixth a turn, a sixth more while a pawn holds the mine, 1 each, so the count is often a fraction), and **Elixir** is what a pawn extracts at the spring — a bishop’s mana is its own heal charge, not this. On desktop each resource has **a line of its own** — icon, name, count, and for Gold this turn’s income (+0.17, or +0.33 lit gold while the mine is held) — and AI vs AI shows White and Black in two columns. On a phone the two sit side by side in the strip above the board, which stays one line.
 - **Center**: The game board with HP pips, bishop mana pips, coordinate labels, and pan arrows when zoomed in (the board can also be dragged to slide it).
-- **Right panel**: **Menu | Settings** at the top (where the move hint used to be — Settings opens the audio card, so a game needs no ⚙ button of its own; the fixed one stays on the title screen), then the action buttons in pairs — Spawn | Fortify, Merge | the selected piece’s own action — with Skip across the bottom, and Map View (minimap, zoom, Map Cheat). The piece’s own action is whatever the one selected piece can do where it stands: **Extract Elixir** for a pawn on the spring, **Scry (2)** for a bishop holding both its mana. AI vs AI swaps the player’s buttons for Pause, Speed and New Match.
+- **Right panel**: **Menu | Settings** at the top (where the move hint used to be — Settings opens the audio card, so a game needs no ⚙ button of its own; the fixed one stays on the title screen), then the action buttons, then Map View (minimap, zoom, Map Cheat). **The panel holds only what the piece in hand can do** (`syncPieceButtons` in `js/ui.js`, called from every render): **Spawn** only while the King is up, **Fortify** only for a plain pawn, the piece’s own action (**Extract Elixir** on the spring, **Scry (2)** for a bishop) only when it has one, **Delay** and its turns button for anything with somewhere to go, **Merge** while a merge is ready, and **Skip** always. Nothing is shown greyed out for a piece it does not belong to. AI vs AI swaps the player’s buttons for Pause, Speed and New Match.
 - **Bottom bar**: Game log and an AI "thinking" indicator dot.
 - **Mobile**: In portrait, the resource counters become a strip above the board, kept to one line (two in AI vs AI would push the board down), and the status line is clipped to one line for the same reason and the buttons wrap into finger-sized rows below it (unit cards, minimap and hint are hidden). The status line wraps, and the board keeps its full size when zoomed in: the pan arrows are hidden (drag the board instead) and the small map in the button strip below shows where the view is. A double tap never zooms the page (the board has its own pinch zoom). On short landscape screens the side panels shrink and the layout is centered. Touch devices get touch wording (tap a siege tower twice instead of right-clicking).
 
@@ -271,6 +302,7 @@ An interactive 7-step tutorial:
 - Click the King, then an adjacent tile, to spawn. The King opens an on-board **Spawn / Move** chooser.
 - Dropping (or tapping) a bishop onto one of your knights asks **Heal** or **Merge → Queen** (onto a rook, with the Elixir: **Merge → Mage (2 Elixir)**) on the same kind of on-board chooser (`showDropChoice` in `js/actions.js`); a tap anywhere else puts it away.
 - Tapping one of your pawns or bishops opens the same kind of chooser for it: **Extract Elixir** while a pawn stands on the spring, **Fortify (1 Gold)** while it is a plain pawn, **Scry (2 mana)** for a bishop (`syncPieceChooser` in `js/actions.js`). It sits past the piece’s reach (a pawn’s 3x3, a bishop’s 5x5) on its own side of the board, so it never covers a square the piece can act on. The side panel’s buttons follow every tap too (`syncPieceButtons`, called from `render`).
+- **Delay**: with a piece selected, press **Delay** and tap one of the amber squares — the piece will go there in the number of turns on the button beside it, and your turn is still yours. Tapping anywhere else puts the order away (`startOrder`, `placeOrder` in `js/actions.js`).
 - Select 2-3 pawns/knights (click them, or drag a box over them from an empty tile) and drag one to move them together.
 - Right-click a piece, then click a target, to lock a target. Right-click (or tap twice) a Siege Tower to un-siege.
 - **Esc** clears the current selection.

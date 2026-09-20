@@ -50,7 +50,8 @@ function choose(acts,pick){
 function applyOriginal(a,s){
   const p=a.from!==undefined?s.board[a.from]:null;
   const drop='executeDrop('+a.from+','+a.to+',getDragDests('+a.from+'))';
-  if(a.type==='extract')game.run('extractAt('+a.from+')');
+  if(a.type==='order')game.run('placeOrder('+a.from+','+a.to+','+a.turns+')');
+  else if(a.type==='extract')game.run('extractAt('+a.from+')');
   else if(a.type==='fortify')game.run('fortifyAt('+a.from+')');
   else if(a.type==='scry')game.run('castScry('+a.from+','+a.to+')');
   else if(a.type==='spawn')game.run('kingSelected=true;handleClick('+a.to+')');

@@ -49,7 +49,7 @@ function aiVsAiNewMatch(){
   COLS=s.cols;ROWS=s.rows;
   document.body.className='theme-'+s.theme;
   tileData=s.tiles.slice();
-  mapCheat=true;exploredTiles=new Set();scans=[];elixir={w:0,b:0};mineTurns={w:0,b:0};goldSpent={w:0,b:0};
+  mapCheat=true;exploredTiles=new Set();scans=[];elixir={w:0,b:0};mineTurns={w:0,b:0};goldSpent={w:0,b:0};orderLeft={w:ORDER_BUDGET,b:ORDER_BUDGET};
   const cheat=document.getElementById('btn-mapcheat');if(cheat)cheat.innerHTML=uiLabel('map','Map Cheat: ON');
   resetView();
   logLines=[];document.getElementById('log').textContent='';
@@ -185,7 +185,7 @@ function aiVsAiFinish(){
 // AI vs AI buttons take the place of Spawn, Merge and Skip in the actions panel
 function aiVsAiControls(on){
   // the player's own buttons make way for the match controls
-  ['btn-spawn','btn-fortify','btn-merge','btn-special','btn-skip'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=on?'none':'';});
+  PIECE_BTNS.forEach(id=>{const b=document.getElementById(id);if(b)b.style.display=on?'none':'';});
   let box=document.getElementById('aivsai-controls');
   if(!on){if(box)box.remove();return;}
   if(box)return;

@@ -81,6 +81,10 @@ const SFX={
   hit:    ()=>{playNoise(.08,.8);playTone(150,.08,'square',.4);},
   kill:   ()=>{playNoise(.18,1);for(let i=0;i<3;i++)setTimeout(()=>playTone(120-i*20,.1,'sawtooth',.5),i*60);},
   merge:  ()=>{[440,550,660].forEach((f,i)=>setTimeout(()=>playTone(f,.15,'sine',.6),i*70));},
+  // an order written down: two soft ticks, like a clock being set
+  order:  ()=>{const t=getAudioCtx().currentTime+.01;
+    [0,.11].forEach((o,k)=>{sfxTone({type:'triangle',f:k?1320:990,t:t+o,d:.06,vol:.3});
+      sfxNoise({t:t+o,d:.03,vol:.12,filters:[['bandpass',3000,2]]});});},
   // a sword cutting the air: the rush brightens as the blade comes round and drops away behind it,
   // with a thin ring of steel at the end. The offsets follow the swing itself (attackAnim in
   // js/combat.js): the wind-up takes the first 150ms, the blade goes through over the next 150ms.

@@ -284,6 +284,11 @@ function executeDrop(from,to,dests){
 
 function handleClick(i,additive){
   const p=pieces[i];const mc=myColor();
+  if(orderMode){
+    if(orderSrc>=0&&orderTargets(orderSrc).has(i))placeOrder(orderSrc,i,orderTurns);
+    else cancelOrder();
+    return;
+  }
   if(scryMode){
     // any glowing square casts, aimed at the valid 3x3 that covers it; anywhere else puts the scry away
     const c=scrySrc>=0&&scryArea(scrySrc).has(i)?scryCenterFor(scrySrc,i):-1;
@@ -495,6 +500,35 @@ function syncKingChooser(){
     &&(kingSelected||(selectedPieces.size===1&&selectedPieces.has(ki)));
   if(kingUp)placeKingChooser(ki);else closeKingChooser();
 }
+
+// ── DELAYED ORDERS ───────────────────────────────────────────────────────────
+// Giving an order does not use up the turn: it spends part of the turn's order budget and the piece
+// still attacks at the end of it as usual, so orders can be stacked up to land together later.
+// ('order' in js/engine.js; they come due in runOrders, js/game.js)
+let orderMode=false, orderSrc=-1;
+function startOrder(){
+  const i=selectedPieces.size===1?[...selectedPieces][0]:-1;
+  if(i<0||!canOrder(i)){setStatus('Select a piece of yours with somewhere to go');return;}
+  orderMode=true;orderSrc=i;targetMode=false;scryMode=false;
+  render();syncUI();
+  setStatus('Tap a square: it goes there in '+orderTurns+' turn'+(orderTurns>1?'s':''));
+}
+function cancelOrder(){orderMode=false;orderSrc=-1;render();syncUI();}
+// the squares an order can reserve: wherever the piece could move right now
+function orderTargets(i){return getDragDests(i).move;}
+function placeOrder(from,to,turns){
+  const p=pieces[from];
+  if(!p||orderLeft[p.color]<orderCost(p.type))return;
+  p.order={to,turns};
+  orderLeft[p.color]-=orderCost(p.type);
+  orderMode=false;orderSrc=-1;selectedPieces=new Set();
+  addLog(p.type+' ordered to '+sqName(to)+' in '+turns+' turn'+(turns>1?'s':''));
+  SFX.order();
+  render();syncUI();
+  setStatus('Order set — the turn is still yours');
+}
+// the panel's step through 1, 2, 3 turns ahead
+function cycleOrderTurns(){orderTurns=orderTurns%MAX_DELAY+1;syncUI();if(orderMode)setStatus('Tap a square: it goes there in '+orderTurns+' turn'+(orderTurns>1?'s':''));}
 
 // ── A CHOICE WHERE A PIECE WAS DROPPED ──────────────────────────────────────
 // A bishop dropped on a knight can merge or heal: the choice comes up on the same on-board chooser as

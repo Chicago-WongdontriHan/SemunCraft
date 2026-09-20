@@ -71,7 +71,8 @@ function netAiSnapshot(){
     level:campaignLevel||null,
     turnCount:{w:whiteTurnCount,b:blackTurnCount},spawns:{w:spawnHistory.length,b:blackSpawnHistory.length},
     targets:{w:whiteTargets,b:blackTargets},hitBy:blackHitBy,acted:[...blackActed],scans,
-    elixir:{w:elixir.w,b:elixir.b},mineTurns:{w:mineTurns.w,b:mineTurns.b},goldSpent:{w:goldSpent.w,b:goldSpent.b},maxTurns:300});
+    elixir:{w:elixir.w,b:elixir.b},mineTurns:{w:mineTurns.w,b:mineTurns.b},goldSpent:{w:goldSpent.w,b:goldSpent.b},
+    orderLeft:{w:orderLeft.w,b:orderLeft.b},maxTurns:300});
 }
 
 // Black's move at this difficulty (tests/netai.test.js replaces this with random legal moves)
@@ -91,7 +92,7 @@ function netAiApply(action){
   pieces=s.board;
   whiteTargets=s.targets.w;blackTargets=s.targets.b;
   scans=s.scans; // a scry Black cast lives in the engine's state: bring it back with the board
-  elixir=s.elixir;mineTurns=s.mineTurns;goldSpent=s.goldSpent;
+  elixir=s.elixir;mineTurns=s.mineTurns;goldSpent=s.goldSpent;orderLeft=s.orderLeft;
   for(let k=spawned;k<s.spawns.b;k++)blackSpawnHistory.push(blackTurnCount);
   return result;
 }

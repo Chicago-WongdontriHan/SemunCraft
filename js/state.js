@@ -22,6 +22,18 @@ let goldSpent={w:0,b:0};  // Gold spent on anything but spawning: fortified pawn
 const FORTIFIED_HP=3;     // a fortified pawn is a pawn in a helmet, with three life
 const MAGE_ELIXIR=2;      // a bishop and a rook merge into a Mage for 2 Elixir (engine.js)
 const FORTIFIED_MEND=5;   // and its armour mends 1 HP five turns after the last hit it took
+// Delayed orders: an order given now happens a few turns from now, and giving one does not use up the
+// turn — it spends part of an order budget instead, so several can be lined up to land together. A
+// pawn's order takes half the budget, so two of them go out in one turn. ('order' in js/engine.js)
+const MAX_DELAY=3, ORDER_BUDGET=1;
+const ORDER_COST={pawn:.5};          // every other piece spends a whole turn's worth of orders
+function orderCost(type){return ORDER_COST[type]||1;}
+let orderLeft={w:ORDER_BUDGET,b:ORDER_BUDGET};
+let orderTurns=2;                    // how far ahead the next order is set; the panel adjusts it
+function canOrder(i){
+  const p=pieces[i];
+  return !!p&&p.color===myColor()&&orderLeft[p.color]>=orderCost(p.type)&&getDragDests(i).move.size>0;
+}
 // only a plain pawn works the spring or the mine; a fortified one can't (pawnOnMine in engine.js)
 function canExtract(i){ const p=pieces[i]; return !!p&&p.type==='pawn'&&!p.fortified&&tileData[i]==='spring'; }
 function pawnOnMine(color){ return pieces.some((p,i)=>p&&p.color===color&&p.type==='pawn'&&!p.fortified&&tileData[i]==='mine'); }

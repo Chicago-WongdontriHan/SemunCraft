@@ -31,6 +31,14 @@ const ORDER_MIN=ORDER_COST.pawn;     // with less than this left the turn is spe
 function orderCost(type){return ORDER_COST[type]||1;}
 let orderLeft={w:ORDER_BUDGET,b:ORDER_BUDGET};
 let orderTurns=0;                    // how far ahead the next order is set: the Delay button counts it up, and every turn starts at none
+// Whose eyes the board is drawn through. Normally your own side, which is also the side to move; in the
+// training ground, where both sides are yours, it is the side the AI has *not* taken — so the fog stays
+// over your own front while the AI thinks, instead of lifting for it.
+function viewColor(){
+  if(trainingMode&&typeof trainAI!=='undefined'&&trainAI&&trainAI.w!==trainAI.b)return trainAI.w?'b':'w';
+  return myColor();
+}
+
 // the piece in hand: the one selected piece, or the King while it is open on its Spawn / Move chooser
 function pieceInHand(){
   let i=selectedPieces.size===1?[...selectedPieces][0]:-1;
@@ -114,7 +122,7 @@ let exploredTiles=new Set(); // tiles that have ever been visible (fogged but pa
 //   'unknown'    — never seen (dense fog, hides terrain)
 function tileVisibility(i){
   if(mapCheat)return 'visible';
-  const mc=(typeof myColor==='function')?myColor():'w';
+  const mc=(typeof viewColor==='function')?viewColor():'w';
   if(scryLit(i,mc))return 'visible'; // a bishop is looking at it
   for(let j=0;j<ROWS*COLS;j++){
     const p=pieces[j];
@@ -130,7 +138,7 @@ function isTileVisible(i){
 // called each render: mark currently-visible tiles as explored
 function updateExploredTiles(){
   if(mapCheat)return;
-  const mc=(typeof myColor==='function')?myColor():'w';
+  const mc=(typeof viewColor==='function')?viewColor():'w';
   for(let i=0;i<ROWS*COLS;i++){
     for(let j=0;j<ROWS*COLS;j++){
       const p=pieces[j];

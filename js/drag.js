@@ -120,10 +120,10 @@ boardInput.addEventListener('pointerdown',e=>{
   e.preventDefault();
   if(targetMode){handleTargetClick(i);return;}
   if(trainEditing()){
-    // an empty hand on a piece carries it; otherwise the press stays, so a tap places and a drag on a
-    // zoomed-in board slides the view (the tap itself lands in handleClick below)
-    if(!trainBrush&&pieces[i]){trainPickUpAt(i,e.clientX,e.clientY,e.pointerType);return;}
-    press={id:e.pointerId,type:e.pointerType,x:e.clientX,y:e.clientY,i,canDrag:false,canBox:false,box:false};
+    // a piece under the pointer is carried if the pointer moves and placed on if it does not; with no
+    // piece there a drag on a zoomed-in board slides the view, and the tap itself lands in handleClick
+    const carry=!!pieces[i]&&trainPickUpAt(i,e.clientX,e.clientY,e.pointerType);
+    press={id:e.pointerId,type:e.pointerType,x:e.clientX,y:e.clientY,i,canDrag:false,canBox:false,box:false,carry};
     try{boardInput.setPointerCapture(e.pointerId);}catch(err){}
     return;
   }
@@ -159,6 +159,7 @@ boardInput.addEventListener('pointermove',e=>{
   if(!press||e.pointerId!==press.id)return;
   if(!dragging&&!press.box&&Math.hypot(e.clientX-press.x,e.clientY-press.y)>(DRAG_START_PX[press.type]||6)){
     if(press.canDrag&&!over&&!thinking&&isMyTurn())startDrag(press.i,e.clientX,e.clientY,press.type);
+    else if(press.carry){}                            // the training ground is carrying that piece itself
     // a board bigger than its frame slides under the finger
     else if(boardZoom>1.001){startSlide(press.x,press.y);moveGesture();return;}
     else if(press.canBox){press.box=true;boxSelecting=true;boxX0=press.x;boxY0=press.y;}

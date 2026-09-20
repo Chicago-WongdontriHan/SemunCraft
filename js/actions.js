@@ -291,7 +291,7 @@ function executeDrop(from,to,dests){
 }
 
 function handleClick(i,additive){
-  if(trainEditing()&&trainingPlace(i))return;   // the training ground is being built, not played
+  if(trainEditing()){if(!trainCarry)trainingPlace(i);return;}   // being built, not played (a carried piece lands on pointerup)
   const p=pieces[i];const mc=myColor();
   if(scryMode){
     // any glowing square casts, aimed at the valid 3x3 that covers it; anywhere else puts the scry away

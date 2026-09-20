@@ -8,7 +8,7 @@ function render(){
   boardEl.style.setProperty('--tile-ring',Math.max(1,Math.round(sqPx*0.018))+'px');
   // coordinates on a clouded square take the colour of the map's weather
   boardEl.style.setProperty('--fog-text',fogStyle().text);
-  const mc=myColor();
+  const mc=viewColor();   // your own side's view, even while the other side is being played for you
   const ki=pieces.findIndex(p=>p&&p.color===mc&&p.type==='king');
   const prodTgts=kingSelected&&ki>=0?new Set(adj8(ki).filter(i=>!pieces[i]&&!isTileBlocked(i))):new Set();
   const targets=mc==='w'?whiteTargets:blackTargets;

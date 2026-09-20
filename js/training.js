@@ -12,9 +12,16 @@
 let trainBrush=null;          // what the next tap puts down: a unit, a tile, or the eraser
 let trainColor='w';
 let trainAI={w:false,b:false};// the sides the AI plays; both is a match from your own arrangement
-let trainLift=-1;             // the square a piece was picked up from while the pointer is still down
+let trainLevel='easy';        // which AI that is: one of the trained networks, or the built-in bot
+let trainLift=-1;             // the square the pointer went down on, while it is still down
+let trainLiftXY=null;         // where it went down, so a tap can be told from a drag
+let trainCarry=false;         // the pointer has moved: a piece is being carried, not tapped
 let trainFromPalette=false;   // the gesture started on a palette button, so its pointerup does the placing
 // trainMouse ('edit' | 'play') and trainEditing() are in js/state.js, where the board's own files see them
+
+// the AI a side is handed to, and how big a board to lay out
+const TRAIN_LEVELS=[['easy','Easy'],['medium','Med'],['hard','Hard'],['bot','Bot']];
+const TRAIN_SIZES=[7,9,11,13];
 
 // the four maps, so the ground can be changed without leaving the sandbox
 const TRAIN_THEMES=[['forest','🌲','Forest'],['jungle','🌴','Jungle'],
@@ -36,7 +43,7 @@ const TRAIN_UNITS=[
 function startTraining(){
   gameMode='training';difficulty='easy';
   trainingMode=true;trainBrush=null;trainColor='w';trainMouse='edit';
-  trainAI={w:false,b:false};trainLift=-1;
+  trainAI={w:false,b:false};trainLift=-1;trainCarry=false;trainLevel='easy';
   campaignLevel=null;campaignLevelId=-1;
   COLS=9;ROWS=9;
   document.getElementById('intro').classList.add('hidden');
@@ -54,7 +61,7 @@ function startTraining(){
 }
 
 function leaveTraining(){
-  trainingMode=false;trainBrush=null;trainAI={w:false,b:false};trainLift=-1;
+  trainingMode=false;trainBrush=null;trainAI={w:false,b:false};trainLift=-1;trainCarry=false;
   document.body.classList.remove('training');
 }
 
@@ -73,7 +80,16 @@ function trainingPalette(){
     +'</div><div class="tp-grid tp-mode">'
     +wide('AI White',trainAI.w,"trainToggleAI('w')",'Let the AI take White. Both sides on plays a match out of the board you built')
     +wide('AI Black',trainAI.b,"trainToggleAI('b')",'Let the AI take Black. Both sides on plays a match out of the board you built')
-    +'</div><div class="tp-grid tp-themes">';
+    +'</div><div class="tp-grid tp-quad">';
+  TRAIN_LEVELS.forEach(([lv,name])=>{
+    h+=wide(name,trainLevel===lv,"trainSetLevel('"+lv+"')",
+      lv==='bot'?'The built-in AI: no network to fetch':'The '+name+' trained network, the one Single Player plays');
+  });
+  h+='</div><div class="tp-grid tp-quad">';
+  TRAIN_SIZES.forEach(n=>{
+    h+=wide(n+'\u00D7'+n,ROWS===n&&COLS===n,'trainSetSize('+n+')','Lay out a fresh '+n+' by '+n+' board with the two kings on it');
+  });
+  h+='</div><div class="tp-grid tp-themes">';
   TRAIN_THEMES.forEach(([t,icon,name])=>{
     h+=btn('<span class="tp-emoji">'+icon+'</span>',name,mapTheme===t,"trainSetTheme('"+t+"')",name+': new ground, and the units stay where they are');
   });
@@ -107,13 +123,37 @@ function trainingPalette(){
 
 // the mouse builds or plays; picking anything out of the palette means building
 function trainSetMouse(m){
-  trainMouse=m;trainLift=-1;
+  trainMouse=m;trainLift=-1;trainCarry=false;
   selectedPieces=new Set();kingSelected=false;
   trainingPalette();render();syncUI();
   setStatus(m==='edit'?'Editing the board — clicks place, drag moves a piece, the right button clears'
                       :(turn==='w'?"White's":"Black's")+' turn — clicks play the game');
 }
 function trainSetColor(c){trainColor=c;trainingPalette();}
+// which AI takes a side here: one of the trained networks, or the engine's own built-in bot
+function trainSetLevel(lv){
+  trainLevel=lv;
+  trainingPalette();
+  addLog('AI: '+(lv==='bot'?'built-in':lv));
+  if(lv!=='bot'&&typeof netAiLoadModel==='function'&&NETAI_LEVELS[lv])netAiLoadModel(NETAI_LEVELS[lv].model).catch(()=>{});
+}
+// a fresh board of another size: the pieces cannot follow it, so it starts with the two kings on it
+function trainSetSize(n){
+  if(n===ROWS&&n===COLS)return;
+  ROWS=n;COLS=n;
+  pieces=new Array(n*n).fill(null);
+  whiteTargets={};blackTargets={};selectedPieces=new Set();kingSelected=false;
+  scans=[];exploredTiles=new Set();
+  generateMap();
+  const wk=idx(n-2,1),bk=idx(1,n-2);
+  tileData[wk]='';tileData[bk]='';
+  pieces[wk]={type:'king',color:'w',hp:STATS.king.hp,maxHp:STATS.king.maxHp};
+  pieces[bk]={type:'king',color:'b',hp:STATS.king.hp,maxHp:STATS.king.maxHp};
+  if(typeof ANIMALS_ON!=='undefined'&&ANIMALS_ON){startAnimalLoop();setTimeout(()=>renderAnimalOverlay(),50);}
+  else{stopAnimalLoop();animals=[];}
+  resetView();trainingPalette();resizeBoard();render();syncUI();
+  addLog('Board: '+n+' by '+n);
+}
 
 // a new map under the same units: the ground is drawn again for that theme (spring and mine with it),
 // and any unit that would be left standing inside a rock has the rock taken out from under it
@@ -166,7 +206,7 @@ function trainClearUnits(){
 // the game's own handlers, exactly as a tap would be. With both sides on it plays itself.
 function trainToggleAI(c){
   trainAI[c]=!trainAI[c];
-  trainingPalette();syncUI();
+  trainingPalette();syncUI();render();   // the fog now belongs to the side the AI has not taken
   addLog((c==='w'?'White':'Black')+' is played by '+(trainAI[c]?'the AI':'you'));
   if(!trainAI[c])return;
   trainEngineReady();                    // the engine is fetched on demand, as the networks are
@@ -206,19 +246,44 @@ function trainAiTurn(){
   const side=turn;
   // an action that leaves the turn in hand (an order) would stall the match: look again in a moment
   setTimeout(()=>{if(trainingMode&&!over&&turn===side&&trainAI[side]&&!thinking)trainAiTurn();},900);
-  let ev=null;
+  // a trained network needs its model on the page; while that arrives the built-in bot stands in
+  if(trainLevel!=='bot'&&typeof netAiLoadModel==='function'&&NETAI_LEVELS[trainLevel]
+     &&!netAiNets[NETAI_LEVELS[trainLevel].model]){
+    netAiLoadModel(NETAI_LEVELS[trainLevel].model).then(()=>{},()=>{});
+    trainAiPlay(trainAiBotAction(side));
+    return;
+  }
+  trainAiPlay(trainLevel==='bot'?trainAiBotAction(side):trainAiNetAction(side));
+}
+// the engine's own AI, which plays whichever side the swapped board hands it
+function trainAiBotAction(side){
   try{
-    const s=trainEngineState(side);
-    ev=(SemunEngine.botTurn(s)||[])[0];
-  }catch(e){ev=null;}
-  const from=ev&&ev.from!==undefined?ev.from:-1;
+    const ev=(SemunEngine.botTurn(trainEngineState(side))||[])[0];
+    if(!ev)return null;
+    return ev.type==='extract'?{type:'extract',from:ev.at,to:ev.at}:{type:ev.type,from:ev.from,to:ev.to};
+  }catch(e){return null;}
+}
+// one of the trained networks, asked the way Single Player asks it (netAiChoose in js/netai.js)
+function trainAiNetAction(side){
+  try{return netAiChoose(trainEngineState(side),trainLevel);}catch(e){return null;}
+}
+// whatever it picked, played through the game's own handlers, exactly as a tap would be
+function trainAiPlay(a){
+  const from=a&&a.from!==undefined?a.from:-1;
   const p=from>=0?pieces[from]:null;
   const d=p&&p.color===turn?getDragDests(from):null;
-  if(ev&&ev.type==='move'&&d&&(d.move.has(ev.to)||d.attack.has(ev.to))){executeDrop(from,ev.to,d);return;}
-  // a bishop's merge asks which of heal or merge it meant, which no AI here can answer: it passes instead
-  if(ev&&ev.type==='merge'&&d&&d.merge.has(ev.to)&&p.type!=='bishop'){executeDrop(from,ev.to,d);return;}
-  if(ev&&ev.type==='spawn'&&ev.to!==undefined&&!pieces[ev.to]){kingSelected=true;handleClick(ev.to);return;}
-  if(ev&&ev.type==='extract'&&canExtract(ev.at)){extractAt(ev.at);return;}
+  if(a&&d){
+    if(a.type==='move'&&(d.move.has(a.to)||d.attack.has(a.to))){executeDrop(from,a.to,d);return;}
+    // a bishop's merge asks which of heal or merge it meant, which no AI here can answer: it passes
+    if(a.type==='merge'&&d.merge.has(a.to)&&p.type!=='bishop'){executeDrop(from,a.to,d);return;}
+    if(a.type==='heal'&&d.heal.has(a.to)){executeDrop(from,a.to,d);return;}
+    if(a.type==='extract'&&canExtract(from)){extractAt(from);return;}
+    if(a.type==='fortify'&&canFortify(from)){fortifyAt(from);return;}
+    if(a.type==='unsiege'&&p.type==='siege'){unsiegePiece(from);return;}
+    if(a.type==='scry'&&p.type==='bishop'&&(p.mana||0)>=2){castScry(from,a.to);return;}
+    if(a.type==='order'&&canOrder(from)&&orderTargets(from).has(a.to)){placeOrder(from,a.to,a.turns||1);return;}
+  }
+  if(a&&a.type==='spawn'&&a.to!==undefined&&!pieces[a.to]){kingSelected=true;handleClick(a.to);return;}
   doSkip();
 }
 
@@ -270,15 +335,12 @@ function trainingPlace(i){
   return true;
 }
 
-// picking a piece up with an empty hand and carrying it anywhere: in Edit the board has no rules about
-// where a piece may stand, so any square will do (js/drag.js calls this on pointerdown)
+// Carrying a piece about: in Edit the board has no rules about where a piece may stand, so a drag puts
+// it on any square at all — whatever is in hand from the palette waits for a tap instead. js/drag.js
+// calls this on pointerdown; the piece only leaves its square once the pointer actually moves.
 function trainPickUpAt(i,x,y,ptype){
-  if(!trainEditing()||trainBrush||!pieces[i])return false;
-  trainLift=i;
-  const p=pieces[i],g=document.getElementById('ghost');
-  g.textContent='';g.innerHTML=pieceSVG(pieceArt(p),p.color,mapTheme,Math.floor(sqPx*.86));
-  trainGhostAt(x,y,ptype);
-  g.style.display='block';
+  if(!trainEditing()||!pieces[i])return false;
+  trainLift=i;trainLiftXY={x,y,type:ptype};trainCarry=false;
   return true;
 }
 function trainGhostAt(x,y,ptype){
@@ -300,6 +362,15 @@ function trainDropPiece(from,to){
 
 window.addEventListener('pointermove',e=>{
   if(trainLift<0)return;
+  if(!trainCarry){
+    if(Math.hypot(e.clientX-trainLiftXY.x,e.clientY-trainLiftXY.y)<6)return;   // still a tap
+    const p=pieces[trainLift];
+    if(!p){trainLift=-1;return;}
+    trainCarry=true;
+    const g=document.getElementById('ghost');
+    g.textContent='';g.innerHTML=pieceSVG(pieceArt(p),p.color,mapTheme,Math.floor(sqPx*.86));
+    g.style.display='block';
+  }
   trainGhostAt(e.clientX,e.clientY,e.pointerType);
 });
 
@@ -309,14 +380,15 @@ window.addEventListener('pointermove',e=>{
 // empty hand the same gesture carries a piece already on the board to another square.
 window.addEventListener('pointerup',e=>{
   const fromPalette=trainFromPalette;trainFromPalette=false;
-  if(!trainEditing()){trainLift=-1;return;}
-  const lifted=trainLift;trainLift=-1;
-  if(lifted>=0)document.getElementById('ghost').style.display='none';
+  const lifted=trainLift,carried=trainCarry;
+  trainLift=-1;trainCarry=false;
+  if(carried)document.getElementById('ghost').style.display='none';
+  if(!trainEditing())return;
   if(e.target&&e.target.closest&&e.target.closest('#train-palette'))return;
   const board=document.getElementById('board');
   const under=document.elementFromPoint(e.clientX,e.clientY);
   const i=board&&under&&board.contains(under)?sqIdxFromPoint(e.clientX,e.clientY):-1;
-  if(i<0){if(lifted>=0)render();return;}
-  if(lifted>=0){trainDropPiece(lifted,i);return;}
+  if(i<0){if(carried)render();return;}
+  if(carried&&lifted>=0){trainDropPiece(lifted,i);return;}
   if(fromPalette&&trainBrush)trainingPlace(i);   // a tap that began on the board is placed by handleClick
 });

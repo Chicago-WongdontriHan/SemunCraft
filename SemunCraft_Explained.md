@@ -260,13 +260,17 @@ A sandbox off the main menu (`js/training.js`). The board is either being **buil
 and the palette says which — the two buttons at its top. Nothing ends here: when a king falls the log
 says so and play carries on.
 
-- **Edit**: the left button puts down whatever is in hand, **drags any piece to any square** (the sandbox
-  has no rules about where a piece may stand), and the **right button lifts** whatever is on a square —
-  the unit first, the tile under it next. With nothing in hand, a drag on a zoomed-in board slides the
-  view, as it does in a game.
+- **Edit**: a **tap** puts down whatever is in hand, a **drag carries the piece under it to any square**
+  (the sandbox has no rules about where a piece may stand — and it carries the piece even with something
+  else in hand, because a tap is how you place), and the **right button lifts** whatever is on a square —
+  the unit first, the tile under it next. On an empty square a drag slides a zoomed-in board, as it does
+  in a game.
 - **Play**: every click is an ordinary game move again — move, merge, order, target, spawn.
 - **The palette** takes the left panel's place, where the unit cards normally are: Edit / Play, then
-  **AI White** and **AI Black**, then the four **maps**, a **White / Black** switch, every unit in the
+  **AI White** and **AI Black**, **which AI** they are (Easy, Med, Hard — the same trained networks
+  Single Player uses — or Bot, the engine's built-in one, which needs no download), the **board size**
+  (7×7 to 13×13; a new size lays out fresh ground with the two kings on it, since the pieces cannot
+  follow it), then the four **maps**, a **White / Black** switch, every unit in the
   game (pawn, fortified pawn, knight, bishop, rook, siege, queen, mage, king), then the **Elixir
   spring**, the **gold mine** and the map's own tiles — the impassable ones carry a no-entry mark — and
   an **eraser**, with **Clear units** and **Drop brush** at the foot. Pick something and tap a square, or
@@ -275,10 +279,14 @@ says so and play carries on.
 - **Changing the map** draws fresh ground for that theme, spring and mine included, and leaves the units
   where they are (anything left inside a rock has the rock taken out from under it). The music follows
   the map, so the jungle's piphat starts as soon as the jungle does.
-- **The AI can take a side** — or both, which plays a match out of the arrangement you built. The
-  built-in AI plays Black, so White's turn is handed to it on a board with the colours swapped; the move
-  it picks is played back through the game's own handlers, exactly as a tap would be (`trainAiTurn`,
-  which fetches `js/engine.js` on demand the way the trained networks do).
+- **The AI can take a side** — or both, which plays a match out of the arrangement you built. Both the
+  networks and the built-in bot play Black, so White's turn is handed to them on a board with the colours
+  swapped; the move that comes back is played through the game's own handlers, exactly as a tap would be
+  (`trainAiTurn`, which fetches `js/engine.js` and the chosen model on demand, and lets the built-in bot
+  stand in while a network is still coming).
+- **With one side yours and the fog on**, the board stays at **your** view while the AI takes its turn:
+  `viewColor()` (js/state.js) is the side the AI has *not* taken, and the fog, the explored squares and
+  the board's own marks all follow it rather than the side to move.
 - On a phone the palette wraps into the strip above the board rather than disappearing with the cards.
 - The fog is lifted at the start (Map Cheat is on) — a sandbox with fog over it would hide its own
   experiment — and the ordinary panel, resources, merges, orders and auto-attacks all behave exactly as

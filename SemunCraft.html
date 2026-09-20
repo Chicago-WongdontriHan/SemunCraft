@@ -16,7 +16,7 @@
 <meta name="apple-mobile-web-app-title" content="SemunCraft">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <!-- fetch the UI font with the page, so the title does not flash in a fallback face -->
-<link rel="preload" href="fonts/LilitaOne.woff2?v=20260920g" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/LilitaOne.woff2?v=20260920j" as="font" type="font/woff2" crossorigin>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 /* a double tap must not zoom the page: the board has its own pinch and zoom (js/drag.js) */
@@ -72,13 +72,13 @@ html,body{width:100%;height:100%;overflow:hidden;}
 body{font-family:var(--ui-font);background:#0c1a08;color:#c8d4a0;display:flex;flex-direction:column;align-items:center;height:100vh;height:100dvh;padding:6px 10px 4px;gap:5px;background-image:radial-gradient(ellipse at 20% 10%,rgba(30,60,10,.6) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(10,40,5,.7) 0%,transparent 50%);}
 
 /* ── INTRO ── */
-@font-face{font-family:'Lilita One';src:url(fonts/LilitaOne.woff2?v=20260920g) format('woff2');font-display:swap;}
+@font-face{font-family:'Lilita One';src:url(fonts/LilitaOne.woff2?v=20260920j) format('woff2');font-display:swap;}
 /* the title screen: a war scene behind (Battle Lines on wide screens, The Clash on tall ones, from
    img/make-title-wallpapers.js), the SemunCraft title, and the menu on a translucent card. Every
    size follows --tw, the title's width, so the whole menu scales with the screen and still fits. */
 #intro{--tw:min(92vw,640px,60vh);position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;gap:calc(var(--tw)*.02);padding:12px 8px;overflow-y:auto;
-  background:#8ED6F2 url(img/title-wide.svg?v=20260920g) center bottom/cover no-repeat;}
-@media (orientation:portrait){#intro{background-image:url(img/title-tall.svg?v=20260920g);}}
+  background:#8ED6F2 url(img/title-wide.svg?v=20260920j) center bottom/cover no-repeat;}
+@media (orientation:portrait){#intro{background-image:url(img/title-tall.svg?v=20260920j);}}
 #intro-title{width:var(--tw);height:auto;display:block;flex-shrink:0;overflow:visible;}
 #intro-title text{font-family:'Lilita One',Georgia,serif;font-size:120px;text-anchor:middle;stroke-linejoin:round;}
 #intro-title .title-shadow{fill:#2A1706;stroke:#2A1706;stroke-width:20px;}
@@ -124,7 +124,9 @@ body.training #pc-cards-wrap,body.training #pc-prev,body.training #pc-next,body.
 .tp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;}
 .tp-colors{grid-template-columns:repeat(2,1fr);}
 .tp-tools,.tp-mode{grid-template-columns:1fr 1fr;gap:3px;}
-.tp-mode .tp-wide{font-size:11px;padding:3px 2px;}
+.tp-mode .tp-wide{font-size:12px;padding:3px 2px;}
+.tp-quad{grid-template-columns:repeat(4,1fr);}
+.tp-quad .tp-wide{font-size:10.5px;padding:3px 0;}
 .tp-wide.tp-on{background:linear-gradient(#5BD66B,#2E8F3C);color:#0B2410;border-color:#9BEFA6;}   /* the two side by side: the bigger unit art wants the room */
 .tp-btn,.tp-wide{font-family:var(--ui-font);color:var(--parch);background:linear-gradient(var(--btn-a),var(--btn-b));
   border:1px solid var(--gold);border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;
@@ -132,14 +134,15 @@ body.training #pc-cards-wrap,body.training #pc-prev,body.training #pc-next,body.
 .tp-btn{position:relative;flex-direction:column;gap:0;padding:2px 1px;touch-action:manipulation;}
 .tp-themes{grid-template-columns:repeat(4,1fr);}
 .tp-themes .tp-btn{padding:1px 0;}
-.tp-themes .tp-emoji{font-size:13px;}
+.tp-themes .tp-emoji{font-size:18px;}
 .tp-block{position:absolute;right:1px;top:0;font-size:8px;line-height:1;opacity:.85;}
-.tp-wide{padding:4px 3px;font-size:9.5px;letter-spacing:.02em;text-align:center;line-height:1.1;}
+.tp-wide{padding:4px 3px;font-size:11px;letter-spacing:.02em;text-align:center;line-height:1.15;}
 .tp-btn:hover,.tp-wide:hover{filter:brightness(1.28);}
 .tp-btn:active,.tp-wide:active{transform:translateY(1px);}
 .tp-btn svg{display:block;pointer-events:none;}
-.tp-label{font-size:7.5px;color:var(--parch-dim);letter-spacing:.02em;line-height:1.1;pointer-events:none;}
-.tp-emoji{font-size:17px;line-height:1.3;pointer-events:none;}
+.tp-label{font-size:11px;color:var(--parch-dim);letter-spacing:.02em;line-height:1.15;pointer-events:none;}
+.tp-emoji{font-size:24px;line-height:1.2;pointer-events:none;}
+.tp-tiles .tp-btn svg{width:32px;height:32px;}
 .tp-btn.tp-on{border-color:var(--gold-lit);background:linear-gradient(#5BD66B,#2E8F3C);box-shadow:0 0 7px rgba(155,239,166,.55);}
 .tp-btn.tp-on .tp-label{color:#0B2410;}
 .pc-glyph{font-size:18px;line-height:1;}
@@ -279,7 +282,7 @@ body.training #pc-cards-wrap,body.training #pc-prev,body.training #pc-next,body.
 #actions{display:grid;grid-template-columns:1fr 1fr;gap:4px;align-items:stretch;width:100%;}
 #actions #btn-skip{grid-column:1 / -1;}
 /* the delay counter sits above the rest: one and a half columns wide and two rows tall */
-#delay-box{grid-column:1 / -1;display:flex;width:calc(75% - 2px);}
+#delay-box{grid-column:1 / -1;display:flex;width:100%;}
 #delay-box #btn-delay{flex:1 1 auto;min-height:62px;font-size:14px;}
 /* Menu and Settings sit above them, where the move hint used to be */
 #panel-tools{display:grid;grid-template-columns:1fr 1fr;gap:4px;width:100%;margin-bottom:4px;}
@@ -581,7 +584,7 @@ body.theme-ocean{--tile-frame:#1e3c74;}
   #right-panel .panel-label{display:none;}
   #right-panel .tier-divider{display:none;}
   #actions{display:flex;flex-direction:row;flex-wrap:wrap;justify-content:center;gap:6px;width:auto;}
-  #delay-box{width:auto;min-width:104px;}
+  #delay-box{width:auto;min-width:130px;flex:1 1 100%;}
   #delay-box #btn-delay{min-height:44px;}
   /* finger-sized buttons */
   #actions .act-btn,#panel-tools .act-btn,#btn-zoom-in,#btn-zoom-out,#btn-mapcheat{width:auto;min-height:36px;padding:6px 12px;font-size:12px !important;white-space:nowrap;}
@@ -890,35 +893,35 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 <!-- ?v= is the release version: bump it on every release so browsers (GitHub Pages lets them
      cache files for 10 minutes) never mix old cached scripts with new ones -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-<script src="js/constants.js?v=20260920g"></script>
-<script src="js/state.js?v=20260920g"></script>
-<script src="js/audio.js?v=20260920g"></script>
-<script src="js/music.js?v=20260920g"></script>
-<script src="pieces/pieces.js?v=20260920g"></script>
-<script src="pieces/forest.js?v=20260920g"></script>
-<script src="pieces/jungle.js?v=20260920g"></script>
-<script src="pieces/desert.js?v=20260920g"></script>
-<script src="pieces/ocean.js?v=20260920g"></script>
-<script src="pieces/units-art.js?v=20260920g"></script>
-<script src="js/movement.js?v=20260920g"></script>
-<script src="js/themes.js?v=20260920g"></script>
-<script src="js/scenery.js?v=20260920g"></script>
-<script src="js/render.js?v=20260920g"></script>
-<script src="js/combat.js?v=20260920g"></script>
-<script src="js/animals.js?v=20260920g"></script>
-<script src="js/actions.js?v=20260920g"></script>
-<script src="js/ui.js?v=20260920g"></script>
-<script src="js/tutorial.js?v=20260920g"></script>
-<script src="js/campaign.js?v=20260920g"></script>
-<script src="js/training.js?v=20260920g"></script>
-<script src="js/pvp.js?v=20260920g"></script>
-<script src="js/ai.js?v=20260920g"></script>
-<script src="js/game.js?v=20260920g"></script>
-<script src="js/drag.js?v=20260920g"></script>
-<script src="js/resize.js?v=20260920g"></script>
+<script src="js/constants.js?v=20260920j"></script>
+<script src="js/state.js?v=20260920j"></script>
+<script src="js/audio.js?v=20260920j"></script>
+<script src="js/music.js?v=20260920j"></script>
+<script src="pieces/pieces.js?v=20260920j"></script>
+<script src="pieces/forest.js?v=20260920j"></script>
+<script src="pieces/jungle.js?v=20260920j"></script>
+<script src="pieces/desert.js?v=20260920j"></script>
+<script src="pieces/ocean.js?v=20260920j"></script>
+<script src="pieces/units-art.js?v=20260920j"></script>
+<script src="js/movement.js?v=20260920j"></script>
+<script src="js/themes.js?v=20260920j"></script>
+<script src="js/scenery.js?v=20260920j"></script>
+<script src="js/render.js?v=20260920j"></script>
+<script src="js/combat.js?v=20260920j"></script>
+<script src="js/animals.js?v=20260920j"></script>
+<script src="js/actions.js?v=20260920j"></script>
+<script src="js/ui.js?v=20260920j"></script>
+<script src="js/tutorial.js?v=20260920j"></script>
+<script src="js/campaign.js?v=20260920j"></script>
+<script src="js/training.js?v=20260920j"></script>
+<script src="js/pvp.js?v=20260920j"></script>
+<script src="js/ai.js?v=20260920j"></script>
+<script src="js/game.js?v=20260920j"></script>
+<script src="js/drag.js?v=20260920j"></script>
+<script src="js/resize.js?v=20260920j"></script>
 <!-- trained AI (Single Player difficulties, AI vs AI); the engine, network and weights load only when needed -->
-<script src="js/netai.js?v=20260920g"></script>
-<script src="js/aivsai.js?v=20260920g"></script>
-<script src="js/update.js?v=20260920g"></script>
+<script src="js/netai.js?v=20260920j"></script>
+<script src="js/aivsai.js?v=20260920j"></script>
+<script src="js/update.js?v=20260920j"></script>
 </body>
 </html>

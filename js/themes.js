@@ -68,7 +68,7 @@ function selectMap(theme){
     const b=document.getElementById('mbtn-'+t);
     if(b)b.classList.toggle('sel-map',t===theme);
   });
-  document.body.className='theme-'+theme;
+  setBodyTheme(theme);
   // Regenerate obstacle preview on title screen
   const boardEl=document.getElementById('board');
   if(boardEl&&document.getElementById('intro')&&!document.getElementById('intro').classList.contains('hidden')){
@@ -81,6 +81,8 @@ function selectMap(theme){
   }
 }
 
+// the body carries the map theme; the training ground's own class has to survive a theme change
+function setBodyTheme(theme){document.body.className='theme-'+theme+(trainingMode?' training':'');}
 function generateMap(){
   tileData=new Array(ROWS*COLS).fill('');
   neutralPieces={};
@@ -88,7 +90,7 @@ function generateMap(){
   const th=THEMES[mapTheme];
   if(!th)return;
   // Apply theme to board colors
-  document.body.className='theme-'+mapTheme;
+  setBodyTheme(mapTheme);
   // scatter tiles in clusters
   const tileTypes=Object.keys(th.tiles);
   // tutorial mode: detect if we're in tutorial (animals already cleared)

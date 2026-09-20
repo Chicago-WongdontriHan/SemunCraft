@@ -119,6 +119,7 @@ boardInput.addEventListener('pointerdown',e=>{
   if(e.button!==0)return;
   e.preventDefault();
   if(targetMode){handleTargetClick(i);return;}
+  if(trainingMode&&trainBrush)return;   // the palette has the board: trainingPlace runs on pointerup
   const p=pieces[i];
   press={id:e.pointerId,type:e.pointerType,x:e.clientX,y:e.clientY,i,
     canDrag:!!(p&&p.color===myColor()),

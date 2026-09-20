@@ -101,31 +101,40 @@ Two tiles on the board are worth holding (`RESOURCE_TILES` in `js/state.js`), an
 
 ## Delayed Orders
 
-An order is a move written down for later. Give one and **the turn is still yours**: the piece keeps its
-normal action and its auto-attack this turn, and the move happens a few turns from now. Several orders
-can therefore be stacked so they land together (`MAX_DELAY`, `ORDER_BUDGET`, `orderCost` in `js/state.js`
-and `js/engine.js`).
+An order is a move written down for later. The **Delay** button at the top of the actions panel counts
+the turns: press it and the next move you make is not made — it is booked for that many turns ahead, and
+the piece keeps its place, its action and its auto-attack for this turn. Several orders can therefore be
+stacked so they land together (`MAX_DELAY`, `ORDER_BUDGET`, `orderCost` in `js/state.js` and `js/engine.js`).
 
-- **What it costs**: not the turn, but an **order budget** of one per turn. A pawn's order costs **half**,
-  so two pawns can be ordered in the same turn; every other piece costs the whole budget. The budget comes
-  back at the start of your turn (`orderLeft`, reset in `turnUpkeep` / `upkeep`).
-- **How far ahead**: **1 to 3 turns**, set on the **turns** button next to Delay, which cycles 1 → 2 → 3
-  (`orderTurns`, `cycleOrderTurns`). Two turns to start.
-- **Where**: any square the piece could move to **right now** — the order reserves the square, not a path.
-- **When it comes due** (`runOrders` in `js/game.js`, the same in `js/engine.js`), at the start of the
-  owner's turn, before anything else:
+- **The button** (`bumpDelay` in `js/actions.js`): each press adds a turn and the count comes back round
+  to none, so nothing is needed to clear it. A **pawn** counts up to 3 and then back to 0; anything else
+  is simply **on or off**, because one order is all a whole-turn piece can give. The count starts every
+  turn at **0** (`orderTurns`, reset in `turnUpkeep`), and while it stands the squares the piece can
+  reserve are ringed amber instead of green.
+- **What it costs**: not the move you would have made, but an **order budget** of one a turn. A pawn's
+  order costs **half**, so two pawns can be sent in one turn; every other piece costs the whole of it.
+  When the budget can no longer pay for another order **the turn passes by itself** — one order from a
+  knight, or two from pawns, and play moves on without pressing Skip (`placeOrder`; in the engine the
+  `order` action simply stops keeping the turn).
+- **Where**: any square the piece could move to **if the enemy were not in the way** (`orderTargets`,
+  which takes the enemy off the board and asks the ordinary movement code). An order reserves a square,
+  not a path, and the piece standing there today may well be gone by the time the order comes due.
+- **When it comes due**: an order counts down at the start of its side's turn (`countOrders`) and is
+  carried out at the **end** of the turn it reaches nought on (`runOrders`, from `endTurn` /
+  `finishBlackTurn`, mirrored at the top of the engine's `finishTurn`) — so the ordered piece and this
+  turn's own move set off **together**, before the auto-attacks. Then:
   - the square is **empty and still reachable** → the piece moves there (and the square flashes amber);
   - an **enemy** stands there and it is in reach → the move becomes an **attack** (2 damage from a siege
     tower, 1 from anything else — it can finish a game);
   - a **friend** stands there, or the piece can no longer reach it → the order simply **lapses**, and the
     log says so.
-- **On the board**: your piece with an order out keeps an amber ring, and the square it is going to shows a
-  **ghost of that piece with a countdown** on it (`orderMarks` in `js/render.js`). Only your own orders are
-  drawn — an enemy's are as hidden as the rest of its plans. Two orders on one square draw the one that
-  arrives first.
+- **On the board**: your piece with an order out keeps an amber ring, and the square it is going to shows
+  a **ghost of that piece with the turns left on it** (`orderMarks` in `js/render.js`) — a 0 means it goes
+  off at the end of this turn. Only your own orders are drawn; an enemy's are as hidden as the rest of its
+  plans. Two orders on one square draw the one that arrives first.
 - **Black orders too**: `order` is a normal action in the engine, so the built-in AI and the trained
-  networks use it (the networks reach it through `legalActions`; `order` is left out of their action map in
-  `rl/encoding.js` until they are trained with it).
+  networks use it (`order` is left out of their action map in `rl/encoding.js` until they are trained
+  with it).
 
 ---
 
@@ -151,8 +160,8 @@ and `js/engine.js`).
 
 ## Turn Flow (Single-Player)
 
-1. **Orders come due**: any of White's delayed orders that have counted down move or strike now, and White's order budget comes back.
-1. **White's turn**: Player moves/merges/spawns/heals/sets a target — and may write down a delayed order without using the turn.
+1. **White's turn**: Player moves/merges/spawns/heals/sets a target — or books a delayed order, which leaves the turn in hand until the order budget runs out.
+1. **White's orders come due**: the ones that counted down to nought move or strike now, alongside the move just made.
 2. **White auto-attacks** fire (excluding the piece that moved or healed).
 3. **Black auto-attacks** fire.
 4. **Black AI** takes its action (spawn, merge, or move).
@@ -245,6 +254,27 @@ The game installs as a home-screen app (a Progressive Web App): no App Store, no
 
 ---
 
+## The Training Ground
+
+A sandbox off the main menu (`js/training.js`). There is no AI in it: **both sides are played from the
+same seat**, so the turn is passed by hand and every rule can be watched from either end. Nothing ends
+here — when a king falls the log says so and play carries on.
+
+- **The palette** takes the left panel's place, where the unit cards normally are: a **White / Black**
+  switch, then every unit in the game (pawn, fortified pawn, knight, bishop, rook, siege, queen, mage,
+  king), then the **Elixir spring**, the **gold mine** and the map's own tiles, and an **eraser**. Pick
+  one and tap a square, or drag it from the palette onto the board — a unit replaces whatever stands
+  there, a tile is taken away by tapping it again, and the eraser lifts a unit first and the tile under
+  it second. Only one king a side: placing another moves it. **Clear units** empties the board and
+  **Done placing** puts the brush down so the pieces can be played normally.
+- On a phone the palette wraps into the strip above the board rather than disappearing with the cards.
+- The fog is lifted at the start (Map Cheat is on) — a sandbox with fog over it would hide its own
+  experiment — and the ordinary panel, resources, merges, orders and auto-attacks all behave exactly as
+  they do in a game, because it *is* the game with the AI taken out (`myColor` returns whichever side is
+  to move, and `endTurn` hands over the way it does in multiplayer).
+
+---
+
 ## Multiplayer (PvP)
 
 - Uses **PeerJS** (WebRTC) for peer-to-peer connections, with public STUN/TURN servers so players on different networks can connect.
@@ -289,10 +319,10 @@ An interactive 7-step tutorial:
 - **Design** (the `--leather-*`, `--gold*`, `--parch*` and `--btn-*` tokens at the top of `SemunCraft.html`): everything outside the board is one system — leather panels in the map's own colour behind a gold frame, section headers on gold ribbons with a notched foot, bevelled plaque buttons (solid gold for the main one on a panel), and sunken boxes for anything that shows a value. A map theme only re-sets the tokens, so the panels, bars, buttons, popups, the settings card, the tutorial card and the overlays all follow it. Button icons are drawn in one line style in `UI_ICONS` (`js/ui.js`) and requested with `data-icon`, so no button falls back to an emoji.
 - **Font**: all UI text uses Lilita One (`fonts/LilitaOne.woff2`, SIL Open Font License in `fonts/OFL.txt`) through the `--ui-font` variable; room/peer IDs and the API key field stay monospace so similar characters stay distinct.
 - **Top bar**: Game title, optional Anthropic API key (Claude plays Black on Hard), status text, turn counter, and ⚙ Audio settings.
-- **Left panel**: The Gold and Elixir counters and paginated unit reference cards (the fortified pawn has a card of its own). The counters are measured after every render (`fitResources` in `js/ui.js`): the panel first takes any width the board isn't using, then the line shrinks a step at a time, and the names go before a number could ever be cut.
+- **Left panel**: The Gold and Elixir counters and paginated unit reference cards (in the training ground the cards give way to the unit palette) (the fortified pawn has a card of its own). The counters are measured after every render (`fitResources` in `js/ui.js`): the panel first takes any width the board isn't using, then the line shrinks a step at a time, and the names go before a number could ever be cut.
 - **Resources** (`renderResources` in `js/ui.js`): **Gold** is what the King spends to spawn pawns and what fortifying costs (8 to start, a sixth a turn, a sixth more while a pawn holds the mine, 1 each, so the count is often a fraction), and **Elixir** is what a pawn extracts at the spring — a bishop’s mana is its own heal charge, not this. On desktop each resource has **a line of its own** — icon, name, count, and for Gold this turn’s income (+0.17, or +0.33 lit gold while the mine is held) — and AI vs AI shows White and Black in two columns. On a phone the two sit side by side in the strip above the board, which stays one line.
 - **Center**: The game board with HP pips, bishop mana pips, coordinate labels, and pan arrows when zoomed in (the board can also be dragged to slide it).
-- **Right panel**: **Menu | Settings** at the top (where the move hint used to be — Settings opens the audio card, so a game needs no ⚙ button of its own; the fixed one stays on the title screen), then the action buttons, then Map View (minimap, zoom, Map Cheat). **The panel holds only what the piece in hand can do** (`syncPieceButtons` in `js/ui.js`, called from every render): **Spawn** only while the King is up, **Fortify** only for a plain pawn, the piece’s own action (**Extract Elixir** on the spring, **Scry (2)** for a bishop) only when it has one, **Delay** and its turns button for anything with somewhere to go, **Merge** while a merge is ready, and **Skip** always. Nothing is shown greyed out for a piece it does not belong to. AI vs AI swaps the player’s buttons for Pause, Speed and New Match.
+- **Right panel**: **Menu | Settings** at the top (where the move hint used to be — Settings opens the audio card, so a game needs no ⚙ button of its own; the fixed one stays on the title screen), then the **Delay** counter — a block one and a half columns wide and two rows tall, because it belongs to the turn rather than to any one piece and is pressed often — then the action buttons, then Map View (minimap, zoom, Map Cheat). **The rest of the panel holds only what the piece in hand can do** (`syncPieceButtons` in `js/ui.js`, called from every render): **Spawn** only while the King is up, **Fortify** only for a plain pawn, the piece’s own action (**Extract Elixir** on the spring, **Scry (2)** for a bishop) only when it has one, **Delay** and its turns button for anything with somewhere to go, **Merge** while a merge is ready, and **Skip** always. Nothing is shown greyed out for a piece it does not belong to. AI vs AI swaps the player’s buttons for Pause, Speed and New Match.
 - **Bottom bar**: Game log and an AI "thinking" indicator dot.
 - **Mobile**: In portrait, the resource counters become a strip above the board, kept to one line (two in AI vs AI would push the board down), and the status line is clipped to one line for the same reason and the buttons wrap into finger-sized rows below it (unit cards, minimap and hint are hidden). The status line wraps, and the board keeps its full size when zoomed in: the pan arrows are hidden (drag the board instead) and the small map in the button strip below shows where the view is. A double tap never zooms the page (the board has its own pinch zoom). On short landscape screens the side panels shrink and the layout is centered. Touch devices get touch wording (tap a siege tower twice instead of right-clicking).
 
@@ -302,7 +332,7 @@ An interactive 7-step tutorial:
 - Click the King, then an adjacent tile, to spawn. The King opens an on-board **Spawn / Move** chooser.
 - Dropping (or tapping) a bishop onto one of your knights asks **Heal** or **Merge → Queen** (onto a rook, with the Elixir: **Merge → Mage (2 Elixir)**) on the same kind of on-board chooser (`showDropChoice` in `js/actions.js`); a tap anywhere else puts it away.
 - Tapping one of your pawns or bishops opens the same kind of chooser for it: **Extract Elixir** while a pawn stands on the spring, **Fortify (1 Gold)** while it is a plain pawn, **Scry (2 mana)** for a bishop (`syncPieceChooser` in `js/actions.js`). It sits past the piece’s reach (a pawn’s 3x3, a bishop’s 5x5) on its own side of the board, so it never covers a square the piece can act on. The side panel’s buttons follow every tap too (`syncPieceButtons`, called from `render`).
-- **Delay**: with a piece selected, press **Delay** and tap one of the amber squares — the piece will go there in the number of turns on the button beside it, and your turn is still yours. Tapping anywhere else puts the order away (`startOrder`, `placeOrder` in `js/actions.js`).
+- **Delay**: press **Delay** until it shows the number of turns you want, then move a piece as usual — the move is written down instead of made, and your turn is still yours until the order budget runs out. Pressing past the last turn comes back to none (`bumpDelay`, `placeOrder` in `js/actions.js`).
 - Select 2-3 pawns/knights (click them, or drag a box over them from an empty tile) and drag one to move them together.
 - Right-click a piece, then click a target, to lock a target. Right-click (or tap twice) a Siege Tower to un-siege.
 - **Esc** clears the current selection.
@@ -525,6 +555,7 @@ The scripts are loaded in a specific order in `SemunCraft.html` because later fi
 12. `ui.js` -- `syncUI`, `setStatus` needed by game/tutorial
 13. `tutorial.js` -- tutorial system (calls render, actions, UI)
 14. `campaign.js` -- level data and campaign flow (calls render, UI)
+15. `training.js` -- the training ground's palette and its brush (calls render, UI; `trainingMode` itself lives in state.js so the rest of the game can see it)
 15. `pvp.js` -- `myColor`, `isMyTurn` needed by game/drag
 16. `ai.js` -- AI strategies (calls combat, movement, render)
 17. `game.js` -- `initGame`, `endTurn` (orchestrates everything)

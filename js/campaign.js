@@ -315,7 +315,7 @@ function startCampaignLevel(levelIdx){
   ROWS=lv.rows;
   // set theme
   mapTheme=lv.theme;
-  document.body.className='theme-'+lv.theme;
+  setBodyTheme(lv.theme);
   // hide intro
   document.getElementById('intro').classList.add('hidden');
   hideCampaignSelect();

@@ -144,7 +144,7 @@ document.addEventListener('keydown',e=>{
 });
 
 window.addEventListener('load',()=>{
-  document.body.className='theme-'+mapTheme;
+  setBodyTheme(mapTheme);
   fillUiIcons();
   resizeBoard();resizeBoard();
   renderPcCards();

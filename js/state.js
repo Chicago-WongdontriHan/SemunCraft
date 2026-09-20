@@ -27,12 +27,19 @@ const FORTIFIED_MEND=5;   // and its armour mends 1 HP five turns after the last
 // pawn's order takes half the budget, so two of them go out in one turn. ('order' in js/engine.js)
 const MAX_DELAY=3, ORDER_BUDGET=1;
 const ORDER_COST={pawn:.5};          // every other piece spends a whole turn's worth of orders
+const ORDER_MIN=ORDER_COST.pawn;     // with less than this left the turn is spent and passes on its own
 function orderCost(type){return ORDER_COST[type]||1;}
 let orderLeft={w:ORDER_BUDGET,b:ORDER_BUDGET};
-let orderTurns=2;                    // how far ahead the next order is set; the panel adjusts it
+let orderTurns=0;                    // how far ahead the next order is set: the Delay button counts it up, and every turn starts at none
+// the piece in hand: the one selected piece, or the King while it is open on its Spawn / Move chooser
+function pieceInHand(){
+  let i=selectedPieces.size===1?[...selectedPieces][0]:-1;
+  if(i<0&&typeof kingSelected!=='undefined'&&kingSelected)i=pieces.findIndex(q=>q&&q.color===myColor()&&q.type==='king');
+  return i>=0&&pieces[i]&&pieces[i].color===myColor()?i:-1;
+}
 function canOrder(i){
   const p=pieces[i];
-  return !!p&&p.color===myColor()&&orderLeft[p.color]>=orderCost(p.type)&&getDragDests(i).move.size>0;
+  return !!p&&p.color===myColor()&&orderLeft[p.color]>=orderCost(p.type)&&orderTargets(i).size>0;
 }
 // only a plain pawn works the spring or the mine; a fortified one can't (pawnOnMine in engine.js)
 function canExtract(i){ const p=pieces[i]; return !!p&&p.type==='pawn'&&!p.fortified&&tileData[i]==='spring'; }
@@ -63,6 +70,7 @@ let blackLastFrom=-1,blackLastTo=-1;
 let dragSrc=-1,dragDests=null,dragging=false,mouseDownI=-1,mouseDownX=0,mouseDownY=0;
 let sqPx=40;
 let gameMode='single',difficulty='easy';
+let trainingMode=false;   // the training ground: both sides in one seat, and a palette to build the board (js/training.js)
 let mapTheme='forest'; // 'forest'|'jungle'|'desert'|'ocean'
 let tileData=[]; // per-sq tile type string
 let animals=[]; // array of {emoji,hp,maxHp,name,aggressive,fractDmg,x,y,tx,ty,speed}

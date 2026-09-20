@@ -406,7 +406,7 @@ function tutWaitForNext(cb){
 function startTutorial(){
   document.getElementById('intro').classList.add('hidden');
   document.getElementById('tutorial-overlay').classList.add('show');
-  mapTheme='forest'; document.body.className='theme-forest';
+  mapTheme='forest'; setBodyTheme('forest');
   // tutorial always runs with full map visibility
   mapCheat=true;
   const mcBtn=document.getElementById('btn-mapcheat');

@@ -96,6 +96,12 @@ function mergeResultType(a,b){
 
 function executeDrop(from,to,dests){
   if(!dests){render();return;}
+  // the Delay counter stands: this move is written down for later instead of being made now
+  if(orderTurns>0&&isMyTurn()&&!dests.merge.has(to)&&!dests.heal.has(to)&&orderTargets(from).has(to)){
+    if(!canOrder(from)){setStatus('No orders left this turn');render();return;}
+    placeOrder(from,to,orderTurns);
+    return;
+  }
   const p=pieces[from];
   const tgts=myColor()==='w'?whiteTargets:blackTargets;
 
@@ -283,12 +289,8 @@ function executeDrop(from,to,dests){
 }
 
 function handleClick(i,additive){
+  if(trainingMode&&trainBrush&&trainingPlace(i))return;   // a unit or a tile is in hand
   const p=pieces[i];const mc=myColor();
-  if(orderMode){
-    if(orderSrc>=0&&orderTargets(orderSrc).has(i))placeOrder(orderSrc,i,orderTurns);
-    else cancelOrder();
-    return;
-  }
   if(scryMode){
     // any glowing square casts, aimed at the valid 3x3 that covers it; anywhere else puts the scry away
     const c=scrySrc>=0&&scryArea(scrySrc).has(i)?scryCenterFor(scrySrc,i):-1;
@@ -305,7 +307,8 @@ function handleClick(i,additive){
       const dests=getDragDests(srcI);
       // in a level without merging, tapping an ally the piece could merge with just selects that ally
       const refused=campaignLevel&&campaignLevel.noMerge&&dests.merge.has(i);
-      if(!refused&&(dests.move.has(i)||dests.attack.has(i)||dests.merge.has(i)||dests.heal.has(i))){
+      const orderable=orderTurns>0&&orderTargets(srcI).has(i);
+      if(!refused&&(orderable||dests.move.has(i)||dests.attack.has(i)||dests.merge.has(i)||dests.heal.has(i))){
         selectedPieces=new Set();
         executeDrop(srcI,i,dests);
         return;
@@ -505,30 +508,52 @@ function syncKingChooser(){
 // Giving an order does not use up the turn: it spends part of the turn's order budget and the piece
 // still attacks at the end of it as usual, so orders can be stacked up to land together later.
 // ('order' in js/engine.js; they come due in runOrders, js/game.js)
-let orderMode=false, orderSrc=-1;
-function startOrder(){
-  const i=selectedPieces.size===1?[...selectedPieces][0]:-1;
-  if(i<0||!canOrder(i)){setStatus('Select a piece of yours with somewhere to go');return;}
-  orderMode=true;orderSrc=i;targetMode=false;scryMode=false;
-  render();syncUI();
-  setStatus('Tap a square: it goes there in '+orderTurns+' turn'+(orderTurns>1?'s':''));
+// The Delay button in the actions panel. While it stands above nought, every move made is written down
+// for that many turns ahead instead of being made now. It starts each turn at none (turnUpkeep) and
+// comes back round to none, so it needs nothing to clear it: a pawn — whose order costs half a turn and
+// who can therefore be sent further out — counts up to MAX_DELAY and then back to nought, and anything
+// else, which spends the whole turn on one order, is simply on or off.
+function delayCeiling(){
+  const p=pieces[pieceInHand()];
+  return p&&p.type!=='pawn'?1:MAX_DELAY;
 }
-function cancelOrder(){orderMode=false;orderSrc=-1;render();syncUI();}
-// the squares an order can reserve: wherever the piece could move right now
-function orderTargets(i){return getDragDests(i).move;}
+function bumpDelay(){
+  if(over||thinking||!isMyTurn())return;
+  orderTurns=orderTurns>=delayCeiling()?0:orderTurns+1;
+  SFX.order();
+  render();syncUI();
+  setStatus(orderTurns?'Delay '+orderTurns+' — the next move is an order for '+orderTurns+' turn'+(orderTurns>1?'s':'')+' from now'
+                      :'Delay cleared — moves happen now');
+}
+// The squares an order can reserve: wherever the piece could move if the enemy were not in the way. An
+// order is for a square, not for a path, and by the time it comes due the enemy standing there may be
+// gone — and if it is still there, the move becomes a strike instead (runOrders in js/game.js).
+function orderTargets(i){
+  const p=pieces[i];if(!p)return new Set();
+  const saved=[];
+  for(let k=0;k<ROWS*COLS;k++){const q=pieces[k];if(q&&q.color!==p.color){saved.push([k,q]);pieces[k]=null;}}
+  const m=getDragDests(i).move;
+  for(const[k,q]of saved)pieces[k]=q;
+  return m;
+}
 function placeOrder(from,to,turns){
   const p=pieces[from];
   if(!p||orderLeft[p.color]<orderCost(p.type))return;
   p.order={to,turns};
   orderLeft[p.color]-=orderCost(p.type);
-  orderMode=false;orderSrc=-1;selectedPieces=new Set();
+  selectedPieces=new Set();kingSelected=false;
   addLog(p.type+' ordered to '+sqName(to)+' in '+turns+' turn'+(turns>1?'s':''));
   SFX.order();
+  // the order budget is the turn: with too little left to order anything more, the turn passes by itself
+  if(orderLeft[p.color]<ORDER_MIN){
+    render();
+    setStatus('Orders given — the turn passes');
+    endTurn();
+    return;
+  }
   render();syncUI();
-  setStatus('Order set — the turn is still yours');
+  setStatus('Order set — half a turn of orders left');
 }
-// the panel's step through 1, 2, 3 turns ahead
-function cycleOrderTurns(){orderTurns=orderTurns%MAX_DELAY+1;syncUI();if(orderMode)setStatus('Tap a square: it goes there in '+orderTurns+' turn'+(orderTurns>1?'s':''));}
 
 // ── A CHOICE WHERE A PIECE WAS DROPPED ──────────────────────────────────────
 // A bishop dropped on a knight can merge or heal: the choice comes up on the same on-board chooser as

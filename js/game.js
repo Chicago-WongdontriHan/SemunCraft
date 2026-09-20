@@ -30,7 +30,7 @@ function initGame(){
   whiteTargets={}; blackTargets={};
   spawnHistory=[]; blackSpawnHistory=[]; whiteTurnCount=0; blackTurnCount=0; movedThisTurn=-1;
   scans=[];elixir={w:0,b:0};mineTurns={w:0,b:0};goldSpent={w:0,b:0};
-  orderLeft={w:ORDER_BUDGET,b:ORDER_BUDGET};orderMode=false;orderSrc=-1;
+  orderLeft={w:ORDER_BUDGET,b:ORDER_BUDGET};orderTurns=0;
   exploredTiles=new Set();
   // regular games start fogged (the tutorial and campaign set their own default)
   mapCheat=false;
@@ -144,8 +144,8 @@ function startWhiteTurn(){
 }
 
 // start-of-turn upkeep; in PvP each client only touches its own pieces
-function turnUpkeep(){
-  const own=pvpActive?myColor():null;
+function turnUpkeep(own){
+  if(own===undefined)own=pvpActive?myColor():null;
   // clear newborn aura from previous turn
   for(let i=0;i<ROWS*COLS;i++){if(pieces[i]?.newborn&&(!own||pieces[i].color===own))pieces[i].newborn=false;}
   // bishop mana: +1 mana every 3 turns after the bishop last healed
@@ -168,22 +168,34 @@ function turnUpkeep(){
       if(whiteTurnCount-last>=FORTIFIED_MEND&&whiteTurnCount>0){p.hp++;p.lastHitTurn=whiteTurnCount;flashSq(i,'heal-flash');}
     }
   }
-  // the orders that come due land now, and the side starting its turn gets its order budget back
-  runOrders(own);
+  // the orders count down here and go off at the end of the turn they reach nought on (runOrders, from
+  // endTurn), so an order lands together with the move its side makes that turn. The budget comes back
+  // with the turn, and the Delay counter starts every turn at none.
+  countOrders(own);
   if(!own||own==='w')orderLeft.w=ORDER_BUDGET;
   if(!own||own==='b')orderLeft.b=ORDER_BUDGET;
+  orderTurns=0;
 }
 
 // ── DELAYED ORDERS ───────────────────────────────────────────────────────────
-// An order counts down at the start of its side's turn, and the ones that come due all happen at once:
-// the piece moves to the square it reserved, or strikes an enemy standing there instead, or the order
-// simply lapses — when a piece of its own is on the square, or the square has gone out of its reach.
-// Mirrored by runOrders in js/engine.js, which the parity tests hold to this one.
+// An order counts down at the start of its side's turn (countOrders) and is carried out at the end of
+// the turn it reaches nought on, alongside whatever else that side did — so the ordered piece and this
+// turn's own move set off together. The piece moves to the square it reserved, or strikes an enemy
+// standing there instead, or the order simply lapses — when a piece of its own is on the square, or
+// the square has gone out of its reach.
+// Mirrored by countOrders/runOrders in js/engine.js, which the parity tests hold to these.
+function countOrders(own){
+  for(let i=0;i<ROWS*COLS;i++){
+    const p=pieces[i];
+    if(!p||!p.order||(own&&p.color!==own))continue;
+    if(p.order.turns>0)p.order.turns--;
+  }
+}
 function runOrders(own){
   for(let i=0;i<ROWS*COLS;i++){
     const p=pieces[i];
     if(!p||!p.order||(own&&p.color!==own))continue;
-    if(--p.order.turns>0)continue;
+    if(p.order.turns>0)continue;
     const to=p.order.to;delete p.order;
     const t=pieces[to],d=getDragDests(i),tgts=p.color==='w'?whiteTargets:blackTargets;
     if(t&&t.color!==p.color&&d.attack.has(to)){
@@ -221,20 +233,29 @@ function campaignCheckpoint(){
 
 function endTurn(){
   if(over)return;
+  // the piece that moved or healed this turn does not fire at the end of it; the engine's finishTurn
+  // takes the same note at the same moment, before the orders go off
+  const justMoved=movedThisTurn;
+  movedThisTurn=-1;
   whiteTurnCount++;
   if(pawnOnMine(turn))mineTurns[turn]++;   // the mine pays for the turn it was held (finishTurn in engine.js)
+  // the orders due this turn go off now, with the move that was just made, so the two animate together
+  runOrders(turn);
+  if(trainingMode&&over){over=false;addLog('A king has fallen — the training goes on');}
+  if(over){orderEndsGame(turn);return;}
   blackHitBy=[]; // reset hit tracker before white auto-attacks populate it
   const tc=document.getElementById('turn-counter');if(tc)tc.textContent='Turn '+whiteTurnCount;
   targetMode=false;targetSrc=-1;kingSelected=false;selectedPieces=new Set();boxSelecting=false;boxMouseDownOnEmpty=false;clearBoxSelect();
 
-  if(pvpActive){
+  if(pvpActive||trainingMode){
     // PvP: the player who just acted fires their own side's auto-attacks, then passes the turn
+    // Training: the same hand-over, with both sides in the same seat
     const mover=turn;
-    const justMoved=movedThisTurn;
-    movedThisTurn=-1;
     const actions=computeActions(mover).filter(a=>a.attacker!==justMoved);
     const passTurn=()=>{
       thinking=false;
+      // the training ground has nothing to win: a king falling is just one more thing to watch
+      if(trainingMode&&over){over=false;addLog('A king has fallen — the training goes on');}
       if(over){
         setStatus(mover==='w'?'White wins! ♔':'Black wins! ♚');SFX.win();syncUI();render();
         broadcastState(mover);
@@ -243,8 +264,9 @@ function endTurn(){
       }
       turn=mover==='w'?'b':'w';
       tickScans(turn);
+      if(trainingMode)turnUpkeep(turn);   // orders, mana and mending for the side taking over
       broadcastState(null);syncUI();render();
-      setStatus(isMyTurn()?'Your turn':'Opponent turn...');
+      setStatus(trainingMode?(turn==='w'?"White's turn":"Black's turn"):isMyTurn()?'Your turn':'Opponent turn...');
     };
     if(actions.length){
       thinking=true;syncUI();setStatus('Attacking...');
@@ -253,8 +275,6 @@ function endTurn(){
       passTurn();
     }
   }else{
-    const justMoved=movedThisTurn;
-    movedThisTurn=-1;
     const wActions=computeActions('w').filter(a=>a.attacker!==justMoved);
     const runBlack=()=>{
       tickScans('b');
@@ -292,6 +312,19 @@ function finishBlackTurn(){
   thinking=false;
   blackTurnCount++;
   if(pawnOnMine('b'))mineTurns.b++;
+  runOrders('b');                       // Black's orders land with the move Black just made
+  if(trainingMode&&over){over=false;addLog('A king has fallen — the training goes on');}
   document.getElementById('thinking-dot').classList.remove('on');
-  if(!over){startWhiteTurn();}
+  if(over){orderEndsGame('b');return;}
+  startWhiteTurn();
+}
+
+// an order that came due took the last king: the side whose order it was has won
+function orderEndsGame(winner){
+  render();syncUI();
+  if(campaignLevel){const cr=checkCampaignWin();setTimeout(()=>handleCampaignEnd(cr||(winner==='w'?'win':'lose')),600);return;}
+  setStatus(winner==='w'?'White wins! ♔':'Black wins! ♚');
+  const won=myColor()===winner;won?SFX.win():SFX.lose();
+  broadcastState(winner);
+  setTimeout(()=>showGameOver(won?'win':'lose'),600);
 }

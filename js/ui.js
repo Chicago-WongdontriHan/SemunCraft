@@ -53,13 +53,12 @@ function anyMergeReady(){
 // spring's Extract or a bishop's Scry, an order for anything that can move, and Merge when a pair is
 // ready. Everything else is put away rather than shown greyed out. render() calls this as well, so the
 // panel follows every tap.
-const PIECE_BTNS=['btn-spawn','btn-fortify','btn-merge','btn-special','btn-delay','btn-delay-turns','btn-skip'];
+const PIECE_BTNS=['btn-spawn','btn-fortify','btn-merge','btn-special','delay-box','btn-skip'];
 function syncPieceButtons(){
   const locked=over||thinking||!isMyTurn();
-  let selIdx=selectedPieces.size===1?[...selectedPieces][0]:-1;
   // the King in spawn mode holds no selection of its own, but it is still the piece in hand
-  if(selIdx<0&&kingSelected)selIdx=pieces.findIndex(q=>q&&q.color===myColor()&&q.type==='king');
-  const sel=selIdx>=0&&pieces[selIdx]&&pieces[selIdx].color===myColor()?pieces[selIdx]:null;
+  const selIdx=pieceInHand();
+  const sel=selIdx>=0?pieces[selIdx]:null;
   const show=(id,on)=>{const b=document.getElementById(id);if(b)b.style.display=on?'':'none';return on?b:null;};  // a hidden button is handed back as null: there is nothing left to set on it
   // in an AI vs AI match the panel belongs to the match controls
   if(gameMode==='aivsai'){PIECE_BTNS.forEach(id=>show(id,false));return;}
@@ -87,19 +86,16 @@ function syncPieceButtons(){
     spBtn.classList.toggle('active-mode',!!scryMode);
     spBtn.innerHTML=uiLabel(extract?'extract':'scry',scryMode?'Pick a square':extract?'Extract Elixir':'Scry (2)');
   }
-  // an order for the piece in hand, and how far ahead the next one is set
-  const delayBtn=show('btn-delay',!!sel);
+  // The delay counter belongs to the turn rather than to any one piece, so it is always up: each press
+  // adds a turn to the delay the next move will carry, and the small button under it clears it.
+  const delayBtn=document.getElementById('btn-delay');
   if(delayBtn){
-    delayBtn.disabled=locked||!canOrder(selIdx);
-    delayBtn.classList.toggle('active-mode',!!orderMode);
-    delayBtn.innerHTML=uiLabel('delay',orderMode?'Pick a square':'Delay ('+orderCostText(sel.type)+')');
-    delayBtn.title='Orders left this turn: '+orderCostText2(orderLeft[myColor()]);
-  }
-  const turnsBtn=show('btn-delay-turns',!!sel);
-  if(turnsBtn){
-    turnsBtn.disabled=locked;
-    turnsBtn.innerHTML=uiLabel('refresh',orderTurns+' turn'+(orderTurns>1?'s':''));
-    turnsBtn.title='How many turns from now the order happens';
+    delayBtn.disabled=locked;
+    delayBtn.classList.toggle('active-mode',orderTurns>0);
+    delayBtn.innerHTML=uiLabel('delay','Delay '+orderTurns);
+    delayBtn.title=orderTurns
+      ?'The next move is written down for '+orderTurns+' turn'+(orderTurns>1?'s':'')+' from now. Orders left this turn: '+orderCostText2(orderLeft[myColor()])
+      :'Press to put turns between the order and the move; press past the last one for none again';
   }
   // Merge, when a pair is ready
   const mergeBtn=show('btn-merge',!(campaignLevel&&campaignLevel.noMerge)&&(sel?getDragDests(selIdx).merge.size>0:anyMergeReady()));
@@ -252,6 +248,7 @@ function doRematch(){
 
 function goIntro(){
   hideGameOver();
+  if(trainingMode)leaveTraining();
   if(typeof stopAiVsAi==='function')stopAiVsAi();
   // leaving to the menu ends a multiplayer match
   if(pvpActive){pvpActive=false;try{if(conn)conn.close();}catch(e){}}

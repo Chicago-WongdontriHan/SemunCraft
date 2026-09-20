@@ -454,6 +454,7 @@ const FORTIFIED_MEND=5;   // a fortified pawn mends 1 HP five turns after its la
 // delayed orders (MAX_DELAY, ORDER_COST in js/state.js): giving one spends part of the turn's order
 // budget instead of the turn itself, and a pawn's takes half of it
 const MAX_DELAY=3, ORDER_BUDGET=1, ORDER_COST={pawn:.5};
+const ORDER_MIN=ORDER_COST.pawn;   // the cheapest order there is: below this the turn has nothing left to give
 function orderCost(type){return ORDER_COST[type]||1;}
 
 // ── RULES: LEGAL ACTIONS ─────────────────────────────────────────────────────
@@ -479,8 +480,10 @@ function legalActions(s,opts){
   const color=s.turn,B=s.board,g=geo(s),out=[];
   const noMerge=!!(s.level&&s.level.noMerge);
   const goldAllowed=!s.level||s.level.allowSpawn!==false;   // a level with no spawning has no Gold
+  const mine=[];
   for(let i=0;i<B.length;i++){
     const p=B[i];if(!p||p.color!==color)continue;
+    mine.push(i);
     if(p.type==='siege')out.push({type:'unsiege',from:i,to:i});
     const d=getDests(s,i);
     d.move.forEach(j=>out.push({type:'move',from:i,to:j}));
@@ -489,9 +492,6 @@ function legalActions(s,opts){
       if(p.type==='bishop'&&(p.mana||0)>0&&B[j].hp<B[j].maxHp)out.push({type:'healLock',from:i,to:j});
     });
     d.heal.forEach(j=>{if(!d.merge.has(j))out.push({type:'heal',from:i,to:j});});
-    // an order sends the piece to a square a few turns from now and leaves the turn to be used
-    if(s.orderLeft[color]>=orderCost(p.type))
-      d.move.forEach(j=>{for(let k=1;k<=MAX_DELAY;k++)out.push({type:'order',from:i,to:j,turns:k});});
     // a pawn on the Elixir spring can spend its turn extracting; any plain pawn can be fortified for 1 Gold
     if(p.type==='pawn'&&!p.fortified&&s.tiles[i]==='spring')out.push({type:'extract',from:i,to:i});
     if(p.type==='pawn'&&!p.fortified&&goldAllowed&&spawnRemaining(s,color)>=1)out.push({type:'fortify',from:i,to:i});
@@ -501,6 +501,19 @@ function legalActions(s,opts){
     if(opts.anyTarget){
       for(let j=0;j<B.length;j++)if(B[j]&&B[j].color!==color&&!concealed(s,j,color))out.push({type:'target',from:i,to:j});
     }else d.attack.forEach(j=>out.push({type:'target',from:i,to:j}));
+  }
+  // An order reserves a square a few turns ahead and leaves the turn to be used — unless it takes the
+  // last of the order budget, in which case the turn passes (applyAction). The square may be one an
+  // enemy holds today: it may be gone by then, and if it is not the move becomes a strike (runOrders).
+  // The reach is worked out with the enemy taken off the board, as orderTargets does in js/actions.js.
+  if(s.orderLeft[color]>=ORDER_MIN){
+    const off=[];
+    for(let k=0;k<B.length;k++){const q=B[k];if(q&&q.color!==color){off.push([k,q]);B[k]=null;}}
+    for(const i of mine){
+      if(s.orderLeft[color]<orderCost(B[i].type))continue;
+      getDests(s,i).move.forEach(j=>{for(let k=1;k<=MAX_DELAY;k++)out.push({type:'order',from:i,to:j,turns:k});});
+    }
+    for(const[k,q]of off)B[k]=q;
   }
   const king=B.findIndex(p=>p&&p.color===color&&p.type==='king');
   if(king>=0&&goldAllowed&&spawnRemaining(s,color)>=1)
@@ -654,7 +667,8 @@ function applyAction(s,a,events){
       p.order={to:a.to,turns:a.turns};
       s.orderLeft[color]-=orderCost(p.type);
       events.push({type:'order',from:a.from,to:a.to,turns:a.turns});
-      return true;                          // the turn goes on: that is what ordering ahead is for
+      // the budget is the turn: while half of it is left (a second pawn), the turn goes on
+      return s.orderLeft[color]>=ORDER_MIN;
     case'extract':
       s.elixir[color]++;
       s.moved=a.from;                       // the pawn worked instead of shooting
@@ -703,7 +717,9 @@ function finishTurn(s,color,events){
   s.moved=-1;
   s.turnCount[color]++;
   if(pawnOnMine(s,color))s.mineTurns[color]++;   // the mine pays for the turn it was held
-  if(s.mode==='pvp'){
+  runOrders(s,color,events);   // the orders due this turn go off with the move that was just made
+  if(s.over){}
+  else if(s.mode==='pvp'){
     // the side that acted fires, except the piece that moved or healed; then the other side starts
     applyAttacks(s,computeActions(s,color).filter(a=>a.attacker!==justMoved),color,events);
     if(!s.over){s.turn=other(color);upkeep(s,s.turn,events);tickScans(s,s.turn);}
@@ -744,22 +760,27 @@ function upkeep(s,own,events){
       if(t-last>=FORTIFIED_MEND&&t>0){p.hp++;p.lastHitTurn=t;}
     }
   }
-  // the orders that come due land now, and the side starting its turn gets its order budget back
-  runOrders(s,own,events);
+  // the orders count down now; the ones that come due go off at the end of this side's turn, with
+  // its own move (runOrders, from finishTurn), so the two land together
+  countOrders(s,own);
   if(!own||own==='w')s.orderLeft.w=ORDER_BUDGET;
   if(!own||own==='b')s.orderLeft.b=ORDER_BUDGET;
 }
 
-// Delayed orders coming due (runOrders in js/game.js, which this mirrors): each counts down at the
-// start of its side's turn and, at nought, the piece moves to the square it reserved, strikes an enemy
-// standing there instead, or the order lapses — a piece of its own on the square, or a square that has
-// gone out of reach, simply cancels it.
+// Delayed orders (runOrders in js/game.js, which this mirrors). An order counts down at the start of
+// its side's turn and goes off at the end of the turn it reaches nought on, alongside whatever else
+// that side did: the piece moves to the square it reserved, strikes an enemy standing there instead,
+// or the order lapses — a piece of its own on the square, or a square gone out of reach, cancels it.
+function countOrders(s,own){
+  const B=s.board;
+  for(let i=0;i<B.length;i++){const p=B[i];if(!p||!p.order||(own&&p.color!==own))continue;if(p.order.turns>0)p.order.turns--;}
+}
 function runOrders(s,own,events){
   const B=s.board;
   for(let i=0;i<B.length;i++){
     const p=B[i];
     if(!p||!p.order||(own&&p.color!==own))continue;
-    if(--p.order.turns>0)continue;
+    if(p.order.turns>0)continue;
     const to=p.order.to;delete p.order;
     const t=B[to],d=getDests(s,i);
     if(t&&t.color!==p.color&&d.attack.has(to)){

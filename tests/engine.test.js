@@ -97,12 +97,14 @@ section('fromSnapshot rebuilds a state, and act() applies just the action',()=>{
     while(!s.over){
       if(s.mode==='classic'&&s.turn==='b'&&n%4===0){E.botTurn(s);continue;}
       const r=E.fromSnapshot({cols:s.cols,rows:s.rows,theme:s.theme,mode:s.mode,board:s.board,tiles:s.tiles,turn:s.turn,
-        turnCount:s.turnCount,spawns:s.spawns,targets:s.targets,hitBy:s.hitBy,acted:s.acted,fog:s.fog,maxTurns:s.maxTurns});
+        turnCount:s.turnCount,spawns:s.spawns,targets:s.targets,hitBy:s.hitBy,acted:s.acted,fog:s.fog,maxTurns:s.maxTurns,
+        orderLeft:s.orderLeft});
       for(const k of ['board','tiles','blocked','turn','turnCount','spawns','targets','mode','fog'])
         if(JSON.stringify(r[k])!==JSON.stringify(s[k])){fail('fromSnapshot differs in '+k);return;}
       const acts=E.legalActions(s),a=acts[Math.floor(pick()*acts.length)];
-      // a knight's L-jump merge and a delayed order both leave the turn to be used
-      const keeps=a.type==='order'||(a.type==='merge'&&s.board[a.from].type==='knight'&&E.geo(s).kj[a.from].includes(a.to));
+      // a knight's L-jump merge keeps the turn, and so does an order while half the budget is left
+      const keeps=(a.type==='order'&&s.orderLeft[s.turn]-(s.board[a.from].type==='pawn'?.5:1)>=.5)
+        ||(a.type==='merge'&&s.board[a.from].type==='knight'&&E.geo(s).kj[a.from].includes(a.to));
       const res=E.act(r,a),events=E.step(s,a);
       if(res.continues!==keeps)fail('continues should be '+keeps+' after '+JSON.stringify(a));
       if(JSON.stringify(res.events[0])!==JSON.stringify(events[0]))fail('act and step describe '+JSON.stringify(a)+' differently');

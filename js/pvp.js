@@ -31,7 +31,7 @@ function newPeerWithTurn(id){
   return id?new Peer(id,opts):new Peer(undefined,opts);
 }
 
-function myColor(){ if(!pvpActive)return 'w'; return pvpRole==='host'?'w':'b'; }
+function myColor(){ if(trainingMode)return turn; if(!pvpActive)return 'w'; return pvpRole==='host'?'w':'b'; }
 function isMyTurn(){ return turn===myColor(); }
 function broadcastState(winner){ if(!pvpActive||!conn||!conn.open)return; conn.send(JSON.stringify({type:'state',pieces,turn,over,winner:winner||null,wt:whiteTargets,bt:blackTargets,blf:blackLastFrom,blt:blackLastTo,tiles:tileData,theme:mapTheme,log:logLines,el:elixir,mt:mineTurns,gs:goldSpent,ol:orderLeft})); }
 
@@ -52,7 +52,7 @@ function onPeerData(raw){
   // the host owns the map: adopt its terrain and theme
   if(msg.el)elixir=msg.el; if(msg.mt)mineTurns=msg.mt; if(msg.gs)goldSpent=msg.gs; if(msg.ol)orderLeft=msg.ol;
   if(msg.tiles)tileData=msg.tiles.slice();
-  if(msg.theme&&msg.theme!==mapTheme){mapTheme=msg.theme;document.body.className='theme-'+mapTheme;resizeBoard();}
+  if(msg.theme&&msg.theme!==mapTheme){mapTheme=msg.theme;setBodyTheme(mapTheme);resizeBoard();}
   if(msg.log){logLines=msg.log.slice(-4);document.getElementById('log').textContent=logLines.join(' · ');}
   if(over){
     render(); syncUI();

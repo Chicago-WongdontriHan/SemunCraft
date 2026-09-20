@@ -47,7 +47,7 @@ function aiVsAiNewMatch(){
   const s=SemunEngine.newGame({seed:Math.floor(Math.random()*2147483647),mode:'classic',theme:mapTheme,maxTurns:300});
   aiVsAi={s,white,black:3-white,timer:null,paused:false,lastFrom:-1,lastTo:-1};
   COLS=s.cols;ROWS=s.rows;
-  document.body.className='theme-'+s.theme;
+  setBodyTheme(s.theme);
   tileData=s.tiles.slice();
   mapCheat=true;exploredTiles=new Set();scans=[];elixir={w:0,b:0};mineTurns={w:0,b:0};goldSpent={w:0,b:0};orderLeft={w:ORDER_BUDGET,b:ORDER_BUDGET};
   const cheat=document.getElementById('btn-mapcheat');if(cheat)cheat.innerHTML=uiLabel('map','Map Cheat: ON');

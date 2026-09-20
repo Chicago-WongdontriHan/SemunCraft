@@ -141,7 +141,5 @@ window.addEventListener('load',()=>{
   fillUiIcons();
   resizeBoard();resizeBoard();
   renderPcCards();
-  const startOnce=()=>{if(!bgmPaused)startBgm();document.removeEventListener('pointerdown',startOnce);document.removeEventListener('keydown',startOnce);};
-  document.addEventListener('pointerdown',startOnce);
-  document.addEventListener('keydown',startOnce);
+  bgmAutoStart();   // the music starts with the app, on the title screen (js/audio.js)
 });

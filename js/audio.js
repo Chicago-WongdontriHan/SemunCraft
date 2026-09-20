@@ -19,6 +19,32 @@ function toggleBgm(){
   else{stopBgm();bgmPaused=true;if(btn)btn.textContent='▶ Resume BGM';}
 }
 
+// ── STARTING THE MUSIC ───────────────────────────────────────────────────────
+// The music plays from the moment the app opens, over the title screen, not from the first game. A
+// browser only lets sound out after the page has been touched — always so on a phone — so this starts
+// the tune straight away and, while the audio is still held back, waits for the first touch, click or
+// key, wherever it lands, the title screen's own buttons included. Notes scheduled meanwhile wait
+// silently: a held context's clock doesn't run, so they sound in order the moment it is let go.
+function bgmAutoStart(){
+  if(bgmPaused)return;
+  const ctx=getAudioCtx();                       // resumes by itself where the browser allows it
+  if(!bgmPlaying)startBgm();
+  if(ctx.state==='running')return;
+  const events=['pointerdown','touchstart','keydown','click'];
+  const done=()=>events.forEach(e=>document.removeEventListener(e,kick,true));
+  const kick=()=>{
+    const c=getAudioCtx();                       // getAudioCtx resumes a held context
+    if(!bgmPaused&&!bgmPlaying)startBgm();
+    if(c.state==='running')done();
+  };
+  events.forEach(e=>document.addEventListener(e,kick,true));
+}
+// coming back to the app (a phone suspends its audio in the background) picks the tune up again
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState!=='visible'||bgmPaused||!audioCtx)return;
+  if(audioCtx.state==='suspended')audioCtx.resume();
+});
+
 // ── BGM: procedural ambient loop ──────────────────────────────────────────────
 // startBgm() / stopBgm() live in music.js (medieval dance tunes per map theme)
 

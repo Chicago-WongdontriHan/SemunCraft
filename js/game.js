@@ -267,6 +267,7 @@ function endTurn(){
       if(trainingMode)turnUpkeep(turn);   // orders, mana and mending for the side taking over
       broadcastState(null);syncUI();render();
       setStatus(trainingMode?(turn==='w'?"White's turn":"Black's turn"):isMyTurn()?'Your turn':'Opponent turn...');
+      if(trainingMode&&typeof trainAfterPass==='function')trainAfterPass();   // the AI may have this side
     };
     if(actions.length){
       thinking=true;syncUI();setStatus('Attacking...');

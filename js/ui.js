@@ -101,7 +101,11 @@ function syncPieceButtons(){
   const mergeBtn=show('btn-merge',!(campaignLevel&&campaignLevel.noMerge)&&(sel?getDragDests(selIdx).merge.size>0:anyMergeReady()));
   if(mergeBtn){mergeBtn.disabled=locked;mergeBtn.innerHTML=uiLabel('merge','Merge');}
   const skipBtn=show('btn-skip',true);
-  if(skipBtn)skipBtn.disabled=locked;
+  if(skipBtn){
+    skipBtn.disabled=locked;
+    // in the sandbox both sides are yours, so the button says whose turn it is passing on
+    skipBtn.innerHTML=uiLabel('skip',trainingMode?'End '+(turn==='w'?'White':'Black')+"'s turn":'Next turn');
+  }
 }
 function orderCostText2(v){return v===.5?'\u00BD':String(v);}
 function syncUI(){

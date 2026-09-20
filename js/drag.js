@@ -119,7 +119,14 @@ boardInput.addEventListener('pointerdown',e=>{
   if(e.button!==0)return;
   e.preventDefault();
   if(targetMode){handleTargetClick(i);return;}
-  if(trainingMode&&trainBrush)return;   // the palette has the board: trainingPlace runs on pointerup
+  if(trainEditing()){
+    // an empty hand on a piece carries it; otherwise the press stays, so a tap places and a drag on a
+    // zoomed-in board slides the view (the tap itself lands in handleClick below)
+    if(!trainBrush&&pieces[i]){trainPickUpAt(i,e.clientX,e.clientY,e.pointerType);return;}
+    press={id:e.pointerId,type:e.pointerType,x:e.clientX,y:e.clientY,i,canDrag:false,canBox:false,box:false};
+    try{boardInput.setPointerCapture(e.pointerId);}catch(err){}
+    return;
+  }
   const p=pieces[i];
   press={id:e.pointerId,type:e.pointerType,x:e.clientX,y:e.clientY,i,
     canDrag:!!(p&&p.color===myColor()),

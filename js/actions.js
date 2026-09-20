@@ -54,6 +54,8 @@ function unsiegePiece(i){
 }
 
 function handleRightClick(i,e){
+  // the training ground, while it is being built: the right button clears the square
+  if(trainEditing()){trainErase(i);return;}
   if(over||thinking||!isMyTurn())return;
   const p=pieces[i];const mc=myColor();
   if(p&&p.color===mc&&p.type==='siege'){unsiegePiece(i);return;}
@@ -289,7 +291,7 @@ function executeDrop(from,to,dests){
 }
 
 function handleClick(i,additive){
-  if(trainingMode&&trainBrush&&trainingPlace(i))return;   // a unit or a tile is in hand
+  if(trainEditing()&&trainingPlace(i))return;   // the training ground is being built, not played
   const p=pieces[i];const mc=myColor();
   if(scryMode){
     // any glowing square casts, aimed at the valid 3x3 that covers it; anywhere else puts the scry away

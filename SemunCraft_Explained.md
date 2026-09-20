@@ -256,22 +256,35 @@ The game installs as a home-screen app (a Progressive Web App): no App Store, no
 
 ## The Training Ground
 
-A sandbox off the main menu (`js/training.js`). There is no AI in it: **both sides are played from the
-same seat**, so the turn is passed by hand and every rule can be watched from either end. Nothing ends
-here — when a king falls the log says so and play carries on.
+A sandbox off the main menu (`js/training.js`). The board is either being **built** or being **played**,
+and the palette says which — the two buttons at its top. Nothing ends here: when a king falls the log
+says so and play carries on.
 
-- **The palette** takes the left panel's place, where the unit cards normally are: a **White / Black**
-  switch, then every unit in the game (pawn, fortified pawn, knight, bishop, rook, siege, queen, mage,
-  king), then the **Elixir spring**, the **gold mine** and the map's own tiles, and an **eraser**. Pick
-  one and tap a square, or drag it from the palette onto the board — a unit replaces whatever stands
-  there, a tile is taken away by tapping it again, and the eraser lifts a unit first and the tile under
-  it second. Only one king a side: placing another moves it. **Clear units** empties the board and
-  **Done placing** puts the brush down so the pieces can be played normally.
+- **Edit**: the left button puts down whatever is in hand, **drags any piece to any square** (the sandbox
+  has no rules about where a piece may stand), and the **right button lifts** whatever is on a square —
+  the unit first, the tile under it next. With nothing in hand, a drag on a zoomed-in board slides the
+  view, as it does in a game.
+- **Play**: every click is an ordinary game move again — move, merge, order, target, spawn.
+- **The palette** takes the left panel's place, where the unit cards normally are: Edit / Play, then
+  **AI White** and **AI Black**, then the four **maps**, a **White / Black** switch, every unit in the
+  game (pawn, fortified pawn, knight, bishop, rook, siege, queen, mage, king), then the **Elixir
+  spring**, the **gold mine** and the map's own tiles — the impassable ones carry a no-entry mark — and
+  an **eraser**, with **Clear units** and **Drop brush** at the foot. Pick something and tap a square, or
+  drag it from the palette onto the board. A unit replaces whatever stands there, a tile is taken away by
+  tapping it again, and only one king a side: placing another moves it.
+- **Changing the map** draws fresh ground for that theme, spring and mine included, and leaves the units
+  where they are (anything left inside a rock has the rock taken out from under it). The music follows
+  the map, so the jungle's piphat starts as soon as the jungle does.
+- **The AI can take a side** — or both, which plays a match out of the arrangement you built. The
+  built-in AI plays Black, so White's turn is handed to it on a board with the colours swapped; the move
+  it picks is played back through the game's own handlers, exactly as a tap would be (`trainAiTurn`,
+  which fetches `js/engine.js` on demand the way the trained networks do).
 - On a phone the palette wraps into the strip above the board rather than disappearing with the cards.
 - The fog is lifted at the start (Map Cheat is on) — a sandbox with fog over it would hide its own
   experiment — and the ordinary panel, resources, merges, orders and auto-attacks all behave exactly as
   they do in a game, because it *is* the game with the AI taken out (`myColor` returns whichever side is
-  to move, and `endTurn` hands over the way it does in multiplayer).
+  to move, `endTurn` hands over the way it does in multiplayer, and the turn button says whose turn it
+  is passing on).
 
 ---
 
@@ -322,7 +335,7 @@ An interactive 7-step tutorial:
 - **Left panel**: The Gold and Elixir counters and paginated unit reference cards (in the training ground the cards give way to the unit palette) (the fortified pawn has a card of its own). The counters are measured after every render (`fitResources` in `js/ui.js`): the panel first takes any width the board isn't using, then the line shrinks a step at a time, and the names go before a number could ever be cut.
 - **Resources** (`renderResources` in `js/ui.js`): **Gold** is what the King spends to spawn pawns and what fortifying costs (8 to start, a sixth a turn, a sixth more while a pawn holds the mine, 1 each, so the count is often a fraction), and **Elixir** is what a pawn extracts at the spring — a bishop’s mana is its own heal charge, not this. On desktop each resource has **a line of its own** — icon, name, count, and for Gold this turn’s income (+0.17, or +0.33 lit gold while the mine is held) — and AI vs AI shows White and Black in two columns. On a phone the two sit side by side in the strip above the board, which stays one line.
 - **Center**: The game board with HP pips, bishop mana pips, coordinate labels, and pan arrows when zoomed in (the board can also be dragged to slide it).
-- **Right panel**: **Menu | Settings** at the top (where the move hint used to be — Settings opens the audio card, so a game needs no ⚙ button of its own; the fixed one stays on the title screen), then the **Delay** counter — a block one and a half columns wide and two rows tall, because it belongs to the turn rather than to any one piece and is pressed often — then the action buttons, then Map View (minimap, zoom, Map Cheat). **The rest of the panel holds only what the piece in hand can do** (`syncPieceButtons` in `js/ui.js`, called from every render): **Spawn** only while the King is up, **Fortify** only for a plain pawn, the piece’s own action (**Extract Elixir** on the spring, **Scry (2)** for a bishop) only when it has one, **Delay** and its turns button for anything with somewhere to go, **Merge** while a merge is ready, and **Skip** always. Nothing is shown greyed out for a piece it does not belong to. AI vs AI swaps the player’s buttons for Pause, Speed and New Match.
+- **Right panel**: **Menu | Settings** at the top (where the move hint used to be — Settings opens the audio card, so a game needs no ⚙ button of its own; the fixed one stays on the title screen), then the **Delay** counter — a block one and a half columns wide and two rows tall, because it belongs to the turn rather than to any one piece and is pressed often — then the action buttons, then Map View (minimap, zoom, Map Cheat). **The rest of the panel holds only what the piece in hand can do** (`syncPieceButtons` in `js/ui.js`, called from every render): **Spawn** only while the King is up, **Fortify** only for a plain pawn, the piece’s own action (**Extract Elixir** on the spring, **Scry (2)** for a bishop) only when it has one, **Merge** while a merge is ready, and the turn button (**Next turn**, or **End White's turn** in the training ground) always. Nothing is shown greyed out for a piece it does not belong to. AI vs AI swaps the player’s buttons for Pause, Speed and New Match.
 - **Bottom bar**: Game log and an AI "thinking" indicator dot.
 - **Mobile**: In portrait, the resource counters become a strip above the board, kept to one line (two in AI vs AI would push the board down), and the status line is clipped to one line for the same reason and the buttons wrap into finger-sized rows below it (unit cards, minimap and hint are hidden). The status line wraps, and the board keeps its full size when zoomed in: the pan arrows are hidden (drag the board instead) and the small map in the button strip below shows where the view is. A double tap never zooms the page (the board has its own pinch zoom). On short landscape screens the side panels shrink and the layout is centered. Touch devices get touch wording (tap a siege tower twice instead of right-clicking).
 
@@ -533,7 +546,7 @@ In Single Player a trained network plays Black. **Easy** plays `models/easy.js` 
 **🤖 AI vs AI** on the main menu shows the two most-trained networks playing each other on the selected map theme. They swap colors every match, and the result screen keeps a running score.
 
 - **How it runs:** matches are simulated by `js/engine.js` (the game's rules, checked by the parity tests) and drawn on the normal board: pieces slide, hits flash and the log lists every move. Both AIs play in the single-player turn order and pick moves by sampling their policy, as in training. There's no fog of war and there are no animals.
-- **Controls:** Pause, Speed (1×, 2×, 4× or 8×; at 4× and faster, animations and sounds are skipped) and New Match take the place of Spawn, Merge and Skip. Menu ends the match.
+- **Controls:** Pause, Speed (1×, 2×, 4× or 8×; at 4× and faster, animations and sounds are skipped) and New Match take the place of Spawn, Merge and the turn button. Menu ends the match.
 - **Files:** `js/aivsai.js` is the mode. The first time it starts, it loads (through `js/netai.js`) `js/engine.js`, `rl/encoding.js`, `js/nn.js` (the network in plain JavaScript, about 100 ms per move) and the weights in `models/ai-1.js` and `models/ai-2.js` (half precision, 2.8 MB each). This works on GitHub Pages and from a double-clicked `SemunCraft.html`.
 - **Updating the AIs:** `python rl/export_web.py --run <run folder>` exports a run's two most-trained networks to `models/` (AI #1 is the newer one, and also plays Hard) and checks `js/nn.js` against PyTorch on real positions. Bump the `?v=` version in `SemunCraft.html` when you publish new weights.
 

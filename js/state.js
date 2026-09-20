@@ -71,6 +71,8 @@ let dragSrc=-1,dragDests=null,dragging=false,mouseDownI=-1,mouseDownX=0,mouseDow
 let sqPx=40;
 let gameMode='single',difficulty='easy';
 let trainingMode=false;   // the training ground: both sides in one seat, and a palette to build the board (js/training.js)
+let trainMouse='edit';    // in the training ground the mouse either builds the board or plays the game
+function trainEditing(){return trainingMode&&trainMouse==='edit';}
 let mapTheme='forest'; // 'forest'|'jungle'|'desert'|'ocean'
 let tileData=[]; // per-sq tile type string
 let animals=[]; // array of {emoji,hp,maxHp,name,aggressive,fractDmg,x,y,tx,ty,speed}

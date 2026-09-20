@@ -197,6 +197,19 @@ const TERRAIN_ART={
     +scShape('M56 96 C56 74 68 52 82 52 C94 52 98 76 98 96 Z','#55657A','#16233C',4)
     +'<path d="M18 72 C22 60 30 52 38 50" fill="none" stroke="#9DAABE" stroke-width="5.5" stroke-linecap="round"/>'
     +scStroke('M4 94 q5 -5 10 0 q5 5 10 0','#5BD6EA',3,SC_OI),
+  // a jungle water hole: dark water in a muddy bank, lily pads on it and reeds at its edge. It blocks
+  // like the palm it stands in for — the square keeps its palm tile, only the drawing changes.
+  waterhole:
+    scShape('M3 58 C3 39 24 27 50 27 C76 27 97 39 97 58 C97 78 76 94 50 94 C24 94 3 78 3 58 Z','#6B5433','#241A0E',4)
+    +scShape('M12 58 C12 44 29 34 50 34 C71 34 88 44 88 58 C88 74 71 86 50 86 C29 86 12 74 12 58 Z','#1F7A80','#0C3B40',3.4)
+    +scShape('M22 62 C22 52 35 45 50 45 C65 45 78 52 78 62 C78 72 65 79 50 79 C35 79 22 72 22 62 Z','#14595F','#0C3B40',0)
+    +scStroke('M28 51 C35 46 44 44 53 45','#7FE3F0',3.4,SC_CLEAR)
+    +scStroke('M38 72 C46 76 57 76 65 71','#7FE3F0',2.6,SC_CLEAR)
+    +scDot(34,64,10,'#3FA34D','#12361C',3.2)
+    +'<path d="M34 64 L25.5 58.5 L27 68.5 Z" fill="#12361C"/>'
+    +scDot(63,56,4.6,'#FF4F7B','#12361C',2.4)+scDot(63,56,1.6,'#FFD84D')
+    +scStroke('M13 54 C9 41 11 30 17 21 M20 57 C18 45 21 35 27 27','#3FA34D',3.4,SC_CLEAR)
+    +scStroke('M87 50 C91 38 89 29 84 22','#2F8A3F',3.4,SC_CLEAR),
   // a coconut palm: fronds behind and in front of a ringed trunk, a leafy clump at its foot
   palm:
     scShape('M58 28 C50 12 36 4 20 6 C34 12 46 20 58 28 Z','#2F8A3F','#12361C',3.6)
@@ -256,7 +269,11 @@ function tileArt(i){
   const theme=SCENERY[mapTheme]?mapTheme:'forest';
   const t=tileData[i];
   if(t){
-    const kind=(t==='sandstone-spawner')?'sandstone':t;
+    let kind=(t==='sandstone-spawner')?'sandstone':t;
+    // the jungle's palms: about half the squares hold a water hole instead. The square itself picks
+    // (scHash, as the ground stickers do), so no game randomness is touched and the map keeps its look
+    // between renders — which is why the two can fall unevenly on a board that is otherwise mirrored.
+    if(kind==='palm'&&mapTheme==='jungle'&&((scHash(ROW(i),COL(i))>>>7)&1))kind='waterhole';
     const art=TERRAIN_ART[kind];
     return art?scNode('ob|'+kind,'0 0 100 100',art):null;
   }

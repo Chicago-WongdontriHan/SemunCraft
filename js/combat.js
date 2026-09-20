@@ -65,30 +65,42 @@ function svgCannonball(ax,ay,tx,ty,cb){
 function attackAnim(attacker,target,type,cb){
   const a=sqCenter(attacker),t=sqCenter(target);
   if(type==='pawn'){
-    // a pawn leans in and swings its own sword at the enemy: the piece turns to face it, so the sword
-    // hand always leads and the shield falls to the hand on the far side. A fortified pawn swings the
-    // same way, in its helmet, because it is the same drawing (pieceArt).
-    const p=pieces[attacker],flip=t.x<a.x,s=flip?-1:1;
-    const sz=Math.max(14,Math.floor(sqPx*.86));
-    const el=document.createElement('div');
-    el.style.cssText='position:fixed;pointer-events:none;z-index:360;left:'+a.x+'px;top:'+a.y+'px;'
-      +'width:'+sz+'px;height:'+sz+'px;transform-origin:50% 80%;';
-    el.innerHTML=pieceSVG(p?pieceArt(p):'pawn',p?p.color:myColor(),mapTheme,sz);
-    document.body.appendChild(el);
-    // the piece on the board steps aside for its swinging copy, and comes back after
-    const sqEl=sqElAt(attacker),art=sqEl&&sqEl.querySelector('.piece-art');
-    if(art)art.style.opacity='0';
+    // A pawn swings its sword through 120° — from over its shoulder to the follow-through — while it
+    // only leans into the blow, so the swing is the blade's and not the whole pawn's. The drawing is
+    // mirrored when the enemy is to the left, which keeps the sword hand leading and the shield on the
+    // hand on the far side. A fortified pawn swings the same way, in its helmet (pieceArt).
+    const p=pieces[attacker],art=p?pieceArt(p):'pawn',col=p?p.color:myColor();
+    const flip=t.x<a.x,sz=Math.max(14,Math.floor(sqPx*.86));
     const mid='translate(-50%,-50%) ',mirror=flip?' scaleX(-1)':'';
-    const step=(dx,dy,deg)=>mid+'translate('+dx.toFixed(1)+'px,'+dy.toFixed(1)+'px) rotate('+deg.toFixed(1)+'deg)'+mirror;
-    const dx=(t.x-a.x)*.32,dy=(t.y-a.y)*.32;
-    const done=()=>{el.remove();if(art)art.style.opacity='';cb();};
-    const anim=el.animate([
-      {transform:step(0,0,0)},
-      {transform:step(-dx*.28,-dy*.28,-13*s),offset:.32},   // wind up, away from the enemy
-      {transform:step(dx,dy,26*s),offset:.62},              // and through it
-      {transform:step(0,0,0)},
-    ],{duration:420,easing:'ease-out'});
-    if(anim&&anim.finished)anim.finished.then(done,done);else setTimeout(done,420);
+    const box=document.createElement('div');
+    box.style.cssText='position:fixed;pointer-events:none;z-index:360;left:'+a.x+'px;top:'+a.y+'px;'
+      +'width:'+sz+'px;height:'+sz+'px;transform-origin:50% 80%;';
+    const layer=html=>{const d=document.createElement('div');d.style.cssText='position:absolute;inset:0;';d.innerHTML=html;return d;};
+    const sword=layer(pieceSword(art,col,mapTheme,sz));      // behind the pawn, as the drawing has it
+    sword.style.transformOrigin=SWORD_PIVOT;
+    box.appendChild(sword);
+    box.appendChild(layer(pieceWithoutSword(art,col,mapTheme,sz)));
+    document.body.appendChild(box);
+    // the piece on the board steps aside for its swinging copy, and comes back after
+    const sqEl=sqElAt(attacker),onBoard=sqEl&&sqEl.querySelector('.piece-art');
+    if(onBoard)onBoard.style.opacity='0';
+    const lean=(dx,dy,deg)=>mid+'translate('+dx.toFixed(1)+'px,'+dy.toFixed(1)+'px) rotate('+deg.toFixed(1)+'deg)'+mirror;
+    const dx=(t.x-a.x)*.3,dy=(t.y-a.y)*.3,DUR=460;
+    const done=()=>{box.remove();if(onBoard)onBoard.style.opacity='';cb();};
+    box.animate([
+      {transform:lean(0,0,0)},
+      {transform:lean(-dx*.3,-dy*.3,-6),offset:.3},         // rock back with the wind-up
+      {transform:lean(dx,dy,9),offset:.6},                  // lean into the blow
+      {transform:lean(0,0,0)},
+    ],{duration:DUR,easing:'ease-out'});
+    // the blade: 30° back over the shoulder, then 90° forward — 120° of swing
+    const anim=sword.animate([
+      {transform:'rotate(0deg)'},
+      {transform:'rotate(-30deg)',offset:.3},
+      {transform:'rotate(90deg)',offset:.6},
+      {transform:'rotate(0deg)'},
+    ],{duration:DUR,easing:'ease-out'});
+    if(anim&&anim.finished)anim.finished.then(done,done);else setTimeout(done,DUR);
   }else if(type==='knight'){
     const angle=Math.atan2(t.y-a.y,t.x-a.x)*(180/Math.PI);
     const em=document.createElement('div');em.className='atk-emoji';em.textContent='🗡️';

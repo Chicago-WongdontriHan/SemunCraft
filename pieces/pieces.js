@@ -142,6 +142,31 @@ PIECE_TINTS.b.fortified=PIECE_TINTS.b.pawn;
 // what a piece on the board is drawn as: a fortified pawn keeps type 'pawn' and wears the helmet
 function pieceArt(p){return p.fortified?'fortified':p.type;}
 
+// a piece's palette: the team's colours, tinted for its type, over the map set's metal, wood and gems
+function pieceColors(type,color,theme){
+  const set=PIECE_SETS[theme]||PIECE_SETS.forest||{colors:{}};
+  const tint=(PIECE_TINTS[color]||PIECE_TINTS.w)[type]||PIECE_TINTS.w.pawn;
+  const team={...(PIECE_TEAMS[color]||PIECE_TEAMS.w),body:tint[0],shade:tint[1]};
+  const fill=str=>(str||'').replace(/\{(\w+)\}/g,(m,k)=>team[k]!=null?team[k]:(set.colors&&set.colors[k])||m);
+  return{set,team,fill};
+}
+
+// The pawn's sword drawn on its own, and the pawn drawn without it, so an attack can swing the sword
+// through its arc while the pawn only leans in (attackAnim in js/combat.js). The swing turns about the
+// hand, which is where the grip sits in the 100-box.
+const SWORD_PIVOT='79% 70%';
+function pieceSword(type,color,theme,size){
+  const shape=PIECE_SHAPES[type];
+  if(!shape||!shape.back)return '';
+  return '<svg viewBox="0 0 100 100" width="'+size+'" height="'+size+'" xmlns="http://www.w3.org/2000/svg" '
+    +'style="display:block;overflow:visible">'+pieceColors(type,color,theme).fill(shape.back)+'</svg>';
+}
+function pieceWithoutSword(type,color,theme,size){
+  const shape=PIECE_SHAPES[type],full=pieceSVG(type,color,theme,size);
+  if(!shape||!shape.back)return full;
+  return full.replace(pieceColors(type,color,theme).fill(shape.back),'');
+}
+
 function pieceFace(shape,team){
   let s='';
   (shape.blush||[]).forEach(([x,y])=>{s+=`<ellipse cx="${x}" cy="${y}" rx="3.8" ry="2.3" fill="#FF8FA3" opacity=".6"/>`;});
@@ -161,10 +186,7 @@ function pieceSVG(type,color,theme,size,plain){
     return '<svg viewBox="'+UNIT_VIEWBOX+'" width="'+size+'" height="'+size+'" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible">'+(art[color]||art.w)+'</svg>';
   }
   const shape=PIECE_SHAPES[type];if(!shape)return '';
-  const set=PIECE_SETS[theme]||PIECE_SETS.forest||{colors:{}};
-  const tint=(PIECE_TINTS[color]||PIECE_TINTS.w)[type];
-  const team={...(PIECE_TEAMS[color]||PIECE_TEAMS.w),body:tint[0],shade:tint[1]};
-  const fill=str=>(str||'').replace(/\{(\w+)\}/g,(m,k)=>team[k]!=null?team[k]:(set.colors&&set.colors[k])||m);
+  const {set,team,fill}=pieceColors(type,color,theme);
   const [sx,sy]=shape.shine;
   return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible">`
     +`<ellipse cx="50" cy="91" rx="${shape.ring+6}" ry="5" fill="rgba(0,0,0,.3)"/>`

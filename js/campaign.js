@@ -378,7 +378,6 @@ function startCampaignLevel(levelIdx){
   }
   if(!bgmPaused&&!bgmPlaying) startBgm();
   syncUI(); render(); resizeBoard(); render();
-  showMoveHint();
   setStatus(lv.name+' — '+lv.desc);
 }
 

@@ -95,46 +95,6 @@ function syncUI(){
   updateViewportControls();
 }
 
-function showMoveHint(){
-  const hb=document.getElementById('hint-box');
-  if(!hb)return;
-  if(difficulty!=='easy'||over||thinking||!isMyTurn()){hb.style.display='none';return;}
-  const mc=myColor();
-  const bp2=[];for(let i=0;i<ROWS*COLS;i++){const p=pieces[i];if(p&&p.color===mc)bp2.push({i,p});}
-  let hint='';
-  // a pawn standing on the spring: worth a turn, and easy to miss
-  for(const {i,p} of bp2){
-    if(p.type==='pawn'&&tileData[i]==='spring'){hint='pawn at '+sqName(i)+' can extract Elixir';break;}
-  }
-  // check merges
-  if(!hint)for(const {i,p} of bp2){
-    const d=getDragDests(i);
-    if(d.merge.size){const t=[...d.merge][0];hint=p.type+' at '+sqName(i)+' can merge with '+pieces[t].type+' at '+sqName(t);break;}
-  }
-  // check attacks
-  if(!hint){
-    for(const {i,p} of bp2){
-      const d=getDragDests(i);
-      if(d.attack.size){const t=[...d.attack][0];hint=p.type+' at '+sqName(i)+' can attack '+pieces[t].type+' at '+sqName(t);break;}
-    }
-  }
-  // suggest pawn move toward enemy king
-  if(!hint){
-    const eki=pieces.findIndex(p=>p&&p.color!==mc&&p.type==='king');
-    const pawns=bp2.filter(({p})=>p.type==='pawn');
-    if(pawns.length&&eki>=0){
-      const best=pawns.reduce((a,b)=>cheb(a.i,eki)<cheb(b.i,eki)?a:b);
-      const d=getDragDests(best.i);
-      if(d.move.size){const mv=[...d.move].reduce((a,b)=>cheb(a,eki)<cheb(b,eki)?a:b);hint='Move pawn at '+sqName(best.i)+' toward enemy';}
-    }
-  }
-  if(!hint&&spawnRemaining()>=1)hint='Spawn a pawn next to your King';
-  if(!hint)hint='Skip turn';
-  hb.textContent='Hint: '+hint;
-  hb.style.display='block';
-}
-
-// ── PIECE CARD PAGINATION ─────────────────────────────────────────────────────
 function renderPcCards(){
   const wrap=document.getElementById('pc-cards-wrap');
   if(!wrap)return;
@@ -185,6 +145,19 @@ function elixirCount(color){
   if(gameMode==='aivsai'&&aiVsAi&&aiVsAi.s.elixir)return aiVsAi.s.elixir[color]||0;
   return (typeof elixir!=='undefined'&&elixir[color])||0;
 }
+// The panel is a fixed width while the numbers grow (9.50, 10.33, +0.33), so the line is measured after
+// every render: it shrinks a step at a time rather than be cut, and the names go before the numbers do.
+// resizeBoard widens the panel first, wherever the window has width the board isn't using.
+function fitResources(){
+  const el=document.getElementById('resources');
+  if(!el||!el.clientWidth)return;
+  const base=Math.max(10,Math.floor((window.lastPf||10)*1.35));
+  el.classList.remove('res-noname');
+  let f=base;el.style.fontSize=f+'px';
+  while(el.scrollWidth>el.clientWidth&&f>9){f--;el.style.fontSize=f+'px';}
+  if(el.scrollWidth>el.clientWidth)el.classList.add('res-noname');
+}
+
 function renderResources(){
   const el=document.getElementById('resources');if(!el)return;
   const noGold=campaignLevel&&campaignLevel.allowSpawn===false;
@@ -204,6 +177,7 @@ function renderResources(){
       +line('res-line-gold',RES_GOLD,'Gold',gold,noGold?'':'+'+goldRate(color).toFixed(2),boost)
       +line('res-line-elixir',RES_ELIXIR,'Elixir',elixirCount(color))+'</div>';
   }).join('');
+  fitResources();
 }
 
 function pcPage(dir){

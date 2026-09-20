@@ -21,6 +21,7 @@ let mineTurns={w:0,b:0};  // turns that ended with a pawn of that side on the go
 let goldSpent={w:0,b:0};  // Gold spent on anything but spawning: fortified pawns
 const FORTIFIED_HP=3;     // a fortified pawn is a pawn in a helmet, with three life
 const MAGE_ELIXIR=2;      // a bishop and a rook merge into a Mage for 2 Elixir (engine.js)
+const FORTIFIED_MEND=5;   // and its armour mends 1 HP five turns after the last hit it took
 // only a plain pawn works the spring or the mine; a fortified one can't (pawnOnMine in engine.js)
 function canExtract(i){ const p=pieces[i]; return !!p&&p.type==='pawn'&&!p.fortified&&tileData[i]==='spring'; }
 function pawnOnMine(color){ return pieces.some((p,i)=>p&&p.color===color&&p.type==='pawn'&&!p.fortified&&tileData[i]==='mine'); }
@@ -156,7 +157,7 @@ let lastPf=12;
 // ── PIECE CARD DATA ──────────────────────────────────────────────────────────
 const PC_DATA=[
   {gw:'♙',gb:'♟',name:'Pawn',   stats:'1HP · any dir · atk adj · mines'},
-  {gw:'♙',gb:'♟',name:'Fortified',stats:'3HP · a pawn in a helmet · 1 Gold'},
+  {gw:'♙',gb:'♟',name:'Fortified',stats:'3HP · mends 1HP/5 turns · 1 Gold'},
   {gw:'♘',gb:'♞',name:'Knight', stats:'4HP · L-jump · atk L-dist'},
   {gw:'♗',gb:'♝',name:'Bishop', stats:'2HP · diagonal 2 · heals (mana)'},
   {gw:'♖',gb:'♜',name:'Rook',   stats:'4HP · card2 · pierce rng3'},

@@ -69,7 +69,6 @@ function initGame(){
   if(!pvpActive && gameMode!=='pvp') pickStrategy();
   if(!bgmPaused&&!bgmPlaying) startBgm();
   syncUI(); render();
-  showMoveHint();
   setStatus("White's turn");
 }
 
@@ -132,7 +131,6 @@ function startWhiteTurn(){
   tickScans('w');
   turnUpkeep();
   syncUI(); render();
-  showMoveHint();
   setStatus("White's turn");
 }
 
@@ -151,6 +149,14 @@ function turnUpkeep(){
         p.lastHealTurn=whiteTurnCount; // reset cooldown from this regen
         if(p.mana===2)flashSq(i,'heal-flash');
       }
+    }
+  }
+  // a fortified pawn's armour mends 1 HP five turns after the last hit it took (upkeep in engine.js)
+  for(let i=0;i<ROWS*COLS;i++){
+    const p=pieces[i];
+    if(p&&p.fortified&&(!own||p.color===own)&&p.hp<p.maxHp){
+      const last=p.lastHitTurn||0;
+      if(whiteTurnCount-last>=FORTIFIED_MEND&&whiteTurnCount>0){p.hp++;p.lastHitTurn=whiteTurnCount;flashSq(i,'heal-flash');}
     }
   }
 }

@@ -24,7 +24,7 @@ async function startAiVsAi(){
   stopAnimalLoop();animals=[];animalDivs.forEach(el=>el.remove());animalDivs.clear();
   over=false;thinking=true; // the board takes no player input while the AIs play
   aiVsAiControls(true);
-  syncUI();showMoveHint();resizeBoard();
+  syncUI();resizeBoard();
   document.getElementById('thinking-dot').classList.add('on');
   setStatus('Loading the trained AIs…');
   try{await aiVsAiLoad();}
@@ -196,7 +196,7 @@ function aiVsAiControls(on){
     button('btn-aivsai-pause','⏸ Pause',aiVsAiTogglePause),
     button('btn-aivsai-speed','⏩ Speed '+aiVsAiSpeed+'×',aiVsAiCycleSpeed),
     button('btn-aivsai-new','↻ New Match',aiVsAiNewMatch));
-  document.getElementById('actions').insertBefore(box,document.getElementById('btn-new'));
+  document.getElementById('actions').appendChild(box);
 }
 
 function aiVsAiTogglePause(){

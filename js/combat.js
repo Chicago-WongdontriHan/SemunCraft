@@ -29,34 +29,6 @@ function emojiAnim(emoji,ax,ay,tx,ty,arc,duration,cb){
   requestAnimationFrame(step);
 }
 
-function svgSpear(ax,ay,tx,ty,cb){
-  const svg=document.getElementById('wep-overlay');
-  const dx=tx-ax,dy=ty-ay,len=Math.hypot(dx,dy)||1;
-  const nx=dx/len,ny=dy/len;
-  const g=document.createElementNS('http://www.w3.org/2000/svg','g');
-  const shaft=document.createElementNS('http://www.w3.org/2000/svg','line');
-  shaft.setAttribute('stroke','#c8a040');shaft.setAttribute('stroke-width','3');shaft.setAttribute('stroke-linecap','round');
-  const tip=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-  tip.setAttribute('fill','#e0e8f0');tip.setAttribute('stroke','#b0c0d0');tip.setAttribute('stroke-width','1');
-  g.appendChild(shaft);g.appendChild(tip);svg.appendChild(g);
-  const start=performance.now();const dur=400;
-  const step=ts=>{
-    const s=Math.min(1,(ts-start)/dur);
-    const ext=s<.5?s*2:2-(s-.5)*2;
-    const reach=ext*len*.9;
-    const ex=ax+nx*reach,ey=ay+ny*reach;
-    shaft.setAttribute('x1',ax+nx*8);shaft.setAttribute('y1',ay+ny*8);
-    shaft.setAttribute('x2',ex);shaft.setAttribute('y2',ey);
-    const tipSz=sqPx*.15;
-    const px1=ex+nx*tipSz-ny*tipSz*.4,py1=ey+ny*tipSz+nx*tipSz*.4;
-    const px2=ex+nx*tipSz+ny*tipSz*.4,py2=ey+ny*tipSz-nx*tipSz*.4;
-    const px3=ex-nx*tipSz*.2,py3=ey-ny*tipSz*.2;
-    tip.setAttribute('points',px1+','+py1+' '+px2+','+py2+' '+px3+','+py3);
-    if(s<1)requestAnimationFrame(step); else{svg.removeChild(g);cb();}
-  };
-  requestAnimationFrame(step);
-}
-
 function svgCannonball(ax,ay,tx,ty,cb){
   const svg=document.getElementById('wep-overlay');
   const flash=document.createElementNS('http://www.w3.org/2000/svg','circle');
@@ -93,7 +65,30 @@ function svgCannonball(ax,ay,tx,ty,cb){
 function attackAnim(attacker,target,type,cb){
   const a=sqCenter(attacker),t=sqCenter(target);
   if(type==='pawn'){
-    svgSpear(a.sx,a.sy,t.sx,t.sy,cb);
+    // a pawn leans in and swings its own sword at the enemy: the piece turns to face it, so the sword
+    // hand always leads and the shield falls to the hand on the far side. A fortified pawn swings the
+    // same way, in its helmet, because it is the same drawing (pieceArt).
+    const p=pieces[attacker],flip=t.x<a.x,s=flip?-1:1;
+    const sz=Math.max(14,Math.floor(sqPx*.86));
+    const el=document.createElement('div');
+    el.style.cssText='position:fixed;pointer-events:none;z-index:360;left:'+a.x+'px;top:'+a.y+'px;'
+      +'width:'+sz+'px;height:'+sz+'px;transform-origin:50% 80%;';
+    el.innerHTML=pieceSVG(p?pieceArt(p):'pawn',p?p.color:myColor(),mapTheme,sz);
+    document.body.appendChild(el);
+    // the piece on the board steps aside for its swinging copy, and comes back after
+    const sqEl=sqElAt(attacker),art=sqEl&&sqEl.querySelector('.piece-art');
+    if(art)art.style.opacity='0';
+    const mid='translate(-50%,-50%) ',mirror=flip?' scaleX(-1)':'';
+    const step=(dx,dy,deg)=>mid+'translate('+dx.toFixed(1)+'px,'+dy.toFixed(1)+'px) rotate('+deg.toFixed(1)+'deg)'+mirror;
+    const dx=(t.x-a.x)*.32,dy=(t.y-a.y)*.32;
+    const done=()=>{el.remove();if(art)art.style.opacity='';cb();};
+    const anim=el.animate([
+      {transform:step(0,0,0)},
+      {transform:step(-dx*.28,-dy*.28,-13*s),offset:.32},   // wind up, away from the enemy
+      {transform:step(dx,dy,26*s),offset:.62},              // and through it
+      {transform:step(0,0,0)},
+    ],{duration:420,easing:'ease-out'});
+    if(anim&&anim.finished)anim.finished.then(done,done);else setTimeout(done,420);
   }else if(type==='knight'){
     const angle=Math.atan2(t.y-a.y,t.x-a.x)*(180/Math.PI);
     const em=document.createElement('div');em.className='atk-emoji';em.textContent='🗡️';
@@ -328,6 +323,7 @@ function applyActions(actions,color){
       const ap=pieces[attacker];
       const dmg=(ap&&ap.type==='siege')?2:1;
       t.hp-=dmg;flashSq(target,'hit-flash');
+      if(t.fortified)t.lastHitTurn=whiteTurnCount;   // its armour mends from here (turnUpkeep)
       if(campaignLevel&&t.color===myColor()&&t.type==='king')campaignKingHit=true;
       // track hits on black pieces for reactive AI
       if(color==='w'&&t.color==='b'&&t.hp>0)blackHitBy.push({target,attacker});

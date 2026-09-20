@@ -448,6 +448,7 @@ function getDests(s,i){
 const MERGES={'pawn+pawn':'knight','pawn+knight':'bishop','knight+pawn':'bishop','knight+bishop':'queen','bishop+knight':'queen','rook+rook':'siege','knight+knight':'rook',
   'bishop+rook':'mage','rook+bishop':'mage'};   // the Mage costs its side MAGE_ELIXIR
 const MAGE_ELIXIR=2;
+const FORTIFIED_MEND=5;   // a fortified pawn mends 1 HP five turns after its last hit (state.js)
 
 // ── RULES: LEGAL ACTIONS ─────────────────────────────────────────────────────
 // Actions ({type, from, to}) mirror what the player can do by drag, tap or click:
@@ -555,6 +556,7 @@ function applyAttacks(s,acts,color,events){
     if(!t||t.color!==enemy)continue;
     const ap=B[attacker],dmg=ap&&ap.type==='siege'?2:1;
     t.hp-=dmg;
+    if(t.fortified)t.lastHitTurn=clock(s,color);   // its armour mends from here (upkeep)
     if(color==='w'&&t.hp>0)s.hitBy.push({target,attacker});
     const killed=t.hp<=0;
     if(events)events.push({type:'attack',from:attacker,to:target,damage:dmg,hp:t.hp,killed});
@@ -718,6 +720,14 @@ function upkeep(s,own){
     if(p&&p.type==='bishop'&&(!own||p.color===own)&&(p.mana||0)<2){
       const t=clock(s,own||'w'),last=p.lastHealTurn||0;
       if(t-last>=3&&t>0){p.mana=Math.min(2,(p.mana||0)+1);p.lastHealTurn=t;}
+    }
+  }
+  // a fortified pawn's armour mends 1 HP five turns after the last hit it took (turnUpkeep in game.js)
+  for(let i=0;i<B.length;i++){
+    const p=B[i];
+    if(p&&p.fortified&&(!own||p.color===own)&&p.hp<p.maxHp){
+      const t=clock(s,own||'w'),last=p.lastHitTurn||0;
+      if(t-last>=FORTIFIED_MEND&&t>0){p.hp++;p.lastHitTurn=t;}
     }
   }
 }

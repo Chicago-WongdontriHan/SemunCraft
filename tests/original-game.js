@@ -19,7 +19,7 @@ function startBgm(){} function stopBgm(){}
 function pieceSVG(){return '';} function pieceArt(p){return p.type;} function uiLabel(icon,text){return text||'';} function fillUiIcons(){}
 function render(){} function sqElAt(){return __fakeEl();} function flashSq(){} function spawnFlash(){} function mergeFlash(){}
 function setStatus(){} function addLog(m){logLines.push(m);if(logLines.length>4)logLines.shift();}
-function syncUI(){} function showMoveHint(){} function showGameOver(){} function hideGameOver(){}
+function syncUI(){} function showGameOver(){} function hideGameOver(){}
 function showFloatingMessage(){} function renderMinimap(){} function updateViewportControls(){}
 function renderPcCards(){} function renderMergeGuide(){} function goIntro(){}
 function isTutorialActive(){return false;} function tutCheckAction(){} function tutMoveEnemyOnce(){} function tutHighlightPiece(){}

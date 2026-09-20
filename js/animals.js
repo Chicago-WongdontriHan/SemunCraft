@@ -86,6 +86,7 @@ function updateAnimals(dt){
             const tp=pieces[tgt];
             if(tp){
               tp.hp--;
+              if(tp.fortified)tp.lastHitTurn=whiteTurnCount;
               if(campaignLevel&&tp.color===myColor()&&tp.type==='king')campaignKingHit=true;
               addLog(na.emoji+' bites '+tp.type+'@'+sqName(tgt)+' '+tp.hp+'HP');
               flashSq(tgt,'hit-flash');

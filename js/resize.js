@@ -91,8 +91,16 @@ function resizeBoard(){
   lp.querySelectorAll('.pc-glyph').forEach(el=>el.style.fontSize=Math.max(11,Math.floor(pf*1.8))+'px');
   lp.querySelectorAll('.pc-name').forEach(el=>el.style.fontSize=Math.max(9,Math.floor(pf*1.02))+'px');
   lp.querySelectorAll('.pc-stats').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.75))+'px');
-  lp.querySelectorAll('#resources').forEach(el=>el.style.fontSize=Math.max(10,Math.floor(pf*1.35))+'px');
-  renderResources();
+  renderResources();   // sizes itself to the panel (fitResources in ui.js)
+  // width the board is not using is the panel's for the asking, so the Gold line stays whole
+  const res=document.getElementById('resources');
+  if(res&&!isPortrait&&res.scrollWidth>res.clientWidth){
+    const spare=Math.max(0,availW-frameW);
+    if(spare>0){
+      lp.style.width=(panelWL+Math.min(spare,res.scrollWidth-res.clientWidth+6))+'px';
+      renderResources();
+    }
+  }
   const btnPad=Math.max(2,Math.floor(pf*.25));
   const btnSize=Math.floor((panelWR-btnPad*2-2)/3);const btnPx=btnSize+'px';
   rp.querySelectorAll('.dir-btn').forEach(el=>{el.style.width=btnPx;el.style.height=btnPx;el.style.fontSize=Math.max(9,Math.floor(btnSize*.42))+'px';});
@@ -103,7 +111,6 @@ function resizeBoard(){
   rp.querySelectorAll('.room-entry').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.9))+'px');
   const rid=document.getElementById('room-id-display');if(rid)rid.style.fontSize=Math.max(7,Math.floor(pf*.9))+'px';
   const inp=document.getElementById('pvp-input');if(inp)inp.style.fontSize=Math.max(7,Math.floor(pf*.88))+'px';
-  const hb2=document.getElementById('hint-box');if(hb2)hb2.style.fontSize=Math.max(9,Math.floor(pf*.95))+"px";
   // ── tutorial card scaling ──
   const tc2=document.getElementById('tut-card');
   if(tc2){

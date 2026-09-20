@@ -245,7 +245,7 @@ function endTurn(){
   if(pawnOnMine(turn))mineTurns[turn]++;   // the mine pays for the turn it was held (finishTurn in engine.js)
   // the orders due this turn go off now, with the move that was just made, so the two animate together
   const noFire=runOrders(turn)||[];
-  if(trainingMode&&over){over=false;addLog('A king has fallen — the training goes on');}
+  if(trainingMode&&over){over=false;trainKingFell();}
   if(over){orderEndsGame(turn);return;}
   blackHitBy=[]; // reset hit tracker before white auto-attacks populate it
   const tc=document.getElementById('turn-counter');if(tc)tc.textContent='Turn '+whiteTurnCount;
@@ -259,7 +259,7 @@ function endTurn(){
     const passTurn=()=>{
       thinking=false;
       // the training ground has nothing to win: a king falling is just one more thing to watch
-      if(trainingMode&&over){over=false;addLog('A king has fallen — the training goes on');}
+      if(trainingMode&&over){over=false;trainKingFell();}
       if(over){
         setStatus(mover==='w'?'White wins! ♔':'Black wins! ♚');SFX.win();syncUI();render();
         broadcastState(mover);
@@ -318,7 +318,7 @@ function finishBlackTurn(){
   blackTurnCount++;
   if(pawnOnMine('b'))mineTurns.b++;
   runOrders('b');                       // Black's orders land with the move Black just made
-  if(trainingMode&&over){over=false;addLog('A king has fallen — the training goes on');}
+  if(trainingMode&&over){over=false;trainKingFell();}
   document.getElementById('thinking-dot').classList.remove('on');
   if(over){orderEndsGame('b');return;}
   startWhiteTurn();

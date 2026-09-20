@@ -35,6 +35,7 @@ let orderTurns=0;                    // how far ahead the next order is set: the
 // training ground, where both sides are yours, it is the side the AI has *not* taken — so the fog stays
 // over your own front while the AI thinks, instead of lifting for it.
 function viewColor(){
+  if(trainingMode&&typeof trainView!=='undefined'&&(trainView==='w'||trainView==='b'))return trainView;
   if(trainingMode&&typeof trainAI!=='undefined'&&trainAI&&trainAI.w!==trainAI.b)return trainAI.w?'b':'w';
   return myColor();
 }
@@ -90,6 +91,9 @@ let gameMode='single',difficulty='easy';
 let trainingMode=false;   // the training ground: both sides in one seat, and a palette to build the board (js/training.js)
 let trainMouse='edit';    // in the training ground the mouse either builds the board or plays the game
 function trainEditing(){return trainingMode&&trainMouse==='edit';}
+// Past 2x the training ground plays its moves without animations or voices, as an AI vs AI match does:
+// at that speed a turn is over before its animation is, and the two tread on each other.
+function fastPlay(){return trainingMode&&typeof trainSpeed!=='undefined'&&trainSpeed>=4;}
 let mapTheme='forest'; // 'forest'|'jungle'|'desert'|'ocean'
 let tileData=[]; // per-sq tile type string
 let animals=[]; // array of {emoji,hp,maxHp,name,aggressive,fractDmg,x,y,tx,ty,speed}

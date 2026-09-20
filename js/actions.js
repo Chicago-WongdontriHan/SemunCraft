@@ -1,5 +1,6 @@
 // ── PIECE MOVEMENT ANIMATION ─────────────────────────────────────────────────
 function animatePieceMove(fromIdx,toIdx,pieceType,pieceColor,isBlack,cb,dur){
+  if(fastPlay()){if(cb)cb();return;}      // at speed the piece simply appears where it went
   dur=dur||180;
   const board=document.getElementById('board');
   if(!board){cb();return;}

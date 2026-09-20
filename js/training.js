@@ -18,6 +18,7 @@ let trainTimer=null;          // the one timer the AI keeps: two of them and the
 const TRAIN_BEAT=700;         // ms between the AI's moves at 1x — the beat an AI vs AI match keeps
 let trainPaused=false;        // a match with the AI in it is held still while the board is being built
 let trainTab='units';         // which part of the box is open: the army, the ground, or the match
+let trainView='auto';         // whose eyes the board is drawn through: 'auto', or a side of your own choosing
 let trainLift=-1;             // the square the pointer went down on, while it is still down
 let trainLiftXY=null;         // where it went down, so a tap can be told from a drag
 let trainCarry=false;         // the pointer has moved: a piece is being carried, not tapped
@@ -50,7 +51,7 @@ const TRAIN_UNITS=[
 function startTraining(){
   gameMode='training';difficulty='easy';
   trainingMode=true;trainBrush=null;trainColor='w';trainMouse='edit';
-  trainAI={w:false,b:false};trainLift=-1;trainCarry=false;trainLevel='easy';trainSpeed=1;trainPaused=false;trainTab='units';
+  trainAI={w:false,b:false};trainLift=-1;trainCarry=false;trainLevel='easy';trainSpeed=1;trainPaused=false;trainTab='units';trainView='auto';
   campaignLevel=null;campaignLevelId=-1;
   COLS=9;ROWS=9;
   document.getElementById('intro').classList.add('hidden');
@@ -140,11 +141,17 @@ function trainingPalette(){
       +'<div class="tp-grid tp-mode">'
       +'<button class="tp-wide tp-side-w'+(trainColor==='w'?' tp-on':'')+'" onclick="trainSetColor(\'w\')" title="The side the purse below belongs to">White</button>'
       +'<button class="tp-wide tp-side-b'+(trainColor==='b'?' tp-on':'')+'" onclick="trainSetColor(\'b\')" title="The side the purse below belongs to">Black</button>'
+      +'</div><div class="tp-grid tp-quad">'
+      +'<span class="tp-step-name">View</span>'
+      +wide('Auto',trainView==='auto','trainSetView(\'auto\')','The side the AI has not taken, or the side to move when both are yours')
+      +wide('White',trainView==='w','trainSetView(\'w\')','Look at the board through White\'s eyes, fog and all')
+      +wide('Black',trainView==='b','trainSetView(\'b\')','Look at the board through Black\'s eyes, fog and all')
       +'</div>'
       +trainStepper('Gold',goldText(Math.floor(goldCount(trainColor))),'trainAddGold(')
       +trainStepper('Elixir',elixirCount(trainColor)>=TRAIN_RICH?'\u221E':elixirCount(trainColor),'trainAddElixir(')
       +'<div class="tp-grid tp-tools">'
-      +wide('\u221E Purses',goldCount('w')>=TRAIN_RICH,'trainBottomless()','Gold and Elixir without end for both sides, and off again');
+      +wide('\u221E Gold',goldCount(trainColor)>=TRAIN_RICH,'trainInfiniteGold()','Gold without end for the side chosen above, and off again')
+      +wide('\u221E Elixir',elixirCount(trainColor)>=TRAIN_RICH,'trainInfiniteElixir()','Elixir without end for that side, and off again');
   }
   // the eraser and the empty hand belong to every half
   h+=wide('\u2715 Erase',!!(trainBrush&&trainBrush.kind==='erase'),'trainPickErase()','Take the unit off a square, or the tile under it (the right button does this too)')
@@ -186,6 +193,17 @@ function trainSchedule(ms,stamp){
 // which turn this is: the side, and how many turns that side has had
 function trainStamp(){return turn+':'+(turn==='w'?whiteTurnCount:blackTurnCount);}
 function trainStopAI(){clearTimeout(trainTimer);trainTimer=null;}
+// A king has fallen. Nothing ends in the sandbox, but the match holds there: the board is left as it is
+// and the Play button takes it up again, without the king that fell (js/game.js calls this).
+function trainKingFell(){
+  const standing=['w','b'].filter(c=>pieces.some(p=>p&&p.color===c&&p.type==='king'));
+  const lost=standing.length===1?(standing[0]==='w'?'Black':'White'):'A';
+  trainPaused=true;trainStopAI();
+  addLog(lost+" king has fallen \u2014 press Play to go on");
+  // the turn hand-over sets a status of its own a moment later, so this one waits for it
+  setTimeout(()=>{if(trainingMode&&trainPaused)setStatus(lost+" king has fallen \u2014 press Play to go on without it");},0);
+  trainingPalette();syncUI();
+}
 function trainNudgeAI(){trainSchedule(TRAIN_BEAT/trainSpeed);}
 // the mouse builds or plays; picking anything out of the palette means building, and a board that is
 // being built is a board standing still
@@ -198,6 +216,8 @@ function trainSetMouse(m){
                       :(turn==='w'?"White's":"Black's")+' turn — clicks play the game');
 }
 function trainSetColor(c){trainColor=c;trainingPalette();render();syncUI();}
+// whose eyes the board is drawn through (viewColor in js/state.js)
+function trainSetView(v){trainView=v;trainingPalette();render();syncUI();}
 
 // ── the purse ────────────────────────────────────────────────────────────────
 // Gold and Elixir for the side in hand (the White / Black switch says which), and a bottomless purse
@@ -211,14 +231,18 @@ function trainAddElixir(d){
   elixir[trainColor]=Math.max(0,(elixir[trainColor]||0)+d);
   trainingPalette();render();syncUI();
 }
-function trainBottomless(){
-  const rich=goldCount('w')>=TRAIN_RICH||goldCount('b')>=TRAIN_RICH;
-  ['w','b'].forEach(c=>{
-    goldSpent[c]=rich?0:-TRAIN_RICH-GOLD_START;
-    elixir[c]=rich?0:TRAIN_RICH+99;
-  });
+// a bottomless purse, one side and one resource at a time: the switch belongs to the side in hand
+function trainInfiniteGold(){
+  const rich=goldCount(trainColor)>=TRAIN_RICH;
+  goldSpent[trainColor]=rich?0:-TRAIN_RICH-GOLD_START;
   trainingPalette();render();syncUI();
-  addLog(rich?'Purses back to normal':'Gold and Elixir without end');
+  addLog((trainColor==='w'?'White':'Black')+"'s Gold "+(rich?'back to normal':'without end'));
+}
+function trainInfiniteElixir(){
+  const rich=elixirCount(trainColor)>=TRAIN_RICH;
+  elixir[trainColor]=rich?0:TRAIN_RICH+99;
+  trainingPalette();render();syncUI();
+  addLog((trainColor==='w'?'White':'Black')+"'s Elixir "+(rich?'back to normal':'without end'));
 }
 // which AI takes a side here: one of the trained networks, or the engine's own built-in bot
 function trainCycleSpeed(){

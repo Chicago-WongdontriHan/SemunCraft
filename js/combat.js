@@ -63,6 +63,7 @@ function svgCannonball(ax,ay,tx,ty,cb){
 }
 
 function attackAnim(attacker,target,type,cb){
+  if(fastPlay()){if(cb)cb();return;}      // at speed the blow lands without being drawn
   const a=sqCenter(attacker),t=sqCenter(target);
   if(type==='pawn'){
     // A pawn swings its sword through 120° — from over its shoulder to the follow-through — while it

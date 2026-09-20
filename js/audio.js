@@ -241,3 +241,11 @@ const PIECE_VOICES={
       [[.16,1760],[.3,2350],[.42,1980]].forEach(([o,f])=>sfxTone({type:'triangle',f,to:f*.85,t:t+o,d:.14,vol:.18}));},
   },
 };
+
+// A match run at speed keeps no time for its own voices: past 2x in the training ground every sound is
+// let go rather than piling up on the one before it (fastPlay in js/state.js).
+Object.keys(SFX).forEach(k=>{
+  const f=SFX[k];
+  if(typeof f!=='function')return;
+  SFX[k]=function(){if(typeof fastPlay==='function'&&fastPlay())return;return f.apply(this,arguments);};
+});

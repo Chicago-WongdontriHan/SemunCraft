@@ -73,6 +73,20 @@ function initGame(){
   setStatus("White's turn");
 }
 
+// ── PLAYING ON ───────────────────────────────────────────────────────────────
+// The game is decided, but the board is still there. This picks it up again and lets the pieces fight
+// on without the king that fell: nothing else ends a plain game, so it runs until the other king goes
+// too (and then you can play on again). White takes the turn.
+function keepPlaying(){
+  if(campaignLevel||pvpActive||gameMode==='aivsai')return;
+  hideGameOver();
+  over=false;thinking=false;movedThisTurn=-1;
+  turn='w';
+  const dot=document.getElementById('thinking-dot');if(dot)dot.classList.remove('on');
+  addLog('Playing on');
+  startWhiteTurn();
+}
+
 // ── TURN MANAGEMENT ───────────────────────────────────────────────────────────
 function startWhiteTurn(){
   turn='w';

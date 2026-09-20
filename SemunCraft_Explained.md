@@ -220,6 +220,7 @@ The game installs as a home-screen app (a Progressive Web App): no App Store, no
 - Host plays White and deals the board (pieces, terrain and theme); guest plays Black.
 - Each turn, the player acts, that player's pieces auto-attack (excluding the piece that moved or healed), and then the game state is sent to the opponent. Each side fires once per round.
 - Fog of war applies to both players.
+- **Play On** (on the game-over card of a plain game — not a campaign level, a PvP match or AI vs AI): the game is decided, but the board is still there. It hands the turn back to White and the pieces fight on without the king that fell; nothing else ends a plain game, so it runs until the other king goes too, and then you can play on again (`keepPlaying` in `js/game.js`). With no king of your own, Spawn is greyed out.
 - **Rematch** deals a new board from the host; a guest's Rematch asks the host for one. Going back to the menu ends the match.
 
 ---

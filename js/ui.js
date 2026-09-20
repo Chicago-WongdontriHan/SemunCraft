@@ -75,8 +75,10 @@ function syncUI(){
     }else{
       // how many are left is on the Gold counter in the resources panel
       const rem=spawnRemaining();
+      // playing on after the King fell: there is nobody left to mint a pawn
+      const hasKing=pieces.some(q=>q&&q.color===myColor()&&q.type==='king');
       spawnBtn.innerHTML=uiLabel('spawn','Spawn');
-      if(!locked&&rem<1)spawnBtn.disabled=true;
+      if(!locked&&(rem<1||!hasKing))spawnBtn.disabled=true;
     }
   }
   syncPieceButtons();
@@ -220,9 +222,13 @@ function showGameOver(result){
   const title=document.getElementById('go-title');
   const sub=document.getElementById('go-sub');
   if(!el)return;
-  // campaign results swap in their own buttons; put the standard pair back
+  // campaign results swap in their own buttons; put the standard pair back, and offer to play the
+  // board on where a plain game can carry on without the king that fell (keepPlaying in game.js)
   const btns=document.getElementById('go-buttons');
-  if(btns)btns.innerHTML='<button class="go-btn primary" onclick="doRematch()">⚔ Rematch</button><button class="go-btn secondary" onclick="goIntro()">↺ Main Menu</button>';
+  const playOn=!campaignLevel&&!pvpActive&&gameMode!=='aivsai';
+  if(btns)btns.innerHTML='<button class="go-btn primary" onclick="doRematch()">⚔ Rematch</button>'
+    +(playOn?'<button class="go-btn secondary" onclick="keepPlaying()">▶ Play On</button>':'')
+    +'<button class="go-btn secondary" onclick="goIntro()">↺ Main Menu</button>';
   title.className='';
   if(result==='win'){title.textContent='You Win!';title.classList.add('win');sub.textContent='Victory — your kingdom prevails';}
   else if(result==='lose'){title.textContent='You Lose';title.classList.add('lose');sub.textContent='Defeat — your king has fallen';}

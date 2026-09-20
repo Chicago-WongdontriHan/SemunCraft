@@ -16,7 +16,7 @@
 <meta name="apple-mobile-web-app-title" content="SemunCraft">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <!-- fetch the UI font with the page, so the title does not flash in a fallback face -->
-<link rel="preload" href="fonts/LilitaOne.woff2?v=20260919a" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/LilitaOne.woff2?v=20260919b" as="font" type="font/woff2" crossorigin>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 /* a double tap must not zoom the page: the board has its own pinch and zoom (js/drag.js) */
@@ -72,13 +72,13 @@ html,body{width:100%;height:100%;overflow:hidden;}
 body{font-family:var(--ui-font);background:#0c1a08;color:#c8d4a0;display:flex;flex-direction:column;align-items:center;height:100vh;height:100dvh;padding:6px 10px 4px;gap:5px;background-image:radial-gradient(ellipse at 20% 10%,rgba(30,60,10,.6) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(10,40,5,.7) 0%,transparent 50%);}
 
 /* ── INTRO ── */
-@font-face{font-family:'Lilita One';src:url(fonts/LilitaOne.woff2?v=20260919a) format('woff2');font-display:swap;}
+@font-face{font-family:'Lilita One';src:url(fonts/LilitaOne.woff2?v=20260919b) format('woff2');font-display:swap;}
 /* the title screen: a war scene behind (Battle Lines on wide screens, The Clash on tall ones, from
    img/make-title-wallpapers.js), the SemunCraft title, and the menu on a translucent card. Every
    size follows --tw, the title's width, so the whole menu scales with the screen and still fits. */
 #intro{--tw:min(92vw,640px,60vh);position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;gap:calc(var(--tw)*.02);padding:12px 8px;overflow-y:auto;
-  background:#8ED6F2 url(img/title-wide.svg?v=20260919a) center bottom/cover no-repeat;}
-@media (orientation:portrait){#intro{background-image:url(img/title-tall.svg?v=20260919a);}}
+  background:#8ED6F2 url(img/title-wide.svg?v=20260919b) center bottom/cover no-repeat;}
+@media (orientation:portrait){#intro{background-image:url(img/title-tall.svg?v=20260919b);}}
 #intro-title{width:var(--tw);height:auto;display:block;flex-shrink:0;overflow:visible;}
 #intro-title text{font-family:'Lilita One',Georgia,serif;font-size:120px;text-anchor:middle;stroke-linejoin:round;}
 #intro-title .title-shadow{fill:#2A1706;stroke:#2A1706;stroke-width:20px;}
@@ -823,34 +823,34 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 <!-- ?v= is the release version: bump it on every release so browsers (GitHub Pages lets them
      cache files for 10 minutes) never mix old cached scripts with new ones -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-<script src="js/constants.js?v=20260919a"></script>
-<script src="js/state.js?v=20260919a"></script>
-<script src="js/audio.js?v=20260919a"></script>
-<script src="js/music.js?v=20260919a"></script>
-<script src="pieces/pieces.js?v=20260919a"></script>
-<script src="pieces/forest.js?v=20260919a"></script>
-<script src="pieces/jungle.js?v=20260919a"></script>
-<script src="pieces/desert.js?v=20260919a"></script>
-<script src="pieces/ocean.js?v=20260919a"></script>
-<script src="pieces/units-art.js?v=20260919a"></script>
-<script src="js/movement.js?v=20260919a"></script>
-<script src="js/themes.js?v=20260919a"></script>
-<script src="js/scenery.js?v=20260919a"></script>
-<script src="js/render.js?v=20260919a"></script>
-<script src="js/combat.js?v=20260919a"></script>
-<script src="js/animals.js?v=20260919a"></script>
-<script src="js/actions.js?v=20260919a"></script>
-<script src="js/ui.js?v=20260919a"></script>
-<script src="js/tutorial.js?v=20260919a"></script>
-<script src="js/campaign.js?v=20260919a"></script>
-<script src="js/pvp.js?v=20260919a"></script>
-<script src="js/ai.js?v=20260919a"></script>
-<script src="js/game.js?v=20260919a"></script>
-<script src="js/drag.js?v=20260919a"></script>
-<script src="js/resize.js?v=20260919a"></script>
+<script src="js/constants.js?v=20260919b"></script>
+<script src="js/state.js?v=20260919b"></script>
+<script src="js/audio.js?v=20260919b"></script>
+<script src="js/music.js?v=20260919b"></script>
+<script src="pieces/pieces.js?v=20260919b"></script>
+<script src="pieces/forest.js?v=20260919b"></script>
+<script src="pieces/jungle.js?v=20260919b"></script>
+<script src="pieces/desert.js?v=20260919b"></script>
+<script src="pieces/ocean.js?v=20260919b"></script>
+<script src="pieces/units-art.js?v=20260919b"></script>
+<script src="js/movement.js?v=20260919b"></script>
+<script src="js/themes.js?v=20260919b"></script>
+<script src="js/scenery.js?v=20260919b"></script>
+<script src="js/render.js?v=20260919b"></script>
+<script src="js/combat.js?v=20260919b"></script>
+<script src="js/animals.js?v=20260919b"></script>
+<script src="js/actions.js?v=20260919b"></script>
+<script src="js/ui.js?v=20260919b"></script>
+<script src="js/tutorial.js?v=20260919b"></script>
+<script src="js/campaign.js?v=20260919b"></script>
+<script src="js/pvp.js?v=20260919b"></script>
+<script src="js/ai.js?v=20260919b"></script>
+<script src="js/game.js?v=20260919b"></script>
+<script src="js/drag.js?v=20260919b"></script>
+<script src="js/resize.js?v=20260919b"></script>
 <!-- trained AI (Single Player difficulties, AI vs AI); the engine, network and weights load only when needed -->
-<script src="js/netai.js?v=20260919a"></script>
-<script src="js/aivsai.js?v=20260919a"></script>
-<script src="js/update.js?v=20260919a"></script>
+<script src="js/netai.js?v=20260919b"></script>
+<script src="js/aivsai.js?v=20260919b"></script>
+<script src="js/update.js?v=20260919b"></script>
 </body>
 </html>

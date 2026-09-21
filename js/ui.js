@@ -99,7 +99,12 @@ function syncPieceButtons(){
   }
   // Merge, when a pair is ready
   const mergeBtn=show('btn-merge',!(campaignLevel&&campaignLevel.noMerge)&&(sel?getDragDests(selIdx).merge.size>0:anyMergeReady()));
-  if(mergeBtn){mergeBtn.disabled=locked;mergeBtn.innerHTML=uiLabel('merge','Merge');}
+  if(mergeBtn){
+    // a standing Delay makes every command an order, and an order is a move or a strike
+    mergeBtn.disabled=locked||orderTurns>0;
+    mergeBtn.innerHTML=uiLabel('merge','Merge');
+    mergeBtn.title=orderTurns>0?'Set the Delay back to 0 to merge: an order is a move or a strike':'';
+  }
   const skipBtn=show('btn-skip',true);
   if(skipBtn){
     skipBtn.disabled=locked;

@@ -110,6 +110,14 @@ function executeDrop(from,to,dests){
     placeOrder(from,to,Math.max(1,orderTurns));
     return;
   }
+  // An order carries a piece to a square, or sends it against whoever is standing there. It cannot
+  // merge and it cannot heal, so while the Delay counter stands neither is offered at all.
+  if(orderTurns>0&&isMyTurn()&&(dests.merge.has(to)||dests.heal.has(to))){
+    setStatus('A delayed order is a move or a strike \u2014 set the Delay back to 0 to merge or heal');
+    showFloatingMessage('Delay is set',to);
+    render();
+    return;
+  }
   const p=pieces[from];
   const tgts=myColor()==='w'?whiteTargets:blackTargets;
 
@@ -659,6 +667,7 @@ function moveAll(dr,dc){
 
 function doMergeAll(){
   if(over||thinking||!isMyTurn())return;
+  if(orderTurns>0){setStatus('A delayed order is a move or a strike \u2014 set the Delay back to 0 to merge');return;}
   if(campaignLevel&&campaignLevel.noMerge){setStatus('No merge this round');return;}
   const mc=myColor();
   const tiers=[

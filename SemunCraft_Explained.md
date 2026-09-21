@@ -373,7 +373,9 @@ An interactive 7-step tutorial:
 - Click the King, then an adjacent tile, to spawn. The King opens an on-board **Spawn / Move** chooser.
 - Dropping (or tapping) a bishop onto one of your knights asks **Heal** or **Merge → Queen** (onto a rook, with the Elixir: **Merge → Mage (2 Elixir)**) on the same kind of on-board chooser (`showDropChoice` in `js/actions.js`); a tap anywhere else puts it away.
 - Tapping one of your pawns or bishops opens the same kind of chooser for it: **Extract Elixir** while a pawn stands on the spring, **Fortify (1 Gold)** while it is a plain pawn, **Scry (2 mana)** for a bishop (`syncPieceChooser` in `js/actions.js`). It sits past the piece’s reach (a pawn’s 3x3, a bishop’s 5x5) on its own side of the board, so it never covers a square the piece can act on. The side panel’s buttons follow every tap too (`syncPieceButtons`, called from `render`).
-- **Delay**: press **Delay** until it shows the number of turns you want, then move a piece as usual — the move is written down instead of made, and your turn is still yours until the order budget runs out. Pressing past the last turn comes back to none (`bumpDelay`, `placeOrder` in `js/actions.js`).
+- **Delay**: press **Delay** until it shows the number of turns you want, then move a piece as usual.
+  The same counter sits on the board beside whatever piece is in hand (and on the King's own chooser), so
+  it need not be reached for across the panel — the move is written down instead of made, and your turn is still yours until the order budget runs out. Pressing past the last turn comes back to none (`bumpDelay`, `placeOrder` in `js/actions.js`).
 - Select 2-3 pawns/knights (click them, or drag a box over them from an empty tile) and drag one to move them together.
 - Right-click a piece, then click a target, to lock a target. Right-click (or tap twice) a Siege Tower to un-siege.
 - **Esc** clears the current selection.

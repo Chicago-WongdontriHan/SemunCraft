@@ -499,6 +499,13 @@ function showKingChooser(ki,mode){
     b.onclick=()=>{if(m!==mode&&!over&&!thinking&&isMyTurn())setKingMode(ki,m);};
     box.appendChild(b);
   });
+  // the King is ordered like anything else, so its own Delay counter sits here beside it
+  if(canOrder(ki)||orderTurns>0){
+    const d=document.createElement('button');
+    d.className='king-choice-btn';d.innerHTML=uiLabel('delay','Delay '+orderTurns);
+    d.onclick=e=>{if(e)e.stopPropagation();bumpDelay();showKingChooser(ki,mode);};
+    box.appendChild(d);
+  }
   document.body.appendChild(box);kingChooser=box;
   placeKingChooser(ki);
 }
@@ -612,6 +619,10 @@ function pieceChoices(i){
     const ready=(p.mana||0)>=2;
     out.push(['scry',ready?'Scry (2 mana)':'Scry (needs 2 mana)',ready,()=>{selectedPieces=new Set([i]);startScry();}]);
   }
+  // The Delay counter, beside the piece rather than across the board: every press adds a turn to the
+  // order the next move will become, and it comes back round to none. It stays up while the counter
+  // does, even with the turn's orders spent, so it can always be wound back to 0 (bumpDelay).
+  if(canOrder(i)||orderTurns>0)out.push(['delay','Delay '+orderTurns,true,()=>bumpDelay()]);
   return out;
 }
 // called after every render, like syncKingChooser
@@ -622,7 +633,7 @@ function syncPieceChooser(){
   const choices=up?pieceChoices(i):[];
   if(!choices.length){closePieceChooser();return;}
   // rebuilt only when the piece or what it offers changes, so a tap in progress survives a re-render
-  const key=i+'|'+choices.map(c=>c[0]+(c[2]?'+':'-')).join(',');
+  const key=i+'|'+choices.map(c=>c[0]+c[1]+(c[2]?'+':'-')).join(',');
   if(!pieceChooser||pieceChooser.dataset.key!==key){
     closePieceChooser();
     const box=document.createElement('div');box.id='piece-choice';box.dataset.key=key;
@@ -635,7 +646,7 @@ function syncPieceChooser(){
     document.body.appendChild(box);pieceChooser=box;
   }
   const sq=sqElAt(i);if(!sq){closePieceChooser();return;}
-  const reach=p.type==='bishop'?2:1;
+  const reach=({bishop:2,rook:2,queen:2,mage:2,knight:2})[p.type]||1;
   const r=sq.getBoundingClientRect(),bw=pieceChooser.offsetWidth,bh=pieceChooser.offsetHeight;
   const below=r.bottom+reach*r.height+8,above=r.top-reach*r.height-8-bh;
   const behind=p.color==='w'?below:above,ahead=p.color==='w'?above:below;   // White pushes up, Black down

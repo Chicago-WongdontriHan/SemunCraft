@@ -110,7 +110,10 @@ stacked so they land together (`MAX_DELAY`, `ORDER_BUDGET`, `orderCost` in `js/s
   to none, so nothing is needed to clear it. A **pawn** counts up to 3 and then back to 0; anything else
   is simply **on or off**, because one order is all a whole-turn piece can give. The count starts every
   turn at **0** (`orderTurns`, reset in `turnUpkeep`), and while it stands the squares the piece can
-  reserve are ringed amber instead of green.
+  reserve are ringed amber instead of green. An order is a move or a strike and nothing else, so while
+  the counter stands **no piece merges or heals**: the Merge button greys out, a piece dropped on one of
+  its own says so instead, and a bishop is not offered the choice. Setting the Delay back to 0 gives
+  both back.
 - **What it costs**: not the move you would have made, but an **order budget** of one a turn. A pawn's
   order costs **half**, so two pawns can be sent in one turn; every other piece costs the whole of it.
   When the budget can no longer pay for another order **the turn passes by itself** — one order from a

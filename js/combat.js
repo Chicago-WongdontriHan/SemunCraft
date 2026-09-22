@@ -387,10 +387,14 @@ function computeActions(color){
       // fog of war: not for the Mage, whose own fire lights its trajectory as it burns down it
       if(p.type!=='mage'&&color===myColor()&&!mapCheat)enemies=enemies.filter(j=>isTileVisible(j));
       enemies=enemies.filter(j=>!isConcealedFrom(j,color));
-      if(!enemies.length)continue;
       const manualTgt=targets[i];
+      const locked=manualTgt!==undefined&&pieces[manualTgt]&&pieces[manualTgt].color===enemy&&range.includes(manualTgt)&&!isConcealedFrom(manualTgt,color);
+      // the Paladin's lance always kills, so it fires only on a target the player locked themselves
+      // (dragged onto, or right-clicked) — never one it picked on its own, the way every other piece does
+      if(p.type==='paladin'&&!locked)continue;
+      if(!enemies.length)continue;
       let tgtI;
-      if(manualTgt!==undefined&&pieces[manualTgt]&&pieces[manualTgt].color===enemy&&range.includes(manualTgt)&&!isConcealedFrom(manualTgt,color)){
+      if(locked){
         tgtI=manualTgt;
       }else{
         const sorted=[...enemies].sort((a,b)=>{const pa=pieces[a],pb=pieces[b];if(pa.type==='king')return -1;if(pb.type==='king')return 1;if(!targeted.has(a)&&targeted.has(b))return -1;if(targeted.has(a)&&!targeted.has(b))return 1;return pa.hp-pb.hp;});

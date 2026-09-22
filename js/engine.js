@@ -690,10 +690,14 @@ function computeActions(s,color){
       // fog of war, except the Mage's own fire trajectory, which its own flame lights up
       if(fog&&p.type!=='mage')foes=foes.filter(j=>visible(s,j,color));
       foes=foes.filter(j=>!concealed(s,j,color));
-      if(!foes.length)continue;
       const lock=targets[i];
+      const locked=lock!==undefined&&B[lock]&&B[lock].color===enemy&&range.includes(lock)&&!concealed(s,lock,color);
+      // the Paladin's lance always kills, so it fires only on a target the player locked themselves,
+      // never one it picked on its own the way every other piece does (js/combat.js's computeActions)
+      if(p.type==='paladin'&&!locked)continue;
+      if(!foes.length)continue;
       let t;
-      if(lock!==undefined&&B[lock]&&B[lock].color===enemy&&range.includes(lock)&&!concealed(s,lock,color))t=lock;
+      if(locked)t=lock;
       else t=[...foes].sort((a,b)=>{const pa=B[a],pb=B[b];if(pa.type==='king')return -1;if(pb.type==='king')return 1;
         if(!targeted.has(a)&&targeted.has(b))return -1;if(targeted.has(a)&&!targeted.has(b))return 1;return pa.hp-pb.hp;})[0];
       targeted.add(t);

@@ -229,7 +229,7 @@ const PC_DATA=[
   {gw:'♙',gb:'♟',name:'Pawn',   stats:'1HP · any dir · atk adj · mines'},
   {gw:'♙',gb:'♟',name:'Fortified',stats:'3HP · mends 1HP/5 turns · 1 Gold'},
   {gw:'♘',gb:'♞',name:'Knight', stats:'4HP · L-jump · atk L-dist'},
-  {gw:'♘',gb:'♞',name:'Paladin',stats:'4HP · L-jump · lance always kills, then leaps in'},
+  {gw:'♘',gb:'♞',name:'Paladin',stats:'3HP · L-jump · lance always kills, then leaps in'},
   {gw:'♗',gb:'♝',name:'Bishop', stats:'2HP · diagonal 2 · heals (mana)'},
   {gw:'♖',gb:'♜',name:'Rook',   stats:'4HP · card2 · pierce rng3 · 2 Fortified'},
   {gw:'♖',gb:'♜',name:'Guardian',stats:'5HP · card2 · rook+knight range, hits the line'},

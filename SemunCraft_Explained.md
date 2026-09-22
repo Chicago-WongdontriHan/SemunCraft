@@ -26,7 +26,7 @@ The goal: **destroy the enemy King** while building up your army through a merge
 | **Pawn** | ♙/♟ | 1 | 1 step, any of 8 directions; 2 straight forward on its first move | Adjacent (8 dirs) |
 | **Fortified Pawn** | ♙/♟ in a helmet | 3 | As a pawn | As a pawn |
 | **Knight** | ♘/♞ | 4 | L-shape jump (2+1), jumps over pieces | L-shape range |
-| **Paladin** | ♘/♞ (twin knights) | 4 | L-shape jump (2+1), jumps over pieces | L-shape range; **always destroys** the target, and the Paladin **leaps onto the cleared square** as part of the attack. No merges, no delayed orders |
+| **Paladin** | ♘/♞ (twin knights) | 3 | L-shape jump (2+1), jumps over pieces | L-shape range; **always destroys** the target, and the Paladin **leaps onto the cleared square** as part of the attack. No merges, no delayed orders |
 | **Bishop** | ♗/♝ | 2 | Diagonal up to 2 squares (sliding) | Diagonal up to 2 (sliding); also heals allies with mana |
 | **Rook** | ♖/♜ | 4 | Cardinal up to 2 squares (sliding) | Cardinal up to 3 squares, **piercing** (goes through pieces) |
 | **Guardian** | ♖/♞ (knight in a tower) | 5 | Cardinal up to 2 squares (sliding), like a rook | **Every square a rook or a knight could hit from there** — a straight cardinal shot also **damages every other piece along the line** (friendlies spared); a knight's-reach shot hits only the target. No merges, no delayed orders |

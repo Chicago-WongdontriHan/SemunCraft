@@ -10,7 +10,7 @@
 'use strict';
 
 // ── DATA ─────────────────────────────────────────────────────────────────────
-const STATS={king:{hp:5,maxHp:5},pawn:{hp:1,maxHp:1},knight:{hp:4,maxHp:4},bishop:{hp:2,maxHp:2},rook:{hp:4,maxHp:4},queen:{hp:5,maxHp:5},siege:{hp:4,maxHp:4},mage:{hp:3,maxHp:3},paladin:{hp:4,maxHp:4},guardian:{hp:5,maxHp:5}};
+const STATS={king:{hp:5,maxHp:5},pawn:{hp:1,maxHp:1},knight:{hp:4,maxHp:4},bishop:{hp:2,maxHp:2},rook:{hp:4,maxHp:4},queen:{hp:5,maxHp:5},siege:{hp:4,maxHp:4},mage:{hp:3,maxHp:3},paladin:{hp:3,maxHp:3},guardian:{hp:5,maxHp:5}};
 // each theme's terrain, in the order themes.js places it: [tile, share of the board, blocks]
 const THEME_TILES={
   forest:[['tree',.12,true]],

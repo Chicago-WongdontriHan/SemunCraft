@@ -293,11 +293,21 @@ function trainSetSize(rows,cols){
 // and any unit that would be left standing inside a rock has the rock taken out from under it
 function trainSetTheme(t){
   if(t===mapTheme)return;
+  // Only the look changes: the board you built stays where it is. Every unit keeps its square, the
+  // spring and the mine keep theirs, and each obstacle becomes this map's own kind of obstacle — a
+  // tree turns into a palm, a rock, a dune. Anything the new map has no name for is cleared away.
+  const from=THEMES[mapTheme]||THEMES.forest,to=THEMES[t]||THEMES.forest;
+  const wasBlock=k=>k==='sandstone-spawner'||!!(from.tiles[k]&&from.tiles[k].block);
+  const nowBlock=Object.keys(to.tiles).find(k=>to.tiles[k].block)||'';
   mapTheme=t;
-  generateMap();
-  for(let i=0;i<ROWS*COLS;i++)if(pieces[i]&&isTileBlocked(i))tileData[i]='';
-  if(typeof ANIMALS_ON!=='undefined'&&ANIMALS_ON){startAnimalLoop();setTimeout(()=>renderAnimalOverlay(),50);}
-  else{stopAnimalLoop();animals=[];}
+  setBodyTheme(t);
+  for(let i=0;i<ROWS*COLS;i++){
+    const k=tileData[i];
+    if(!k||RESOURCE_TILES[k])continue;
+    tileData[i]=wasBlock(k)?nowBlock:(to.tiles[k]?k:'');
+  }
+  stopAnimalLoop();animals=[];           // the old map's creatures do not follow it
+  document.querySelectorAll('.animal-el').forEach(el=>el.remove());
   trainingPalette();                     // the tile brushes belong to the map
   resizeBoard();render();syncUI();
   addLog('Map: '+t);

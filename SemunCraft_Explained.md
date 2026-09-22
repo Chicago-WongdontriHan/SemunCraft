@@ -290,9 +290,10 @@ says so and play carries on.
   An **eraser** and **Drop brush** sit at the foot of every tab. Pick something and tap a square, or drag
   it from the palette onto the board. A unit replaces whatever stands there, a tile is taken away by
   tapping it again, and only one king a side: placing another moves it.
-- **Changing the map** draws fresh ground for that theme, spring and mine included, and leaves the units
-  where they are (anything left inside a rock has the rock taken out from under it). The music follows
-  the map, so the jungle's piphat starts as soon as the jungle does.
+- **Changing the map** changes only the look. Every unit keeps its square, the spring and the mine keep
+  theirs, and each obstacle becomes that map's own kind: a tree turns into a palm, a dune, a sea rock.
+  Anything the new map has no name for (the jungle's undergrowth, elsewhere) is cleared away, and its
+  animals do not follow it. The music does, so the jungle's piphat starts as soon as the jungle does.
 - **The AI can take a side** — or both, which plays a match out of the arrangement you built. Both the
   networks and the built-in bot play Black, so White's turn is handed to them on a board with the colours
   swapped; the move that comes back is played through the game's own handlers, exactly as a tap would be

@@ -382,6 +382,9 @@ function mageRange(s,i){
 function sangLineFor(s,i,target){
   return sangTrajectories(s,i).find(line=>line.includes(target))||null;
 }
+// every square the Mage can see from here: the usual 2-square watch plus its own fire trajectories —
+// also as far as it can aim a Meteor (mageSight in js/movement.js)
+function mageSight(s,i){return new Set([i,...geo(s).r2[i],...mageRange(s,i)]);}
 function bishopRange(s,i){
   const g=geo(s),r=rowOf(s,i),c=colOf(s,i),res=[];
   for(const[dr,dc]of DIAG)for(let k=1;k<=2;k++){
@@ -630,9 +633,9 @@ function legalActions(s,opts){
     // a bishop with both its mana can light any 3x3 on the board, seen or not
     if(p.type==='bishop'&&(p.mana||0)>=2)
       for(let j=0;j<B.length;j++)out.push({type:'scry',from:i,to:j});
-    // a Mage with a full charge can summon a meteor over any square on the board, seen or not
+    // a Mage with a full charge can summon a meteor anywhere within its own sight
     if(p.type==='mage'&&(p.mana||0)>=METEOR_MANA)
-      for(let j=0;j<B.length;j++)out.push({type:'meteor',from:i,to:j});
+      mageSight(s,i).forEach(j=>out.push({type:'meteor',from:i,to:j}));
     if(opts.anyTarget){
       for(let j=0;j<B.length;j++)if(B[j]&&B[j].color!==color&&!concealed(s,j,color))out.push({type:'target',from:i,to:j});
     }else d.attack.forEach(j=>out.push({type:'target',from:i,to:j}));

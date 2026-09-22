@@ -331,8 +331,9 @@ function handleClick(i,additive){
     return;
   }
   if(meteorMode){
-    // every square is a valid aim, the same as Scry's — a tap always lands somewhere
-    if(meteorSrc>=0)castMeteor(meteorSrc,i);else cancelMeteor();
+    // only a square within the Mage's own sight is a valid aim; anywhere else puts the meteor away,
+    // same as tapping outside a Scry's reach
+    if(meteorSrc>=0&&mageSight(meteorSrc).has(i))castMeteor(meteorSrc,i);else cancelMeteor();
     return;
   }
   const ki=pieces.findIndex(q=>q&&q.color===mc&&q.type==='king');
@@ -496,8 +497,9 @@ function castScry(from,to){
 }
 
 // ── THE MAGE'S METEOR ────────────────────────────────────────────────────────
-// Cast for METEOR_MANA, anywhere on the board, seen or not, however far — the same no-range rule as
-// Scry. It doesn't strike now: it lands METEOR_TURNS of the Mage's own side's turns from now, over the
+// Cast for METEOR_MANA, anywhere within the Mage's own sight (mageSight in js/movement.js — its usual
+// 2-square watch, plus however far its fire trajectories reach). It doesn't strike now: it lands
+// METEOR_TURNS of the Mage's own side's turns from now, over the
 // 2x2 it was aimed at (meteorBox/meteorAnchorFor in js/state.js; the strike itself is runMeteors in
 // js/game.js). A ring of fire marks the tiles from the moment it is cast, so the target sees it coming.
 let meteorMode=false, meteorSrc=-1;
@@ -507,12 +509,12 @@ function startMeteor(){
   if(!p||p.color!==myColor()||p.type!=='mage'||(p.mana||0)<METEOR_MANA){setStatus('Select a Mage with full mana');return;}
   meteorMode=true;meteorSrc=i;targetMode=false;scryMode=false;
   render();syncUI();
-  setStatus('Tap any square: a meteor lands there in '+METEOR_TURNS+' turns ('+METEOR_MANA+' mana)');
+  setStatus('Tap a lit square: a meteor lands there in '+METEOR_TURNS+' turns ('+METEOR_MANA+' mana)');
 }
 function cancelMeteor(){meteorMode=false;meteorSrc=-1;render();syncUI();}
 function castMeteor(from,to){
   const p=pieces[from];
-  if(!p||p.type!=='mage'||(p.mana||0)<METEOR_MANA)return;
+  if(!p||p.type!=='mage'||(p.mana||0)<METEOR_MANA||!mageSight(from).has(to))return;
   p.mana=Math.max(0,(p.mana||0)-METEOR_MANA);
   p.lastHealTurn=whiteTurnCount;
   const anchor=meteorAnchorFor(to);

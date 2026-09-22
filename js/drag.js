@@ -150,13 +150,13 @@ function showScryPreview(x,y){
 }
 boardInput.addEventListener('pointerleave',()=>{if(scryPreview.length)clearScryPreview();if(meteorPreview.length)clearMeteorPreview();});
 
-// aiming a meteor with a mouse: the 2x2 a click would land it on, previewed the same way a scry is —
-// every square is a valid aim, so there is no reachable-zone check to make first
+// aiming a meteor with a mouse: the 2x2 a click would land it on, previewed the same way a scry is,
+// but only within the Mage's own sight (mageSight in js/movement.js)
 let meteorPreview=[];
 function clearMeteorPreview(){meteorPreview.forEach(j=>{const el=sqElAt(j);if(el)el.classList.remove('meteor-preview');});meteorPreview=[];}
 function showMeteorPreview(x,y){
   const t=sqIdxFromPoint(x,y);
-  const box=t>=0?meteorBox(meteorAnchorFor(t)):[];
+  const box=t>=0&&meteorSrc>=0&&mageSight(meteorSrc).has(t)?meteorBox(meteorAnchorFor(t)):[];
   if(box.length===meteorPreview.length&&box.every(j=>meteorPreview.includes(j)))return;
   clearMeteorPreview();
   box.forEach(j=>{const el=sqElAt(j);if(el)el.classList.add('meteor-preview');});

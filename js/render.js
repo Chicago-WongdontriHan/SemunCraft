@@ -30,6 +30,9 @@ function render(){
   // scrying: every square out of sight the bishop can light, drawn over the fog (scryArea in actions.js)
   const scryZone=typeof scryMode!=='undefined'&&scryMode&&scrySrc>=0?scryArea(scrySrc):null;
   const scryMark=(sq,i)=>{if(scryZone&&scryZone.has(i)){sq.classList.add('scry-zone');const m=document.createElement('span');m.className='scry-mark';sq.appendChild(m);}};
+  // aiming a meteor: only a square within the Mage's own sight is a valid aim (mageSight in movement.js)
+  const meteorZone=typeof meteorMode!=='undefined'&&meteorMode&&meteorSrc>=0?mageSight(meteorSrc):null;
+  const meteorZoneMark=(sq,i)=>{if(meteorZone&&meteorZone.has(i)){sq.classList.add('meteor-zone');const m=document.createElement('span');m.className='meteor-zone-mark';sq.appendChild(m);}};
   // a pending meteor rings every one of its four tiles in fire, through the fog and for both sides —
   // the whole point is that its target sees it coming (meteors in js/state.js)
   const meteorMark=(sq,i)=>{
@@ -67,7 +70,7 @@ function render(){
         // unexplored — thick cloud hides everything
         sq.classList.add('fog','fog-unknown');
         sq.appendChild(fogCover(i,'unknown'));
-        scryMark(sq,i);meteorMark(sq,i);flareMark(sq,i);
+        scryMark(sq,i);meteorMark(sq,i);flareMark(sq,i);meteorZoneMark(sq,i);
         if(res){sq.title=RESOURCE_TIPS[tileData[i]];sq.appendChild(pawnNeededBadge(tileData[i],true));}
         if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
         if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
@@ -87,7 +90,7 @@ function render(){
         }
         sq.classList.add('fog','fog-explored');
         sq.appendChild(fogCover(i,'explored'));
-        scryMark(sq,i);meteorMark(sq,i);flareMark(sq,i);
+        scryMark(sq,i);meteorMark(sq,i);flareMark(sq,i);meteorZoneMark(sq,i);
         if(res){sq.title=RESOURCE_TIPS[tileData[i]];sq.appendChild(pawnNeededBadge(tileData[i],true));}
         if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
         if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
@@ -130,7 +133,7 @@ function render(){
         sq.appendChild(n);
       }
       // scrying: the squares this bishop may light, and the ones already burning
-      scryMark(sq,i);meteorMark(sq,i);flareMark(sq,i);
+      scryMark(sq,i);meteorMark(sq,i);flareMark(sq,i);meteorZoneMark(sq,i);
       const lit=typeof scryLit==='function'&&scryLit(i,mc);
       if(lit)sq.classList.add('scry-lit');
       // a campaign level's goal squares: the gate to reach, the floor to hold

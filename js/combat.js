@@ -31,45 +31,62 @@ function emojiAnim(emoji,ax,ay,tx,ty,arc,duration,cb){
 
 // the Guardian's shot: a spiked iron ball, same flight as the siege's cannonball but with a small
 // spark drawn at every square along the way where the path damage in js/actions.js above will land
-// the Mage's fire trajectory: a line drawn out over its three tiles, each one flaring as the fire
-// reaches it, whether or not anything is standing there — the whole line is what was cast, not just
-// wherever the enemy happened to be on it
+// a single flame, two layered teardrops (a wider orange one, a slimmer yellow one inside it), scaled
+// and faded by the caller — the building block svgFireLine uses to raise its wall of fire
+function svgFlameShape(svg,size){
+  const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+  const petal=(r,fill)=>{
+    const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+    p.setAttribute('d','M0,'+(size*r*.62)+' C '+(-size*r*.55)+','+(size*r*.11)+' '+(-size*r*.24)+','+(-size*r*.7)+' 0,'+(-size*r)
+      +' C '+(size*r*.24)+','+(-size*r*.7)+' '+(size*r*.55)+','+(size*r*.11)+' 0,'+(size*r*.62)+' Z');
+    p.setAttribute('fill',fill);
+    g.appendChild(p);
+  };
+  petal(1,'#FF7A2E');petal(.6,'#FFD060');
+  g.setAttribute('opacity','0');
+  svg.appendChild(g);
+  return g;
+}
+// The Mage's fire trajectory: a wall of flame that catches all along the line it was cast on, tile by
+// tile from the caster outward, and holds a beat before dying down — not a single flash at the far
+// end. The whole line is what was cast, whether or not anything is standing there.
 function svgFireLine(ax,ay,pts,cb){
   const svg=document.getElementById('wep-overlay');
   SFX.scry();
   const all=[{sx:ax,sy:ay},...pts];
-  const segs=[];
-  for(let k=1;k<all.length;k++){
-    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1',all[k-1].sx);line.setAttribute('y1',all[k-1].sy);
-    line.setAttribute('x2',all[k-1].sx);line.setAttribute('y2',all[k-1].sy);
-    line.setAttribute('stroke','#FF7A2E');line.setAttribute('stroke-width','4');line.setAttribute('stroke-linecap','round');
-    line.setAttribute('opacity','.85');
-    svg.appendChild(line);segs.push({el:line,from:all[k-1],to:all[k]});
-  }
-  const start=performance.now(),dur=140*segs.length;
-  const step=ts=>{
-    const s=Math.min(1,(ts-start)/dur);
-    const seg=Math.min(segs.length-1,Math.floor(s*segs.length));
-    for(let k=0;k<segs.length;k++){
-      const local=k<seg?1:k>seg?0:(s*segs.length-seg);
-      const{el,from,to}=segs[k];
-      el.setAttribute('x2',from.sx+(to.sx-from.sx)*local);
-      el.setAttribute('y2',from.sy+(to.sy-from.sy)*local);
-      if(local>=1&&!el.dataset.flared){
-        el.dataset.flared='1';
-        const fl=document.createElementNS('http://www.w3.org/2000/svg','circle');
-        fl.setAttribute('cx',to.sx);fl.setAttribute('cy',to.sy);fl.setAttribute('r',sqPx*.22+'');
-        fl.setAttribute('fill','#FFB040');fl.setAttribute('opacity','.9');
-        svg.appendChild(fl);
-        let b=0;const fstep=()=>{b+=0.14;fl.setAttribute('opacity',''+(0.9*(1-b)));if(b<1)requestAnimationFrame(fstep);else svg.removeChild(fl);};
-        requestAnimationFrame(fstep);
-      }
-    }
-    if(s<1)requestAnimationFrame(step);
-    else{segs.forEach(({el})=>svg.removeChild(el));cb();}
+  const glow=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+  glow.setAttribute('points',all.map(p=>p.sx+','+p.sy).join(' '));
+  glow.setAttribute('fill','none');glow.setAttribute('stroke','#FF7A2E');
+  glow.setAttribute('stroke-width',(sqPx*.5)+'');glow.setAttribute('stroke-linecap','round');
+  glow.setAttribute('stroke-linejoin','round');glow.setAttribute('opacity','0');
+  svg.appendChild(glow);
+  const step0=110,ignite=100,hold=420,fade=220;
+  const flames=[];
+  pts.forEach((p,ti)=>{
+    [-1,1].forEach((side,k)=>{
+      const el=svgFlameShape(svg,sqPx*.4);
+      flames.push({el,cx:p.sx+side*sqPx*.15,cy:p.sy,delay:ti*step0+k*25});
+    });
+  });
+  const start=performance.now();
+  const total=(pts.length-1)*step0+25+ignite+hold+fade;
+  const stepFn=ts=>{
+    const t=ts-start;
+    glow.setAttribute('opacity',''+Math.min(.5,t/120*.5));
+    flames.forEach(({el,cx,cy,delay})=>{
+      const lt=t-delay;
+      let op=0,sc=.3;
+      if(lt<0){op=0;sc=.3;}
+      else if(lt<ignite){const k=lt/ignite;op=k;sc=.3+.8*k;}
+      else if(lt<ignite+hold){op=1;sc=1.05+Math.sin((lt-ignite)/60)*.06;}
+      else{const k=Math.min(1,(lt-ignite-hold)/fade);op=1-k;sc=1.05-.3*k;}
+      el.setAttribute('transform','translate('+cx+','+cy+') scale('+sc.toFixed(3)+')');
+      el.setAttribute('opacity',op.toFixed(3));
+    });
+    if(t<total)requestAnimationFrame(stepFn);
+    else{svg.removeChild(glow);flames.forEach(({el})=>svg.removeChild(el));cb();}
   };
-  requestAnimationFrame(step);
+  requestAnimationFrame(stepFn);
 }
 // The meteor landing: four burning stones fall out of the top of the frame, one over each of the
 // tiles it was cast on, and burst together where they land. Fire-and-forget, like an ordered piece's
@@ -317,10 +334,13 @@ function attackAnim(attacker,target,type,cb){
     const line=sangLineFor(attacker,target)||[target];
     svgFireLine(a.sx,a.sy,line.map(j=>sqCenter(j)),cb);
   }else if(type==='guardian'){
+    // on a cardinal hit the ball flies clear to the farthest tile it can reach, not just to the target
+    // (an L-jump hit has no such path, and the ball simply stops at its one target)
     const path=cardinalPath(attacker,target);
     const sparks=(path||[]).map(j=>sqCenter(j));
+    const end=sparks.length?sparks[sparks.length-1]:t;
     SFX.attack();
-    svgSpikedBall(a.sx,a.sy,t.sx,t.sy,sparks,cb);
+    svgSpikedBall(a.sx,a.sy,end.sx,end.sy,sparks,cb);
   }else if(type==='siege'){
     // siege: cannonball same as rook
     svgCannonball(a.sx,a.sy,t.sx,t.sy,cb);
@@ -364,7 +384,8 @@ function computeActions(color){
     }else{
       const range=p.type==='queen'?queenRange(i):p.type==='mage'?mageRange(i):p.type==='siege'?siegeRange(i):p.type==='rook'?rookRange(i):p.type==='guardian'?guardianRange(i):(p.type==='knight'||p.type==='paladin')?kJumps(i):p.type==='bishop'?bishopRange(i):adj8(i);
       let enemies=range.filter(j=>pieces[j]&&pieces[j].color===enemy);
-      if(color===myColor()&&!mapCheat)enemies=enemies.filter(j=>isTileVisible(j));
+      // fog of war: not for the Mage, whose own fire lights its trajectory as it burns down it
+      if(p.type!=='mage'&&color===myColor()&&!mapCheat)enemies=enemies.filter(j=>isTileVisible(j));
       enemies=enemies.filter(j=>!isConcealedFrom(j,color));
       if(!enemies.length)continue;
       const manualTgt=targets[i];
@@ -497,6 +518,7 @@ function applyActions(actions,color){
       // every other enemy on that same trajectory takes 1 too; a friend on it is left untouched
       if(ap&&ap.type==='mage'){
         const line=sangLineFor(attacker,target);
+        flareTiles.push({tiles:line||[target],turns:1,color});   // the line stays lit a turn, no more damage
         if(line)for(const j of line){
           if(j===target||over)continue;
           const q=pieces[j];if(!q||q.color!==enemy)continue;

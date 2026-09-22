@@ -40,6 +40,9 @@ function render(){
     badge.style.fontSize=Math.max(9,Math.round(sqPx*.22))+'px';
     sq.appendChild(badge);
   };
+  // what a Mage's fire trajectory or a meteor's strike leaves behind: the ground smoulders a turn
+  // afterward, through the fog and for both sides, purely cosmetic (flareTiles in js/state.js)
+  const flareMark=(sq,i)=>{if(flareLit(i))sq.classList.add('flare-lit');};
   // the piece the action guide is for: the one being dragged, else the one selected
   const guideSrc=dragging&&dragDests?dragSrc:selDests?[...selectedPieces][0]:-1;
   const pipW=Math.max(2,Math.floor(sqPx*.10))+'px';
@@ -64,7 +67,7 @@ function render(){
         // unexplored — thick cloud hides everything
         sq.classList.add('fog','fog-unknown');
         sq.appendChild(fogCover(i,'unknown'));
-        scryMark(sq,i);meteorMark(sq,i);
+        scryMark(sq,i);meteorMark(sq,i);flareMark(sq,i);
         if(res){sq.title=RESOURCE_TIPS[tileData[i]];sq.appendChild(pawnNeededBadge(tileData[i],true));}
         if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
         if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
@@ -84,7 +87,7 @@ function render(){
         }
         sq.classList.add('fog','fog-explored');
         sq.appendChild(fogCover(i,'explored'));
-        scryMark(sq,i);meteorMark(sq,i);
+        scryMark(sq,i);meteorMark(sq,i);flareMark(sq,i);
         if(res){sq.title=RESOURCE_TIPS[tileData[i]];sq.appendChild(pawnNeededBadge(tileData[i],true));}
         if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
         if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
@@ -127,7 +130,7 @@ function render(){
         sq.appendChild(n);
       }
       // scrying: the squares this bishop may light, and the ones already burning
-      scryMark(sq,i);meteorMark(sq,i);
+      scryMark(sq,i);meteorMark(sq,i);flareMark(sq,i);
       const lit=typeof scryLit==='function'&&scryLit(i,mc);
       if(lit)sq.classList.add('scry-lit');
       // a campaign level's goal squares: the gate to reach, the floor to hold

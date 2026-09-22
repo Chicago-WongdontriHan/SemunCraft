@@ -97,6 +97,8 @@ function newGame(o){
     moved:-1,   // square of the piece that moved or healed this turn (it doesn't auto-attack)
     scans:[],   // bishops' scrying: [{tiles, turns, color}] (see the 'scry' action)
     meteors:[], // the Mage's meteors: [{tiles: its 2x2, turns, color}] (see the 'meteor' action)
+    flares:[],  // squares a Mage's fire or a meteor's strike leave lit a turn afterward, cosmetic only
+                // (js/state.js's flareTiles): [{tiles, turns, color}]
     hitBy:[],   // classic: Black pieces White hit this round, for the reactive AI
     acted:[],   // classic: Black pieces that auto-attacked this round
     level:lv,fog:o.fog!==undefined?!!o.fog:(lv?lv.mapCheatDefault===false:false),
@@ -152,6 +154,7 @@ function clone(s){
   c.targets={w:Object.assign({},s.targets.w),b:Object.assign({},s.targets.b)};
   c.scans=s.scans.map(sc=>({tiles:sc.tiles.slice(),turns:sc.turns,color:sc.color}));
   c.meteors=(s.meteors||[]).map(m=>({tiles:m.tiles.slice(),turns:m.turns,color:m.color}));
+  c.flares=(s.flares||[]).map(f=>({tiles:f.tiles.slice(),turns:f.turns,color:f.color}));
   c.hitBy=s.hitBy.map(h=>({target:h.target,attacker:h.attacker}));
   c.acted=s.acted.slice();
   c.animals=s.animals.map(a=>Object.assign({},a));
@@ -332,14 +335,19 @@ function siegeLine(s,i){return lineRange(s,i,CARD,5,true);}
 // the Guardian's reach: everywhere its Rook half could hit, plus everywhere its Knight half could
 // (guardianRange in js/constants.js)
 function guardianRange(s,i){return [...new Set([...lineRange(s,i,CARD,3),...geo(s).kj[i]])];}
-// the straight run of squares between two squares on the same rank or file, attacker's square excluded
-// — the Guardian's shot travels and damages this whole path (cardinalPath in js/constants.js)
+// the Guardian's shot, on a cardinal hit, doesn't stop at the target: it travels and damages the whole
+// run of squares out to the farthest one it can reach — the same 3-square cardinal reach as its Rook
+// half (guardianRange above), attacker's square excluded. Returns null off a straight rank or file (an
+// L-jump hit, which the shot doesn't extend past). (cardinalPath in js/constants.js)
 function cardinalPath(s,from,to){
   const r0=rowOf(s,from),c0=colOf(s,from),r1=rowOf(s,to),c1=colOf(s,to);
   if(r0!==r1&&c0!==c1)return null;
   const g=geo(s),dr=Math.sign(r1-r0),dc=Math.sign(c1-c0),res=[];
-  let r=r0+dr,c=c0+dc;
-  while(g.inB(r,c)){const j=r*s.cols+c;res.push(j);if(j===to)break;r+=dr;c+=dc;}
+  for(let k=1;k<=3;k++){
+    const r=r0+dr*k,c=c0+dc*k;if(!g.inB(r,c))break;
+    const j=r*s.cols+c;if(s.blocked[j])break;
+    res.push(j);
+  }
   return res;
 }
 // bishop: diagonal up to 2, stopped by obstacles; the first piece is included, then the ray stops
@@ -352,10 +360,13 @@ function sangTrajectories(s,i){
   for(const[dr,dc]of CARD){
     const diagPair=dr!==0?[[dr,-1],[dr,1]]:[[-1,dc],[1,dc]];
     for(const[ddr,ddc]of diagPair){
+      // the board's edge trims a line short rather than dropping it whole (js/movement.js)
       const r1=r+dr,c1=c+dc;if(!g.inB(r1,c1))continue;
-      const r2=r1+ddr,c2=c1+ddc;if(!g.inB(r2,c2))continue;
-      const r3=r2+ddr,c3=c2+ddc;if(!g.inB(r3,c3))continue;
-      out.push([r1*s.cols+c1,r2*s.cols+c2,r3*s.cols+c3]);
+      const line=[r1*s.cols+c1];
+      const r2=r1+ddr,c2=c1+ddc;if(!g.inB(r2,c2)){out.push(line);continue;}
+      line.push(r2*s.cols+c2);
+      const r3=r2+ddr,c3=c2+ddc;if(g.inB(r3,c3))line.push(r3*s.cols+c3);
+      out.push(line);
     }
   }
   return out;
@@ -395,7 +406,9 @@ function visible(s,i,color){
   const B=s.board;
   if(B[i]&&B[i].color===color)return true;
   if(s.scans&&s.scans.some(sc=>sc.color===color&&sc.tiles.indexOf(i)>=0))return true; // a bishop is looking at it
-  return geo(s).r2[i].some(j=>B[j]&&B[j].color===color);
+  if(geo(s).r2[i].some(j=>B[j]&&B[j].color===color))return true;
+  if(B.some((p,j)=>p&&p.color===color&&p.type==='guardian'&&cheb(s,i,j)<=3))return true;   // a farther watch
+  return B.some((p,j)=>p&&p.color===color&&p.type==='mage'&&mageRange(s,j).includes(i));   // its own fire lights the line
 }
 // the 3x3 a scry lights, and how far a bishop can throw its sight (scryBox in constants.js)
 const SCRY_TURNS=2;
@@ -411,6 +424,11 @@ function scryBox(s,i){
 function tickScans(s,color){
   if(s.scans&&s.scans.length)s.scans=s.scans.filter(sc=>sc.color!==color||--sc.turns>0);
 }
+// squares left smouldering by a Mage's fire or a meteor's strike burn down by one, the same cadence
+// as tickScans (js/state.js's tickFlares)
+function tickFlares(s,color){
+  if(s.flares&&s.flares.length)s.flares=s.flares.filter(f=>!(f.color===color&&--f.turns<=0));
+}
 // the meteors of the side whose turn is starting land, whoever is under them, friend or foe alike —
 // mirrors runMeteors in js/game.js. Returns nothing; s.over/s.winner are set the way any other kill is.
 function runMeteors(s,color,events){
@@ -419,6 +437,8 @@ function runMeteors(s,color,events){
   s.meteors=s.meteors.filter(m=>m.turns>0);
   const B=s.board;
   for(const m of due){
+    if(!s.flares)s.flares=[];
+    s.flares.push({tiles:m.tiles,turns:1,color:m.color});   // smoulders for a turn, no more damage
     for(const j of m.tiles){
       const t=B[j];if(!t)continue;
       t.hp-=METEOR_DAMAGE;
@@ -528,8 +548,9 @@ function getDests(s,i){
     g.adj8[i].forEach(j=>{const t=B[j];if(!t&&!s.blocked[j])move.add(j);else if(t&&t.color===ec)attack.add(j);});
   }
   for(const j of [...move])if(s.blocked[j])move.delete(j);
+  // fog of war, except the Mage's own fire trajectory, which its own flame lights up as it burns down it
   if(fogFor(s,p.color)){
-    for(const j of [...attack])if(!visible(s,j,p.color))attack.delete(j);
+    if(p.type!=='mage')for(const j of [...attack])if(!visible(s,j,p.color))attack.delete(j);
     for(const j of [...heal])if(!visible(s,j,p.color))heal.delete(j);
   }
   // rawAttack keeps a concealed square in: a delayed order arriving there still discovers whoever
@@ -666,7 +687,8 @@ function computeActions(s,color){
     }else{
       const range=p.type==='queen'?g.qr[i]:p.type==='mage'?mageRange(s,i):p.type==='siege'?siegeLine(s,i):p.type==='rook'?lineRange(s,i,CARD,3):p.type==='guardian'?guardianRange(s,i):(p.type==='knight'||p.type==='paladin')?g.kj[i]:g.adj8[i];
       let foes=range.filter(j=>B[j]&&B[j].color===enemy);
-      if(fog)foes=foes.filter(j=>visible(s,j,color));
+      // fog of war, except the Mage's own fire trajectory, which its own flame lights up
+      if(fog&&p.type!=='mage')foes=foes.filter(j=>visible(s,j,color));
       foes=foes.filter(j=>!concealed(s,j,color));
       if(!foes.length)continue;
       const lock=targets[i];
@@ -711,10 +733,13 @@ function applyAttacks(s,acts,color,events){
       else if(t.type==='king'){s.over=true;s.winner=color;}
     }
     // the Mage's fire burns down the whole line it was aimed into — every other enemy on that same
-    // trajectory takes 1 too; a friend on it is left untouched
-    if(ap&&ap.type==='mage'&&!s.over){
+    // trajectory takes 1 too; a friend on it is left untouched. The line stays lit a turn afterward,
+    // cosmetic only (js/combat.js's applyActions, which this mirrors, does the same unconditionally)
+    if(ap&&ap.type==='mage'){
       const line=sangLineFor(s,attacker,target);
-      if(line)for(const j of line){
+      if(!s.flares)s.flares=[];
+      s.flares.push({tiles:line||[target],turns:1,color});
+      if(!s.over&&line)for(const j of line){
         if(j===target||s.over)continue;
         const q=B[j];if(!q||q.color!==enemy)continue;
         q.hp-=1;
@@ -894,19 +919,22 @@ function finishTurn(s,color,events){
   if(s.mode==='pvp'){
     // the side that acted fires, except the piece that moved or healed; then the other side starts
     applyAttacks(s,computeActions(s,color).filter(a=>a.attacker!==justMoved&&!(B[a.attacker]&&B[a.attacker].rolled)),color,events);
-    if(!s.over){s.turn=other(color);tickScans(s,s.turn);runMeteors(s,s.turn,events);upkeep(s,s.turn,events);}
+    if(!s.over){s.turn=other(color);tickScans(s,s.turn);tickFlares(s,s.turn);runMeteors(s,s.turn,events);upkeep(s,s.turn,events);}
   }else if(color==='w'){
     // White fires (except the mover), then Black fires, then Black acts
     s.hitBy=[];
     applyAttacks(s,computeActions(s,'w').filter(a=>a.attacker!==justMoved&&!(B[a.attacker]&&B[a.attacker].rolled)),'w',events);
     if(!s.over){
+      // Black's own stale flare from last round clears before its attacks here can make a fresh one
+      // (runBlack in js/game.js ticks flares before computing Black's attacks, in that order)
+      tickFlares(s,'b');
       const bActs=computeActions(s,'b').filter(a=>!(B[a.attacker]&&B[a.attacker].rolled));
       s.acted=bActs.map(a=>a.attacker);
       applyAttacks(s,bActs,'b',events);
     }
     if(!s.over){s.turn='b';tickScans(s,'b');runMeteors(s,'b',events);}
   }else if(!s.over){
-    s.turn='w';tickScans(s,'w');runMeteors(s,'w',events);
+    s.turn='w';tickScans(s,'w');tickFlares(s,'w');runMeteors(s,'w',events);
     upkeep(s,null,events);
   }
   if(!s.over&&s.level){const r=campaignResult(s);if(r){s.over=true;s.winner=r==='win'?'w':'b';}}
@@ -1414,6 +1442,7 @@ function fromSnapshot(o){
     targets:{w:Object.assign({},o.targets.w),b:Object.assign({},o.targets.b)},moved:-1,
     scans:(o.scans||[]).map(sc=>({tiles:sc.tiles.slice(),turns:sc.turns,color:sc.color})),
     meteors:(o.meteors||[]).map(m=>({tiles:m.tiles.slice(),turns:m.turns,color:m.color})),
+    flares:(o.flareTiles||o.flares||[]).map(f=>({tiles:f.tiles.slice(),turns:f.turns,color:f.color})),
     hitBy:(o.hitBy||[]).map(h=>({target:h.target,attacker:h.attacker})),acted:(o.acted||[]).slice(),
     level:o.level||null,fog:!!o.fog,maxTurns:o.maxTurns||0,strategy:o.strategy||null,animals:[],rng:o.seed|0};
   const n=s.cols*s.rows;
@@ -1438,7 +1467,7 @@ const SemunEngine={
   // playing
   newGame,legalActions,step,botTurn,clone,isLegal,fromSnapshot,act,
   // rule queries
-  getDests,computeActions,applyAttacks,upkeep,spawnRemaining,pawnOnMine,visible,fogFor,inCover,concealed,campaignResult,
+  getDests,computeActions,applyAttacks,upkeep,spawnRemaining,pawnOnMine,visible,fogFor,inCover,concealed,campaignResult,sangTrajectories,sangLineFor,mageRange,
   // helpers and data
   generateMap,makeRandom,nextRandom,sqName,cheb,geo,STATS,STRATEGIES,THEME_TILES,
 };

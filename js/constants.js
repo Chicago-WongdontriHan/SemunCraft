@@ -51,15 +51,19 @@ const bishopRange = i=>{ const r=ROW(i),c=COL(i),res=[];
 // the Guardian's reach: everywhere its Rook half could hit (piercing, same range as a Rook) plus
 // everywhere its Knight half could — the two component ranges simply added together
 const guardianRange = i=>[...new Set([...rookRange(i),...kJumps(i)])];
-// the straight run of squares between two squares on the same rank or file, attacker's own square
-// excluded — this is the path the Guardian's shot travels and damages (guardianPath in js/combat.js
-// mirrors this over the engine's own board)
+// the Guardian's shot, on a cardinal hit, doesn't stop at the target: it travels and damages the whole
+// run of squares out to the farthest one it can reach — the same 3-square cardinal reach as its Rook
+// half (rookRange above), attacker's own square excluded. Returns null off a straight rank or file (an
+// L-jump hit, which the shot doesn't extend past). Mirrored in the engine's own cardinalPath.
 const cardinalPath = (from,to)=>{
   const r0=ROW(from),c0=COL(from),r1=ROW(to),c1=COL(to);
-  if(r0!==r1&&c0!==c1)return null;             // not on a straight rank or file: no line to draw
+  if(r0!==r1&&c0!==c1)return null;
   const dr=Math.sign(r1-r0),dc=Math.sign(c1-c0),res=[];
-  let r=r0+dr,c=c0+dc;
-  while(inB(r,c)){const j=idx(r,c);res.push(j);if(j===to)break;r+=dr;c+=dc;}
+  for(let s=1;s<=3;s++){
+    const nr=r0+dr*s,nc=c0+dc*s;if(!inB(nr,nc))break;
+    const j=idx(nr,nc);if(isTileBlocked(j))break;
+    res.push(j);
+  }
   return res;
 };
 const rookRange = i=>{ const r=ROW(i),c=COL(i),res=[];

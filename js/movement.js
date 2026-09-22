@@ -8,10 +8,14 @@ function sangTrajectories(i){
   [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
     const diagPair=dr!==0?[[dr,-1],[dr,1]]:[[-1,dc],[1,dc]];
     diagPair.forEach(([ddr,ddc])=>{
+      // the board's edge trims a line short rather than dropping it whole — the first, orthogonal
+      // step has to land on the board, but the two diagonal steps after it may run out early
       const r1=r+dr,c1=c+dc;if(!inB(r1,c1))return;
-      const r2=r1+ddr,c2=c1+ddc;if(!inB(r2,c2))return;
-      const r3=r2+ddr,c3=c2+ddc;if(!inB(r3,c3))return;
-      out.push([idx(r1,c1),idx(r2,c2),idx(r3,c3)]);
+      const line=[idx(r1,c1)];
+      const r2=r1+ddr,c2=c1+ddc;if(!inB(r2,c2)){out.push(line);return;}
+      line.push(idx(r2,c2));
+      const r3=r2+ddr,c3=c2+ddc;if(inB(r3,c3))line.push(idx(r3,c3));
+      out.push(line);
     });
   });
   return out;
@@ -190,7 +194,8 @@ function getDragDests(i){
   }
   // remove blocked tiles from move destinations
   for(const j of [...move]){if(isTileBlocked(j)||neutralPieces[j+''])move.delete(j);}
-  // fog of war: can't attack or heal targets on non-visible tiles (applies to the local player's pieces only)
+  // fog of war: can't attack or heal targets on non-visible tiles (applies to the local player's pieces
+  // only) — isTileVisible already treats a Mage's own fire trajectory as lit
   if(p.color===myColor()&&!mapCheat){
     for(const j of [...attack]){if(!isTileVisible(j))attack.delete(j);}
     for(const j of [...heal]){if(!isTileVisible(j))heal.delete(j);}

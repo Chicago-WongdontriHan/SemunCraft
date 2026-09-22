@@ -63,7 +63,7 @@ section('map generation and strategy pick match themes.js / ai.js',()=>{
 // White's actions (and both sides' in PvP) are picked at random from the engine's
 // legal actions, then played through the original code's own input handlers.
 const LEVELS=game.get('CAMPAIGN_LEVELS');
-game.run(`function __snap(){return{board:pieces,tiles:tileData,over,turn,whiteTurnCount,blackTurnCount,scans,meteors,elixir,mineTurns,goldSpent,orderLeft,
+game.run(`function __snap(){return{board:pieces,tiles:tileData,over,turn,whiteTurnCount,blackTurnCount,scans,meteors,flareTiles,elixir,mineTurns,goldSpent,orderLeft,
   whiteSpawns:spawnHistory.length,blackSpawns:blackSpawnHistory.length,whiteTargets,blackTargets,
   moved:movedThisTurn,hitBy:blackHitBy,acted:[...blackActed]};}
 function __dests(i){const d=getDragDests(i),o={};for(const k of ['move','merge','attack','heal'])o[k]=[...d[k]].sort((a,b)=>a-b);return o;}`,'snapshot');
@@ -170,7 +170,7 @@ function playClassic(opts,label,stats){
     o.winner=origWinner(o);
     if(!check(label+': after action '+n+' '+q(a),o,{board:s.board,tiles:s.tiles,over:s.over,
       whiteTurnCount:s.turnCount.w,blackTurnCount:s.turnCount.b,whiteSpawns:s.spawns.w,blackSpawns:s.spawns.b,
-      whiteTargets:s.targets.w,blackTargets:s.targets.b,moved:s.moved,hitBy:s.hitBy,acted:s.acted,scans:s.scans,meteors:s.meteors,
+      whiteTargets:s.targets.w,blackTargets:s.targets.b,moved:s.moved,hitBy:s.hitBy,acted:s.acted,scans:s.scans,meteors:s.meteors,flareTiles:s.flares,
       elixir:s.elixir,mineTurns:s.mineTurns,goldSpent:s.goldSpent,orderLeft:s.orderLeft,winner:s.winner}))return;
   }
 }

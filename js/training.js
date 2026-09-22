@@ -278,7 +278,7 @@ function trainSetSize(rows,cols){
   ROWS=rows;COLS=cols;
   pieces=new Array(rows*cols).fill(null);
   whiteTargets={};blackTargets={};selectedPieces=new Set();kingSelected=false;
-  scans=[];meteors=[];exploredTiles=new Set();
+  scans=[];meteors=[];flareTiles=[];exploredTiles=new Set();
   generateMap();
   const roomy=rows>3&&cols>3;
   const wk=roomy?idx(rows-2,1):idx(rows-1,0),bk=roomy?idx(1,cols-2):idx(0,cols-1);

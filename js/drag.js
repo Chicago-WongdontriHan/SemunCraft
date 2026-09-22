@@ -148,11 +148,26 @@ function showScryPreview(x,y){
   box.forEach(j=>{const el=sqElAt(j);if(el)el.classList.add('scry-preview');});
   scryPreview=box;
 }
-boardInput.addEventListener('pointerleave',()=>{if(scryPreview.length)clearScryPreview();});
+boardInput.addEventListener('pointerleave',()=>{if(scryPreview.length)clearScryPreview();if(meteorPreview.length)clearMeteorPreview();});
+
+// aiming a meteor with a mouse: the 2x2 a click would land it on, previewed the same way a scry is —
+// every square is a valid aim, so there is no reachable-zone check to make first
+let meteorPreview=[];
+function clearMeteorPreview(){meteorPreview.forEach(j=>{const el=sqElAt(j);if(el)el.classList.remove('meteor-preview');});meteorPreview=[];}
+function showMeteorPreview(x,y){
+  const t=sqIdxFromPoint(x,y);
+  const box=t>=0?meteorBox(meteorAnchorFor(t)):[];
+  if(box.length===meteorPreview.length&&box.every(j=>meteorPreview.includes(j)))return;
+  clearMeteorPreview();
+  box.forEach(j=>{const el=sqElAt(j);if(el)el.classList.add('meteor-preview');});
+  meteorPreview=box;
+}
 
 boardInput.addEventListener('pointermove',e=>{
   if(scryMode&&scrySrc>=0&&e.pointerType==='mouse'&&!press)showScryPreview(e.clientX,e.clientY);
   else if(scryPreview.length&&!scryMode)clearScryPreview();
+  if(meteorMode&&e.pointerType==='mouse'&&!press)showMeteorPreview(e.clientX,e.clientY);
+  else if(meteorPreview.length&&!meteorMode)clearMeteorPreview();
   const pt=pointers.get(e.pointerId);
   if(pt){pt.x=e.clientX;pt.y=e.clientY;}
   if(gesture){e.preventDefault();moveGesture();return;}

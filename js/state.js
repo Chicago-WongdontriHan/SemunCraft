@@ -152,6 +152,17 @@ function meteorAnchorFor(t){
 }
 // a pending meteor is drawn for both sides, never hidden by fog — it is the warning that it is coming
 
+// squares a Mage's fire trajectory burned, or a meteor's strike, are left smouldering for one of the
+// caster's own turns afterward: [{tiles, turns, color}], drawn for both sides like the meteor's own
+// warning, purely cosmetic (flareLit, tickFlares mirrors tickScans/tickMeteors)
+let flareTiles=[];
+function tickFlares(color){
+  flareTiles=flareTiles.filter(f=>!(f.color===color&&--f.turns<=0));
+}
+function flareLit(i){
+  return flareTiles.some(f=>f.tiles.includes(i));
+}
+
 // ── FOG OF WAR ───────────────────────────────────────────────────────────────
 let mapCheat=false; // when false, only tiles within 2 of any white piece are currently visible
 let exploredTiles=new Set(); // tiles that have ever been visible (fogged but partially shown)
@@ -166,7 +177,9 @@ function tileVisibility(i){
   if(scryLit(i,mc))return 'visible'; // a bishop is looking at it
   for(let j=0;j<ROWS*COLS;j++){
     const p=pieces[j];
-    if(p&&p.color===mc&&cheb(i,j)<=2)return 'visible';
+    if(!p||p.color!==mc)continue;
+    if(cheb(i,j)<=(p.type==='guardian'?3:2))return 'visible';   // the Guardian keeps a farther watch
+    if(p.type==='mage'&&mageRange(j).includes(i))return 'visible';   // its own fire lights the line
   }
   return exploredTiles.has(i)?'explored':'unknown';
 }

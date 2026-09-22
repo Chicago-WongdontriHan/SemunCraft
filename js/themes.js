@@ -24,7 +24,7 @@ const THEMES={
     tiles:{
       palm:    {chance:.09,icon:'\uD83C\uDF34',label:'Palm',effect:'Impassable obstacle',block:true},
       temple:  {chance:.04,icon:'\uD83C\uDFDB',label:'Temple Ruins',effect:'Impassable obstacle',block:true},
-      undergrowth:{chance:.08,icon:'\uD83C\uDF3F',label:'Undergrowth',effect:'Hides a piece from enemies that are not next to it',block:false},
+      undergrowth:{chance:.08,icon:'\uD83C\uDF3F',label:'Undergrowth',effect:'Hides a piece until it fights from here, or a scry lights it up',block:false},
     },
     neutral:{emoji:'\uD83D\uDC12',hp:2,maxHp:2,name:'Monkey',desc:'Roams the jungle'},
     attacker:{emoji:'\uD83D\uDC0D',hp:1,maxHp:1,name:'Snake',desc:'Attacks adjacent pieces',aggressive:true},

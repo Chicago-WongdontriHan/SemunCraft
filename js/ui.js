@@ -21,6 +21,7 @@ const UI_ICONS={
   heal:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
   fortify:'<path d="M4.5 15 C4.5 8.6 7.8 4.8 12 4.8 C16.2 4.8 19.5 8.6 19.5 15 Z"/><path d="M2.8 15 H21.2"/><path d="M12 15 V19.5"/>',
   extract:'<path d="M12 3.5 C15.6 8 18 11 18 14.2 A6 6 0 0 1 6 14.2 C6 11 8.4 8 12 3.5 Z"/><path d="M9.5 14 C9.5 12.4 10.3 11.2 11.3 10.3"/>',
+  meteor:'<path d="M5 4l6 7.5"/><path d="M10 3.5l3 5.5"/><path d="M14.5 4l1.8 3.6"/><circle cx="14.5" cy="15" r="4.6"/>',
   prev:'<path d="M14.5 6l-6 6 6 6"/>',
   next:'<path d="M9.5 6l6 6-6 6"/>',
 };
@@ -78,18 +79,21 @@ function syncPieceButtons(){
     fortBtn.disabled=locked||!canFortify(selIdx);
     fortBtn.innerHTML=uiLabel('fortify','Fortify');
   }
-  // the piece's own action: a pawn on the spring extracts, a bishop scries
-  const extract=!!sel&&canExtract(selIdx),scry=!!sel&&sel.type==='bishop';
-  const spBtn=show('btn-special',extract||scry);
+  // the piece's own action: a pawn on the spring extracts, a bishop scries, a Mage summons a meteor
+  const extract=!!sel&&canExtract(selIdx),scry=!!sel&&sel.type==='bishop',meteor=!!sel&&sel.type==='mage';
+  const spBtn=show('btn-special',extract||scry||meteor);
   if(spBtn){
-    spBtn.disabled=locked||!(extract||(scry&&(sel.mana||0)>=2));
-    spBtn.classList.toggle('active-mode',!!scryMode);
-    spBtn.innerHTML=uiLabel(extract?'extract':'scry',scryMode?'Pick a square':extract?'Extract Elixir':'Scry (2)');
+    spBtn.disabled=locked||!(extract||(scry&&(sel.mana||0)>=2)||(meteor&&(sel.mana||0)>=METEOR_MANA));
+    spBtn.classList.toggle('active-mode',!!scryMode||!!meteorMode);
+    const label=extract?'Extract Elixir':scry?'Scry (2)':'Meteor ('+METEOR_MANA+')';
+    spBtn.innerHTML=uiLabel(extract?'extract':meteor?'meteor':'scry',(scryMode||meteorMode)?'Pick a square':label);
   }
   // The delay counter belongs to the turn rather than to any one piece, so it is always up: each press
   // adds a turn to the delay the next move will carry, and the small button under it clears it.
   const delayBtn=document.getElementById('btn-delay');
   if(delayBtn){
+    const noOrder=!!sel&&NO_ORDER_TYPES.has(sel.type);
+    delayBtn.style.display=noOrder?'none':'';
     delayBtn.disabled=locked;
     delayBtn.classList.toggle('active-mode',orderTurns>0);
     delayBtn.innerHTML=uiLabel('delay','Delay '+orderTurns);

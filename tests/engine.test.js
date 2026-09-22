@@ -116,12 +116,12 @@ section('fromSnapshot rebuilds a state, and act() applies just the action',()=>{
   return checked+' actions, '+kept+' kept the turn';
 });
 
-section('undergrowth hides a piece until an enemy stands next to it',()=>{
-  // an empty jungle board with one patch of undergrowth at d5 (row 4, column 3)
+section('undergrowth hides a piece until it fights from it',()=>{
+  // an empty jungle board with two patches of undergrowth, d5 and h5 (row 4, columns 3 and 7)
   const s=E.newGame({seed:1,theme:'jungle',mode:'pvp'});
   const at=(r,c)=>r*s.cols+c,put=(r,c,type,color)=>{s.board[at(r,c)]={type,color,hp:E.STATS[type].hp,maxHp:E.STATS[type].maxHp};};
   s.board.fill(null);s.tiles.fill('');s.blocked.fill(false);s.targets={w:{},b:{}};
-  s.tiles[at(4,3)]='undergrowth';
+  s.tiles[at(4,3)]='undergrowth';s.tiles[at(4,7)]='undergrowth';
   put(8,0,'king','w');put(0,8,'king','b');
   put(4,1,'rook','w');           // two squares west of the thicket, in rook range
   put(4,3,'rook','b');           // hiding in it
@@ -133,12 +133,33 @@ section('undergrowth hides a piece until an enemy stands next to it',()=>{
   if(E.legalActions(s,{anyTarget:true}).some(a=>a.type==='target'&&a.to===bRook))fail('White can lock onto a hidden piece');
   s.targets.w[wRook]=bRook;      // an old lock doesn't fire at it either
   if(E.computeActions(s,'w').some(a=>a.target===bRook))fail('a lock fires at a hidden piece');
-  if(!E.computeActions(s,'b').some(a=>a.attacker===bRook&&a.target===at(4,5)))fail('the hidden rook should still fire out of cover');
   if(E.concealed(s,wRook,'b'))fail('a piece outside undergrowth is never hidden');
-  put(3,2,'pawn','w');           // a White pawn steps next to the thicket and spots it
-  if(E.concealed(s,bRook,'w'))fail('a piece next to it should reveal the hidden rook');
-  if(!E.getDests(s,wRook).attack.has(bRook))fail('once spotted the rook can be attacked');
-  if(!E.computeActions(s,'w').some(a=>a.attacker===wRook&&a.target===bRook))fail('once spotted the lock should fire');
+  put(3,2,'pawn','w');           // a White pawn stands right next to the thicket
+  if(!E.concealed(s,bRook,'w'))fail('standing next to it no longer reveals a hidden piece by itself');
+  // the hidden rook fires out of cover, at the pawn two squares east: that reveals it, from this turn on
+  const shot=E.computeActions(s,'b').find(a=>a.attacker===bRook&&a.target===at(4,5));
+  if(!shot)fail('the hidden rook should still fire out of cover');
+  E.applyAttacks(s,[shot],'b');
+  if(E.concealed(s,bRook,'w'))fail('firing out of cover should reveal it');
+  if(!E.getDests(s,wRook).attack.has(bRook))fail('once revealed, White can attack it');
+  if(!E.computeActions(s,'w').some(a=>a.attacker===wRook&&a.target===bRook))fail('once revealed, a lock should fire');
+  // a later upkeep only clears STALE reveals (a piece no longer standing where it was spotted); it
+  // does not wholesale re-hide a piece still holding the square that gave it away
+  E.upkeep(s,'w',[]);
+  if(E.concealed(s,bRook,'w'))fail('it stays revealed while it holds the square that gave it away');
+  // it moves to a second patch of undergrowth: judged fresh there, hidden again
+  const movedTo=at(4,7);
+  s.board[movedTo]=s.board[bRook];s.board[bRook]=null;
+  if(!E.concealed(s,movedTo,'w'))fail('moving to a different patch of undergrowth should hide it again');
+  // an order arriving on a hidden enemy's own square discovers it regardless, and reveals it
+  s.board[wRook]=null;s.targets={w:{},b:{}};
+  const pawnAt=at(4,6);put(4,6,'pawn','w');
+  s.board[pawnAt].order={to:movedTo,turns:1};
+  s.orderLeft={w:1,b:1};
+  const before=s.board[movedTo].hp;
+  E.upkeep(s,'w',[]);
+  if(s.board[movedTo].hp>=before)fail('an order arriving on a hidden enemy should strike it, not lapse');
+  if(E.concealed(s,movedTo,'w'))fail('an order that strikes a hidden enemy should reveal it');
 });
 
 section('speed',()=>{

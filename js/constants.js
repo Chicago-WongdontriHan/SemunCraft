@@ -29,6 +29,9 @@ const siegeRange = i=>{ const r=ROW(i),c=COL(i),res=[];
 // Bishop attack range: diagonal sliding up to 2 squares (blocked by obstacles, pierces friendly/enemy)
 // scrying: a bishop spends both its mana to light a 3x3 it cannot see, anywhere on the board
 const SCRY_TURNS=2;
+// how long a merge's own flash (mergeFlash in js/render.js) takes to finish playing, so the turn
+// doesn't hand over — and the view with it, in an AI vs AI training match — until it's done
+const MERGE_ANIM_MS=700;
 const scryBox = i=>{ const r=ROW(i),c=COL(i),res=[];
   for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
     const nr=r+dr,nc=c+dc;if(inB(nr,nc))res.push(idx(nr,nc));
@@ -45,6 +48,20 @@ const bishopRange = i=>{ const r=ROW(i),c=COL(i),res=[];
   });
   return res; };
 
+// the Guardian's reach: everywhere its Rook half could hit (piercing, same range as a Rook) plus
+// everywhere its Knight half could — the two component ranges simply added together
+const guardianRange = i=>[...new Set([...rookRange(i),...kJumps(i)])];
+// the straight run of squares between two squares on the same rank or file, attacker's own square
+// excluded — this is the path the Guardian's shot travels and damages (guardianPath in js/combat.js
+// mirrors this over the engine's own board)
+const cardinalPath = (from,to)=>{
+  const r0=ROW(from),c0=COL(from),r1=ROW(to),c1=COL(to);
+  if(r0!==r1&&c0!==c1)return null;             // not on a straight rank or file: no line to draw
+  const dr=Math.sign(r1-r0),dc=Math.sign(c1-c0),res=[];
+  let r=r0+dr,c=c0+dc;
+  while(inB(r,c)){const j=idx(r,c);res.push(j);if(j===to)break;r+=dr;c+=dc;}
+  return res;
+};
 const rookRange = i=>{ const r=ROW(i),c=COL(i),res=[];
   [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
     for(let s=1;s<=3;s++){
@@ -59,4 +76,4 @@ const rookRange = i=>{ const r=ROW(i),c=COL(i),res=[];
 const cheb   = (a,b)=>Math.max(Math.abs(ROW(a)-ROW(b)),Math.abs(COL(a)-COL(b)));
 
 const GLYPH={king_w:'♔',pawn_w:'♙',knight_w:'♘',bishop_w:'♗',rook_w:'♖',queen_w:'♛',siege_w:'🏰',king_b:'♚',pawn_b:'♟',knight_b:'♞',bishop_b:'♝',rook_b:'♜',queen_b:'♛',siege_b:'🏰'};
-const STATS={king:{hp:5,maxHp:5},pawn:{hp:1,maxHp:1},knight:{hp:4,maxHp:4},bishop:{hp:2,maxHp:2},rook:{hp:4,maxHp:4},queen:{hp:5,maxHp:5},siege:{hp:4,maxHp:4},mage:{hp:3,maxHp:3}};
+const STATS={king:{hp:5,maxHp:5},pawn:{hp:1,maxHp:1},knight:{hp:4,maxHp:4},bishop:{hp:2,maxHp:2},rook:{hp:4,maxHp:4},queen:{hp:5,maxHp:5},siege:{hp:4,maxHp:4},mage:{hp:3,maxHp:3},paladin:{hp:4,maxHp:4},guardian:{hp:5,maxHp:5}};

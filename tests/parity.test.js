@@ -63,7 +63,7 @@ section('map generation and strategy pick match themes.js / ai.js',()=>{
 // White's actions (and both sides' in PvP) are picked at random from the engine's
 // legal actions, then played through the original code's own input handlers.
 const LEVELS=game.get('CAMPAIGN_LEVELS');
-game.run(`function __snap(){return{board:pieces,tiles:tileData,over,turn,whiteTurnCount,blackTurnCount,scans,elixir,mineTurns,goldSpent,orderLeft,
+game.run(`function __snap(){return{board:pieces,tiles:tileData,over,turn,whiteTurnCount,blackTurnCount,scans,meteors,elixir,mineTurns,goldSpent,orderLeft,
   whiteSpawns:spawnHistory.length,blackSpawns:blackSpawnHistory.length,whiteTargets,blackTargets,
   moved:movedThisTurn,hitBy:blackHitBy,acted:[...blackActed]};}
 function __dests(i){const d=getDragDests(i),o={};for(const k of ['move','merge','attack','heal'])o[k]=[...d[k]].sort((a,b)=>a-b);return o;}`,'snapshot');
@@ -92,6 +92,7 @@ function applyOriginal(a,s){
   else if(a.type==='extract')game.run('extractAt('+a.from+')');
   else if(a.type==='fortify')game.run('fortifyAt('+a.from+')');
   else if(a.type==='scry')game.run('castScry('+a.from+','+a.to+')');
+  else if(a.type==='meteor')game.run('castMeteor('+a.from+','+a.to+')');
   else if(a.type==='spawn')game.run('kingSelected=true;handleClick('+a.to+')');
   else if(a.type==='unsiege')game.run('unsiegePiece('+a.from+')');
   else if(a.type==='skip')game.run('doSkip()');
@@ -121,7 +122,7 @@ function scatter(s,seed){
     for(let k=0;k<n;k++){
       const type=types[Math.floor(pick()*types.length)];
       const p={type,color,hp:1+Math.floor(pick()*E.STATS[type].maxHp),maxHp:E.STATS[type].maxHp};
-      if(type==='bishop')p.mana=Math.floor(pick()*3);
+      if(type==='bishop'||type==='mage')p.mana=Math.floor(pick()*3);
       if(type==='pawn'&&pick()<0.5)p.firstMove=true;
       if(type==='pawn'&&pick()<0.25){p.fortified=true;p.maxHp=3;p.hp=1+Math.floor(pick()*3);}
       if(type==='siege')p.sieged=true;
@@ -169,7 +170,7 @@ function playClassic(opts,label,stats){
     o.winner=origWinner(o);
     if(!check(label+': after action '+n+' '+q(a),o,{board:s.board,tiles:s.tiles,over:s.over,
       whiteTurnCount:s.turnCount.w,blackTurnCount:s.turnCount.b,whiteSpawns:s.spawns.w,blackSpawns:s.spawns.b,
-      whiteTargets:s.targets.w,blackTargets:s.targets.b,moved:s.moved,hitBy:s.hitBy,acted:s.acted,scans:s.scans,
+      whiteTargets:s.targets.w,blackTargets:s.targets.b,moved:s.moved,hitBy:s.hitBy,acted:s.acted,scans:s.scans,meteors:s.meteors,
       elixir:s.elixir,mineTurns:s.mineTurns,goldSpent:s.goldSpent,orderLeft:s.orderLeft,winner:s.winner}))return;
   }
 }

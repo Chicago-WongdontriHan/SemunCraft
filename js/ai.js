@@ -8,7 +8,7 @@ function pickStrategy(){
   else addLog('Enemy: '+(claude?'Claude · ':'')+(difficulty==='easy'?'rook rush':aiStrategy.replace(/_/g,' ')));
 }
 
-function bPieces(){const r={pawns:[],knights:[],bishops:[],rooks:[],queens:[]};for(let i=0;i<ROWS*COLS;i++){const p=pieces[i];if(!p||p.color!=='b')continue;if(p.type==='pawn')r.pawns.push(i);if(p.type==='knight')r.knights.push(i);if(p.type==='bishop')r.bishops.push(i);if(p.type==='rook')r.rooks.push(i);if(p.type==='queen')r.queens.push(i);}return r;}
+function bPieces(){const r={pawns:[],knights:[],bishops:[],rooks:[],queens:[],paladins:[]};for(let i=0;i<ROWS*COLS;i++){const p=pieces[i];if(!p||p.color!=='b')continue;if(p.type==='pawn')r.pawns.push(i);if(p.type==='knight')r.knights.push(i);if(p.type==='bishop')r.bishops.push(i);if(p.type==='rook')r.rooks.push(i);if(p.type==='queen')r.queens.push(i);if(p.type==='paladin')r.paladins.push(i);}return r;}
 
 function bSpawn(bKi,cands,count){
   if(!cands.length)return false;
@@ -43,7 +43,7 @@ function bMergeQueen(limit){
   return false;
 }
 
-function bMerge(ft,tt,rt,limit){if(campaignLevel&&campaignLevel.noMerge)return false;const bp=bPieces();const pool={pawn:bp.pawns,knight:bp.knights,bishop:bp.bishops,rook:bp.rooks};const cur={knight:bp.knights.length,bishop:bp.bishops.length,rook:bp.rooks.length};if(cur[rt]!==undefined&&cur[rt]>=limit)return false;for(const a of(pool[ft]||[]))for(const b of(pool[tt]||[])){if(a===b)continue;if(adj8(a).includes(b)){const nb3={type:rt,color:'b',hp:STATS[rt].hp,maxHp:STATS[rt].maxHp};if(rt==='bishop')nb3.mana=1;pieces[a]=null;pieces[b]=nb3;addLog('Black merges->'+rt);SFX.arrive(rt);render();mergeFlash(b);finishBlackTurn();return true;}}return false;}
+function bMerge(ft,tt,rt,limit){if(campaignLevel&&campaignLevel.noMerge)return false;const bp=bPieces();const pool={pawn:bp.pawns,knight:bp.knights,bishop:bp.bishops,rook:bp.rooks};const cur={knight:bp.knights.length,bishop:bp.bishops.length,rook:bp.rooks.length,paladin:bp.paladins.length};if(cur[rt]!==undefined&&cur[rt]>=limit)return false;for(const a of(pool[ft]||[]))for(const b of(pool[tt]||[])){if(a===b)continue;if(adj8(a).includes(b)){const nb3={type:rt,color:'b',hp:STATS[rt].hp,maxHp:STATS[rt].maxHp};if(rt==='bishop')nb3.mana=1;pieces[a]=null;pieces[b]=nb3;addLog('Black merges->'+rt);SFX.arrive(rt);render();mergeFlash(b);finishBlackTurn();return true;}}return false;}
 
 function bMoveAll(dirStr){
   const M={N:[-1,0],S:[1,0],E:[0,1],W:[0,-1],NE:[-1,1],NW:[-1,-1],SE:[1,1],SW:[1,-1]};
@@ -95,7 +95,7 @@ function strategy_pawn_troops(bKi,cands,bp){return bp.pawns.length<6&&cands.leng
 function strategy_knight_attack(bKi,cands,bp){if(bMerge('pawn','pawn','knight',3))return true;return bp.pawns.length<4&&cands.length>0&&bSpawn(bKi,cands);}
 function strategy_pawn_knight(bKi,cands,bp){if(bp.pawns.length>=2&&bMerge('pawn','pawn','knight',2))return true;return bp.pawns.length<4&&cands.length>0&&bSpawn(bKi,cands);}
 function strategy_bishop_pawn(bKi,cands,bp){if(bMerge('pawn','knight','bishop',2))return true;if(bMerge('pawn','pawn','knight',2))return true;return bp.pawns.length<4&&cands.length>0&&bSpawn(bKi,cands);}
-function strategy_rook_pawn(bKi,cands,bp){if(bMergeQueen(1))return true;if(bMerge('knight','knight','rook',1))return true;if(bMerge('pawn','knight','bishop',1))return true;if(bMerge('pawn','pawn','knight',2))return true;return bp.pawns.length<5&&cands.length>0&&bSpawn(bKi,cands);}
+function strategy_rook_pawn(bKi,cands,bp){if(bMergeQueen(1))return true;if(bMerge('knight','knight','paladin',1))return true;if(bMerge('pawn','knight','bishop',1))return true;if(bMerge('pawn','pawn','knight',2))return true;return bp.pawns.length<5&&cands.length>0&&bSpawn(bKi,cands);}
 const HARD_BUILDS={pawn_troops:strategy_pawn_troops,knight_attack:strategy_knight_attack,pawn_knight:strategy_pawn_knight,bishop_pawn:strategy_bishop_pawn,rook_pawn:strategy_rook_pawn};
 
 function strategy_easy_rook_rush(bKi,cands,bp){
@@ -111,7 +111,7 @@ function strategy_easy_rook_rush(bKi,cands,bp){
     bAdvance(['knight','pawn']);return;
   }
   if(bp.rooks.length===0){
-    if(bMerge('knight','knight','rook',1))return;
+    if(bMerge('knight','knight','paladin',1))return;
     bAdvance(['knight','pawn']);return;
   }
   bAdvance(['rook','pawn','knight']);

@@ -87,13 +87,23 @@ function handleTargetClick(i){
 
 // ── DROP / EXECUTE ───────────────────────────────────────────────────────────
 // what a piece dropped on a friendly piece merges into (null when the two don't merge)
-function mergeResultType(a,b){
-  if(a==='pawn'&&b==='pawn')return 'knight';
-  if((a==='pawn'&&b==='knight')||(a==='knight'&&b==='pawn'))return 'bishop';
-  if((a==='knight'&&b==='bishop')||(a==='bishop'&&b==='knight'))return 'queen';
-  if(a==='rook'&&b==='rook')return 'siege';
-  if((a==='bishop'&&b==='rook')||(a==='rook'&&b==='bishop'))return 'mage';   // for 2 Elixir
-  if(a==='knight'&&b==='knight')return 'rook';
+// What two adjacent pieces of one side become, or null if they don't combine at all. Takes the pieces
+// themselves rather than bare type names: a fortified pawn is still type 'pawn', and it is the flag,
+// not the type, that tells two of them (a Rook) apart from two plain ones (a Knight).
+function mergeResultType(pa,pb){
+  const A=pa.type,B=pb.type,fa=!!pa.fortified,fb=!!pb.fortified;
+  if(A==='pawn'&&B==='pawn'){
+    if(fa&&fb)return 'rook';           // two fortified pawns, their armour spent, become a Rook
+    if(!fa&&!fb)return 'knight';
+    return null;                       // a fortified pawn does not merge with a plain one
+  }
+  if(fa||fb)return null;               // a fortified pawn merges with nothing else at all
+  if((A==='pawn'&&B==='knight')||(A==='knight'&&B==='pawn'))return 'bishop';
+  if(A==='knight'&&B==='knight')return 'paladin';
+  if((A==='knight'&&B==='bishop')||(A==='bishop'&&B==='knight'))return 'queen';
+  if(A==='rook'&&B==='rook')return 'siege';
+  if((A==='rook'&&B==='knight')||(A==='knight'&&B==='rook'))return 'guardian';
+  if((A==='bishop'&&B==='rook')||(A==='rook'&&B==='bishop'))return elixir[pa.color]>=MAGE_ELIXIR?'mage':null;
   return null;
 }
 
@@ -105,7 +115,7 @@ function executeDrop(from,to,dests){
   // it is the standing Delay counter that says so, and clearing it merges and heals as usual.
   const siegeRoll=pieces[from]&&pieces[from].type==='siege';
   // (a siege dropped straight onto an enemy still locks it as a target, as any piece does)
-  if((orderTurns>0||(siegeRoll&&!dests.attack.has(to)))&&isMyTurn()&&orderTargets(from).has(to)){
+  if((orderTurns>0||(siegeRoll&&!dests.attack.has(to)))&&!NO_ORDER_TYPES.has(pieces[from].type)&&isMyTurn()&&orderTargets(from).has(to)){
     if(!canOrder(from)){setStatus('No orders left this turn');render();return;}
     placeOrder(from,to,Math.max(1,orderTurns));
     return;
@@ -189,7 +199,10 @@ function executeDrop(from,to,dests){
         pieces[from]=null;pieces[to]={type:nt,color:p.color,hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};
         addLog('Merged to '+nt+'@'+sqName(to));SFX.arrive(nt);tutCheckAction('merge');
         movedThisTurn=to;                 // the merge was the turn's move
-        setTimeout(()=>mergeFlash(to),50);endTurn();
+        render();
+        setTimeout(()=>mergeFlash(to),50);
+        // the turn (and an AI vs AI match's view with it) waits for the flash to finish playing
+        setTimeout(endTurn,MERGE_ANIM_MS);
       }],
     ].filter(Boolean));
     render();return;
@@ -216,20 +229,23 @@ function executeDrop(from,to,dests){
     return;
   }
   if(dests.merge.has(to)){
-    const t=pieces[to],nt=mergeResultType(p.type,t.type);
+    const t=pieces[to],nt=mergeResultType(p,t);
     if(nt){
       delete tgts[from]; delete tgts[to];
       const newPiece={type:nt,color:p.color,hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};
       if(nt==='bishop')newPiece.mana=1;
+      if(nt==='mage')newPiece.mana=1;
       if(nt==='siege')newPiece.sieged=true;
       if(nt==='mage')elixir[p.color]-=MAGE_ELIXIR;
       pieces[from]=null;pieces[to]=newPiece;
       addLog('Merged to '+nt+'@'+sqName(to));SFX.arrive(nt);tutCheckAction('merge');
       movedThisTurn=to;                   // the merge was the turn's move: the new piece holds its fire
+      render();
       setTimeout(()=>mergeFlash(to),50);
       const knightLJump=p.type==='knight'&&kJumps(from).includes(to);
-      if(knightLJump){render();return;}
-      endTurn();return;
+      if(knightLJump)return;
+      // the turn (and an AI vs AI match's view with it) waits for the flash to finish playing
+      setTimeout(endTurn,MERGE_ANIM_MS);return;
     }
   }
   // king attacking an adjacent animal
@@ -314,6 +330,11 @@ function handleClick(i,additive){
     if(c>=0)castScry(scrySrc,c);else cancelScry();
     return;
   }
+  if(meteorMode){
+    // every square is a valid aim, the same as Scry's — a tap always lands somewhere
+    if(meteorSrc>=0)castMeteor(meteorSrc,i);else cancelMeteor();
+    return;
+  }
   const ki=pieces.findIndex(q=>q&&q.color===mc&&q.type==='king');
   // click-to-move: if exactly one friendly piece is selected and the clicked tile is
   // a valid move/attack/merge destination for it, execute the action
@@ -324,7 +345,7 @@ function handleClick(i,additive){
       const dests=getDragDests(srcI);
       // in a level without merging, tapping an ally the piece could merge with just selects that ally
       const refused=campaignLevel&&campaignLevel.noMerge&&dests.merge.has(i);
-      const orderable=orderTurns>0&&orderTargets(srcI).has(i);
+      const orderable=orderTurns>0&&!NO_ORDER_TYPES.has(sp.type)&&orderTargets(srcI).has(i);
       if(!refused&&(orderable||dests.move.has(i)||dests.attack.has(i)||dests.merge.has(i)||dests.heal.has(i))){
         selectedPieces=new Set();
         executeDrop(srcI,i,dests);
@@ -420,6 +441,7 @@ function doSpecial(){
   const i=selectedPieces.size===1?[...selectedPieces][0]:-1;
   const p=i<0?null:pieces[i];
   if(p&&p.color===myColor()&&canExtract(i)){extractAt(i);return;}
+  if(p&&p.type==='mage'){startMeteor();return;}
   startScry();
 }
 
@@ -432,7 +454,7 @@ function startScry(){
   const i=[...selectedPieces][0];
   const p=i===undefined?null:pieces[i];
   if(!p||p.color!==myColor()||p.type!=='bishop'||(p.mana||0)<2){setStatus('Select a bishop with full mana');return;}
-  scryMode=true;scrySrc=i;targetMode=false;
+  scryMode=true;scrySrc=i;targetMode=false;meteorMode=false;
   render();syncUI();
   setStatus('Tap any square: the bishop lights the 3x3 around it (2 mana)');
 }
@@ -473,6 +495,35 @@ function castScry(from,to){
   render();endTurn();
 }
 
+// ── THE MAGE'S METEOR ────────────────────────────────────────────────────────
+// Cast for METEOR_MANA, anywhere on the board, seen or not, however far — the same no-range rule as
+// Scry. It doesn't strike now: it lands METEOR_TURNS of the Mage's own side's turns from now, over the
+// 2x2 it was aimed at (meteorBox/meteorAnchorFor in js/state.js; the strike itself is runMeteors in
+// js/game.js). A ring of fire marks the tiles from the moment it is cast, so the target sees it coming.
+let meteorMode=false, meteorSrc=-1;
+function startMeteor(){
+  const i=[...selectedPieces][0];
+  const p=i===undefined?null:pieces[i];
+  if(!p||p.color!==myColor()||p.type!=='mage'||(p.mana||0)<METEOR_MANA){setStatus('Select a Mage with full mana');return;}
+  meteorMode=true;meteorSrc=i;targetMode=false;scryMode=false;
+  render();syncUI();
+  setStatus('Tap any square: a meteor lands there in '+METEOR_TURNS+' turns ('+METEOR_MANA+' mana)');
+}
+function cancelMeteor(){meteorMode=false;meteorSrc=-1;render();syncUI();}
+function castMeteor(from,to){
+  const p=pieces[from];
+  if(!p||p.type!=='mage'||(p.mana||0)<METEOR_MANA)return;
+  p.mana=Math.max(0,(p.mana||0)-METEOR_MANA);
+  p.lastHealTurn=whiteTurnCount;
+  const anchor=meteorAnchorFor(to);
+  meteors.push({tiles:meteorBox(anchor),turns:METEOR_TURNS,color:p.color});
+  meteorMode=false;meteorSrc=-1;
+  movedThisTurn=from;
+  addLog('Mage summons a meteor over '+sqName(anchor));
+  SFX.scry();
+  render();endTurn();
+}
+
 // ── KING: SPAWN A PAWN OR MOVE ───────────────────────────────────────────────
 // Spawning and moving both use the squares around the king, so a selected king gets a small
 // Spawn / Move chooser beside it: Spawn shows ghost pawns where one can be placed, Move shows
@@ -501,7 +552,7 @@ function showKingChooser(ki,mode){
     box.appendChild(b);
   });
   // the King is ordered like anything else, so its own Delay counter sits here beside it
-  if(canOrder(ki)||orderTurns>0){
+  if(!NO_ORDER_TYPES.has('king')&&(canOrder(ki)||orderTurns>0)){
     const d=document.createElement('button');
     d.className='king-choice-btn';d.innerHTML=uiLabel('delay','Delay '+orderTurns);
     d.onclick=e=>{if(e)e.stopPropagation();bumpDelay();showKingChooser(ki,mode);};
@@ -565,7 +616,7 @@ function orderTargets(i){
 }
 function placeOrder(from,to,turns){
   const p=pieces[from];
-  if(!p||orderLeft[p.color]<orderCost(p.type))return;
+  if(!p||NO_ORDER_TYPES.has(p.type)||orderLeft[p.color]<orderCost(p.type))return;
   p.order={to,turns};
   orderLeft[p.color]-=orderCost(p.type);
   selectedPieces=new Set();kingSelected=false;
@@ -619,18 +670,21 @@ function pieceChoices(i){
   }else if(p.type==='bishop'){
     const ready=(p.mana||0)>=2;
     out.push(['scry',ready?'Scry (2 mana)':'Scry (needs 2 mana)',ready,()=>{selectedPieces=new Set([i]);startScry();}]);
+  }else if(p.type==='mage'){
+    const ready=(p.mana||0)>=METEOR_MANA;
+    out.push(['meteor',ready?'Meteor ('+METEOR_MANA+' mana)':'Meteor (needs '+METEOR_MANA+' mana)',ready,()=>{selectedPieces=new Set([i]);startMeteor();}]);
   }
   // The Delay counter, beside the piece rather than across the board: every press adds a turn to the
   // order the next move will become, and it comes back round to none. It stays up while the counter
   // does, even with the turn's orders spent, so it can always be wound back to 0 (bumpDelay).
-  if(canOrder(i)||orderTurns>0)out.push(['delay','Delay '+orderTurns,true,()=>bumpDelay()]);
+  if(!NO_ORDER_TYPES.has(p.type)&&(canOrder(i)||orderTurns>0))out.push(['delay','Delay '+orderTurns,true,()=>bumpDelay()]);
   return out;
 }
 // called after every render, like syncKingChooser
 function syncPieceChooser(){
   const i=selectedPieces.size===1&&!kingSelected?[...selectedPieces][0]:-1,p=i>=0?pieces[i]:null;
   const up=!!p&&p.color===myColor()&&!dragging&&!over&&!thinking&&isMyTurn()
-    &&!scryMode&&!targetMode&&!isTutorialActive();
+    &&!scryMode&&!meteorMode&&!targetMode&&!isTutorialActive();
   const choices=up?pieceChoices(i):[];
   if(!choices.length){closePieceChooser();return;}
   // rebuilt only when the piece or what it offers changes, so a tap in progress survives a re-render
@@ -682,21 +736,20 @@ function doMergeAll(){
   if(orderTurns>0){setStatus('A delayed order is a move or a strike \u2014 set the Delay back to 0 to merge');return;}
   if(campaignLevel&&campaignLevel.noMerge){setStatus('No merge this round');return;}
   const mc=myColor();
-  const tiers=[
-    {a:'pawn',  b:'pawn',   r:'knight'},
-    {a:'pawn',  b:'knight', r:'bishop'},
-    {a:'knight',b:'bishop', r:'queen'},
-    {a:'knight',b:'knight', r:'rook'},
-  ];
-  for(const {a,b,r} of tiers){
+  const pairs=[['pawn','pawn'],['pawn','knight'],['knight','bishop'],['knight','knight'],['rook','rook'],['rook','knight'],['bishop','rook']];
+  for(const [a,b] of pairs){
     for(let i=0;i<ROWS*COLS;i++){
       const pi=pieces[i];if(!pi||pi.color!==mc||pi.type!==a)continue;
       for(const j of adj8(i)){
         const pj=pieces[j];if(!pj||pj.color!==mc)continue;
         const match=(pi.type===a&&pj.type===b)||(a!==b&&pi.type===b&&pj.type===a);
         if(!match)continue;
-        if(pi.fortified||pj.fortified)continue;   // a fortified pawn takes part in no merge
+        const r=mergeResultType(pi,pj);if(!r)continue;
+        if(r==='mage')elixir[mc]-=MAGE_ELIXIR;
         pieces[i]=null;pieces[j]={type:r,color:mc,hp:STATS[r].hp,maxHp:STATS[r].maxHp};
+        if(r==='bishop')pieces[j].mana=1;
+        if(r==='mage')pieces[j].mana=1;
+        if(r==='siege')pieces[j].sieged=true;
         addLog('Merged '+a+'+'+b+' -> '+r+'@'+sqName(j));SFX.arrive(r);
         movedThisTurn=-1;
         setTimeout(()=>mergeFlash(j),50);

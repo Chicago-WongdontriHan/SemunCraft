@@ -198,9 +198,9 @@ const TUTORIAL_STEPS=[
       pieces[idx(4,4)]={type:'knight',color:'w',hp:4,maxHp:4};
       pieces[idx(4,3)]={type:'knight',color:'w',hp:4,maxHp:4};
       render();tutHighlightPiece(idx(4,3));
-      document.getElementById('tut-title').textContent='Merge: \u2658+\u2658 \u2192 \u2656';
-      document.getElementById('tut-desc').textContent='Nice work! Now combine two knights to form a Rook, a powerful piece with heavy cardinal artillery. Merge the two provided knights in adjacent tiles.';
-      document.getElementById('tut-hint').textContent='\u2658+\u2658 \u2192 \u2656: Drag one knight onto the other!';
+      document.getElementById('tut-title').textContent='Merge: \u2658+\u2658 \u2192 Paladin';
+      document.getElementById('tut-desc').textContent='Nice work! Now combine two knights to form a Paladin \u2014 its lance always finishes the kill and leaps onto the square it clears. Merge the two provided knights in adjacent tiles.';
+      document.getElementById('tut-hint').textContent='Knight+Knight \u2192 Paladin: Drag one knight onto the other!';
       tutWaitingForAction=true; tutActionType='merge';
       const nb=document.getElementById('tut-next');
       if(nb){nb.textContent='Skip Step \u2192';nb.style.background='';nb.style.borderColor='';nb.style.color='';nb.onclick=tutNext;}
@@ -225,7 +225,7 @@ const TUTORIAL_STEPS=[
     },
     onAttack(){
       stopTutEnemyWander();
-      document.getElementById('tut-desc').textContent='Enemy defeated! Press Next to set up the rook merge.';
+      document.getElementById('tut-desc').textContent='Enemy defeated! Press Next to meet the Rook.';
       tutWaitForNext(()=>{
         for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='b'&&pieces[i].type!=='king')pieces[i]=null;}
         for(let i=0;i<ROWS*COLS;i++){if(pieces[i]&&pieces[i].color==='w'&&pieces[i].type!=='king')pieces[i]=null;}

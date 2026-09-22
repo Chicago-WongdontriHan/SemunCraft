@@ -46,9 +46,13 @@ function pieceInHand(){
   if(i<0&&typeof kingSelected!=='undefined'&&kingSelected)i=pieces.findIndex(q=>q&&q.color===myColor()&&q.type==='king');
   return i>=0&&pieces[i]&&pieces[i].color===myColor()?i:-1;
 }
+// The Paladin's lance always finishes the kill and leaps to the square it clears, the Guardian's shot
+// hits everything in its path, and the Mage's fire and meteor are cast, not reserved — none of the
+// three fits a square set aside a turn ahead, so none of them ever takes a delayed order.
+const NO_ORDER_TYPES=new Set(['paladin','guardian','mage']);
 function canOrder(i){
   const p=pieces[i];
-  return !!p&&p.color===myColor()&&orderLeft[p.color]>=orderCost(p.type)&&orderTargets(i).size>0;
+  return !!p&&!NO_ORDER_TYPES.has(p.type)&&p.color===myColor()&&orderLeft[p.color]>=orderCost(p.type)&&orderTargets(i).size>0;
 }
 // only a plain pawn works the spring or the mine; a fortified one can't (pawnOnMine in engine.js)
 function canExtract(i){ const p=pieces[i]; return !!p&&p.type==='pawn'&&!p.fortified&&tileData[i]==='spring'; }
@@ -124,6 +128,29 @@ function tickScans(color){
   scans=scans.filter(sc=>sc.color!==color||--sc.turns>0);
 }
 function scryLit(i,color){return scans.some(sc=>sc.color===color&&sc.tiles.includes(i));}
+
+// the Mage's meteor: [{tiles: the 2x2 it was aimed at, turns, color}] — cast for METEOR_MANA, it
+// strikes METEOR_TURNS of the caster's own turns later, for METEOR_DAMAGE to everything standing in
+// the 2x2 when it lands, friend or foe alike (runMeteors in js/game.js does the actual striking;
+// tickMeteors here only counts the turns down, the way tickScans counts a scry's own down)
+const METEOR_MANA=2, METEOR_TURNS=2, METEOR_DAMAGE=2;
+let meteors=[];
+function tickMeteors(color){
+  const due=meteors.filter(m=>m.color===color&&--m.turns<=0);
+  meteors=meteors.filter(m=>m.turns>0);
+  return due;
+}
+// the 2x2 whose top-left corner is `anchor`
+function meteorBox(anchor){
+  const r=ROW(anchor),c=COL(anchor);
+  return[idx(r,c),idx(r,c+1),idx(r+1,c),idx(r+1,c+1)];
+}
+// the anchor for a 2x2 that contains the tapped square, clamped so it always fits on the board —
+// every square maps to exactly one such box, so there is no separate "which box did you mean" step
+function meteorAnchorFor(t){
+  return idx(Math.min(ROW(t),ROWS-2),Math.min(COL(t),COLS-2));
+}
+// a pending meteor is drawn for both sides, never hidden by fog — it is the warning that it is coming
 
 // ── FOG OF WAR ───────────────────────────────────────────────────────────────
 let mapCheat=false; // when false, only tiles within 2 of any white piece are currently visible
@@ -202,10 +229,12 @@ const PC_DATA=[
   {gw:'♙',gb:'♟',name:'Pawn',   stats:'1HP · any dir · atk adj · mines'},
   {gw:'♙',gb:'♟',name:'Fortified',stats:'3HP · mends 1HP/5 turns · 1 Gold'},
   {gw:'♘',gb:'♞',name:'Knight', stats:'4HP · L-jump · atk L-dist'},
+  {gw:'♘',gb:'♞',name:'Paladin',stats:'4HP · L-jump · lance always kills, then leaps in'},
   {gw:'♗',gb:'♝',name:'Bishop', stats:'2HP · diagonal 2 · heals (mana)'},
-  {gw:'♖',gb:'♜',name:'Rook',   stats:'4HP · card2 · pierce rng3'},
+  {gw:'♖',gb:'♜',name:'Rook',   stats:'4HP · card2 · pierce rng3 · 2 Fortified'},
+  {gw:'♖',gb:'♜',name:'Guardian',stats:'5HP · card2 · rook+knight range, hits the line'},
   {gw:'♛',gb:'♛',name:'Queen',  stats:'5HP · all dir rng2'},
-  {gw:'♗',gb:'♝',name:'Mage',   stats:'3HP · diag 2 · atk rng3 · 2 Elixir'},
+  {gw:'♗',gb:'♝',name:'Mage',   stats:'3HP · diag 2 · fire line, atk rng3 · meteor (mana)'},
   {gw:'♔',gb:'♚',name:'King',   stats:'5HP · spawns pawns'},
 ];
 let pcPageIdx=0;

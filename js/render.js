@@ -30,6 +30,16 @@ function render(){
   // scrying: every square out of sight the bishop can light, drawn over the fog (scryArea in actions.js)
   const scryZone=typeof scryMode!=='undefined'&&scryMode&&scrySrc>=0?scryArea(scrySrc):null;
   const scryMark=(sq,i)=>{if(scryZone&&scryZone.has(i)){sq.classList.add('scry-zone');const m=document.createElement('span');m.className='scry-mark';sq.appendChild(m);}};
+  // a pending meteor rings every one of its four tiles in fire, through the fog and for both sides —
+  // the whole point is that its target sees it coming (meteors in js/state.js)
+  const meteorMark=(sq,i)=>{
+    const m=meteors.find(mm=>mm.tiles.includes(i));
+    if(!m)return;
+    sq.classList.add('meteor-ring');
+    const badge=document.createElement('span');badge.className='meteor-count';badge.textContent=m.turns;
+    badge.style.fontSize=Math.max(9,Math.round(sqPx*.22))+'px';
+    sq.appendChild(badge);
+  };
   // the piece the action guide is for: the one being dragged, else the one selected
   const guideSrc=dragging&&dragDests?dragSrc:selDests?[...selectedPieces][0]:-1;
   const pipW=Math.max(2,Math.floor(sqPx*.10))+'px';
@@ -54,7 +64,7 @@ function render(){
         // unexplored — thick cloud hides everything
         sq.classList.add('fog','fog-unknown');
         sq.appendChild(fogCover(i,'unknown'));
-        scryMark(sq,i);
+        scryMark(sq,i);meteorMark(sq,i);
         if(res){sq.title=RESOURCE_TIPS[tileData[i]];sq.appendChild(pawnNeededBadge(tileData[i],true));}
         if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
         if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
@@ -74,7 +84,7 @@ function render(){
         }
         sq.classList.add('fog','fog-explored');
         sq.appendChild(fogCover(i,'explored'));
-        scryMark(sq,i);
+        scryMark(sq,i);meteorMark(sq,i);
         if(res){sq.title=RESOURCE_TIPS[tileData[i]];sq.appendChild(pawnNeededBadge(tileData[i],true));}
         if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
         if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
@@ -117,7 +127,7 @@ function render(){
         sq.appendChild(n);
       }
       // scrying: the squares this bishop may light, and the ones already burning
-      scryMark(sq,i);
+      scryMark(sq,i);meteorMark(sq,i);
       const lit=typeof scryLit==='function'&&scryLit(i,mc);
       if(lit)sq.classList.add('scry-lit');
       // a campaign level's goal squares: the gate to reach, the floor to hold
@@ -262,7 +272,7 @@ function guideEl(kind,src,i){
     el.innerHTML=GUIDE_RING('rgba(67,211,107,.16)','#43D36B')+GUIDE_HEAL_BADGE;
   }else{
     // a merge shows the piece it makes over the faded ally (a bishop on a wounded knight can also heal)
-    const t=pieces[i],nt=t?mergeResultType(sp.type,t.type):null;
+    const t=pieces[i],nt=t?mergeResultType(sp,t):null;
     el.innerHTML=GUIDE_RING('rgba(58,160,240,.16)','#3AA0F0',true)
       +(nt?'<div class="guide-piece">'+pieceSVG(nt,sp.color,mapTheme,size)+'</div>':'')
       +GUIDE_MERGE_BADGE+(kind==='merge-heal'?GUIDE_HEAL_BADGE:'');

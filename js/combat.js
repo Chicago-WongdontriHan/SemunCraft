@@ -29,6 +29,137 @@ function emojiAnim(emoji,ax,ay,tx,ty,arc,duration,cb){
   requestAnimationFrame(step);
 }
 
+// the Guardian's shot: a spiked iron ball, same flight as the siege's cannonball but with a small
+// spark drawn at every square along the way where the path damage in js/actions.js above will land
+// the Mage's fire trajectory: a line drawn out over its three tiles, each one flaring as the fire
+// reaches it, whether or not anything is standing there — the whole line is what was cast, not just
+// wherever the enemy happened to be on it
+function svgFireLine(ax,ay,pts,cb){
+  const svg=document.getElementById('wep-overlay');
+  SFX.scry();
+  const all=[{sx:ax,sy:ay},...pts];
+  const segs=[];
+  for(let k=1;k<all.length;k++){
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',all[k-1].sx);line.setAttribute('y1',all[k-1].sy);
+    line.setAttribute('x2',all[k-1].sx);line.setAttribute('y2',all[k-1].sy);
+    line.setAttribute('stroke','#FF7A2E');line.setAttribute('stroke-width','4');line.setAttribute('stroke-linecap','round');
+    line.setAttribute('opacity','.85');
+    svg.appendChild(line);segs.push({el:line,from:all[k-1],to:all[k]});
+  }
+  const start=performance.now(),dur=140*segs.length;
+  const step=ts=>{
+    const s=Math.min(1,(ts-start)/dur);
+    const seg=Math.min(segs.length-1,Math.floor(s*segs.length));
+    for(let k=0;k<segs.length;k++){
+      const local=k<seg?1:k>seg?0:(s*segs.length-seg);
+      const{el,from,to}=segs[k];
+      el.setAttribute('x2',from.sx+(to.sx-from.sx)*local);
+      el.setAttribute('y2',from.sy+(to.sy-from.sy)*local);
+      if(local>=1&&!el.dataset.flared){
+        el.dataset.flared='1';
+        const fl=document.createElementNS('http://www.w3.org/2000/svg','circle');
+        fl.setAttribute('cx',to.sx);fl.setAttribute('cy',to.sy);fl.setAttribute('r',sqPx*.22+'');
+        fl.setAttribute('fill','#FFB040');fl.setAttribute('opacity','.9');
+        svg.appendChild(fl);
+        let b=0;const fstep=()=>{b+=0.14;fl.setAttribute('opacity',''+(0.9*(1-b)));if(b<1)requestAnimationFrame(fstep);else svg.removeChild(fl);};
+        requestAnimationFrame(fstep);
+      }
+    }
+    if(s<1)requestAnimationFrame(step);
+    else{segs.forEach(({el})=>svg.removeChild(el));cb();}
+  };
+  requestAnimationFrame(step);
+}
+// The meteor landing: four burning stones fall out of the top of the frame, one over each of the
+// tiles it was cast on, and burst together where they land. Fire-and-forget, like an ordered piece's
+// own slide — the strike itself already happened by the time this is called (runMeteors in js/game.js).
+function meteorStrikeAnim(tiles){
+  const svg=document.getElementById('wep-overlay');
+  if(!svg||!tiles||!tiles.length)return;
+  const pts=tiles.map(j=>sqCenter(j));
+  const top=Math.min(...pts.map(p=>p.sy))-sqPx*3;
+  const rocks=pts.map(p=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const body=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    body.setAttribute('r',sqPx*.16+'');body.setAttribute('fill','#5A3018');body.setAttribute('stroke','#FF7A2E');body.setAttribute('stroke-width','2');
+    const tail=document.createElementNS('http://www.w3.org/2000/svg','line');
+    tail.setAttribute('stroke','#FFB04090');tail.setAttribute('stroke-width','5');tail.setAttribute('stroke-linecap','round');
+    g.appendChild(tail);g.appendChild(body);svg.appendChild(g);
+    return{g,tail,p};
+  });
+  const start=performance.now(),dur=380;
+  SFX.attack();
+  const step=ts=>{
+    const s=Math.min(1,(ts-start)/dur),ease=s*s;
+    rocks.forEach(({g,tail,p})=>{
+      const y=top+(p.sy-top)*ease;
+      g.setAttribute('transform','translate('+p.sx+','+y+')');
+      tail.setAttribute('x1',0);tail.setAttribute('y1',(top-y));tail.setAttribute('x2',0);tail.setAttribute('y2',-sqPx*.3);
+    });
+    if(s<1){requestAnimationFrame(step);return;}
+    rocks.forEach(({g})=>svg.removeChild(g));
+    // one shared fire burst over the whole 2x2, not one per tile
+    const cx=pts.reduce((a,p)=>a+p.sx,0)/pts.length,cy=pts.reduce((a,p)=>a+p.sy,0)/pts.length;
+    const burst=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    burst.setAttribute('cx',cx);burst.setAttribute('cy',cy);burst.setAttribute('r','6');
+    burst.setAttribute('fill','#FFB040');burst.setAttribute('opacity','.85');
+    svg.appendChild(burst);
+    let b=0;const bstep=()=>{b+=0.06;burst.setAttribute('r',(6+b*sqPx*1.3)+'');burst.setAttribute('opacity',''+(0.85*(1-b)));
+      if(b<1)requestAnimationFrame(bstep);else svg.removeChild(burst);};
+    requestAnimationFrame(bstep);
+  };
+  requestAnimationFrame(step);
+}
+function svgSpikedBall(ax,ay,tx,ty,sparks,cb){
+  const svg=document.getElementById('wep-overlay');
+  const ball=document.createElementNS('http://www.w3.org/2000/svg','g');
+  const core=document.createElementNS('http://www.w3.org/2000/svg','circle');
+  core.setAttribute('r',sqPx*.11+'');core.setAttribute('fill','#6A6A76');core.setAttribute('stroke','#26262E');core.setAttribute('stroke-width','1.5');
+  ball.appendChild(core);
+  for(let k=0;k<6;k++){
+    const ang=k*60,spike=document.createElementNS('http://www.w3.org/2000/svg','line');
+    const r1=sqPx*.11,r2=sqPx*.19,rad=ang*Math.PI/180;
+    spike.setAttribute('x1',(Math.cos(rad)*r1)+'');spike.setAttribute('y1',(Math.sin(rad)*r1)+'');
+    spike.setAttribute('x2',(Math.cos(rad)*r2)+'');spike.setAttribute('y2',(Math.sin(rad)*r2)+'');
+    spike.setAttribute('stroke','#8A8A96');spike.setAttribute('stroke-width','2');spike.setAttribute('stroke-linecap','round');
+    ball.appendChild(spike);
+  }
+  svg.appendChild(ball);
+  const trail=document.createElementNS('http://www.w3.org/2000/svg','line');
+  trail.setAttribute('stroke','#9A9AA640');trail.setAttribute('stroke-width','3');
+  svg.appendChild(trail);
+  const start=performance.now(),dur=420,dist=Math.hypot(tx-ax,ty-ay);
+  const sparked=new Set();
+  const step=ts=>{
+    const s=Math.min(1,(ts-start)/dur);
+    const bx=ax+(tx-ax)*s,by=ay+(ty-ay)*s;
+    ball.setAttribute('transform','translate('+bx+','+by+') rotate('+(s*280)+')');
+    trail.setAttribute('x1',ax);trail.setAttribute('y1',ay);trail.setAttribute('x2',bx);trail.setAttribute('y2',by);
+    (sparks||[]).forEach((sp,k)=>{
+      if(sparked.has(k))return;
+      const sd=Math.hypot(sp.sx-ax,sp.sy-ay);
+      if(sd<=dist*s+2){
+        sparked.add(k);
+        const fl=document.createElementNS('http://www.w3.org/2000/svg','circle');
+        fl.setAttribute('cx',sp.sx);fl.setAttribute('cy',sp.sy);fl.setAttribute('r',sqPx*.05+'');
+        fl.setAttribute('fill','#ffd060');svg.appendChild(fl);
+        setTimeout(()=>fl.remove(),160);
+      }
+    });
+    if(s<1)requestAnimationFrame(step);
+    else{
+      svg.removeChild(ball);svg.removeChild(trail);
+      const burst=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      burst.setAttribute('cx',tx);burst.setAttribute('cy',ty);burst.setAttribute('r','4');
+      burst.setAttribute('fill','none');burst.setAttribute('stroke','#c8c8d0');burst.setAttribute('stroke-width','3');
+      svg.appendChild(burst);
+      let b=0;const bstep=()=>{b+=0.1;burst.setAttribute('r',(4+b*sqPx*.35)+'');burst.setAttribute('opacity',''+(1-b));if(b<1)requestAnimationFrame(bstep);else{svg.removeChild(burst);cb();}};
+      requestAnimationFrame(bstep);
+    }
+  };
+  requestAnimationFrame(step);
+}
 function svgCannonball(ax,ay,tx,ty,cb){
   const svg=document.getElementById('wep-overlay');
   const flash=document.createElementNS('http://www.w3.org/2000/svg','circle');
@@ -182,22 +313,14 @@ function attackAnim(attacker,target,type,cb){
       if(s<1)requestAnimationFrame(step);else{em.remove();cb();}
     };requestAnimationFrame(step);
   }else if(type==='mage'){
-    // a violet spark flying straight from the Mage to its target
-    const em=document.createElement('div');em.className='atk-emoji';em.textContent='\u2726';
-    em.style.position='fixed';em.style.pointerEvents='none';em.style.zIndex='600';
-    em.style.color='#E6B8FF';em.style.fontSize=Math.max(18,Math.floor(sqPx*.55))+'px';
-    em.style.transform='translate(-50%,-50%)';
-    em.style.textShadow='0 0 10px rgba(190,120,255,.95),0 0 22px rgba(150,80,255,.6)';
-    document.body.appendChild(em);
-    const start=performance.now();const dur=340;
-    const step=ts=>{
-      const s=Math.min(1,(ts-start)/dur);
-      const ease=s<.35?s/.35:1;
-      em.style.left=(a.x+(t.x-a.x)*ease)+'px';em.style.top=(a.y+(t.y-a.y)*ease)+'px';
-      em.style.opacity=s<.8?'1':(1-(s-.8)/.2)+'';
-      em.style.transform='translate(-50%,-50%) scale('+(1.3-s*.5)+') rotate('+(s*220)+'deg)';
-      if(s<1)requestAnimationFrame(step);else{em.remove();cb();}
-    };requestAnimationFrame(step);
+    // the fire trajectory it just cast: the whole line it falls on, not only the tile that was aimed at
+    const line=sangLineFor(attacker,target)||[target];
+    svgFireLine(a.sx,a.sy,line.map(j=>sqCenter(j)),cb);
+  }else if(type==='guardian'){
+    const path=cardinalPath(attacker,target);
+    const sparks=(path||[]).map(j=>sqCenter(j));
+    SFX.attack();
+    svgSpikedBall(a.sx,a.sy,t.sx,t.sy,sparks,cb);
   }else if(type==='siege'){
     // siege: cannonball same as rook
     svgCannonball(a.sx,a.sy,t.sx,t.sy,cb);
@@ -239,7 +362,7 @@ function computeActions(color){
         }
       }
     }else{
-      const range=p.type==='queen'?queenRange(i):p.type==='mage'?mageRange(i):p.type==='siege'?siegeRange(i):p.type==='rook'?rookRange(i):p.type==='knight'?kJumps(i):p.type==='bishop'?bishopRange(i):adj8(i);
+      const range=p.type==='queen'?queenRange(i):p.type==='mage'?mageRange(i):p.type==='siege'?siegeRange(i):p.type==='rook'?rookRange(i):p.type==='guardian'?guardianRange(i):(p.type==='knight'||p.type==='paladin')?kJumps(i):p.type==='bishop'?bishopRange(i):adj8(i);
       let enemies=range.filter(j=>pieces[j]&&pieces[j].color===enemy);
       if(color===myColor()&&!mapCheat)enemies=enemies.filter(j=>isTileVisible(j));
       enemies=enemies.filter(j=>!isConcealedFrom(j,color));
@@ -259,6 +382,10 @@ function computeActions(color){
   return actions;
 }
 
+// the Paladin's leap: the same arc a knight's move draws, timed to land as the target falls
+function paladinLeapAnim(from,to,color,cb){
+  animatePieceMove(from,to,'paladin',color,color==='b',cb,260);
+}
 function executeActions(actions,color,cb){
   if(!actions.length){cb();return;}
   const svg=document.getElementById('atk-overlay');svg.innerHTML='';
@@ -297,7 +424,14 @@ function executeActions(actions,color,cb){
     if(pending<=0&&!fired){fired=true;svg.innerHTML='';applyActions(actions,color);cb();}
   };
   animActions.forEach(({attacker,target,action})=>{
-    const type=action==='heal'?'heal':(pieces[attacker]?.type||'pawn');
+    const ap=pieces[attacker];
+    if(action==='attack'&&ap&&ap.type==='paladin'){
+      // its lance always lands: the leap plays out over the strike, and both finish together
+      setTimeout(()=>attackAnim(attacker,target,'paladin',()=>{}),80);
+      setTimeout(()=>paladinLeapAnim(attacker,target,ap.color,done),80);
+      return;
+    }
+    const type=action==='heal'?'heal':(ap?.type||'pawn');
     setTimeout(()=>attackAnim(attacker,target,type,done),80);
   });
   setTimeout(()=>{if(!fired){fired=true;svg.innerHTML='';applyActions(actions,color);cb();}},1500);
@@ -337,21 +471,68 @@ function applyActions(actions,color){
       const t=pieces[target];
       if(!t){return;}
       if(t.color!==enemy)return;
-      // siege tower deals 2 damage per hit; all other pieces deal 1
+      // siege tower deals 2 damage per hit, all other pieces deal 1 — except the Paladin, whose
+      // lance always finishes the kill outright, whatever the target's remaining HP
       const ap=pieces[attacker];
-      const dmg=(ap&&ap.type==='siege')?2:1;
+      const dmg=(ap&&ap.type==='siege')?2:(ap&&ap.type==='paladin')?t.hp:1;
       t.hp-=dmg;flashSq(target,'hit-flash');
       if(t.fortified)t.lastHitTurn=whiteTurnCount;   // its armour mends from here (turnUpkeep)
+      // fighting from or into undergrowth reveals a piece for as long as it stays on that square
+      // (inCover in movement.js); harmless to stamp when the square isn't undergrowth at all
+      if(ap)ap.exposedAt=attacker;
+      t.exposedAt=target;
       if(campaignLevel&&t.color===myColor()&&t.type==='king')campaignKingHit=true;
       // track hits on black pieces for reactive AI
       if(color==='w'&&t.color==='b'&&t.hp>0)blackHitBy.push({target,attacker});
       if(t.hp<=0){
         showDeath(target,t.color,t.type);SFX.fall(t.type);
         pieces[target]=null;
+        // the Paladin leaps onto the square it just cleared
+        if(ap&&ap.type==='paladin'){pieces[attacker]=null;pieces[target]=ap;}
         msgs.push(t.type+'@'+sqName(target)+' ✕');
         if(campaignLevel){const cr=checkCampaignWin();if(cr)over=true;}
         else if(t.type==='king'){over=true;}
       }else msgs.push(t.type+'@'+sqName(target)+' '+t.hp+'HP');
+      // the Mage's fire burns down the whole line it was aimed into, not only the one tile struck —
+      // every other enemy on that same trajectory takes 1 too; a friend on it is left untouched
+      if(ap&&ap.type==='mage'){
+        const line=sangLineFor(attacker,target);
+        if(line)for(const j of line){
+          if(j===target||over)continue;
+          const q=pieces[j];if(!q||q.color!==enemy)continue;
+          q.hp-=1;flashSq(j,'hit-flash');
+          if(q.fortified)q.lastHitTurn=whiteTurnCount;
+          q.exposedAt=j;
+          if(color==='w'&&q.hp>0)blackHitBy.push({target:j,attacker});
+          if(q.hp<=0){
+            showDeath(j,q.color,q.type);SFX.fall(q.type);
+            pieces[j]=null;
+            msgs.push(q.type+'@'+sqName(j)+' ✕ (caught in the fire)');
+            if(campaignLevel){const cr=checkCampaignWin();if(cr)over=true;}
+            else if(q.type==='king'){over=true;}
+          }else msgs.push(q.type+'@'+sqName(j)+' '+q.hp+'HP (caught in the fire)');
+        }
+      }
+      // the Guardian's shot flies on past the target, along the same straight line, damaging every
+      // other enemy in its path (never a piece of its own, which the shot simply passes over)
+      if(ap&&ap.type==='guardian'){
+        const path=cardinalPath(attacker,target);
+        if(path)for(const j of path){
+          if(j===target||over)continue;
+          const q=pieces[j];if(!q||q.color!==enemy)continue;
+          q.hp-=1;flashSq(j,'hit-flash');
+          if(q.fortified)q.lastHitTurn=whiteTurnCount;
+          q.exposedAt=j;
+          if(color==='w'&&q.hp>0)blackHitBy.push({target:j,attacker});
+          if(q.hp<=0){
+            showDeath(j,q.color,q.type);SFX.fall(q.type);
+            pieces[j]=null;
+            msgs.push(q.type+'@'+sqName(j)+' ✕ (in its path)');
+            if(campaignLevel){const cr=checkCampaignWin();if(cr)over=true;}
+            else if(q.type==='king'){over=true;}
+          }else msgs.push(q.type+'@'+sqName(j)+' '+q.hp+'HP (in its path)');
+        }
+      }
     }
   });
   if(msgs.length)addLog((color==='w'?'W':'B')+': '+msgs.join(', '));

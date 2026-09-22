@@ -9,8 +9,10 @@
 //   queen   slim gown, long hair, a tall three-point crown and a sceptre
 //   king    the broadest piece: square-shouldered robe, beard, flat crown with a cross
 //   siege   a stub tower with a cannon barrel out of the roof
-//   mage    a bishop rising out of a short tower, staff in hand (drawn by pieces/combined/make.js,
-//           shipped in pieces/units-art.js)
+//   mage, paladin, guardian  combined units drawn by pieces/combined/make.js and shipped as markup
+//           in pieces/units-art.js: the Mage a bishop rising out of a short tower, staff in hand;
+//           the Paladin twin knights, one behind the other; the Guardian a knight rising out of a
+//           short rook tower
 // Team colour fills the body (light White, dark Black) with a slight per-type tint, and
 // the base ring; a dark outline plus a contrasting halo keeps pieces readable on any tile.
 // Theme sets (forest.js, jungle.js, desert.js, ocean.js) register in PIECE_SETS with
@@ -139,6 +141,7 @@ PIECE_SHAPES.fortified=Object.assign({},PIECE_SHAPES.pawn,{
 });
 PIECE_TINTS.w.fortified=PIECE_TINTS.w.pawn;
 PIECE_TINTS.b.fortified=PIECE_TINTS.b.pawn;
+
 // what a piece on the board is drawn as: a fortified pawn keeps type 'pawn' and wears the helmet
 function pieceArt(p){return p.fortified?'fortified':p.type;}
 

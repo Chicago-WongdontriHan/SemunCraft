@@ -29,7 +29,7 @@ function initGame(){
   turn='w'; over=false; thinking=false; logLines=[]; kingSelected=false;
   whiteTargets={}; blackTargets={};
   spawnHistory=[]; blackSpawnHistory=[]; whiteTurnCount=0; blackTurnCount=0; movedThisTurn=-1;
-  scans=[];elixir={w:0,b:0};mineTurns={w:0,b:0};goldSpent={w:0,b:0};
+  scans=[];meteors=[];elixir={w:0,b:0};mineTurns={w:0,b:0};goldSpent={w:0,b:0};
   orderLeft={w:ORDER_BUDGET,b:ORDER_BUDGET};orderTurns=0;
   exploredTiles=new Set();
   // regular games start fogged (the tutorial and campaign set their own default)
@@ -103,7 +103,7 @@ function startWhiteTurn(){
         step._healPhase=false;
         tutWaitingForAction=false;
         document.getElementById('tut-title').textContent='Enemy Defeated! \u2658';
-        document.getElementById('tut-desc').textContent='The enemy knight is destroyed! Press Next to merge two knights into a Rook.';
+        document.getElementById('tut-desc').textContent='The enemy knight is destroyed! Press Next to merge two knights into a Paladin.';
         document.getElementById('tut-hint').textContent='Press Next \u2192 to continue.';
         const nb=document.getElementById('tut-next');
         if(nb){
@@ -118,8 +118,8 @@ function startWhiteTurn(){
             pieces[idx(4,4)]={type:'knight',color:'w',hp:4,maxHp:4};
             pieces[idx(4,3)]={type:'knight',color:'w',hp:4,maxHp:4};
             render();tutHighlightPiece(idx(4,3));
-            document.getElementById('tut-title').textContent='Merge: \u2658+\u2658 \u2192 \u2656';
-            document.getElementById('tut-desc').textContent='Merge two knights into a Rook — heavy artillery that fires 3 squares cardinally!';
+            document.getElementById('tut-title').textContent='Merge: \u2658+\u2658 \u2192 Paladin';
+            document.getElementById('tut-desc').textContent='Merge two knights into a Paladin — its lance always finishes the kill and leaps onto the square it clears!';
             document.getElementById('tut-hint').textContent='Drag one knight onto the other to merge!';
             tutWaitingForAction=true; tutActionType='merge';
             nb.textContent='Skip Step \u2192';nb.style.background='';nb.style.borderColor='';nb.style.color='';nb.onclick=tutNext;
@@ -129,7 +129,7 @@ function startWhiteTurn(){
       }
     }
   }
-  tickScans('w');
+  tickScans('w');runMeteors('w');
   turnUpkeep();
   if(over){   // an order that came due ended it
     const mine=pieces.some(q=>q&&q.color===myColor()&&q.type==='king');
@@ -148,10 +148,14 @@ function turnUpkeep(own){
   if(own===undefined)own=pvpActive?myColor():null;
   // clear newborn aura from previous turn
   for(let i=0;i<ROWS*COLS;i++){if(pieces[i]?.newborn&&(!own||pieces[i].color===own))pieces[i].newborn=false;}
-  // bishop mana: +1 mana every 3 turns after the bishop last healed
+  // a piece fought its way out of hiding at one square; once it's no longer standing there, whatever
+  // it revealed no longer applies, and the next visit to undergrowth judges it fresh (inCover)
+  for(let i=0;i<ROWS*COLS;i++){const p=pieces[i];if(p&&p.exposedAt!==undefined&&p.exposedAt!==i)delete p.exposedAt;}
+  // bishop and Mage mana: +1 every 3 turns since it last changed (the Mage doesn't heal, but the same
+  // field and the same clock do the job — lastHealTurn is just “when the mana last moved”)
   for(let i=0;i<ROWS*COLS;i++){
     const p=pieces[i];
-    if(p&&p.type==='bishop'&&(!own||p.color===own)&&(p.mana||0)<2){
+    if(p&&(p.type==='bishop'||p.type==='mage')&&(!own||p.color===own)&&(p.mana||0)<2){
       const lastHeal=p.lastHealTurn||0;
       if(whiteTurnCount-lastHeal>=3&&whiteTurnCount>0){
         p.mana=Math.min(2,(p.mana||0)+1);
@@ -192,10 +196,13 @@ function runOrders(own){
     if(--p.order.turns>0)continue;
     const to=p.order.to;delete p.order;
     const t=pieces[to],d=getDragDests(i),tgts=p.color==='w'?whiteTargets:blackTargets;
-    if(t&&t.color!==p.color&&d.attack.has(to)){
+    // rawAttack, unlike attack, still holds a square hidden in undergrowth: the order walks right up
+    // to it regardless, discovering whoever it finds there
+    if(t&&t.color!==p.color&&d.rawAttack.has(to)){
       const dmg=p.type==='siege'?2:1;
       t.hp-=dmg;
       if(t.fortified)t.lastHitTurn=whiteTurnCount;
+      p.exposedAt=i;t.exposedAt=to;
       flashSq(to,'hit-flash');SFX.attack();
       addLog(p.type+' strikes '+t.type+'@'+sqName(to)+' as ordered');
       if(t.hp<=0){
@@ -223,6 +230,36 @@ function runOrders(own){
 // (A single piece's move is remembered in movedThisTurn, which the attack lists already leave out.)
 let movedGroup=[];
 function heldFire(i){const p=pieces[i];return !!(p&&p.rolled)||movedGroup.indexOf(i)>=0;}
+
+// ── THE MAGE'S METEOR ────────────────────────────────────────────────────────
+// A meteor comes due at the start of its caster's own turn, METEOR_TURNS after it was cast (tickMeteors
+// counts it down in js/state.js). It strikes every one of its four tiles for METEOR_DAMAGE, whoever is
+// standing there — its own side's pieces are not spared either. Mirrored by runMeteors in js/engine.js.
+// returns the winning colour when a strike takes the last of one side's kings, so the caller can end
+// the game the same way an order that finishes it does (orderEndsGame)
+function runMeteors(own){
+  const due=tickMeteors(own);
+  let winner;
+  for(const m of due){
+    if(typeof meteorStrikeAnim==='function')meteorStrikeAnim(m.tiles);
+    for(const j of m.tiles){
+      const t=pieces[j];
+      flashSq(j,'hit-flash');
+      if(!t)continue;
+      t.hp-=METEOR_DAMAGE;
+      if(t.fortified)t.lastHitTurn=whiteTurnCount;
+      t.exposedAt=j;
+      if(t.hp<=0){
+        showDeath(j,t.color,t.type);SFX.fall(t.type);
+        pieces[j]=null;
+        addLog(t.type+'@'+sqName(j)+' ✕ (the meteor struck '+sqName(m.tiles[0])+')');
+        if(campaignLevel){const cr=checkCampaignWin();if(cr){over=true;winner=cr==='win'?'w':'b';}}
+        else if(t.type==='king'){over=true;winner=t.color==='w'?'b':'w';}
+      }else addLog(t.type+'@'+sqName(j)+' '+t.hp+'HP (the meteor struck '+sqName(m.tiles[0])+')');
+    }
+  }
+  return winner;
+}
 
 // a campaign level can be decided by White's own turn — the objective met, or the last enemy gone —
 // before Black moves; the engine checks at the same point, so both end a level on the same turn
@@ -265,9 +302,10 @@ function endTurn(){
       }
       turn=mover==='w'?'b':'w';
       tickScans(turn);
+      const meteorWinner=runMeteors(turn);   // a meteor may take either king, not only the loser's
       if(trainingMode)turnUpkeep(turn);   // orders, mana and mending for the side taking over
       if(trainingMode&&over){over=false;trainKingFell();}
-      if(over){orderEndsGame(turn);return;}
+      if(over){orderEndsGame(meteorWinner||turn);return;}
       broadcastState(null);syncUI();render();
       setStatus(trainingMode?(turn==='w'?"White's turn":"Black's turn"):isMyTurn()?'Your turn':'Opponent turn...');
       if(trainingMode&&typeof trainAfterPass==='function')trainAfterPass();   // the AI may have this side
@@ -282,6 +320,13 @@ function endTurn(){
     const wActions=computeActions('w').filter(a=>a.attacker!==justMoved&&!heldFire(a.attacker));
     const runBlack=()=>{
       tickScans('b');
+      const meteorWinner=runMeteors('b');
+      if(over){
+        if(campaignLevel){const cr=checkCampaignWin();setTimeout(()=>handleCampaignEnd(cr||'lose'),600);}
+        else{setStatus(meteorWinner==='w'?'White wins! ♔':'Black wins! ♚');(meteorWinner===myColor()?SFX.win:SFX.lose)();syncUI();
+          setTimeout(()=>showGameOver(myColor()===meteorWinner?'win':'lose'),600);}
+        return;
+      }
       thinking=true;syncUI();render();
       document.getElementById('thinking-dot').classList.add('on');
       setStatus('Enemy thinking...');

@@ -40,8 +40,10 @@ const TRAIN_UNITS=[
   {type:'pawn',   art:'pawn',     name:'Pawn'},
   {type:'pawn',   art:'fortified',name:'Fortified',fortified:true},
   {type:'knight', art:'knight',   name:'Knight'},
+  {type:'paladin',art:'paladin',  name:'Paladin'},
   {type:'bishop', art:'bishop',   name:'Bishop'},
   {type:'rook',   art:'rook',     name:'Rook'},
+  {type:'guardian',art:'guardian',name:'Guardian'},
   {type:'siege',  art:'siege',    name:'Siege'},
   {type:'queen',  art:'queen',    name:'Queen'},
   {type:'mage',   art:'mage',     name:'Mage'},
@@ -276,7 +278,7 @@ function trainSetSize(rows,cols){
   ROWS=rows;COLS=cols;
   pieces=new Array(rows*cols).fill(null);
   whiteTargets={};blackTargets={};selectedPieces=new Set();kingSelected=false;
-  scans=[];exploredTiles=new Set();
+  scans=[];meteors=[];exploredTiles=new Set();
   generateMap();
   const roomy=rows>3&&cols>3;
   const wk=roomy?idx(rows-2,1):idx(rows-1,0),bk=roomy?idx(1,cols-2):idx(0,cols-1);

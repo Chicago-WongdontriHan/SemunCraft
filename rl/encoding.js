@@ -10,13 +10,13 @@ const E=typeof module!=='undefined'&&module.exports?require('../js/engine.js'):r
 
 const TYPES=['pawn','knight','bishop','rook','queen','king','siege'];
 // piece values for reward shaping: merge cost in pawns (the King counts through its health)
-const PIECE_VALUE={pawn:1,knight:2,bishop:3,rook:4,queen:5,siege:8,king:0,mage:7};
-// the Mage came after these networks were trained: it shows on the queen's channels, the nearest
-// strong ranged piece, until they are trained again with a channel of its own
-const TYPE_ALIAS={mage:'queen'};
+const PIECE_VALUE={pawn:1,knight:2,bishop:3,rook:4,queen:5,siege:8,king:0,mage:7,paladin:4,guardian:6};
+// the Mage, Paladin and Guardian came after these networks were trained: each shows on the channel
+// of the existing piece nearest its own shape, until they are trained again with channels of their own
+const TYPE_ALIAS={mage:'queen',paladin:'knight',guardian:'rook'};
 const CHANNEL_NAMES=[
   ...TYPES.map(t=>'own '+t),...TYPES.map(t=>'enemy '+t),
-  'hp / max hp','hp / 5','bishop mana / 2','pawn can double-step','obstacle','on the board',
+  'hp / max hp','hp / 5','mana / 2 (bishop, mage)','pawn can double-step','obstacle','on the board',
   'visible to this side','own piece with a target lock','square locked by an own piece',
   'enemy piece with a target lock','square locked by an enemy piece',
   'own spawns left / 16','enemy spawns left / 16','turns taken / turn cap',
@@ -67,7 +67,7 @@ function createEncoder(opts){
       set((p.color===side?CH.own:CH.enemy)+TYPES.indexOf(TYPE_ALIAS[p.type]||p.type),g,1);
       set(CH.hp,g,p.hp/p.maxHp);
       set(CH.hp5,g,p.hp/5);
-      if(p.type==='bishop')set(CH.mana,g,(p.mana||0)/2);
+      if(p.type==='bishop'||p.type==='mage')set(CH.mana,g,(p.mana||0)/2);
       if(p.type==='pawn'&&p.firstMove)set(CH.firstMove,g,1);
     }
     for(const[color,lockCh,lockedCh]of[[side,CH.ownLock,CH.ownLocked],[enemy,CH.enemyLock,CH.enemyLocked]]){
@@ -109,9 +109,9 @@ function createEncoder(opts){
     fits(s);
     const map=new Map();
     for(const a of E.legalActions(s)){
-      // scrying came after these networks were trained: it shares squares with their moves, so it
-      // stays out of the map until they are trained again with a slot of its own
-      if(a.type==='scry'||a.type==='extract'||a.type==='fortify'||a.type==='order')continue;
+      // scrying and the meteor spell came after these networks were trained: they share squares with
+      // moves, so they stay out of the map until they are trained again with a slot of their own
+      if(a.type==='scry'||a.type==='extract'||a.type==='fortify'||a.type==='order'||a.type==='meteor')continue;
       const k=actionIndex(s,a);
       if(k<0)continue;
       const prev=map.get(k);

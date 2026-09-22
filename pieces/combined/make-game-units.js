@@ -1,11 +1,12 @@
-// Ships the combined units the game plays with — so far the Mage (bishop + rook) — as markup the
-// browser draws directly: pieces/units-art.js. The drawings are make.js's own, so the Mage on the board
-// is the one on the title screen; the <use> copies make.js shares between parts are written out in
-// full, so no ids end up in the page. Run again after changing pieces/pieces.js or a theme set:
+// Ships the combined units the game plays with — the Mage (bishop + rook), the Paladin (knight +
+// knight) and the Guardian (knight + rook) — as markup the browser draws directly: pieces/units-art.js.
+// The drawings are make.js's own, so these units on the board are the ones on the title screen; the
+// <use> copies make.js shares between parts are written out in full, so no ids end up in the page.
+// Run again after changing pieces/pieces.js or a theme set:
 //   node pieces/combined/make-game-units.js
 const fs=require('fs'),path=require('path');
 const {unitMarkup,BOX}=require('./make.js');
-const GAME_UNITS={mage:'Mage'};
+const GAME_UNITS={mage:'Mage',paladin:'Paladin',guardian:'Guardian'};
 const THEMES=['forest','jungle','desert','ocean'];
 
 function inline(markup){

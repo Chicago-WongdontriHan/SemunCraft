@@ -10,7 +10,7 @@
 'use strict';
 
 // ── DATA ─────────────────────────────────────────────────────────────────────
-const STATS={king:{hp:5,maxHp:5},pawn:{hp:1,maxHp:1},knight:{hp:4,maxHp:4},bishop:{hp:2,maxHp:2},rook:{hp:4,maxHp:4},queen:{hp:5,maxHp:5},siege:{hp:4,maxHp:4},mage:{hp:3,maxHp:3}};
+const STATS={king:{hp:5,maxHp:5},pawn:{hp:1,maxHp:1},knight:{hp:4,maxHp:4},bishop:{hp:2,maxHp:2},rook:{hp:4,maxHp:4},queen:{hp:5,maxHp:5},siege:{hp:4,maxHp:4},mage:{hp:3,maxHp:3},paladin:{hp:4,maxHp:4},guardian:{hp:5,maxHp:5}};
 // each theme's terrain, in the order themes.js places it: [tile, share of the board, blocks]
 const THEME_TILES={
   forest:[['tree',.12,true]],
@@ -96,6 +96,7 @@ function newGame(o){
     goldSpent:{w:0,b:0},    // Gold spent on anything but spawning ('fortify')
     moved:-1,   // square of the piece that moved or healed this turn (it doesn't auto-attack)
     scans:[],   // bishops' scrying: [{tiles, turns, color}] (see the 'scry' action)
+    meteors:[], // the Mage's meteors: [{tiles: its 2x2, turns, color}] (see the 'meteor' action)
     hitBy:[],   // classic: Black pieces White hit this round, for the reactive AI
     acted:[],   // classic: Black pieces that auto-attacked this round
     level:lv,fog:o.fog!==undefined?!!o.fog:(lv?lv.mapCheatDefault===false:false),
@@ -150,6 +151,7 @@ function clone(s){
   c.goldSpent={w:s.goldSpent.w,b:s.goldSpent.b};
   c.targets={w:Object.assign({},s.targets.w),b:Object.assign({},s.targets.b)};
   c.scans=s.scans.map(sc=>({tiles:sc.tiles.slice(),turns:sc.turns,color:sc.color}));
+  c.meteors=(s.meteors||[]).map(m=>({tiles:m.tiles.slice(),turns:m.turns,color:m.color}));
   c.hitBy=s.hitBy.map(h=>({target:h.target,attacker:h.attacker}));
   c.acted=s.acted.slice();
   c.animals=s.animals.map(a=>Object.assign({},a));
@@ -327,12 +329,47 @@ function lineRange(s,i,dirs,len,thru){
 // the siege tower's five cardinal squares, over obstacles and over anything standing in them
 // (siegeRange in js/constants.js)
 function siegeLine(s,i){return lineRange(s,i,CARD,5,true);}
+// the Guardian's reach: everywhere its Rook half could hit, plus everywhere its Knight half could
+// (guardianRange in js/constants.js)
+function guardianRange(s,i){return [...new Set([...lineRange(s,i,CARD,3),...geo(s).kj[i]])];}
+// the straight run of squares between two squares on the same rank or file, attacker's square excluded
+// — the Guardian's shot travels and damages this whole path (cardinalPath in js/constants.js)
+function cardinalPath(s,from,to){
+  const r0=rowOf(s,from),c0=colOf(s,from),r1=rowOf(s,to),c1=colOf(s,to);
+  if(r0!==r1&&c0!==c1)return null;
+  const g=geo(s),dr=Math.sign(r1-r0),dc=Math.sign(c1-c0),res=[];
+  let r=r0+dr,c=c0+dc;
+  while(g.inB(r,c)){const j=r*s.cols+c;res.push(j);if(j===to)break;r+=dr;c+=dc;}
+  return res;
+}
 // bishop: diagonal up to 2, stopped by obstacles; the first piece is included, then the ray stops
 // the Mage strikes any square within 3, over pieces and obstacles (mageRange in movement.js; same order)
+// the Mage's fire trajectories: one step orthogonal then two more continuing in the same diagonal
+// direction, 8 lines of 3 tiles from its own square (sangTrajectories in js/movement.js, which this
+// mirrors). A line that runs off the board is dropped whole.
+function sangTrajectories(s,i){
+  const g=geo(s),r=rowOf(s,i),c=colOf(s,i),out=[];
+  for(const[dr,dc]of CARD){
+    const diagPair=dr!==0?[[dr,-1],[dr,1]]:[[-1,dc],[1,dc]];
+    for(const[ddr,ddc]of diagPair){
+      const r1=r+dr,c1=c+dc;if(!g.inB(r1,c1))continue;
+      const r2=r1+ddr,c2=c1+ddc;if(!g.inB(r2,c2))continue;
+      const r3=r2+ddr,c3=c2+ddc;if(!g.inB(r3,c3))continue;
+      out.push([r1*s.cols+c1,r2*s.cols+c2,r3*s.cols+c3]);
+    }
+  }
+  return out;
+}
+// every tile any of the Mage's trajectories reaches, over pieces and obstacles alike
 function mageRange(s,i){
-  const g=geo(s),r=rowOf(s,i),c=colOf(s,i),res=[];
-  for(let dr=-3;dr<=3;dr++)for(let dc=-3;dc<=3;dc++){if(!dr&&!dc)continue;const nr=r+dr,nc=c+dc;if(g.inB(nr,nc))res.push(nr*s.cols+nc);}
-  return res;
+  const out=new Set();
+  sangTrajectories(s,i).forEach(line=>line.forEach(j=>out.add(j)));
+  return [...out];
+}
+// the one trajectory out of the Mage's eight that reaches this tile, or null (sangLineFor in
+// js/combat.js, which this mirrors)
+function sangLineFor(s,i,target){
+  return sangTrajectories(s,i).find(line=>line.includes(target))||null;
 }
 function bishopRange(s,i){
   const g=geo(s),r=rowOf(s,i),c=colOf(s,i),res=[];
@@ -374,16 +411,54 @@ function scryBox(s,i){
 function tickScans(s,color){
   if(s.scans&&s.scans.length)s.scans=s.scans.filter(sc=>sc.color!==color||--sc.turns>0);
 }
+// the meteors of the side whose turn is starting land, whoever is under them, friend or foe alike —
+// mirrors runMeteors in js/game.js. Returns nothing; s.over/s.winner are set the way any other kill is.
+function runMeteors(s,color,events){
+  if(!s.meteors||!s.meteors.length)return;
+  const due=s.meteors.filter(m=>m.color===color&&--m.turns<=0);
+  s.meteors=s.meteors.filter(m=>m.turns>0);
+  const B=s.board;
+  for(const m of due){
+    for(const j of m.tiles){
+      const t=B[j];if(!t)continue;
+      t.hp-=METEOR_DAMAGE;
+      if(t.fortified)t.lastHitTurn=clock(s,color);
+      t.exposedAt=j;
+      const killed=t.hp<=0;
+      if(events)events.push({type:'attack',from:-1,to:j,damage:METEOR_DAMAGE,hp:t.hp,killed,meteor:true});
+      if(killed){
+        B[j]=null;
+        if(s.level){const r=campaignResult(s);if(r){s.over=true;s.winner=r==='win'?'w':'b';}}
+        else if(t.type==='king'){s.over=true;s.winner=t.color==='w'?'b':'w';}
+      }
+    }
+  }
+}
+// the Mage's meteor: the 2x2 whose top-left corner is `anchor`, and the anchor a tapped square maps
+// to — clamped so it always fits the board, so every square picks exactly one such box
+// (meteorBox/meteorAnchorFor in js/state.js, which these mirror)
+const METEOR_MANA=2, METEOR_TURNS=2, METEOR_DAMAGE=2;
+function meteorBox(s,anchor){
+  const r=Math.floor(anchor/s.cols),c=anchor%s.cols;
+  return[r*s.cols+c,r*s.cols+c+1,(r+1)*s.cols+c,(r+1)*s.cols+c+1];
+}
+function meteorAnchorFor(s,t){
+  const r=Math.min(rowOf(s,t),s.rows-2),c=Math.min(colOf(s,t),s.cols-2);
+  return r*s.cols+c;
+}
 // classic mode hides fogged enemies from White only (the AI ignores fog); in PvP each side is limited
 function fogFor(s,color){return s.fog&&(s.mode==='pvp'||color==='w');}
-// Undergrowth (jungle): whatever stands in it is hidden from a side until one of that side's pieces
-// is on the tile or next to it. Unlike fog this holds for both sides, with or without fog.
+// Undergrowth (jungle): whatever stands in it is hidden from a side, even a piece right next to it,
+// until it fights from there — attacking out of cover, or taking a hit while in it, reveals it from
+// that turn on, for as long as it stays on that same square (exposedAt, stamped in applyAttacks /
+// runOrders and stale-checked in upkeep). Moving to a different tile judges it fresh there. Unlike
+// fog this holds for both sides, with or without fog.
 function inCover(s,i,color){
   if(s.tiles[i]!=='undergrowth')return false;
-  const B=s.board;
-  if(B[i]&&B[i].color===color)return false;
+  const B=s.board,p=B[i];
+  if(p&&p.color===color)return false;
   if(s.scans.some(sc=>sc.color===color&&sc.tiles.includes(i)))return false;   // a scry sees into it too
-  return !geo(s).adj8[i].some(j=>B[j]&&B[j].color===color);
+  return !(p&&p.exposedAt===i);
 }
 // an enemy of `color` hidden in undergrowth: it can't be targeted or attacked, though it can attack out
 function concealed(s,i,color){const p=s.board[i];return !!p&&p.color!==color&&inCover(s,i,color);}
@@ -406,7 +481,7 @@ function getDests(s,i){
   const ec=other(p.color);
   if(p.type==='pawn'){
     // a fortified pawn takes part in no merge, either way round (movement.js)
-    g.adj8[i].forEach(j=>{const t=B[j];if(!t)move.add(j);else if(t.color===p.color){if(!p.fortified&&!t.fortified&&(t.type==='pawn'||t.type==='knight'))merge.add(j);}else attack.add(j);});
+    g.adj8[i].forEach(j=>{const t=B[j];if(!t)move.add(j);else if(t.color===p.color){if(mergeResultType(s,p,t))merge.add(j);}else attack.add(j);});
     // first move: two squares straight toward the enemy side
     if(p.firstMove){
       const fwd=p.color==='w'?-1:1,r1=rowOf(s,i)+fwd,r2=rowOf(s,i)+fwd*2,c=colOf(s,i);
@@ -417,7 +492,12 @@ function getDests(s,i){
     }
   }else if(p.type==='knight'){
     g.kj[i].forEach(j=>{if(s.blocked[j])return;const t=B[j];if(!t)move.add(j);else if(t.color===ec)attack.add(j);});
-    new Set([...g.adj8[i],...g.kj[i]]).forEach(j=>{const t=B[j];if(t&&t.color===p.color&&((t.type==='pawn'&&!t.fortified)||t.type==='knight'||t.type==='bishop'))merge.add(j);});
+    // knight+rook (Guardian) merges only adjacent, like every pair with a rook in it — the L-jump reach
+    // here is for pawn/knight/bishop, which teleport to merge without spending the turn
+    new Set([...g.adj8[i],...g.kj[i]]).forEach(j=>{const t=B[j];if(t&&t.color===p.color&&t.type!=='rook'&&mergeResultType(s,p,t))merge.add(j);});
+    g.adj8[i].forEach(j=>{const t=B[j];if(t&&t.color===p.color&&t.type==='rook'&&mergeResultType(s,p,t))merge.add(j);});
+  }else if(p.type==='paladin'){
+    g.kj[i].forEach(j=>{if(s.blocked[j])return;const t=B[j];if(!t)move.add(j);else if(t.color===ec)attack.add(j);});
   }else if(p.type==='bishop'){
     const hasMana=(p.mana||0)>0,r=rowOf(s,i),c=colOf(s,i);
     for(const[dr,dc]of DIAG)for(let k=1;k<=2;k++){
@@ -427,11 +507,14 @@ function getDests(s,i){
       if(!t)move.add(j);
       else{if(t.color===ec)attack.add(j);else if(hasMana&&t.color===p.color&&t.hp<t.maxHp)heal.add(j);break;}
     }
-    g.adj8[i].forEach(j=>{const t=B[j];if(t&&t.color===p.color&&(t.type==='knight'||(t.type==='rook'&&s.elixir[p.color]>=MAGE_ELIXIR)))merge.add(j);});
+    g.adj8[i].forEach(j=>{const t=B[j];if(t&&t.color===p.color&&mergeResultType(s,p,t))merge.add(j);});
   }else if(p.type==='rook'){
     slide(s,i,CARD,2,move);
-    g.adj8[i].forEach(j=>{const t=B[j];if(t&&t.color===p.color&&(t.type==='rook'||(t.type==='bishop'&&s.elixir[p.color]>=MAGE_ELIXIR)))merge.add(j);});
+    g.adj8[i].forEach(j=>{const t=B[j];if(t&&t.color===p.color&&mergeResultType(s,p,t))merge.add(j);});
     lineRange(s,i,CARD,3).forEach(j=>{if(B[j]&&B[j].color===ec)attack.add(j);});
+  }else if(p.type==='guardian'){
+    slide(s,i,CARD,2,move);
+    guardianRange(s,i).forEach(j=>{if(B[j]&&B[j].color===ec)attack.add(j);});
   }else if(p.type==='siege'){
     // it never steps anywhere of its own accord: a move of its own is ordered a turn ahead (legalActions)
     siegeLine(s,i).forEach(j=>{if(B[j]&&B[j].color===ec)attack.add(j);});
@@ -449,17 +532,39 @@ function getDests(s,i){
     for(const j of [...attack])if(!visible(s,j,p.color))attack.delete(j);
     for(const j of [...heal])if(!visible(s,j,p.color))heal.delete(j);
   }
+  // rawAttack keeps a concealed square in: a delayed order arriving there still discovers whoever
+  // stands on it (runOrders), while attack itself stays filtered for everything else
+  const rawAttack=new Set(attack);
   for(const j of [...attack])if(concealed(s,j,p.color))attack.delete(j);
-  return{move,merge,attack,heal};
+  return{move,merge,attack,heal,rawAttack};
 }
 
-const MERGES={'pawn+pawn':'knight','pawn+knight':'bishop','knight+pawn':'bishop','knight+bishop':'queen','bishop+knight':'queen','rook+rook':'siege','knight+knight':'rook',
-  'bishop+rook':'mage','rook+bishop':'mage'};   // the Mage costs its side MAGE_ELIXIR
+// What two adjacent pieces of one side become, or null if they don't combine at all (mergeResultType
+// in js/actions.js, which this mirrors). Takes the pieces themselves, not bare type names: a fortified
+// pawn is still type 'pawn', and it is the flag that tells two of them (a Rook) from two plain ones
+// (a Knight) apart.
+function mergeResultType(s,pa,pb){
+  const A=pa.type,B=pb.type,fa=!!pa.fortified,fb=!!pb.fortified;
+  if(A==='pawn'&&B==='pawn'){
+    if(fa&&fb)return 'rook';
+    if(!fa&&!fb)return 'knight';
+    return null;
+  }
+  if(fa||fb)return null;
+  if((A==='pawn'&&B==='knight')||(A==='knight'&&B==='pawn'))return 'bishop';
+  if(A==='knight'&&B==='knight')return 'paladin';
+  if((A==='knight'&&B==='bishop')||(A==='bishop'&&B==='knight'))return 'queen';
+  if(A==='rook'&&B==='rook')return 'siege';
+  if((A==='rook'&&B==='knight')||(A==='knight'&&B==='rook'))return 'guardian';
+  if((A==='bishop'&&B==='rook')||(A==='rook'&&B==='bishop'))return s.elixir[pa.color]>=MAGE_ELIXIR?'mage':null;
+  return null;
+}
 const MAGE_ELIXIR=2;
 const FORTIFIED_MEND=5;   // a fortified pawn mends 1 HP five turns after its last hit (state.js)
 // delayed orders (MAX_DELAY, ORDER_COST in js/state.js): giving one spends part of the turn's order
 // budget instead of the turn itself, and a pawn's takes half of it
 const MAX_DELAY=3, ORDER_BUDGET=1, ORDER_COST={pawn:.5};
+const NO_ORDER_TYPES=new Set(['paladin','guardian','mage']);   // canOrder in js/state.js
 const ORDER_MIN=ORDER_COST.pawn;   // the cheapest order there is: below this the turn has nothing left to give
 function orderCost(type){return ORDER_COST[type]||1;}
 
@@ -504,6 +609,9 @@ function legalActions(s,opts){
     // a bishop with both its mana can light any 3x3 on the board, seen or not
     if(p.type==='bishop'&&(p.mana||0)>=2)
       for(let j=0;j<B.length;j++)out.push({type:'scry',from:i,to:j});
+    // a Mage with a full charge can summon a meteor over any square on the board, seen or not
+    if(p.type==='mage'&&(p.mana||0)>=METEOR_MANA)
+      for(let j=0;j<B.length;j++)out.push({type:'meteor',from:i,to:j});
     if(opts.anyTarget){
       for(let j=0;j<B.length;j++)if(B[j]&&B[j].color!==color&&!concealed(s,j,color))out.push({type:'target',from:i,to:j});
     }else d.attack.forEach(j=>out.push({type:'target',from:i,to:j}));
@@ -517,6 +625,7 @@ function legalActions(s,opts){
     for(let k=0;k<B.length;k++)if(B[k])all.push([k,B[k]]);
     for(const i of mine){
       const q=B[i];
+      if(NO_ORDER_TYPES.has(q.type))continue;
       if(s.orderLeft[color]<orderCost(q.type))continue;
       for(const[k]of all)if(k!==i)B[k]=null;          // the square is reserved, not fought over
       // a siege tower moves only this way, one square and a turn later, and cannot fire the turn it moves
@@ -555,7 +664,7 @@ function computeActions(s,color){
         }
       }
     }else{
-      const range=p.type==='queen'?g.qr[i]:p.type==='mage'?mageRange(s,i):p.type==='siege'?siegeLine(s,i):p.type==='rook'?lineRange(s,i,CARD,3):p.type==='knight'?g.kj[i]:g.adj8[i];
+      const range=p.type==='queen'?g.qr[i]:p.type==='mage'?mageRange(s,i):p.type==='siege'?siegeLine(s,i):p.type==='rook'?lineRange(s,i,CARD,3):p.type==='guardian'?guardianRange(s,i):(p.type==='knight'||p.type==='paladin')?g.kj[i]:g.adj8[i];
       let foes=range.filter(j=>B[j]&&B[j].color===enemy);
       if(fog)foes=foes.filter(j=>visible(s,j,color));
       foes=foes.filter(j=>!concealed(s,j,color));
@@ -586,16 +695,60 @@ function applyAttacks(s,acts,color,events){
       continue;
     }
     if(!t||t.color!==enemy)continue;
-    const ap=B[attacker],dmg=ap&&ap.type==='siege'?2:1;
+    const ap=B[attacker],dmg=ap&&ap.type==='siege'?2:ap&&ap.type==='paladin'?t.hp:1;
     t.hp-=dmg;
     if(t.fortified)t.lastHitTurn=clock(s,color);   // its armour mends from here (upkeep)
+    // fighting from or into undergrowth reveals a piece for as long as it stays on that square (inCover)
+    if(ap)ap.exposedAt=attacker;
+    t.exposedAt=target;
     if(color==='w'&&t.hp>0)s.hitBy.push({target,attacker});
     const killed=t.hp<=0;
     if(events)events.push({type:'attack',from:attacker,to:target,damage:dmg,hp:t.hp,killed});
     if(killed){
       B[target]=null;
+      if(ap&&ap.type==='paladin'){B[attacker]=null;B[target]=ap;}   // it leaps onto the square it cleared
       if(s.level){const r=campaignResult(s);if(r){s.over=true;s.winner=r==='win'?'w':'b';}}
       else if(t.type==='king'){s.over=true;s.winner=color;}
+    }
+    // the Mage's fire burns down the whole line it was aimed into — every other enemy on that same
+    // trajectory takes 1 too; a friend on it is left untouched
+    if(ap&&ap.type==='mage'&&!s.over){
+      const line=sangLineFor(s,attacker,target);
+      if(line)for(const j of line){
+        if(j===target||s.over)continue;
+        const q=B[j];if(!q||q.color!==enemy)continue;
+        q.hp-=1;
+        if(q.fortified)q.lastHitTurn=clock(s,color);
+        q.exposedAt=j;
+        if(color==='w'&&q.hp>0)s.hitBy.push({target:j,attacker});
+        const qkilled=q.hp<=0;
+        if(events)events.push({type:'attack',from:attacker,to:j,damage:1,hp:q.hp,killed:qkilled,line:true});
+        if(qkilled){
+          B[j]=null;
+          if(s.level){const r=campaignResult(s);if(r){s.over=true;s.winner=r==='win'?'w':'b';}}
+          else if(q.type==='king'){s.over=true;s.winner=color;}
+        }
+      }
+    }
+    // the Guardian's shot flies on past the target, along the same straight line, damaging every other
+    // enemy in its path — never a piece of its own, which the shot simply passes over
+    if(ap&&ap.type==='guardian'&&!s.over){
+      const path=cardinalPath(s,attacker,target);
+      if(path)for(const j of path){
+        if(j===target||s.over)continue;
+        const q=B[j];if(!q||q.color!==enemy)continue;
+        q.hp-=1;
+        if(q.fortified)q.lastHitTurn=clock(s,color);
+        q.exposedAt=j;
+        if(color==='w'&&q.hp>0)s.hitBy.push({target:j,attacker});
+        const qkilled=q.hp<=0;
+        if(events)events.push({type:'attack',from:attacker,to:j,damage:1,hp:q.hp,killed:qkilled,path:true});
+        if(qkilled){
+          B[j]=null;
+          if(s.level){const r=campaignResult(s);if(r){s.over=true;s.winner=r==='win'?'w':'b';}}
+          else if(q.type==='king'){s.over=true;s.winner=color;}
+        }
+      }
     }
   }
 }
@@ -644,13 +797,14 @@ function applyAction(s,a,events){
     case'merge':{
       const t=B[a.to];
       let np;
-      if(p.type==='bishop'){
+      if(p.type==='bishop'&&(t.type==='knight'||t.type==='rook')){
         // the bishop-onto-knight (or rook) popup's Merge keeps both pieces' target locks
         np=makePiece(t.type==='rook'?'mage':'queen',p.color);
       }else{
         delete tg[a.from];delete tg[a.to];
-        np=makePiece(MERGES[p.type+'+'+t.type],p.color);
+        np=makePiece(mergeResultType(s,p,t),p.color);
         if(np.type==='bishop')np.mana=1;
+        if(np.type==='mage')np.mana=1;
         if(np.type==='siege')np.sieged=true;
       }
       if(np.type==='mage')s.elixir[color]-=MAGE_ELIXIR;
@@ -698,6 +852,15 @@ function applyAction(s,a,events){
       events.push({type:'scry',from:a.from,to:a.to});
       return false;
     }
+    case'meteor':{
+      const anchor=meteorAnchorFor(s,a.to);
+      p.mana=Math.max(0,(p.mana||0)-METEOR_MANA);
+      p.lastHealTurn=clock(s,color);
+      s.meteors.push({tiles:meteorBox(s,anchor),turns:METEOR_TURNS,color});
+      s.moved=a.from;                       // the Mage spent the turn casting instead of shooting
+      events.push({type:'meteor',from:a.from,to:anchor});
+      return false;
+    }
     case'spawn':
       B[a.to]={type:'pawn',color,hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,newborn:true,firstMove:true};
       s.spawns[color]++;
@@ -731,7 +894,7 @@ function finishTurn(s,color,events){
   if(s.mode==='pvp'){
     // the side that acted fires, except the piece that moved or healed; then the other side starts
     applyAttacks(s,computeActions(s,color).filter(a=>a.attacker!==justMoved&&!(B[a.attacker]&&B[a.attacker].rolled)),color,events);
-    if(!s.over){s.turn=other(color);upkeep(s,s.turn,events);tickScans(s,s.turn);}
+    if(!s.over){s.turn=other(color);tickScans(s,s.turn);runMeteors(s,s.turn,events);upkeep(s,s.turn,events);}
   }else if(color==='w'){
     // White fires (except the mover), then Black fires, then Black acts
     s.hitBy=[];
@@ -741,10 +904,10 @@ function finishTurn(s,color,events){
       s.acted=bActs.map(a=>a.attacker);
       applyAttacks(s,bActs,'b',events);
     }
-    if(!s.over){s.turn='b';tickScans(s,'b');}
+    if(!s.over){s.turn='b';tickScans(s,'b');runMeteors(s,'b',events);}
   }else if(!s.over){
+    s.turn='w';tickScans(s,'w');runMeteors(s,'w',events);
     upkeep(s,null,events);
-    s.turn='w';tickScans(s,'w');
   }
   if(!s.over&&s.level){const r=campaignResult(s);if(r){s.over=true;s.winner=r==='win'?'w':'b';}}
   if(!s.over&&s.maxTurns&&s.turnCount.w+s.turnCount.b>=s.maxTurns){s.over=true;s.winner='draw';}
@@ -754,9 +917,12 @@ function finishTurn(s,color,events){
 function upkeep(s,own,events){
   const B=s.board;
   for(let i=0;i<B.length;i++){const p=B[i];if(p&&p.newborn&&(!own||p.color===own))p.newborn=false;}
+  // a piece fought its way out of hiding at one square; once it's no longer standing there, whatever
+  // it revealed no longer applies (inCover)
+  for(let i=0;i<B.length;i++){const p=B[i];if(p&&p.exposedAt!==undefined&&p.exposedAt!==i)delete p.exposedAt;}
   for(let i=0;i<B.length;i++){
     const p=B[i];
-    if(p&&p.type==='bishop'&&(!own||p.color===own)&&(p.mana||0)<2){
+    if(p&&(p.type==='bishop'||p.type==='mage')&&(!own||p.color===own)&&(p.mana||0)<2){
       const t=clock(s,own||'w'),last=p.lastHealTurn||0;
       if(t-last>=3&&t>0){p.mana=Math.min(2,(p.mana||0)+1);p.lastHealTurn=t;}
     }
@@ -788,10 +954,13 @@ function runOrders(s,own,events){
     if(--p.order.turns>0)continue;
     const to=p.order.to;delete p.order;
     const t=B[to],d=getDests(s,i);
-    if(t&&t.color!==p.color&&d.attack.has(to)){
+    // rawAttack, unlike attack, still holds a square hidden in undergrowth: the order walks right up
+    // to it regardless, discovering whoever it finds there
+    if(t&&t.color!==p.color&&d.rawAttack.has(to)){
       const dmg=p.type==='siege'?2:1;
       t.hp-=dmg;
       if(t.fortified)t.lastHitTurn=clock(s,p.color);
+      p.exposedAt=i;t.exposedAt=to;
       const killed=t.hp<=0;
       if(events)events.push({type:'attack',from:i,to,damage:dmg,hp:t.hp,killed});
       if(killed){
@@ -859,7 +1028,7 @@ function aiRange(s,i,type){
 }
 
 function bPieces(s){
-  const r={pawns:[],knights:[],bishops:[],rooks:[],queens:[]};
+  const r={pawns:[],knights:[],bishops:[],rooks:[],queens:[],paladins:[]};
   s.board.forEach((p,i)=>{if(p&&p.color==='b'&&r[p.type+'s'])r[p.type+'s'].push(i);});
   return r;
 }
@@ -886,7 +1055,7 @@ function bSpawn(s,cands,events){
 function bMerge(s,ft,tt,rt,limit,events){
   if(s.level&&s.level.noMerge)return false;
   const bp=bPieces(s),pool={pawn:bp.pawns,knight:bp.knights,bishop:bp.bishops,rook:bp.rooks};
-  const cur={knight:bp.knights.length,bishop:bp.bishops.length,rook:bp.rooks.length};
+  const cur={knight:bp.knights.length,bishop:bp.bishops.length,rook:bp.rooks.length,paladin:bp.paladins.length};
   if(cur[rt]!==undefined&&cur[rt]>=limit)return false;
   const g=geo(s);
   for(const a of(pool[ft]||[]))for(const b of(pool[tt]||[])){
@@ -953,7 +1122,7 @@ const HARD_BUILDS={
   knight_attack:(s,c,bp,ev)=>bMerge(s,'pawn','pawn','knight',3,ev)||(bp.pawns.length<4&&c.length>0&&bSpawn(s,c,ev)),
   pawn_knight:(s,c,bp,ev)=>(bp.pawns.length>=2&&bMerge(s,'pawn','pawn','knight',2,ev))||(bp.pawns.length<4&&c.length>0&&bSpawn(s,c,ev)),
   bishop_pawn:(s,c,bp,ev)=>bMerge(s,'pawn','knight','bishop',2,ev)||bMerge(s,'pawn','pawn','knight',2,ev)||(bp.pawns.length<4&&c.length>0&&bSpawn(s,c,ev)),
-  rook_pawn:(s,c,bp,ev)=>bMergeQueen(s,1,ev)||bMerge(s,'knight','knight','rook',1,ev)||bMerge(s,'pawn','knight','bishop',1,ev)
+  rook_pawn:(s,c,bp,ev)=>bMergeQueen(s,1,ev)||bMerge(s,'knight','knight','paladin',1,ev)||bMerge(s,'pawn','knight','bishop',1,ev)
     ||bMerge(s,'pawn','pawn','knight',2,ev)||(bp.pawns.length<5&&c.length>0&&bSpawn(s,c,ev)),
 };
 
@@ -970,7 +1139,7 @@ function easyRookRush(s,c,bp,ev){
     return bAdvance(s,['knight','pawn'],ev);
   }
   if(!bp.rooks.length){
-    if(bMerge(s,'knight','knight','rook',1,ev))return;
+    if(bMerge(s,'knight','knight','paladin',1,ev))return;
     return bAdvance(s,['knight','pawn'],ev);
   }
   bAdvance(s,['rook','pawn','knight'],ev);
@@ -1244,6 +1413,7 @@ function fromSnapshot(o){
     goldSpent:{w:(o.goldSpent&&o.goldSpent.w)||0,b:(o.goldSpent&&o.goldSpent.b)||0},
     targets:{w:Object.assign({},o.targets.w),b:Object.assign({},o.targets.b)},moved:-1,
     scans:(o.scans||[]).map(sc=>({tiles:sc.tiles.slice(),turns:sc.turns,color:sc.color})),
+    meteors:(o.meteors||[]).map(m=>({tiles:m.tiles.slice(),turns:m.turns,color:m.color})),
     hitBy:(o.hitBy||[]).map(h=>({target:h.target,attacker:h.attacker})),acted:(o.acted||[]).slice(),
     level:o.level||null,fog:!!o.fog,maxTurns:o.maxTurns||0,strategy:o.strategy||null,animals:[],rng:o.seed|0};
   const n=s.cols*s.rows;
@@ -1268,7 +1438,7 @@ const SemunEngine={
   // playing
   newGame,legalActions,step,botTurn,clone,isLegal,fromSnapshot,act,
   // rule queries
-  getDests,computeActions,spawnRemaining,pawnOnMine,visible,fogFor,inCover,concealed,campaignResult,
+  getDests,computeActions,applyAttacks,upkeep,spawnRemaining,pawnOnMine,visible,fogFor,inCover,concealed,campaignResult,
   // helpers and data
   generateMap,makeRandom,nextRandom,sqName,cheb,geo,STATS,STRATEGIES,THEME_TILES,
 };

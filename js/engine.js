@@ -723,22 +723,21 @@ function applyAction(s,a,events){
 
 // end of a turn (endTurn / finishBlackTurn in game.js)
 function finishTurn(s,color,events){
+  const B=s.board;
   const justMoved=s.moved;
   s.moved=-1;
   s.turnCount[color]++;
   if(pawnOnMine(s,color))s.mineTurns[color]++;   // the mine pays for the turn it was held
-  const noFire=runOrders(s,color,events)||[];   // the orders due this turn go off with the move just made
-  if(s.over){}
-  else if(s.mode==='pvp'){
+  if(s.mode==='pvp'){
     // the side that acted fires, except the piece that moved or healed; then the other side starts
-    applyAttacks(s,computeActions(s,color).filter(a=>a.attacker!==justMoved&&noFire.indexOf(a.attacker)<0),color,events);
+    applyAttacks(s,computeActions(s,color).filter(a=>a.attacker!==justMoved&&!(B[a.attacker]&&B[a.attacker].rolled)),color,events);
     if(!s.over){s.turn=other(color);upkeep(s,s.turn,events);tickScans(s,s.turn);}
   }else if(color==='w'){
     // White fires (except the mover), then Black fires, then Black acts
     s.hitBy=[];
-    applyAttacks(s,computeActions(s,'w').filter(a=>a.attacker!==justMoved&&noFire.indexOf(a.attacker)<0),'w',events);
+    applyAttacks(s,computeActions(s,'w').filter(a=>a.attacker!==justMoved&&!(B[a.attacker]&&B[a.attacker].rolled)),'w',events);
     if(!s.over){
-      const bActs=computeActions(s,'b');
+      const bActs=computeActions(s,'b').filter(a=>!(B[a.attacker]&&B[a.attacker].rolled));
       s.acted=bActs.map(a=>a.attacker);
       applyAttacks(s,bActs,'b',events);
     }
@@ -770,27 +769,23 @@ function upkeep(s,own,events){
       if(t-last>=FORTIFIED_MEND&&t>0){p.hp++;p.lastHitTurn=t;}
     }
   }
-  // the orders count down now; the ones that come due go off at the end of this side's turn, with
-  // its own move (runOrders, from finishTurn), so the two land together
-  countOrders(s,own);
+  // the orders that come due are carried out here, at the head of the turn, before that side moves
+  for(let i=0;i<B.length;i++){const p=B[i];if(p&&p.rolled&&(!own||p.color===own))delete p.rolled;}
+  runOrders(s,own,events);
   if(!own||own==='w')s.orderLeft.w=ORDER_BUDGET;
   if(!own||own==='b')s.orderLeft.b=ORDER_BUDGET;
 }
 
 // Delayed orders (runOrders in js/game.js, which this mirrors). An order counts down at the start of
-// its side's turn and goes off at the end of the turn it reaches nought on, alongside whatever else
-// that side did: the piece moves to the square it reserved, strikes an enemy standing there instead,
-// or the order lapses — a piece of its own on the square, or a square gone out of reach, cancels it.
-function countOrders(s,own){
-  const B=s.board;
-  for(let i=0;i<B.length;i++){const p=B[i];if(!p||!p.order||(own&&p.color!==own))continue;if(p.order.turns>0)p.order.turns--;}
-}
+// its side's turn and is carried out the moment it reaches nought, before that side moves: the piece
+// goes to the square it reserved, strikes an enemy standing there instead, or the order lapses — a
+// piece of its own on the square, or a square gone out of reach, cancels it.
 function runOrders(s,own,events){
-  const B=s.board,noFire=[];
+  const B=s.board;
   for(let i=0;i<B.length;i++){
     const p=B[i];
     if(!p||!p.order||(own&&p.color!==own))continue;
-    if(p.order.turns>0)continue;
+    if(--p.order.turns>0)continue;
     const to=p.order.to;delete p.order;
     const t=B[to],d=getDests(s,i);
     if(t&&t.color!==p.color&&d.attack.has(to)){
@@ -808,11 +803,10 @@ function runOrders(s,own,events){
       delete s.targets[p.color][i];
       if(p.type==='pawn')p.firstMove=false;
       B[to]=p;B[i]=null;
-      if(p.type==='siege')noFire.push(to);   // it spent the turn rolling; the guns stay quiet
+      if(p.type==='siege')p.rolled=true;     // it spent the turn rolling; the guns stay quiet
       if(events)events.push({type:'move',from:i,to,piece:p.type});
     }
   }
-  return noFire;
 }
 
 // step(state, action) applies an action for the side to move, including the end-of-turn

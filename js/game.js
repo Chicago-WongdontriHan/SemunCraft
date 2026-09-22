@@ -168,35 +168,27 @@ function turnUpkeep(own){
       if(whiteTurnCount-last>=FORTIFIED_MEND&&whiteTurnCount>0){p.hp++;p.lastHitTurn=whiteTurnCount;flashSq(i,'heal-flash');}
     }
   }
-  // the orders count down here and go off at the end of the turn they reach nought on (runOrders, from
-  // endTurn), so an order lands together with the move its side makes that turn. The budget comes back
-  // with the turn, and the Delay counter starts every turn at none.
-  countOrders(own);
+  // the orders that come due are carried out here, at the head of the turn, so the board has settled
+  // before its side decides what else to do. A siege tower that rolled last turn may fire again now.
+  for(let i=0;i<ROWS*COLS;i++){const p=pieces[i];if(p&&p.rolled&&(!own||p.color===own))delete p.rolled;}
+  runOrders(own);
   if(!own||own==='w')orderLeft.w=ORDER_BUDGET;
   if(!own||own==='b')orderLeft.b=ORDER_BUDGET;
   orderTurns=0;
 }
 
 // ── DELAYED ORDERS ───────────────────────────────────────────────────────────
-// An order counts down at the start of its side's turn (countOrders) and is carried out at the end of
-// the turn it reaches nought on, alongside whatever else that side did — so the ordered piece and this
-// turn's own move set off together. The piece moves to the square it reserved, or strikes an enemy
+// An order counts down at the start of its side's turn and is carried out the moment it reaches nought,
+// before that side does anything else — the move plays out where you can see it, so the turn is decided
+// on the board as it then stands. The piece moves to the square it reserved, or strikes an enemy
 // standing there instead, or the order simply lapses — when a piece of its own is on the square, or
 // the square has gone out of its reach.
-// Mirrored by countOrders/runOrders in js/engine.js, which the parity tests hold to these.
-function countOrders(own){
-  for(let i=0;i<ROWS*COLS;i++){
-    const p=pieces[i];
-    if(!p||!p.order||(own&&p.color!==own))continue;
-    if(p.order.turns>0)p.order.turns--;
-  }
-}
+// Mirrored by runOrders in js/engine.js, which the parity tests hold to this one.
 function runOrders(own){
-  const noFire=[];                       // a siege tower that rolled this turn does not fire this turn
   for(let i=0;i<ROWS*COLS;i++){
     const p=pieces[i];
     if(!p||!p.order||(own&&p.color!==own))continue;
-    if(p.order.turns>0)continue;
+    if(--p.order.turns>0)continue;
     const to=p.order.to;delete p.order;
     const t=pieces[to],d=getDragDests(i),tgts=p.color==='w'?whiteTargets:blackTargets;
     if(t&&t.color!==p.color&&d.attack.has(to)){
@@ -215,13 +207,18 @@ function runOrders(own){
       delete tgts[i];
       if(p.type==='pawn')p.firstMove=false;
       pieces[to]=p;pieces[i]=null;
-      if(p.type==='siege')noFire.push(to);
+      // it spent the turn rolling, so its guns stay quiet until the next one (turnUpkeep clears this)
+      if(p.type==='siege')p.rolled=true;
       flashSq(to,'order-flash');SFX.move();
       addLog(p.type+' moves to '+sqName(to)+' as ordered');
+      // and it is seen going: the piece slides across while the board behind it already shows the move
+      if(typeof animatePieceMove==='function')
+        animatePieceMove(i,to,p.type,p.color,p.color==='b',()=>{},p.type==='knight'?260:180);
     }else addLog(p.type+"'s order at "+sqName(to)+' lapses');
   }
-  return noFire;
 }
+// a siege tower does not fire on the turn it rolled (runOrders), and nothing else holds its fire
+function heldFire(i){const p=pieces[i];return !!(p&&p.rolled);}
 
 // a campaign level can be decided by White's own turn — the objective met, or the last enemy gone —
 // before Black moves; the engine checks at the same point, so both end a level on the same turn
@@ -243,10 +240,6 @@ function endTurn(){
   // one seat, two sides: in the training ground each colour's turns are counted on its own clock
   if(trainingMode&&turn==='b')blackTurnCount++;else whiteTurnCount++;
   if(pawnOnMine(turn))mineTurns[turn]++;   // the mine pays for the turn it was held (finishTurn in engine.js)
-  // the orders due this turn go off now, with the move that was just made, so the two animate together
-  const noFire=runOrders(turn)||[];
-  if(trainingMode&&over){over=false;trainKingFell();}
-  if(over){orderEndsGame(turn);return;}
   blackHitBy=[]; // reset hit tracker before white auto-attacks populate it
   const tc=document.getElementById('turn-counter');if(tc)tc.textContent='Turn '+whiteTurnCount;
   targetMode=false;targetSrc=-1;kingSelected=false;selectedPieces=new Set();boxSelecting=false;boxMouseDownOnEmpty=false;clearBoxSelect();
@@ -255,7 +248,7 @@ function endTurn(){
     // PvP: the player who just acted fires their own side's auto-attacks, then passes the turn
     // Training: the same hand-over, with both sides in the same seat
     const mover=turn;
-    const actions=computeActions(mover).filter(a=>a.attacker!==justMoved&&noFire.indexOf(a.attacker)<0);
+    const actions=computeActions(mover).filter(a=>a.attacker!==justMoved&&!heldFire(a.attacker));
     const passTurn=()=>{
       thinking=false;
       // the training ground has nothing to win: a king falling is just one more thing to watch
@@ -269,6 +262,8 @@ function endTurn(){
       turn=mover==='w'?'b':'w';
       tickScans(turn);
       if(trainingMode)turnUpkeep(turn);   // orders, mana and mending for the side taking over
+      if(trainingMode&&over){over=false;trainKingFell();}
+      if(over){orderEndsGame(turn);return;}
       broadcastState(null);syncUI();render();
       setStatus(trainingMode?(turn==='w'?"White's turn":"Black's turn"):isMyTurn()?'Your turn':'Opponent turn...');
       if(trainingMode&&typeof trainAfterPass==='function')trainAfterPass();   // the AI may have this side
@@ -280,13 +275,13 @@ function endTurn(){
       passTurn();
     }
   }else{
-    const wActions=computeActions('w').filter(a=>a.attacker!==justMoved&&noFire.indexOf(a.attacker)<0);
+    const wActions=computeActions('w').filter(a=>a.attacker!==justMoved&&!heldFire(a.attacker));
     const runBlack=()=>{
       tickScans('b');
       thinking=true;syncUI();render();
       document.getElementById('thinking-dot').classList.add('on');
       setStatus('Enemy thinking...');
-      const bActions=computeActions('b');
+      const bActions=computeActions('b').filter(a=>!heldFire(a.attacker));
       blackActed=new Set(bActions.map(a=>a.attacker));
       if(bActions.length){
         setTimeout(()=>executeActions(bActions,'b',()=>{
@@ -317,8 +312,6 @@ function finishBlackTurn(){
   thinking=false;
   blackTurnCount++;
   if(pawnOnMine('b'))mineTurns.b++;
-  runOrders('b');                       // Black's orders land with the move Black just made
-  if(trainingMode&&over){over=false;trainKingFell();}
   document.getElementById('thinking-dot').classList.remove('on');
   if(over){orderEndsGame('b');return;}
   startWhiteTurn();

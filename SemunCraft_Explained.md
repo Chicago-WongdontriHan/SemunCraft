@@ -30,7 +30,7 @@ The goal: **destroy the enemy King** while building up your army through a merge
 | **Rook** | ♖/♜ | 4 | Cardinal up to 2 squares (sliding) | Cardinal up to 3 squares, **piercing** (goes through pieces) |
 | **Queen** | ♛ | 5 | All 8 directions up to 2 squares (sliding) | All 8 directions up to 2 squares (not L-shapes); not blocked by pieces or obstacles |
 | **King** | ♔/♚ | 5 | Adjacent 1 step | Adjacent; also **spawns new pawns** |
-| **Siege Tower** | 🏰 | 4 | **One square, ordered a turn ahead** | Cardinal up to **5 squares, 2 damage, lobbed clean over everything** — obstacles and pieces alike. It never steps anywhere of its own accord: a move is given as a **delayed order** to an adjacent square (`orderTargets` in `js/actions.js`), it rolls there at the end of the next turn, and **it does not fire on the turn it moves** (`runOrders` hands that square back, and the attack that turn passes it over). Right-click it (or tap it twice) to un-siege back into two rooks, each with the tower's current HP (one rook if no tile next to it is free). |
+| **Siege Tower** | 🏰 | 4 | **One square, ordered a turn ahead** | Cardinal up to **5 squares, 2 damage, lobbed clean over everything** — obstacles and pieces alike. It never steps anywhere of its own accord: a move is given as a **delayed order** to an adjacent square (`orderTargets` in `js/actions.js`), it rolls there at the head of the next turn, and **it does not fire on the turn it moves** (`runOrders` marks it `rolled`, the attacks that turn pass it over, and the next `turnUpkeep` clears the mark). Right-click it (or tap it twice) to un-siege back into two rooks, each with the tower's current HP (one rook if no tile next to it is free). |
 | **Mage** | ✦ | 3 | Diagonal up to 2 squares (sliding), like a bishop | **Any square within 3**, over pieces and obstacles alike; no heal, no merges |
 
 ---
@@ -123,10 +123,10 @@ stacked so they land together (`MAX_DELAY`, `ORDER_BUDGET`, `orderCost` in `js/s
   every other piece off and asks the ordinary movement code). An order reserves a square, not a path, and
   whoever is standing there today may well be gone by the time it comes due — so a pawn ordered onto
   another pawn does not merge with it now, it goes there later if the square has cleared.
-- **When it comes due**: an order counts down at the start of its side's turn (`countOrders`) and is
-  carried out at the **end** of the turn it reaches nought on (`runOrders`, from `endTurn` /
-  `finishBlackTurn`, mirrored at the top of the engine's `finishTurn`) — so the ordered piece and this
-  turn's own move set off **together**, before the auto-attacks. Then:
+- **When it comes due**: an order counts down at the start of its side's turn and is carried out the
+  moment it reaches nought — at the **head of that turn**, before its side does anything else
+  (`runOrders`, from `turnUpkeep`, mirrored in the engine's `upkeep`). The move plays out where you can
+  watch it, so the rest of the turn is decided on the board as it then stands. Then:
   - the square is **empty and still reachable** → the piece moves there (and the square flashes amber);
   - an **enemy** stands there and it is in reach → the move becomes an **attack** (2 damage from a siege
     tower, 1 from anything else — it can finish a game);
@@ -164,8 +164,8 @@ stacked so they land together (`MAX_DELAY`, `ORDER_BUDGET`, `orderCost` in `js/s
 
 ## Turn Flow (Single-Player)
 
+1. **White's orders come due**: the ones that counted down to nought move or strike, before anything else, and the board is left for White to read.
 1. **White's turn**: Player moves/merges/spawns/heals/sets a target — or books a delayed order, which leaves the turn in hand until the order budget runs out.
-1. **White's orders come due**: the ones that counted down to nought move or strike now, alongside the move just made.
 2. **White auto-attacks** fire (excluding the piece that moved or healed).
 3. **Black auto-attacks** fire.
 4. **Black AI** takes its action (spawn, merge, or move).

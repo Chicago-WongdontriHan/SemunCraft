@@ -654,7 +654,7 @@ function applyAction(s,a,events){
         if(np.type==='siege')np.sieged=true;
       }
       if(np.type==='mage')s.elixir[color]-=MAGE_ELIXIR;
-      B[a.from]=null;B[a.to]=np;s.moved=-1;
+      B[a.from]=null;B[a.to]=np;s.moved=a.to;   // the merge was the move: the new piece holds its fire
       events.push({type:'merge',from:a.from,to:a.to,piece:np.type});
       return p.type==='knight'&&geo(s).kj[a.from].includes(a.to);
     }

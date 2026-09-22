@@ -155,6 +155,7 @@ function executeDrop(from,to,dests){
         if(occupied.size===movers.length){
           addLog(movers.length+' pieces move');SFX.move();
           movedThisTurn=-1;
+          movedGroup=movers.map(m=>m.di);   // they all walked, so none of them fire (heldFire)
           let done=0;
           render();
           movers.forEach(({si,di})=>{
@@ -187,7 +188,7 @@ function executeDrop(from,to,dests){
         if(nt==='mage')elixir[p.color]-=MAGE_ELIXIR;
         pieces[from]=null;pieces[to]={type:nt,color:p.color,hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};
         addLog('Merged to '+nt+'@'+sqName(to));SFX.arrive(nt);tutCheckAction('merge');
-        movedThisTurn=-1;
+        movedThisTurn=to;                 // the merge was the turn's move
         setTimeout(()=>mergeFlash(to),50);endTurn();
       }],
     ].filter(Boolean));
@@ -224,7 +225,7 @@ function executeDrop(from,to,dests){
       if(nt==='mage')elixir[p.color]-=MAGE_ELIXIR;
       pieces[from]=null;pieces[to]=newPiece;
       addLog('Merged to '+nt+'@'+sqName(to));SFX.arrive(nt);tutCheckAction('merge');
-      movedThisTurn=-1;
+      movedThisTurn=to;                   // the merge was the turn's move: the new piece holds its fire
       setTimeout(()=>mergeFlash(to),50);
       const knightLJump=p.type==='knight'&&kJumps(from).includes(to);
       if(knightLJump){render();return;}

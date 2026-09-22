@@ -171,6 +171,7 @@ function turnUpkeep(own){
   // the orders that come due are carried out here, at the head of the turn, so the board has settled
   // before its side decides what else to do. A siege tower that rolled last turn may fire again now.
   for(let i=0;i<ROWS*COLS;i++){const p=pieces[i];if(p&&p.rolled&&(!own||p.color===own))delete p.rolled;}
+  movedGroup=[];                         // last turn's group has long since fired, or not
   runOrders(own);
   if(!own||own==='w')orderLeft.w=ORDER_BUDGET;
   if(!own||own==='b')orderLeft.b=ORDER_BUDGET;
@@ -217,8 +218,11 @@ function runOrders(own){
     }else addLog(p.type+"'s order at "+sqName(to)+' lapses');
   }
 }
-// a siege tower does not fire on the turn it rolled (runOrders), and nothing else holds its fire
-function heldFire(i){const p=pieces[i];return !!(p&&p.rolled);}
+// who holds their fire this turn: a siege tower that rolled to its ordered square (runOrders), and
+// every piece of a group that walked together — one move each, so none of them shoot as well.
+// (A single piece's move is remembered in movedThisTurn, which the attack lists already leave out.)
+let movedGroup=[];
+function heldFire(i){const p=pieces[i];return !!(p&&p.rolled)||movedGroup.indexOf(i)>=0;}
 
 // a campaign level can be decided by White's own turn — the objective met, or the last enemy gone —
 // before Black moves; the engine checks at the same point, so both end a level on the same turn

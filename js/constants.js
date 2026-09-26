@@ -14,11 +14,11 @@ const inB    = (r,c)=>r>=0&&r<ROWS&&c>=0&&c<COLS;
 const adj8   = i=>{ const r=ROW(i),c=COL(i),res=[]; for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;if(inB(r+dr,c+dc))res.push(idx(r+dr,c+dc));} return res; };
 const kJumps = i=>{ const r=ROW(i),c=COL(i),res=[]; [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]].forEach(([dr,dc])=>{if(inB(r+dr,c+dc))res.push(idx(r+dr,c+dc));}); return res; };
 const range2 = i=>{ const r=ROW(i),c=COL(i),res=[]; for(let dr=-2;dr<=2;dr++)for(let dc=-2;dc<=2;dc++){if(!dr&&!dc)continue;if(inB(r+dr,c+dc))res.push(idx(r+dr,c+dc));} return res; };
-// Siege range: 2 to 5 cardinal squares, lobbed clean over everything — obstacles and pieces alike. The
+// Siege range: 2 to 4 cardinal squares, lobbed clean over everything — obstacles and pieces alike. The
 // square right beside it is too close for the shell (siegeLine in js/engine.js)
 const siegeRange = i=>{ const r=ROW(i),c=COL(i),res=[];
   [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
-    for(let s=2;s<=5;s++){
+    for(let s=2;s<=4;s++){
       const nr=r+dr*s,nc=c+dc*s;if(!inB(nr,nc))break;
       const j=idx(nr,nc);if(isTileBlocked(j))continue;
       res.push(j);

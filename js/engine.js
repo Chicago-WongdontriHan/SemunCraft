@@ -349,9 +349,9 @@ function lineRange(s,i,dirs,len,thru){
   }
   return res;
 }
-// the siege tower's cardinal squares 2 to 5 away, over obstacles and over anything standing in them —
+// the siege tower's cardinal squares 2 to 4 away, over obstacles and over anything standing in them —
 // never the square right beside it, too close for the shell (siegeRange in js/constants.js)
-function siegeLine(s,i){return lineRange(s,i,CARD,5,true).filter(j=>cheb(s,i,j)>=2);}
+function siegeLine(s,i){return lineRange(s,i,CARD,4,true).filter(j=>cheb(s,i,j)>=2);}
 // the Guardian's reach: everywhere its Rook half could hit, plus everywhere its Knight half could
 // (guardianRange in js/constants.js)
 function guardianRange(s,i){return [...new Set([...lineRange(s,i,CARD,3),...geo(s).kj[i]])];}
@@ -1512,6 +1512,7 @@ const SemunEngine={
   newGame,legalActions,step,botTurn,clone,isLegal,fromSnapshot,act,
   // rule queries
   getDests,computeActions,applyAttacks,upkeep,spawnRemaining,heldTiles,visible,fogFor,inCover,concealed,campaignResult,sangTrajectories,sangLineFor,mageRange,
+  mergeResultType,elixirCost,
   // helpers and data
   generateMap,makeRandom,nextRandom,sqName,cheb,geo,STATS,STRATEGIES,THEME_TILES,
 };

@@ -175,6 +175,77 @@ function svgSpikedBall(ax,ay,tx,ty,sparks,cb){
   };
   requestAnimationFrame(step);
 }
+// The Siege's shot: a flaming shell lobbed in a high arc, its fire streaming back along the way it flies
+// and shedding embers, that bursts into flame on the square it hits — and the fire runs out from there to
+// the eight squares around it, the ones its splash catches (siegeSplash), straight neighbours a beat
+// ahead of the corners. Each catches, burns a moment and dies down. `spread` is those squares' centres.
+// The blow is handed on (cb) once the fire has reached them, so the damage lands while they burn; the
+// flames finish by themselves after.
+function svgFireShell(ax,ay,tx,ty,spread,cb){
+  const svg=document.getElementById('wep-overlay');
+  const NS='http://www.w3.org/2000/svg',el=(tag,attrs)=>{const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]+'');return e;};
+  const flash=el('circle',{cx:ax,cy:ay,r:sqPx*.28,fill:'#FFC040',opacity:.9});svg.appendChild(flash);
+  // the shell: its fire tail first (svgFlameShape, turned to stream back along the flight), then the
+  // burning ball, white-hot in the middle
+  const shell=el('g',{}),tail=svgFlameShape(svg,sqPx*.36);
+  tail.setAttribute('opacity','1');shell.appendChild(tail);
+  shell.appendChild(el('circle',{r:sqPx*.14,fill:'#FF8A2A',stroke:'#8A2A0A','stroke-width':Math.max(1.5,sqPx*.025)}));
+  shell.appendChild(el('circle',{r:sqPx*.07,fill:'#FFF1A8'}));
+  svg.appendChild(shell);
+  const embers=[],arc=sqPx*.55,DUR=400;
+  const pos=s=>[ax+(tx-ax)*s,ay+(ty-ay)*s-Math.sin(s*Math.PI)*arc];
+  const start=performance.now();let frame=0;
+  const fly=ts=>{
+    const s=Math.min(1,(ts-start)/DUR),[x,y]=pos(s),[x2,y2]=pos(Math.min(1,s+.02));
+    flash.setAttribute('opacity',''+Math.max(0,.9*(1-s*4)));
+    const ang=Math.atan2(y2-y,x2-x)*180/Math.PI;          // the way it is flying
+    const flick=1.45+Math.sin(ts/35)*.18;
+    shell.setAttribute('transform','translate('+x.toFixed(1)+','+y.toFixed(1)+')');
+    tail.setAttribute('transform','rotate('+(ang-90).toFixed(1)+') scale(1,'+flick.toFixed(2)+')');   // the flame's tip streams back
+    if(frame++%2===0){const e=el('circle',{cx:x,cy:y,r:sqPx*.045,fill:'#FFB040',opacity:.9});svg.insertBefore(e,shell);embers.push({e,t:ts});}
+    embers.forEach(m=>{const k=(ts-m.t)/260;m.e.setAttribute('opacity',''+Math.max(0,.9*(1-k)));m.e.setAttribute('r',''+(sqPx*.045*(1-k*.6)));});
+    if(s<1){requestAnimationFrame(fly);return;}
+    svg.removeChild(flash);svg.removeChild(shell);
+    burn(ts);
+  };
+  const burn=t0=>{
+    SFX.attack();
+    embers.forEach(m=>m.e.remove());
+    const blast=el('circle',{cx:tx,cy:ty,r:6,fill:'#FFB040',opacity:.85});svg.appendChild(blast);
+    // the flames: one big one where it hit, then one travelling out to each square around it
+    const fires=[{el:svgFlameShape(svg,sqPx*.5),fx:tx,fy:ty,sx:tx,sy:ty,delay:0,travel:0}];
+    (spread||[]).forEach(p=>{
+      const diag=p.sx!==tx&&p.sy!==ty;
+      fires.push({el:svgFlameShape(svg,sqPx*.4),fx:p.sx,fy:p.sy,sx:tx,sy:ty,delay:diag?70:20,travel:150});
+    });
+    const IGN=90,HOLD=300,FADE=200;
+    let handed=false;const hand=()=>{if(!handed){handed=true;cb();}};
+    const total=70+150+IGN+HOLD+FADE;
+    const tick=ts=>{
+      const t=ts-t0;
+      const bk=Math.min(1,t/260);
+      blast.setAttribute('r',''+(6+bk*sqPx*.7));blast.setAttribute('opacity',''+(.85*(1-bk)));
+      fires.forEach(f=>{
+        const lt=t-f.delay;let op=0,sc=.3,x=f.fx,y=f.fy;
+        if(lt<0){op=0;}
+        else if(lt<f.travel){const k=lt/f.travel;x=f.sx+(f.fx-f.sx)*k;y=f.sy+(f.fy-f.sy)*k;op=.9;sc=.35+.35*k;}   // running out along the ground
+        else{
+          const bt=lt-f.travel;
+          if(bt<IGN){const k=bt/IGN;op=.9+.1*k;sc=.7+.4*k;}
+          else if(bt<IGN+HOLD){op=1;sc=1.1+Math.sin((bt-IGN)/55)*.07;}
+          else{const k=Math.min(1,(bt-IGN-HOLD)/FADE);op=1-k;sc=1.1-.35*k;}
+        }
+        f.el.setAttribute('transform','translate('+x.toFixed(1)+','+(y+sqPx*.08).toFixed(1)+') scale('+sc.toFixed(3)+')');
+        f.el.setAttribute('opacity',op.toFixed(3));
+      });
+      if(t>=70+150+IGN)hand();                   // the fire has reached every square around it
+      if(t<total)requestAnimationFrame(tick);
+      else{blast.remove();fires.forEach(f=>f.el.remove());hand();}
+    };
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(fly);
+}
 function svgCannonball(ax,ay,tx,ty,cb){
   const svg=document.getElementById('wep-overlay');
   const flash=document.createElementNS('http://www.w3.org/2000/svg','circle');
@@ -199,10 +270,9 @@ function svgCannonball(ax,ay,tx,ty,cb){
     if(s<1)requestAnimationFrame(step); else{svg.removeChild(flash);svg.removeChild(ball);svg.removeChild(trail);
       const burst=document.createElementNS('http://www.w3.org/2000/svg','circle');
       burst.setAttribute('cx',tx);burst.setAttribute('cy',ty);burst.setAttribute('r','4');
-      burst.setAttribute('fill','rgba(255,150,40,.35)');burst.setAttribute('stroke','#ffe060');burst.setAttribute('stroke-width','3');
+      burst.setAttribute('fill','none');burst.setAttribute('stroke','#ffe060');burst.setAttribute('stroke-width','3');
       svg.appendChild(burst);
-      // it opens out over the 3x3 the shell splashes (siegeSplash), not just the square it hit
-      let b=0;const bstep=()=>{b+=0.08;burst.setAttribute('r',(4+b*sqPx*1.45)+'');burst.setAttribute('opacity',''+(1-b));if(b<1)requestAnimationFrame(bstep);else{svg.removeChild(burst);cb();}};
+      let b=0;const bstep=()=>{b+=0.1;burst.setAttribute('r',(4+b*sqPx*.3)+'');burst.setAttribute('opacity',''+(1-b));if(b<1)requestAnimationFrame(bstep);else{svg.removeChild(burst);cb();}};
       requestAnimationFrame(bstep);
     }
   };
@@ -341,8 +411,8 @@ function attackAnim(attacker,target,type,cb){
     SFX.attack();
     svgSpikedBall(a.sx,a.sy,end.sx,end.sy,sparks,cb);
   }else if(type==='siege'){
-    // siege: cannonball same as rook
-    svgCannonball(a.sx,a.sy,t.sx,t.sy,cb);
+    // the siege: a flaming shell, and fire spreading over the 3x3 its splash catches (svgFireShell)
+    svgFireShell(a.sx,a.sy,t.sx,t.sy,adj8(target).map(j=>sqCenter(j)),cb);
   }else if(type==='king'){
     emojiAnim('👑',a.x,a.y,t.x,t.y,sqPx*.3,400,cb);
   }else{

@@ -215,7 +215,7 @@ function renderResources(){
     const boost=!noGold&&minesHeld(color)>0,springs=springsHeld(color);
     return '<div class="res-side">'+(both?'<span class="res-team">'+(color==='w'?'White':'Black')+'</span>':'')
       +line('res-line-gold',RES_GOLD,'Gold',gold,noGold?'':'+'+goldRate(color).toFixed(2),boost)
-      +line('res-line-elixir',RES_ELIXIR,'Elixir',elixirCount(color)>=TRAIN_RICH?'\u221E':elixirCount(color),springs?'+'+springs:'',!!springs)+'</div>';
+      +line('res-line-elixir',RES_ELIXIR,'Elixir',goldText(elixirCount(color)),springs?'+'+goldText(springs*ELIXIR_RATE):'',!!springs)+'</div>';
   }).join('');
   fitResources();
 }

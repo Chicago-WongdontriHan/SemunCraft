@@ -13,7 +13,7 @@ let movedThisTurn=-1; // idx of white piece that acted this turn (cannot auto-at
 // on the same number: turns are counted as whole numbers and divided once, never added up in sixths.
 const GOLD_START=8, GOLD_TURNS=6;
 // The mines and the springs both pay for being held: every turn that ends with a plain pawn of yours on
-// a mine earns a sixth of Gold more, and on a spring a whole Elixir. There are five such tiles
+// a mine earns a sixth of Gold more, and on a spring a quarter of an Elixir (ELIXIR_RATE). There are five such tiles
 // (RESOURCE_SQUARES), so holding them all costs five pawns that fight nowhere else, and each is a
 // known square the other side can raid. (creditResources below, finishTurn in js/engine.js)
 const RESOURCE_TILES={spring:'elixir',mine:'gold'};
@@ -28,6 +28,9 @@ const FORTIFIED_HP=3;     // a fortified pawn is a pawn in a helmet, with three 
 // don't combine (mergeResultType in js/actions.js and js/engine.js). The Paladin's lance ends games,
 // so it costs the most.
 const ELIXIR_COST={paladin:3,mage:2,guardian:1,siege:1};
+// what a spring pays for each turn it is held: a quarter, so a Paladin's 3 is twelve turns of holding one
+// (six with both). Quarters add up exactly in floating point, so no count ever drifts. (engine.js too)
+const ELIXIR_RATE=.25;
 function elixirCost(type){return ELIXIR_COST[type]||0;}
 function elixirTag(type){return elixirCost(type)?' ('+elixirCost(type)+' Elixir)':'';}   // for a button or a log line
 const FORTIFIED_MEND=5;   // and its armour mends 1 HP five turns after the last hit it took
@@ -73,9 +76,9 @@ function minesHeld(color){ return heldTiles(color,'mine').length; }
 function springsHeld(color){ return heldTiles(color,'spring').length; }
 // Gold income this turn: a sixth, and a sixth more for every mine a pawn of that side holds
 function goldRate(color){ return (1+minesHeld(color))/GOLD_TURNS; }
-// The end of a side's turn pays its tiles: a mine-turn for each mine held, an Elixir for each spring
+// The end of a side's turn pays its tiles: a mine-turn for each mine held, ELIXIR_RATE for each spring
 // (finishTurn in engine.js). Returns the springs that paid, so the turn can sound them.
-function creditResources(color){ mineTurns[color]+=minesHeld(color); const sp=heldTiles(color,'spring'); elixir[color]+=sp.length; return sp; }
+function creditResources(color){ mineTurns[color]+=minesHeld(color); const sp=heldTiles(color,'spring'); elixir[color]+=sp.length*ELIXIR_RATE; return sp; }
 function goldAllowed(){ return !campaignLevel||campaignLevel.allowSpawn!==false; }
 function canFortify(i){ const p=pieces[i]; return !!p&&p.type==='pawn'&&!p.fortified&&goldAllowed()&&spawnRemaining()>=1; }
 function oppColor(){ return myColor()==='w'?'b':'w'; }

@@ -153,7 +153,7 @@ function trainingPalette(){
       +wide('Black',trainView==='b','trainSetView(\'b\')','Look at the board through Black\'s eyes, fog and all')
       +'</div>'
       +trainStepper('Gold',goldText(Math.floor(goldCount(trainColor))),'trainAddGold(')
-      +trainStepper('Elixir',elixirCount(trainColor)>=TRAIN_RICH?'\u221E':elixirCount(trainColor),'trainAddElixir(')
+      +trainStepper('Elixir',goldText(elixirCount(trainColor)),'trainAddElixir(')
       +'<div class="tp-grid tp-tools">'
       +wide('\u221E Gold',goldCount(trainColor)>=TRAIN_RICH,'trainInfiniteGold()','Gold without end for the side chosen above, and off again')
       +wide('\u221E Elixir',elixirCount(trainColor)>=TRAIN_RICH,'trainInfiniteElixir()','Elixir without end for that side, and off again');

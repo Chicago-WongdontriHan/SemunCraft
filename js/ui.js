@@ -79,14 +79,14 @@ function syncPieceButtons(){
     fortBtn.disabled=locked||!canFortify(selIdx);
     fortBtn.innerHTML=uiLabel('fortify','Fortify');
   }
-  // the piece's own action: a pawn on the spring extracts, a bishop scries, a Mage summons a meteor
-  const extract=!!sel&&canExtract(selIdx),scry=!!sel&&sel.type==='bishop',meteor=!!sel&&sel.type==='mage';
-  const spBtn=show('btn-special',extract||scry||meteor);
+  // the piece's own action: a bishop scries, a Mage summons a meteor
+  const scry=!!sel&&sel.type==='bishop',meteor=!!sel&&sel.type==='mage';
+  const spBtn=show('btn-special',scry||meteor);
   if(spBtn){
-    spBtn.disabled=locked||!(extract||(scry&&(sel.mana||0)>=2)||(meteor&&(sel.mana||0)>=METEOR_MANA));
+    spBtn.disabled=locked||!((scry&&(sel.mana||0)>=2)||(meteor&&(sel.mana||0)>=METEOR_MANA));
     spBtn.classList.toggle('active-mode',!!scryMode||!!meteorMode);
-    const label=extract?'Extract Elixir':scry?'Scry (2)':'Meteor ('+METEOR_MANA+')';
-    spBtn.innerHTML=uiLabel(extract?'extract':meteor?'meteor':'scry',(scryMode||meteorMode)?'Pick a square':label);
+    const label=scry?'Scry (2)':'Meteor ('+METEOR_MANA+')';
+    spBtn.innerHTML=uiLabel(meteor?'meteor':'scry',(scryMode||meteorMode)?'Pick a square':label);
   }
   // The delay counter only comes up for a piece that could actually take an order (or already has one
   // standing, so it can still be cleared back to 0) — the same condition the on-board chooser uses
@@ -96,9 +96,9 @@ function syncPieceButtons(){
     delayBtn.style.display=(!!sel&&(canOrder(selIdx)||orderTurns>0))?'':'none';
     delayBtn.disabled=locked;
     delayBtn.classList.toggle('active-mode',orderTurns>0);
-    delayBtn.innerHTML=uiLabel('delay','Delay '+orderTurns);
+    delayBtn.innerHTML=uiLabel('delay','Delay '+delayShown());
     delayBtn.title=orderTurns
-      ?'The next move is written down for '+orderTurns+' turn'+(orderTurns>1?'s':'')+' from now. Orders left this turn: '+orderCostText2(orderLeft[myColor()])
+      ?'The next move is written down for '+delayShown()+' turn'+(delayShown()>1?'s':'')+' from now. Orders left this turn: '+orderCostText2(orderLeft[myColor()])
       :'Press to put turns between the order and the move; press past the last one for none again';
   }
   // Merge, when a pair is ready
@@ -140,7 +140,9 @@ function renderPcCards(){
     const card=document.createElement('div');card.className='piece-card';
     const px=Math.max(18,Math.floor((window.lastPf||10)*2.2)),type=d.name.toLowerCase();
     card.innerHTML='<div class="piece-card-row">'+pieceSVG(type,'w',mapTheme,px,true)+pieceSVG(type,'b',mapTheme,px,true)+'</div>'
-      +'<div class="pc-name">'+d.name+'</div><div class="pc-stats">'+d.stats+'</div>';
+      // the top tier's Elixir price rides beside the name, where the one-line stats can't clip it
+      +'<div class="pc-name">'+d.name+(elixirCost(type)?'<span class="pc-cost">'+RES_ELIXIR+elixirCost(type)+'</span>':'')+'</div>'
+      +'<div class="pc-stats">'+d.stats+'</div>';
     wrap.appendChild(card);
   });
   const lbl=document.getElementById('pc-page-label');
@@ -159,8 +161,8 @@ function renderPcCards(){
 }
 
 // ── RESOURCES ────────────────────────────────────────────────────────────────
-// Gold pays for the pawns the King spawns and for fortifying pawns; Elixir, extracted at the spring,
-// is meant for the magic units.
+// Gold pays for the pawns the King spawns and for fortifying pawns; Elixir, drawn from the springs,
+// pays for the top tier.
 const RES_GOLD='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.4" fill="#F5C443" stroke="#3A2614" stroke-width="2.3"/>'
   +'<circle cx="12" cy="12" r="5.2" fill="none" stroke="#3A2614" stroke-width="1.5" opacity=".5"/>'
   +'<ellipse cx="9" cy="8.4" rx="2" ry="1.2" fill="#fff" opacity=".6" transform="rotate(-28 9 8.4)"/></svg>';
@@ -178,7 +180,7 @@ function goldCount(color){
   }
   return color===myColor()?spawnRemaining():blackSpawnRemaining();
 }
-// Elixir is what a pawn extracts at the spring; a bishop's mana is its own heal charge and is not this.
+// Elixir is what a pawn draws from a spring; a bishop's mana is its own heal charge and is not this.
 function elixirCount(color){
   if(gameMode==='aivsai'&&aiVsAi&&aiVsAi.s.elixir)return aiVsAi.s.elixir[color]||0;
   return (typeof elixir!=='undefined'&&elixir[color])||0;
@@ -201,19 +203,19 @@ function renderResources(){
   const noGold=campaignLevel&&campaignLevel.allowSpawn===false;
   const both=(gameMode==='aivsai'&&aiVsAi)||trainingMode;   // both sides are yours in the sandbox
   const sides=both?['w','b']:[myColor()];
-  // a line per resource: icon, name, count, and for Gold this turn's income beside it, so it reads as
-  // Gold's rate and not Elixir's; it doubles, and lights up, while a pawn stands on the mine. The
-  // desktop panel stacks the two lines; the phone strip puts them side by side on one line.
+  // a line per resource: icon, name, count, and this turn's income beside each — Gold's grows, and lights
+  // up, with every mine a pawn holds; Elixir's shows, lit, with every spring. The desktop panel stacks
+  // the two lines; the phone strip puts them side by side on one line.
   const line=(cls,icon,name,text,note,boost)=>'<span class="res-chip '+cls+'">'+icon
     +'<span class="res-name">'+name+'</span><b>'+text+'</b>'
     +(note?'<span class="res-note'+(boost?' res-boost':'')+'">'+note+'</span>':'')+'</span>';
   el.classList.toggle('two-sides',!!both);
   el.innerHTML=sides.map(color=>{
     const gold=noGold?'—':goldText(goldCount(color));
-    const boost=!noGold&&pawnOnMine(color);
+    const boost=!noGold&&minesHeld(color)>0,springs=springsHeld(color);
     return '<div class="res-side">'+(both?'<span class="res-team">'+(color==='w'?'White':'Black')+'</span>':'')
       +line('res-line-gold',RES_GOLD,'Gold',gold,noGold?'':'+'+goldRate(color).toFixed(2),boost)
-      +line('res-line-elixir',RES_ELIXIR,'Elixir',elixirCount(color)>=TRAIN_RICH?'\u221E':elixirCount(color))+'</div>';
+      +line('res-line-elixir',RES_ELIXIR,'Elixir',elixirCount(color)>=TRAIN_RICH?'\u221E':elixirCount(color),springs?'+'+springs:'',!!springs)+'</div>';
   }).join('');
   fitResources();
 }

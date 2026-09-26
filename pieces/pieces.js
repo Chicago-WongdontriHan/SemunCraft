@@ -9,6 +9,7 @@
 //   queen   slim gown, long hair, a tall three-point crown and a sceptre
 //   king    the broadest piece: square-shouldered robe, beard, flat crown with a cross
 //   siege   a stub tower with a cannon barrel out of the roof
+//   scarecrow  the training ground's target dummy: a sack head under a straw hat, arms out on a pole
 //   mage, paladin, guardian  combined units drawn by pieces/combined/make.js and shipped as markup
 //           in pieces/units-art.js: the Mage a bishop rising out of a short tower, staff in hand;
 //           the Paladin twin knights, one behind the other; the Guardian a knight rising out of a
@@ -141,6 +142,39 @@ PIECE_SHAPES.fortified=Object.assign({},PIECE_SHAPES.pawn,{
 });
 PIECE_TINTS.w.fortified=PIECE_TINTS.w.pawn;
 PIECE_TINTS.b.fortified=PIECE_TINTS.b.pawn;
+
+// the training ground's target dummy: a burlap sack head with stitched X eyes under a straw hat banded
+// in the team's colour, a patched shirt with its arms out along the crossbar, straw sticking out of the
+// cuffs, the collar and the hem, and the pole it hangs on planted in the ground. It belongs to neither
+// side (NEUTRAL in js/constants.js), so it has a team of its own below: a faded denim shirt, and a
+// stone-grey ring and hat band in place of either side's colour.
+const SCARECROW_HAT='M39 27 C39 16.5 43.8 12.5 50 12.5 C56.2 12.5 61 16.5 61 27 Z';
+PIECE_SHAPES.scarecrow={ring:17,shine:[41,65],
+  back:pieceStroke('M50 44 V86','{wood}',5)+pieceStroke('M14 51 H86','{wood}',4.5),
+  body:'<circle cx="50" cy="36" r="12"/>'
+    +'<path d="M21 45.5 C30 44.5 36 44 40 44.5 L60 44.5 C64 44 70 44.5 79 45.5 L80 56.5 C72 57.5 67 57.5 63 57 L66 75 C58 77.5 42 77.5 34 75 L37 57 C33 57.5 28 57.5 20 56.5 Z"/>',
+  halo:'<circle cx="50" cy="36" r="12"/>'
+    +'<path d="M21 45.5 C30 44.5 36 44 40 44.5 L60 44.5 C64 44 70 44.5 79 45.5 L80 56.5 C72 57.5 67 57.5 63 57 L66 75 C58 77.5 42 77.5 34 75 L37 57 C33 57.5 28 57.5 20 56.5 Z"/>'
+    +'<path d="'+SCARECROW_HAT+'"/><ellipse cx="50" cy="27" rx="20" ry="4.4"/>',
+  eyes:[],blush:[[42,41.5],[58,41.5]],
+  detail:pieceStroke('M20 48 L12.5 45 M20 51 L11 51.5 M20 54 L12.5 57.5','#EBC35A',2.6)
+    +pieceStroke('M80 48 L87.5 45 M80 51 L89 51.5 M80 54 L87.5 57.5','#EBC35A',2.6)
+    +pieceStroke('M39 76 L37 82.5 M44.5 77 L44 83.5 M55.5 77 L56 83.5 M61 76 L63 82.5','#EBC35A',2.6)
+    +pieceStroke('M35.8 66 Q50 69.5 64.2 66','#C9962C',2.2)
+    +'<path d="M52.5 58.5 L61 57.8 L61.8 65 L53.3 65.8 Z" fill="{shade}" stroke="{line}" stroke-width="2" stroke-linejoin="round"/>'
+    +'<path d="M54.6 60.4 L56.2 61.9 M58.3 59.8 L59.8 61.3 M55 64 L56.6 62.6" stroke="{line}" stroke-width="1.3" stroke-linecap="round"/>'
+    +'<circle cx="50" cy="36" r="12" fill="#E2C48A" stroke="{line}" stroke-width="4"/>'
+    +pieceStroke('M45 46.5 L42.5 50 M55 46.5 L57.5 50','#EBC35A',2.4)
+    +'<path d="M43 33.2 L47.6 37.8 M47.6 33.2 L43 37.8 M52.4 33.2 L57 37.8 M57 33.2 L52.4 37.8" stroke="{line}" stroke-width="2.4" stroke-linecap="round"/>'
+    +'<path d="M44 41.8 Q50 46.2 56 41.8" fill="none" stroke="{line}" stroke-width="2" stroke-linecap="round"/>'
+    +'<path d="M46.8 42.9 L46.3 45.1 M50 43.8 V46.2 M53.2 42.9 L53.7 45.1" stroke="{line}" stroke-width="1.4" stroke-linecap="round"/>',
+  crown:'<path d="'+SCARECROW_HAT+'" fill="#EBC35A" stroke="{line}" stroke-width="3.2" stroke-linejoin="round"/>'
+    +'<path d="M39.8 21.5 H60.2" stroke="{ring}" stroke-width="3.6"/>'
+    +'<ellipse cx="50" cy="27" rx="20" ry="4.4" fill="#EBC35A" stroke="{line}" stroke-width="3.2"/>'
+    +'<path d="M36 27.6 L33 30.2 M64 27.6 L67 30.2 M44.5 15.8 L46.6 19.4 M55.5 15.8 L53.4 19.4" stroke="#C9962C" stroke-width="1.6" stroke-linecap="round"/>',
+};
+PIECE_TEAMS.n={body:'#9DB3C4',shade:'#7F96A8',ring:'#A39E94',line:'#3A2614',halo:'rgba(35,22,8,.5)',eye:'#2A1A10',sclera:null,shine:.35};
+PIECE_TINTS.n={scarecrow:['#9DB3C4','#7F96A8']};
 
 // what a piece on the board is drawn as: a fortified pawn keeps type 'pawn' and wears the helmet
 function pieceArt(p){return p.fortified?'fortified':p.type;}

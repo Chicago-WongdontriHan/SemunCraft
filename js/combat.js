@@ -130,22 +130,20 @@ function meteorStrikeAnim(tiles){
 }
 function svgSpikedBall(ax,ay,tx,ty,sparks,cb){
   const svg=document.getElementById('wep-overlay');
-  const ball=document.createElementNS('http://www.w3.org/2000/svg','g');
-  const core=document.createElementNS('http://www.w3.org/2000/svg','circle');
-  core.setAttribute('r',sqPx*.11+'');core.setAttribute('fill','#6A6A76');core.setAttribute('stroke','#26262E');core.setAttribute('stroke-width','1.5');
-  ball.appendChild(core);
-  for(let k=0;k<6;k++){
-    const ang=k*60,spike=document.createElementNS('http://www.w3.org/2000/svg','line');
-    const r1=sqPx*.11,r2=sqPx*.19,rad=ang*Math.PI/180;
-    spike.setAttribute('x1',(Math.cos(rad)*r1)+'');spike.setAttribute('y1',(Math.sin(rad)*r1)+'');
-    spike.setAttribute('x2',(Math.cos(rad)*r2)+'');spike.setAttribute('y2',(Math.sin(rad)*r2)+'');
-    spike.setAttribute('stroke','#8A8A96');spike.setAttribute('stroke-width','2');spike.setAttribute('stroke-linecap','round');
-    ball.appendChild(spike);
+  const NS='http://www.w3.org/2000/svg',el=(tag,attrs)=>{const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]+'');return e;};
+  // a big iron ball, most of a third of a square across, with eight conical spikes standing off it:
+  // the spikes go down first so the ball's own rim covers their bases, then a glint on top
+  const ball=el('g',{}),R=sqPx*.17,tip=R+sqPx*.14,half=sqPx*.065,line=Math.max(1.4,sqPx*.022);
+  for(let k=0;k<8;k++){
+    const a=(k*45+22.5)*Math.PI/180,c=Math.cos(a),s=Math.sin(a),b=R*.8;
+    ball.appendChild(el('polygon',{points:[c*b-s*half,s*b+c*half,c*tip,s*tip,c*b+s*half,s*b-c*half].map(v=>v.toFixed(2)).join(' '),
+      fill:'#A4A4B2',stroke:'#1E1E26','stroke-width':line,'stroke-linejoin':'round'}));
   }
+  ball.appendChild(el('circle',{r:R,fill:'#5E5E6A',stroke:'#1E1E26','stroke-width':line*1.3}));
+  ball.appendChild(el('ellipse',{cx:-R*.34,cy:-R*.36,rx:R*.34,ry:R*.24,fill:'#fff',opacity:.35,transform:'rotate(-35 '+(-R*.34)+' '+(-R*.36)+')'}));
   svg.appendChild(ball);
-  const trail=document.createElementNS('http://www.w3.org/2000/svg','line');
-  trail.setAttribute('stroke','#9A9AA640');trail.setAttribute('stroke-width','3');
-  svg.appendChild(trail);
+  const trail=el('line',{stroke:'#9A9AA640','stroke-width':Math.max(3,sqPx*.09),'stroke-linecap':'round'});
+  svg.insertBefore(trail,ball);   // the trail runs under the ball
   const start=performance.now(),dur=420,dist=Math.hypot(tx-ax,ty-ay);
   const sparked=new Set();
   const step=ts=>{
@@ -159,7 +157,7 @@ function svgSpikedBall(ax,ay,tx,ty,sparks,cb){
       if(sd<=dist*s+2){
         sparked.add(k);
         const fl=document.createElementNS('http://www.w3.org/2000/svg','circle');
-        fl.setAttribute('cx',sp.sx);fl.setAttribute('cy',sp.sy);fl.setAttribute('r',sqPx*.05+'');
+        fl.setAttribute('cx',sp.sx);fl.setAttribute('cy',sp.sy);fl.setAttribute('r',sqPx*.08+'');
         fl.setAttribute('fill','#ffd060');svg.appendChild(fl);
         setTimeout(()=>fl.remove(),160);
       }
@@ -171,7 +169,7 @@ function svgSpikedBall(ax,ay,tx,ty,sparks,cb){
       burst.setAttribute('cx',tx);burst.setAttribute('cy',ty);burst.setAttribute('r','4');
       burst.setAttribute('fill','none');burst.setAttribute('stroke','#c8c8d0');burst.setAttribute('stroke-width','3');
       svg.appendChild(burst);
-      let b=0;const bstep=()=>{b+=0.1;burst.setAttribute('r',(4+b*sqPx*.35)+'');burst.setAttribute('opacity',''+(1-b));if(b<1)requestAnimationFrame(bstep);else{svg.removeChild(burst);cb();}};
+      let b=0;const bstep=()=>{b+=0.1;burst.setAttribute('r',(4+b*sqPx*.5)+'');burst.setAttribute('opacity',''+(1-b));if(b<1)requestAnimationFrame(bstep);else{svg.removeChild(burst);cb();}};
       requestAnimationFrame(bstep);
     }
   };
@@ -352,7 +350,6 @@ function attackAnim(attacker,target,type,cb){
 }
 
 function computeActions(color){
-  const enemy=color==='w'?'b':'w';
   const targets=color==='w'?whiteTargets:blackTargets;
   const actions=[];
   const targeted=new Set();
@@ -371,7 +368,7 @@ function computeActions(color){
       }
       if(healI>=0&&(pieces[i].mana||0)>0){actions.push({attacker:i,target:healI,action:'heal'});}
       else{
-        let bEnemies=bishopRange(i).filter(j=>pieces[j]&&pieces[j].color===enemy);
+        let bEnemies=bishopRange(i).filter(j=>isFoe(pieces[j],color));
         // fog of war: the local player cannot attack fogged enemies
         if(color===myColor()&&!mapCheat)bEnemies=bEnemies.filter(j=>isTileVisible(j));
         // undergrowth: enemies hidden in cover can't be hit (either side)
@@ -383,12 +380,12 @@ function computeActions(color){
       }
     }else{
       const range=p.type==='queen'?queenRange(i):p.type==='mage'?mageRange(i):p.type==='siege'?siegeRange(i):p.type==='rook'?rookRange(i):p.type==='guardian'?guardianRange(i):(p.type==='knight'||p.type==='paladin')?kJumps(i):p.type==='bishop'?bishopRange(i):adj8(i);
-      let enemies=range.filter(j=>pieces[j]&&pieces[j].color===enemy);
+      let enemies=range.filter(j=>isFoe(pieces[j],color));
       // fog of war: not for the Mage, whose own fire lights its trajectory as it burns down it
       if(p.type!=='mage'&&color===myColor()&&!mapCheat)enemies=enemies.filter(j=>isTileVisible(j));
       enemies=enemies.filter(j=>!isConcealedFrom(j,color));
       const manualTgt=targets[i];
-      const locked=manualTgt!==undefined&&pieces[manualTgt]&&pieces[manualTgt].color===enemy&&range.includes(manualTgt)&&!isConcealedFrom(manualTgt,color);
+      const locked=manualTgt!==undefined&&isFoe(pieces[manualTgt],color)&&range.includes(manualTgt)&&!isConcealedFrom(manualTgt,color);
       // the Paladin's lance always kills, so it fires only on a target the player locked themselves
       // (dragged onto, or right-clicked) — never one it picked on its own, the way every other piece does
       if(p.type==='paladin'&&!locked)continue;
@@ -450,7 +447,8 @@ function executeActions(actions,color,cb){
   };
   animActions.forEach(({attacker,target,action})=>{
     const ap=pieces[attacker];
-    if(action==='attack'&&ap&&ap.type==='paladin'){
+    // (a Scarecrow never falls, so there is no square to leap to: the lance simply strikes it, below)
+    if(action==='attack'&&ap&&ap.type==='paladin'&&!(pieces[target]&&pieces[target].type==='scarecrow')){
       // its lance always lands: the leap plays out over the strike, and both finish together
       setTimeout(()=>attackAnim(attacker,target,'paladin',()=>{}),80);
       setTimeout(()=>paladinLeapAnim(attacker,target,ap.color,done),80);
@@ -482,8 +480,26 @@ function showDeath(sqIdx, color, type){
   setTimeout(()=>{burst.remove();d.remove();},700);
 }
 
+// ── THE SCARECROW (training ground) ─────────────────────────────────────────
+// Every hit it takes floats up off it as a number, a few at once fanned out side by side, and the log
+// line says what it took, where that left it, and its running total (standUp in js/constants.js).
+const dmgPopCount={};
+function dmgPop(i,dmg){
+  const el=sqElAt(i);if(!el)return;
+  const r=el.getBoundingClientRect(),n=dmgPopCount[i]=(dmgPopCount[i]||0)+1;
+  setTimeout(()=>{if(!--dmgPopCount[i])delete dmgPopCount[i];},400);
+  const d=document.createElement('div');d.className='dmg-pop';d.textContent='\u2212'+dmg;
+  d.style.left=(r.left+r.width/2+((n-1)%3-1)*r.width*.28)+'px';d.style.top=(r.top+r.height*.4)+'px';
+  d.style.fontSize=Math.max(14,Math.floor(sqPx*.42))+'px';d.style.animationDelay=((n-1)*.12)+'s';
+  document.body.appendChild(d);setTimeout(()=>d.remove(),1100+n*120);
+}
+function scarecrowHit(i,t,dmg,stood){
+  dmgPop(i,dmg);
+  if(stood)flashSq(i,'heal-flash');
+  return 'scarecrow@'+sqName(i)+' \u2212'+dmg+(stood?', knocked down \u2192 back up at '+t.hp+'HP':' \u2192 '+t.hp+'HP')+' ('+t.taken+' taken)';
+}
+
 function applyActions(actions,color){
-  const enemy=color==='w'?'b':'w';
   const msgs=[];
   actions.forEach(({attacker,target,action})=>{
     if(over)return;
@@ -495,12 +511,13 @@ function applyActions(actions,color){
     }else{
       const t=pieces[target];
       if(!t){return;}
-      if(t.color!==enemy)return;
+      if(!isFoe(t,color))return;
       // siege tower deals 2 damage per hit, all other pieces deal 1 — except the Paladin, whose
       // lance always finishes the kill outright, whatever the target's remaining HP
       const ap=pieces[attacker];
       const dmg=(ap&&ap.type==='siege')?2:(ap&&ap.type==='paladin')?t.hp:1;
       t.hp-=dmg;flashSq(target,'hit-flash');
+      const stood=standUp(t,dmg);   // the Scarecrow never falls: at 0 it is back up at full health
       if(t.fortified)t.lastHitTurn=whiteTurnCount;   // its armour mends from here (turnUpkeep)
       // fighting from or into undergrowth reveals a piece for as long as it stays on that square
       // (inCover in movement.js); harmless to stamp when the square isn't undergrowth at all
@@ -517,7 +534,7 @@ function applyActions(actions,color){
         msgs.push(t.type+'@'+sqName(target)+' ✕');
         if(campaignLevel){const cr=checkCampaignWin();if(cr)over=true;}
         else if(t.type==='king'){over=true;}
-      }else msgs.push(t.type+'@'+sqName(target)+' '+t.hp+'HP');
+      }else msgs.push(t.type==='scarecrow'?scarecrowHit(target,t,dmg,stood):t.type+'@'+sqName(target)+' '+t.hp+'HP');
       // the Mage's fire burns down the whole line it was aimed into, not only the one tile struck —
       // every other enemy on that same trajectory takes 1 too; a friend on it is left untouched
       if(ap&&ap.type==='mage'){
@@ -525,8 +542,9 @@ function applyActions(actions,color){
         flareTiles.push({tiles:line||[target],turns:1,color});   // the line stays lit a turn, no more damage
         if(line)for(const j of line){
           if(j===target||over)continue;
-          const q=pieces[j];if(!q||q.color!==enemy)continue;
+          const q=pieces[j];if(!isFoe(q,color))continue;
           q.hp-=1;flashSq(j,'hit-flash');
+          const qs=standUp(q,1);
           if(q.fortified)q.lastHitTurn=whiteTurnCount;
           q.exposedAt=j;
           if(color==='w'&&q.hp>0)blackHitBy.push({target:j,attacker});
@@ -536,7 +554,7 @@ function applyActions(actions,color){
             msgs.push(q.type+'@'+sqName(j)+' ✕ (caught in the fire)');
             if(campaignLevel){const cr=checkCampaignWin();if(cr)over=true;}
             else if(q.type==='king'){over=true;}
-          }else msgs.push(q.type+'@'+sqName(j)+' '+q.hp+'HP (caught in the fire)');
+          }else msgs.push((q.type==='scarecrow'?scarecrowHit(j,q,1,qs):q.type+'@'+sqName(j)+' '+q.hp+'HP')+' (caught in the fire)');
         }
       }
       // the Guardian's shot flies on past the target, along the same straight line, damaging every
@@ -545,8 +563,9 @@ function applyActions(actions,color){
         const path=cardinalPath(attacker,target);
         if(path)for(const j of path){
           if(j===target||over)continue;
-          const q=pieces[j];if(!q||q.color!==enemy)continue;
+          const q=pieces[j];if(!isFoe(q,color))continue;
           q.hp-=1;flashSq(j,'hit-flash');
+          const qs=standUp(q,1);
           if(q.fortified)q.lastHitTurn=whiteTurnCount;
           q.exposedAt=j;
           if(color==='w'&&q.hp>0)blackHitBy.push({target:j,attacker});
@@ -556,7 +575,7 @@ function applyActions(actions,color){
             msgs.push(q.type+'@'+sqName(j)+' ✕ (in its path)');
             if(campaignLevel){const cr=checkCampaignWin();if(cr)over=true;}
             else if(q.type==='king'){over=true;}
-          }else msgs.push(q.type+'@'+sqName(j)+' '+q.hp+'HP (in its path)');
+          }else msgs.push((q.type==='scarecrow'?scarecrowHit(j,q,1,qs):q.type+'@'+sqName(j)+' '+q.hp+'HP')+' (in its path)');
         }
       }
     }

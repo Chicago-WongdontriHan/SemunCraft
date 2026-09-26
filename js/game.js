@@ -201,10 +201,12 @@ function runOrders(own){
     if(t&&t.color!==p.color&&d.rawAttack.has(to)){
       const dmg=p.type==='siege'?2:1;
       t.hp-=dmg;
+      const stood=standUp(t,dmg);   // the Scarecrow never falls
       if(t.fortified)t.lastHitTurn=whiteTurnCount;
       p.exposedAt=i;t.exposedAt=to;
       flashSq(to,'hit-flash');SFX.attack();
       addLog(p.type+' strikes '+t.type+'@'+sqName(to)+' as ordered');
+      if(t.type==='scarecrow')addLog(scarecrowHit(to,t,dmg,stood));
       if(t.hp<=0){
         showDeath(to,t.color,t.type);SFX.fall(t.type);
         pieces[to]=null;
@@ -248,6 +250,7 @@ function runMeteors(own){
       flashSq(j,'hit-flash');
       if(!t)continue;
       t.hp-=METEOR_DAMAGE;
+      const stood=standUp(t,METEOR_DAMAGE);
       if(t.fortified)t.lastHitTurn=whiteTurnCount;
       t.exposedAt=j;
       if(t.hp<=0){
@@ -256,7 +259,7 @@ function runMeteors(own){
         addLog(t.type+'@'+sqName(j)+' ✕ (the meteor struck '+sqName(m.tiles[0])+')');
         if(campaignLevel){const cr=checkCampaignWin();if(cr){over=true;winner=cr==='win'?'w':'b';}}
         else if(t.type==='king'){over=true;winner=t.color==='w'?'b':'w';}
-      }else addLog(t.type+'@'+sqName(j)+' '+t.hp+'HP (the meteor struck '+sqName(m.tiles[0])+')');
+      }else addLog((t.type==='scarecrow'?scarecrowHit(j,t,METEOR_DAMAGE,stood):t.type+'@'+sqName(j)+' '+t.hp+'HP')+' (the meteor struck '+sqName(m.tiles[0])+')');
     }
   }
   return winner;
@@ -281,7 +284,9 @@ function endTurn(){
   movedThisTurn=-1;
   // one seat, two sides: in the training ground each colour's turns are counted on its own clock
   if(trainingMode&&turn==='b')blackTurnCount++;else whiteTurnCount++;
-  if(pawnOnMine(turn))mineTurns[turn]++;   // the mine pays for the turn it was held (finishTurn in engine.js)
+  // the mines and springs pay for the turn they were held (finishTurn in engine.js); a spring that paid
+  // the side at this seat sounds, as it did when a pawn drew from it by hand
+  if(creditResources(turn).length&&turn===viewColor()&&!fastPlay())SFX.extract();
   blackHitBy=[]; // reset hit tracker before white auto-attacks populate it
   const tc=document.getElementById('turn-counter');if(tc)tc.textContent='Turn '+whiteTurnCount;
   targetMode=false;targetSrc=-1;kingSelected=false;selectedPieces=new Set();boxSelecting=false;boxMouseDownOnEmpty=false;clearBoxSelect();
@@ -361,7 +366,7 @@ function endTurn(){
 function finishBlackTurn(){
   thinking=false;
   blackTurnCount++;
-  if(pawnOnMine('b'))mineTurns.b++;
+  creditResources('b');
   document.getElementById('thinking-dot').classList.remove('on');
   if(over){orderEndsGame('b');return;}
   startWhiteTurn();

@@ -63,7 +63,7 @@ function render(){
       const vis=tileVisibility(i);
       // theme scenery / obstacle sticker, under everything else the square holds
       if(vis!=='unknown'&&typeof tileArt==='function'){const art=tileArt(i);if(art)sq.appendChild(art);}
-      // the spring and the mine are landmarks: their place stays known through the fog
+      // the springs and the mines are landmarks: their place stays known through the fog
       const res=typeof RESOURCE_TILES!=='undefined'?RESOURCE_TILES[tileData[i]]:null;
       if(res)sq.classList.add('tile-'+tileData[i]);
       if(vis==='unknown'){
@@ -107,10 +107,10 @@ function render(){
         }
       }
 
-      // the gold mine while a pawn works it: it pulses, and a badge says what it adds each turn
-      if(ttype==='mine'&&pieces[i]&&pieces[i].type==='pawn'&&!pieces[i].fortified){
-        sq.classList.add('mine-worked');
-        const b=document.createElement('span');b.className='mine-badge';b.textContent='+0.16';
+      // a mine or a spring while a pawn works it: it pulses, and a badge says what it adds each turn
+      if(RESOURCE_TILES[ttype]&&pieces[i]&&pieces[i].type==='pawn'&&!pieces[i].fortified){
+        sq.classList.add('tile-worked');
+        const b=document.createElement('span');b.className='res-badge res-badge-'+RESOURCE_TILES[ttype];b.textContent=ttype==='mine'?'+0.16':'+1';
         b.style.fontSize=Math.max(11,Math.round(sqPx*.28))+'px';sq.appendChild(b);
       }
       // the spring and the mine need a plain pawn: say so until one stands there (a knight or a fortified
@@ -226,7 +226,7 @@ function render(){
 // Both only work for a pawn, so until one stands there each carries a small pawn badge, ringed in its
 // resource's colour; hovering the square says what it does.
 const RESOURCE_TIPS={
-  spring:'Elixir spring: a plain pawn standing here can extract 1 Elixir, using its turn',
+  spring:'Elixir spring: a plain pawn standing here draws 1 Elixir at the end of each of your turns',
   mine:'Gold mine: a plain pawn standing here earns +0.16 Gold at the end of each of your turns'};
 // the badge shows the game's own pawn, in your colour; under fog it sits in the middle of the square,
 // where it also marks the tile as a landmark

@@ -43,7 +43,21 @@ function bMergeQueen(limit){
   return false;
 }
 
-function bMerge(ft,tt,rt,limit){if(campaignLevel&&campaignLevel.noMerge)return false;const bp=bPieces();const pool={pawn:bp.pawns,knight:bp.knights,bishop:bp.bishops,rook:bp.rooks};const cur={knight:bp.knights.length,bishop:bp.bishops.length,rook:bp.rooks.length,paladin:bp.paladins.length};if(cur[rt]!==undefined&&cur[rt]>=limit)return false;for(const a of(pool[ft]||[]))for(const b of(pool[tt]||[])){if(a===b)continue;if(adj8(a).includes(b)){const nb3={type:rt,color:'b',hp:STATS[rt].hp,maxHp:STATS[rt].maxHp};if(rt==='bishop')nb3.mana=1;pieces[a]=null;pieces[b]=nb3;addLog('Black merges->'+rt);SFX.arrive(rt);render();mergeFlash(b);finishBlackTurn();return true;}}return false;}
+function bMerge(ft,tt,rt,limit){
+  if(campaignLevel&&campaignLevel.noMerge)return false;
+  const bp=bPieces();const pool={pawn:bp.pawns,knight:bp.knights,bishop:bp.bishops,rook:bp.rooks};
+  const cur={knight:bp.knights.length,bishop:bp.bishops.length,rook:bp.rooks.length,paladin:bp.paladins.length};
+  if(cur[rt]!==undefined&&cur[rt]>=limit)return false;
+  for(const a of(pool[ft]||[]))for(const b of(pool[tt]||[])){
+    if(a===b||!adj8(a).includes(b))continue;
+    // the pair has to make this very piece: a helmet, or Elixir short for the top tier, and it doesn't (bMerge in engine.js)
+    if(mergeResultType(pieces[a],pieces[b])!==rt)continue;
+    elixir.b-=elixirCost(rt);
+    const nb3={type:rt,color:'b',hp:STATS[rt].hp,maxHp:STATS[rt].maxHp};if(rt==='bishop')nb3.mana=1;
+    pieces[a]=null;pieces[b]=nb3;addLog('Black merges->'+rt+elixirTag(rt));SFX.arrive(rt);render();mergeFlash(b);finishBlackTurn();return true;
+  }
+  return false;
+}
 
 function bMoveAll(dirStr){
   const M={N:[-1,0],S:[1,0],E:[0,1],W:[0,-1],NE:[-1,1],NW:[-1,-1],SE:[1,1],SW:[1,-1]};
@@ -530,16 +544,6 @@ function campaignAI(){
 }
 
 function fallbackAI(){
-  // a pawn of ours standing on the Elixir spring extracts first of all (botTurn in engine.js)
-  for(let i=0;i<ROWS*COLS;i++){
-    const p=pieces[i];
-    if(p&&p.color==='b'&&p.type==='pawn'&&!p.fortified&&tileData[i]==='spring'){
-      elixir.b++;
-      addLog('Black extracts Elixir at '+sqName(i));
-      SFX.extract();flashSq(i,'heal-flash');render();
-      finishBlackTurn();return;
-    }
-  }
   // try reactive behavior first (respond to being hit)
   if(reactiveAI())return;
   // campaign mode uses dedicated AI

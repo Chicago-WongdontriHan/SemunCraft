@@ -98,8 +98,8 @@ section('fromSnapshot rebuilds a state, and act() applies just the action',()=>{
       if(s.mode==='classic'&&s.turn==='b'&&n%4===0){E.botTurn(s);continue;}
       const r=E.fromSnapshot({cols:s.cols,rows:s.rows,theme:s.theme,mode:s.mode,board:s.board,tiles:s.tiles,turn:s.turn,
         turnCount:s.turnCount,spawns:s.spawns,targets:s.targets,hitBy:s.hitBy,acted:s.acted,fog:s.fog,maxTurns:s.maxTurns,
-        orderLeft:s.orderLeft});
-      for(const k of ['board','tiles','blocked','turn','turnCount','spawns','targets','mode','fog'])
+        orderLeft:s.orderLeft,elixir:s.elixir,mineTurns:s.mineTurns,goldSpent:s.goldSpent});
+      for(const k of ['board','tiles','blocked','turn','turnCount','spawns','targets','mode','fog','elixir','mineTurns','goldSpent'])
         if(JSON.stringify(r[k])!==JSON.stringify(s[k])){fail('fromSnapshot differs in '+k);return;}
       const acts=E.legalActions(s),a=acts[Math.floor(pick()*acts.length)];
       // a knight's L-jump merge keeps the turn, and so does an order while half the budget is left

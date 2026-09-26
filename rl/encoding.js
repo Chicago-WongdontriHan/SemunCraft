@@ -10,10 +10,11 @@ const E=typeof module!=='undefined'&&module.exports?require('../js/engine.js'):r
 
 const TYPES=['pawn','knight','bishop','rook','queen','king','siege'];
 // piece values for reward shaping: merge cost in pawns (the King counts through its health)
-const PIECE_VALUE={pawn:1,knight:2,bishop:3,rook:4,queen:5,siege:8,king:0,mage:7,paladin:4,guardian:6};
+const PIECE_VALUE={pawn:1,knight:2,bishop:3,rook:4,queen:5,siege:8,king:0,mage:7,paladin:4,guardian:6,scarecrow:0};
 // the Mage, Paladin and Guardian came after these networks were trained: each shows on the channel
 // of the existing piece nearest its own shape, until they are trained again with channels of their own
-const TYPE_ALIAS={mage:'queen',paladin:'knight',guardian:'rook'};
+// (the training ground's Scarecrow shows as a pawn: a network facing one sees something to shoot at)
+const TYPE_ALIAS={mage:'queen',paladin:'knight',guardian:'rook',scarecrow:'pawn'};
 const CHANNEL_NAMES=[
   ...TYPES.map(t=>'own '+t),...TYPES.map(t=>'enemy '+t),
   'hp / max hp','hp / 5','mana / 2 (bishop, mage)','pawn can double-step','obstacle','on the board',
@@ -111,7 +112,7 @@ function createEncoder(opts){
     for(const a of E.legalActions(s)){
       // scrying and the meteor spell came after these networks were trained: they share squares with
       // moves, so they stay out of the map until they are trained again with a slot of their own
-      if(a.type==='scry'||a.type==='extract'||a.type==='fortify'||a.type==='order'||a.type==='meteor')continue;
+      if(a.type==='scry'||a.type==='fortify'||a.type==='order'||a.type==='meteor')continue;
       const k=actionIndex(s,a);
       if(k<0)continue;
       const prev=map.get(k);

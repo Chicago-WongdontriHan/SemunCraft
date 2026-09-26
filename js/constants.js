@@ -78,6 +78,22 @@ const rookRange = i=>{ const r=ROW(i),c=COL(i),res=[];
   return res; };
 
 const cheb   = (a,b)=>Math.max(Math.abs(ROW(a)-ROW(b)),Math.abs(COL(a)-COL(b)));
+// whether a piece is one `color` fights: anyone not of that side — the other side's pieces, and a neutral
+// one, which belongs to neither (the training ground's Scarecrow, colour NEUTRAL), so both sides fire at it (isFoe in js/engine.js)
+const NEUTRAL='n';
+const isFoe=(q,color)=>!!q&&q.color!==color;
 
 const GLYPH={king_w:'♔',pawn_w:'♙',knight_w:'♘',bishop_w:'♗',rook_w:'♖',queen_w:'♛',siege_w:'🏰',king_b:'♚',pawn_b:'♟',knight_b:'♞',bishop_b:'♝',rook_b:'♜',queen_b:'♛',siege_b:'🏰'};
-const STATS={king:{hp:5,maxHp:5},pawn:{hp:1,maxHp:1},knight:{hp:4,maxHp:4},bishop:{hp:2,maxHp:2},rook:{hp:4,maxHp:4},queen:{hp:5,maxHp:5},siege:{hp:4,maxHp:4},mage:{hp:3,maxHp:3},paladin:{hp:3,maxHp:3},guardian:{hp:5,maxHp:5}};
+const STATS={king:{hp:5,maxHp:5},pawn:{hp:1,maxHp:1},knight:{hp:4,maxHp:4},bishop:{hp:2,maxHp:2},rook:{hp:4,maxHp:4},queen:{hp:5,maxHp:5},siege:{hp:4,maxHp:4},mage:{hp:3,maxHp:3},paladin:{hp:3,maxHp:3},guardian:{hp:5,maxHp:5},scarecrow:{hp:5,maxHp:5}};
+
+// The training ground's Scarecrow, a target dummy: it takes every hit like any other piece, but the hit
+// that would floor it stands it straight back up at full health instead, and it keeps a running total
+// of the damage it has taken. It belongs to neither side (NEUTRAL, above), so it never moves, merges,
+// takes an order or fires, and both sides fire at it. Called wherever damage
+// lands (applyActions in js/combat.js, runOrders and runMeteors in js/game.js); js/engine.js mirrors it.
+function standUp(t,dmg){
+  if(!t||t.type!=='scarecrow')return false;
+  t.taken=(t.taken||0)+dmg;
+  if(t.hp>0)return false;
+  t.hp=t.maxHp;return true;
+}

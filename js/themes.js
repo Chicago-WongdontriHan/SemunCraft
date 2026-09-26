@@ -176,8 +176,8 @@ function generateMap(){
     }
   });
 
-  // Mirror the board through its centre, so neither king is nearer to cover, to the spring or to
-  // the mine than the other. Terrain only ever lands on the middle rows, which mirror onto themselves.
+  // Mirror the board through its centre, so neither king is nearer to cover, to the springs or to
+  // the mines than the other. Terrain only ever lands on the middle rows, which mirror onto themselves.
   const mirrorOf=ti=>idx(ROWS-1-ROW(ti),COLS-1-COL(ti));
   for(let i=0;i<ROWS*COLS;i++){const j=mirrorOf(i);if(i<j)tileData[j]=tileData[i];}
 
@@ -253,9 +253,10 @@ function generateMap(){
     blockers.forEach(ti=>{tileData[ti]='';tileData[mirrorOf(ti)]='';});
   }
 
-  // The Elixir spring and the gold mine, on the two corners the kings left empty: each is exactly as
-  // far from one king as from the other, so the race for them starts even. (generateMap in engine.js)
-  if(ROWS===9&&COLS===9&&!campaignLevel){tileData[idx(1,1)]='spring';tileData[idx(7,7)]='mine';}
+  // The mines and the springs (RESOURCE_SQUARES in state.js): a mine at e5, the same distance from both
+  // kings, and a mine and a spring for each side, 4 squares from its own king and 6 from the other's,
+  // mirrored through the centre so the race for them starts even. (generateMap in engine.js)
+  if(ROWS===9&&COLS===9&&!campaignLevel)RESOURCE_SQUARES.forEach(([r,c,t])=>{tileData[idx(r,c)]=t;});
 
   // desert: mark one sandstone as mummy-spawner pyramid
   if(mapTheme==='desert'){

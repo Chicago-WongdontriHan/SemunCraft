@@ -89,22 +89,21 @@ function handleTargetClick(i){
 // what a piece dropped on a friendly piece merges into (null when the two don't merge)
 // What two adjacent pieces of one side become, or null if they don't combine at all. Takes the pieces
 // themselves rather than bare type names: a fortified pawn is still type 'pawn', and it is the flag,
-// not the type, that tells two of them (a Rook) apart from two plain ones (a Knight).
+// not the type, that tells a Rook (a helmet on one of the two) apart from a Knight (two plain pawns).
+// The top tier is paid for in Elixir at the moment of merging (ELIXIR_COST in js/state.js), and short
+// of it the two don't combine.
 function mergeResultType(pa,pb){
   const A=pa.type,B=pb.type,fa=!!pa.fortified,fb=!!pb.fortified;
-  if(A==='pawn'&&B==='pawn'){
-    if(fa&&fb)return 'rook';           // two fortified pawns, their armour spent, become a Rook
-    if(!fa&&!fb)return 'knight';
-    return null;                       // a fortified pawn does not merge with a plain one
-  }
-  if(fa||fb)return null;               // a fortified pawn merges with nothing else at all
-  if((A==='pawn'&&B==='knight')||(A==='knight'&&B==='pawn'))return 'bishop';
-  if(A==='knight'&&B==='knight')return 'paladin';
-  if((A==='knight'&&B==='bishop')||(A==='bishop'&&B==='knight'))return 'queen';
-  if(A==='rook'&&B==='rook')return 'siege';
-  if((A==='rook'&&B==='knight')||(A==='knight'&&B==='rook'))return 'guardian';
-  if((A==='bishop'&&B==='rook')||(A==='rook'&&B==='bishop'))return elixir[pa.color]>=MAGE_ELIXIR?'mage':null;
-  return null;
+  let t=null;
+  if(A==='pawn'&&B==='pawn')t=(!fa&&!fb)?'knight':'rook';   // a helmet and a plain pawn: a Rook (two helmets too, a dearer one)
+  else if(fa||fb)t=null;                                     // a fortified pawn merges with nothing but a pawn
+  else if((A==='pawn'&&B==='knight')||(A==='knight'&&B==='pawn'))t='bishop';
+  else if(A==='knight'&&B==='knight')t='paladin';
+  else if((A==='knight'&&B==='bishop')||(A==='bishop'&&B==='knight'))t='queen';
+  else if(A==='rook'&&B==='rook')t='siege';
+  else if((A==='rook'&&B==='knight')||(A==='knight'&&B==='rook'))t='guardian';
+  else if((A==='bishop'&&B==='rook')||(A==='rook'&&B==='bishop'))t='mage';
+  return t&&elixir[pa.color]>=elixirCost(t)?t:null;
 }
 
 function executeDrop(from,to,dests){
@@ -194,10 +193,10 @@ function executeDrop(from,to,dests){
         setStatus('Bishop locked on heal target — fires at turn end.');
         SFX.select();tutCheckAction('heal');render();endTurn();
       }],
-      ['merge',nt==='mage'?'Merge \u2192 Mage ('+MAGE_ELIXIR+' Elixir)':'Merge \u2192 Queen',()=>{
-        if(nt==='mage')elixir[p.color]-=MAGE_ELIXIR;
+      ['merge','Merge \u2192 '+(nt==='mage'?'Mage':'Queen')+elixirTag(nt),()=>{
+        elixir[p.color]-=elixirCost(nt);
         pieces[from]=null;pieces[to]={type:nt,color:p.color,hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};
-        addLog('Merged to '+nt+'@'+sqName(to));SFX.arrive(nt);tutCheckAction('merge');
+        addLog('Merged to '+nt+'@'+sqName(to)+(elixirCost(nt)?' for '+elixirCost(nt)+' Elixir':''));SFX.arrive(nt);tutCheckAction('merge');
         movedThisTurn=to;                 // the merge was the turn's move
         render();
         setTimeout(()=>mergeFlash(to),50);
@@ -236,9 +235,9 @@ function executeDrop(from,to,dests){
       if(nt==='bishop')newPiece.mana=1;
       if(nt==='mage')newPiece.mana=1;
       if(nt==='siege')newPiece.sieged=true;
-      if(nt==='mage')elixir[p.color]-=MAGE_ELIXIR;
+      elixir[p.color]-=elixirCost(nt);         // the top tier's Elixir, paid now
       pieces[from]=null;pieces[to]=newPiece;
-      addLog('Merged to '+nt+'@'+sqName(to));SFX.arrive(nt);tutCheckAction('merge');
+      addLog('Merged to '+nt+'@'+sqName(to)+(elixirCost(nt)?' for '+elixirCost(nt)+' Elixir':''));SFX.arrive(nt);tutCheckAction('merge');
       movedThisTurn=to;                   // the merge was the turn's move: the new piece holds its fire
       render();
       setTimeout(()=>mergeFlash(to),50);
@@ -405,17 +404,7 @@ function handleClick(i,additive){
   kingSelected=false;selectedPieces=new Set();render();
 }
 
-// ── PAWN: THE SPRING, AND FORTIFYING ────────────────────────────────────────
-// A pawn on the Elixir spring extracts one Elixir, and that is its whole turn. ('extract' in engine.js)
-function extractAt(i){
-  const p=pieces[i];
-  if(!p||p.type!=='pawn'||tileData[i]!=='spring')return;
-  elixir[p.color]++;
-  movedThisTurn=i;
-  addLog('Pawn extracts Elixir at '+sqName(i));
-  SFX.extract();flashSq(i,'heal-flash');
-  render();endTurn();
-}
+// ── PAWN: FORTIFYING ──────────────── ────────────────────────────────────────
 // One Gold turns a pawn into a fortified pawn: the same pawn in a helmet, with three life. It takes
 // the pawn's turn, as spawning takes the King's. ('fortify' in engine.js)
 function fortifyAt(i){
@@ -441,7 +430,6 @@ function doFortify(){
 function doSpecial(){
   const i=selectedPieces.size===1?[...selectedPieces][0]:-1;
   const p=i<0?null:pieces[i];
-  if(p&&p.color===myColor()&&canExtract(i)){extractAt(i);return;}
   if(p&&p.type==='mage'){startMeteor();return;}
   startScry();
 }
@@ -556,7 +544,7 @@ function showKingChooser(ki,mode){
   // the King is ordered like anything else, so its own Delay counter sits here beside it
   if(!NO_ORDER_TYPES.has('king')&&(canOrder(ki)||orderTurns>0)){
     const d=document.createElement('button');
-    d.className='king-choice-btn';d.innerHTML=uiLabel('delay','Delay '+orderTurns);
+    d.className='king-choice-btn';d.innerHTML=uiLabel('delay','Delay '+delayShown());
     d.onclick=e=>{if(e)e.stopPropagation();bumpDelay();showKingChooser(ki,mode);};
     box.appendChild(d);
   }
@@ -589,11 +577,14 @@ function syncKingChooser(){
 // for that many turns ahead instead of being made now. It starts each turn at none (turnUpkeep) and
 // comes back round to none, so it needs nothing to clear it: a pawn — whose order costs half a turn and
 // who can therefore be sent further out — counts up to MAX_DELAY and then back to nought, and anything
-// else, which spends the whole turn on one order, is simply on or off.
+// else, which spends the whole turn on one order, is simply on or off. placeOrder holds the order itself
+// to the same limit (maxDelay in js/state.js), so a count wound up for a pawn can't send a knight further.
 function delayCeiling(){
   const p=pieces[pieceInHand()];
-  return p&&p.type!=='pawn'?1:MAX_DELAY;
+  return p?maxDelay(p.type):MAX_DELAY;
 }
+// what the counter reads for the piece in hand: a count wound up for a pawn reads 1 once a knight is picked
+function delayShown(){return Math.min(orderTurns,delayCeiling());}
 function bumpDelay(){
   if(over||thinking||!isMyTurn())return;
   orderTurns=orderTurns>=delayCeiling()?0:orderTurns+1;
@@ -619,6 +610,7 @@ function orderTargets(i){
 function placeOrder(from,to,turns){
   const p=pieces[from];
   if(!p||NO_ORDER_TYPES.has(p.type)||orderLeft[p.color]<orderCost(p.type))return;
+  turns=Math.max(1,Math.min(turns,maxDelay(p.type)));   // a pawn up to MAX_DELAY turns ahead, anything else one
   p.order={to,turns};
   orderLeft[p.color]-=orderCost(p.type);
   selectedPieces=new Set();kingSelected=false;
@@ -657,17 +649,16 @@ function showDropChoice(at,choices){
 }
 
 // ── THE PIECE CHOOSER: PAWNS AND BISHOPS ────────────────────────────────────
-// A selected pawn or bishop of yours gets the same kind of on-board chooser as the King. A pawn: Extract
-// Elixir while it stands on the spring (as often as you like), Fortify (1 Gold) while it is a plain
-// pawn. A bishop: Scry, lit once it holds both its mana. The chooser sits past the piece's reach (the
-// pawn's 3x3, the bishop's 5x5) on its own side of the board, so it never covers a square it can act on.
+// A selected pawn or bishop of yours gets the same kind of on-board chooser as the King. A pawn: Fortify
+// (1 Gold) while it is a plain pawn. A bishop: Scry, lit once it holds both its mana. The chooser sits
+// past the piece's reach (the pawn's 3x3, the bishop's 5x5) on its own side of the board, so it never
+// covers a square it can act on.
 let pieceChooser=null;
 function closePieceChooser(){if(pieceChooser){pieceChooser.remove();pieceChooser=null;}}
 function pieceChoices(i){
   const p=pieces[i],out=[];
   if(!p)return out;
   if(p.type==='pawn'){
-    if(canExtract(i))out.push(['extract','Extract Elixir',true,()=>extractAt(i)]);
     if(!p.fortified&&goldAllowed())out.push(['fortify','Fortify (1 Gold)',spawnRemaining()>=1,()=>fortifyAt(i)]);
   }else if(p.type==='bishop'){
     const ready=(p.mana||0)>=2;
@@ -679,7 +670,7 @@ function pieceChoices(i){
   // The Delay counter, beside the piece rather than across the board: every press adds a turn to the
   // order the next move will become, and it comes back round to none. It stays up while the counter
   // does, even with the turn's orders spent, so it can always be wound back to 0 (bumpDelay).
-  if(!NO_ORDER_TYPES.has(p.type)&&(canOrder(i)||orderTurns>0))out.push(['delay','Delay '+orderTurns,true,()=>bumpDelay()]);
+  if(!NO_ORDER_TYPES.has(p.type)&&(canOrder(i)||orderTurns>0))out.push(['delay','Delay '+delayShown(),true,()=>bumpDelay()]);
   return out;
 }
 // called after every render, like syncKingChooser
@@ -747,7 +738,7 @@ function doMergeAll(){
         const match=(pi.type===a&&pj.type===b)||(a!==b&&pi.type===b&&pj.type===a);
         if(!match)continue;
         const r=mergeResultType(pi,pj);if(!r)continue;
-        if(r==='mage')elixir[mc]-=MAGE_ELIXIR;
+        elixir[mc]-=elixirCost(r);
         pieces[i]=null;pieces[j]={type:r,color:mc,hp:STATS[r].hp,maxHp:STATS[r].maxHp};
         if(r==='bishop')pieces[j].mana=1;
         if(r==='mage')pieces[j].mana=1;

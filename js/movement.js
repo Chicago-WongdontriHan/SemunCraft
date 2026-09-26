@@ -78,9 +78,8 @@ function pieceSpeed(p){
 function getDragDests(i){
   const p=pieces[i]; if(!p)return{move:new Set(),merge:new Set(),attack:new Set(),heal:new Set()};
   const move=new Set(),merge=new Set(),attack=new Set(),heal=new Set();
-  const ec=p.color==='w'?'b':'w';
   if(p.type==='pawn'){
-    // a fortified pawn takes part in no merge, either way round: its helmet was paid for
+    // a fortified pawn merges only with a pawn, into a Rook: its helmet was paid for (mergeResultType)
     adj8(i).forEach(j=>{const t=pieces[j];if(!t)move.add(j);else if(t.color===p.color){if(mergeResultType(p,t))merge.add(j);}else attack.add(j);});
     // first move: allow 2-tile forward push (toward enemy king side)
     if(p.firstMove){
@@ -100,7 +99,7 @@ function getDragDests(i){
     kJumps(i).forEach(j=>{
       if(isTileBlocked(j))return; // cannot land on blocked tile
       const t=pieces[j];
-      if(!t)move.add(j);else if(t.color===ec)attack.add(j);
+      if(!t)move.add(j);else if(isFoe(t,p.color))attack.add(j);
     });
     // merge: adjacent AND L-jump locations (knight teleports to merge without spending turn)
     const mergeRange=new Set([...adj8(i),...kJumps(i)]);
@@ -113,7 +112,7 @@ function getDragDests(i){
     kJumps(i).forEach(j=>{
       if(isTileBlocked(j))return;
       const t=pieces[j];
-      if(!t)move.add(j);else if(t.color===ec)attack.add(j);
+      if(!t)move.add(j);else if(isFoe(t,p.color))attack.add(j);
     });
   }else if(p.type==='bishop'){
     const hasMana=(p.mana||0)>0;
@@ -124,7 +123,7 @@ function getDragDests(i){
         const j=idx(nr,nc);
         if(isTileBlocked(j))break;
         const t=pieces[j];
-        if(!t)move.add(j);else{if(t.color===ec)attack.add(j);else if(hasMana&&t.color===p.color&&t.hp<t.maxHp)heal.add(j);break;}
+        if(!t)move.add(j);else{if(isFoe(t,p.color))attack.add(j);else if(hasMana&&t.color===p.color&&t.hp<t.maxHp)heal.add(j);break;}
       }
     });
     // bishop can merge with adjacent knight (bishop dragged to knight), and with an adjacent rook into a
@@ -144,7 +143,7 @@ function getDragDests(i){
     });
     // merge with adjacent friendly rook → siege, or with an adjacent bishop → Mage (for its Elixir)
     adj8(i).filter(j=>pieces[j]&&pieces[j].color===p.color&&mergeResultType(p,pieces[j])).forEach(j=>merge.add(j));
-    rookRange(i).filter(j=>pieces[j]&&pieces[j].color===ec).forEach(j=>attack.add(j));
+    rookRange(i).filter(j=>isFoe(pieces[j],p.color)).forEach(j=>attack.add(j));
   }else if(p.type==='guardian'){
     // move: up to 2 steps cardinally, sliding, exactly like a Rook
     [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
@@ -155,10 +154,10 @@ function getDragDests(i){
       }
     });
     // attack: anywhere either a Rook or a Knight could reach from here — the union guardianRange draws
-    guardianRange(i).filter(j=>pieces[j]&&pieces[j].color===ec).forEach(j=>attack.add(j));
+    guardianRange(i).filter(j=>isFoe(pieces[j],p.color)).forEach(j=>attack.add(j));
   }else if(p.type==='siege'){
     // siege: CANNOT move, attacks 2 dmg, range 4 piercing
-    siegeRange(i).filter(j=>pieces[j]&&pieces[j].color===ec).forEach(j=>attack.add(j));
+    siegeRange(i).filter(j=>isFoe(pieces[j],p.color)).forEach(j=>attack.add(j));
     // right-click to unsiege (handled in handleRightClick)
   }else if(p.type==='mage'){
     // the Mage moves like a bishop, up to 2 diagonally (sliding, blocked by pieces and obstacles), and
@@ -171,7 +170,7 @@ function getDragDests(i){
       }
     });
     // attackable: any tile on one of its lines that holds an enemy, on whichever line it falls on
-    sangTrajectories(i).forEach(line=>line.forEach(j=>{if(pieces[j]&&pieces[j].color===ec)attack.add(j);}));
+    sangTrajectories(i).forEach(line=>line.forEach(j=>{if(isFoe(pieces[j],p.color))attack.add(j);}));
   }else if(p.type==='queen'){
     // queen moves up to 2 in any direction (sliding, blocked by pieces+obstacles)
     [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]].forEach(([dr,dc])=>{
@@ -182,12 +181,12 @@ function getDragDests(i){
       }
     });
     // attack: same range as its auto-attack (2 squares in any of the 8 directions, not blocked)
-    queenRange(i).filter(j=>pieces[j]&&pieces[j].color===ec).forEach(j=>attack.add(j));
+    queenRange(i).filter(j=>isFoe(pieces[j],p.color)).forEach(j=>attack.add(j));
   }else if(p.type==='king'){
     adj8(i).forEach(j=>{
       const t=pieces[j];
       if(!t&&!isTileBlocked(j))move.add(j);
-      else if(t&&t.color===ec)attack.add(j);
+      else if(isFoe(t,p.color))attack.add(j);
       // king can also attack adjacent neutral animals
       else if(!t&&animals.some(na=>{
         const ar=Math.round(na.y-0.5),ac=Math.round(na.x-0.5);

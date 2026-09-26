@@ -10,7 +10,7 @@
 'use strict';
 
 // ── DATA ─────────────────────────────────────────────────────────────────────
-const STATS={king:{hp:5,maxHp:5},pawn:{hp:1,maxHp:1},knight:{hp:4,maxHp:4},bishop:{hp:2,maxHp:2},rook:{hp:4,maxHp:4},queen:{hp:5,maxHp:5},siege:{hp:4,maxHp:4},mage:{hp:3,maxHp:3},paladin:{hp:3,maxHp:3},guardian:{hp:5,maxHp:5}};
+const STATS={king:{hp:5,maxHp:5},pawn:{hp:1,maxHp:1},knight:{hp:4,maxHp:4},bishop:{hp:2,maxHp:2},rook:{hp:4,maxHp:4},queen:{hp:5,maxHp:5},siege:{hp:4,maxHp:4},mage:{hp:3,maxHp:3},paladin:{hp:3,maxHp:3},guardian:{hp:5,maxHp:5},scarecrow:{hp:5,maxHp:5}};
 // each theme's terrain, in the order themes.js places it: [tile, share of the board, blocks]
 const THEME_TILES={
   forest:[['tree',.12,true]],
@@ -91,7 +91,7 @@ function newGame(o){
     turn:'w',over:false,winner:null,
     turnCount:{w:0,b:0},spawns:{w:0,b:0},targets:{w:{},b:{}},
     orderLeft:{w:ORDER_BUDGET,b:ORDER_BUDGET},   // how much of this turn's orders is left ('order')
-    elixir:{w:0,b:0},       // extracted at the spring ('extract')
+    elixir:{w:0,b:0},       // drawn from the springs (finishTurn)
     mineTurns:{w:0,b:0},    // turns ended with a pawn on the gold mine: a sixth of Gold each
     goldSpent:{w:0,b:0},    // Gold spent on anything but spawning ('fortify')
     moved:-1,   // square of the piece that moved or healed this turn (it doesn't auto-attack)
@@ -133,6 +133,22 @@ function newGame(o){
 }
 
 function makePiece(type,color){return{type,color,hp:STATS[type].hp,maxHp:STATS[type].maxHp};}
+
+// The training ground's Scarecrow, a target dummy: it takes every hit like any other piece, but the hit
+// that would floor it stands it straight back up at full health instead, and it keeps a running total
+// of the damage it has taken. It belongs to neither side (NEUTRAL, below), so it never moves, merges,
+// takes an order or fires, and both sides fire at it. Called wherever damage
+// lands: applyAttacks, runOrders and runMeteors here (standUp in js/constants.js).
+function standUp(t,dmg){
+  if(!t||t.type!=='scarecrow')return false;
+  t.taken=(t.taken||0)+dmg;
+  if(t.hp>0)return false;
+  t.hp=t.maxHp;return true;
+}
+// whether a piece is one `color` fights: anyone not of that side — the other side's pieces, and a neutral
+// one, which belongs to neither (the training ground's Scarecrow, colour NEUTRAL), so both sides fire at it (isFoe in js/constants.js)
+const NEUTRAL='n';
+function isFoe(q,color){return !!q&&q.color!==color;}
 
 // a tile blocks when it is the pyramid or one of the current theme's obstacles (as isTileBlocked does)
 function setTile(s,i,t){
@@ -265,8 +281,8 @@ function generateMap(s){
   [[[0,1],[0,-1],[1,0],[-1,0]],[[1,1],[1,-1],[-1,1],[-1,-1]]].forEach(dirs=>{
     if(!hasPath(dirs))findBlockers(dirs).forEach(ti=>{setTile(s,ti,'');setTile(s,mirrorOf(ti),'');});
   });
-  // the Elixir spring and the gold mine, each the same distance from both kings (themes.js)
-  if(R===9&&C===9){setTile(s,1*C+1,'spring');setTile(s,7*C+7,'mine');}
+  // the mines and the springs (RESOURCE_SQUARES; the same list in js/state.js, placed by themes.js)
+  if(R===9&&C===9)RESOURCE_SQUARES.forEach(([r,c,t])=>setTile(s,r*C+c,t));
   // desert: one sandstone becomes the pyramid, with the mummy beside it
   if(s.theme==='desert'){
     const sTiles=[];
@@ -305,12 +321,16 @@ function generateMap(s){
   if(th.attacker)place(th.attacker,true);
 }
 
-// the Elixir spring and the gold mine (RESOURCE_TILES in state.js): a pawn extracts Elixir at the spring
-// at the cost of its turn, and earns a sixth of Gold more for every turn it ends on the mine
+// the mines and the springs (RESOURCE_TILES, RESOURCE_SQUARES in state.js): both pay for being held at the
+// end of a turn — a sixth of Gold more for each mine, a whole Elixir for each spring (finishTurn)
 const RESOURCE_TILES={spring:'elixir',mine:'gold'};
+// a mine at e5, the same 3 squares from both kings; a mine and a spring for each side, 4 from its own
+// king and 6 from the other's, mirrored through the centre
+const RESOURCE_SQUARES=[[4,4,'mine'],[7,5,'mine'],[1,3,'mine'],[3,1,'spring'],[5,7,'spring']];
 const FORTIFIED_HP=3;
-// only a plain pawn works it: a fortified one, like any other piece, earns nothing there
-function pawnOnMine(s,color){return s.board.some((p,i)=>p&&p.color===color&&p.type==='pawn'&&!p.fortified&&s.tiles[i]==='mine');}
+// the mines (or springs) a side holds: only a plain pawn works one — a fortified pawn, like any other
+// piece, earns nothing there
+function heldTiles(s,color,tile){const out=[];s.board.forEach((p,i)=>{if(p&&p.color===color&&p.type==='pawn'&&!p.fortified&&s.tiles[i]===tile)out.push(i);});return out;}
 
 // ── RULES: RANGES AND VISIBILITY (constants.js, state.js) ────────────────────
 const CARD=[[-1,0],[1,0],[0,-1],[0,1]];
@@ -444,7 +464,7 @@ function runMeteors(s,color,events){
     s.flares.push({tiles:m.tiles,turns:1,color:m.color});   // smoulders for a turn, no more damage
     for(const j of m.tiles){
       const t=B[j];if(!t)continue;
-      t.hp-=METEOR_DAMAGE;
+      t.hp-=METEOR_DAMAGE;standUp(t,METEOR_DAMAGE);
       if(t.fortified)t.lastHitTurn=clock(s,color);
       t.exposedAt=j;
       const killed=t.hp<=0;
@@ -501,9 +521,8 @@ function getDests(s,i){
   const g=geo(s),B=s.board,p=B[i];
   const move=new Set(),merge=new Set(),attack=new Set(),heal=new Set();
   if(!p)return{move,merge,attack,heal};
-  const ec=other(p.color);
   if(p.type==='pawn'){
-    // a fortified pawn takes part in no merge, either way round (movement.js)
+    // a fortified pawn merges only with a pawn, into a Rook (movement.js)
     g.adj8[i].forEach(j=>{const t=B[j];if(!t)move.add(j);else if(t.color===p.color){if(mergeResultType(s,p,t))merge.add(j);}else attack.add(j);});
     // first move: two squares straight toward the enemy side
     if(p.firstMove){
@@ -514,13 +533,13 @@ function getDests(s,i){
       }
     }
   }else if(p.type==='knight'){
-    g.kj[i].forEach(j=>{if(s.blocked[j])return;const t=B[j];if(!t)move.add(j);else if(t.color===ec)attack.add(j);});
+    g.kj[i].forEach(j=>{if(s.blocked[j])return;const t=B[j];if(!t)move.add(j);else if(isFoe(t,p.color))attack.add(j);});
     // knight+rook (Guardian) merges only adjacent, like every pair with a rook in it — the L-jump reach
     // here is for pawn/knight/bishop, which teleport to merge without spending the turn
     new Set([...g.adj8[i],...g.kj[i]]).forEach(j=>{const t=B[j];if(t&&t.color===p.color&&t.type!=='rook'&&mergeResultType(s,p,t))merge.add(j);});
     g.adj8[i].forEach(j=>{const t=B[j];if(t&&t.color===p.color&&t.type==='rook'&&mergeResultType(s,p,t))merge.add(j);});
   }else if(p.type==='paladin'){
-    g.kj[i].forEach(j=>{if(s.blocked[j])return;const t=B[j];if(!t)move.add(j);else if(t.color===ec)attack.add(j);});
+    g.kj[i].forEach(j=>{if(s.blocked[j])return;const t=B[j];if(!t)move.add(j);else if(isFoe(t,p.color))attack.add(j);});
   }else if(p.type==='bishop'){
     const hasMana=(p.mana||0)>0,r=rowOf(s,i),c=colOf(s,i);
     for(const[dr,dc]of DIAG)for(let k=1;k<=2;k++){
@@ -528,27 +547,27 @@ function getDests(s,i){
       const j=nr*s.cols+nc;if(s.blocked[j])break;
       const t=B[j];
       if(!t)move.add(j);
-      else{if(t.color===ec)attack.add(j);else if(hasMana&&t.color===p.color&&t.hp<t.maxHp)heal.add(j);break;}
+      else{if(isFoe(t,p.color))attack.add(j);else if(hasMana&&t.color===p.color&&t.hp<t.maxHp)heal.add(j);break;}
     }
     g.adj8[i].forEach(j=>{const t=B[j];if(t&&t.color===p.color&&mergeResultType(s,p,t))merge.add(j);});
   }else if(p.type==='rook'){
     slide(s,i,CARD,2,move);
     g.adj8[i].forEach(j=>{const t=B[j];if(t&&t.color===p.color&&mergeResultType(s,p,t))merge.add(j);});
-    lineRange(s,i,CARD,3).forEach(j=>{if(B[j]&&B[j].color===ec)attack.add(j);});
+    lineRange(s,i,CARD,3).forEach(j=>{if(isFoe(B[j],p.color))attack.add(j);});
   }else if(p.type==='guardian'){
     slide(s,i,CARD,2,move);
-    guardianRange(s,i).forEach(j=>{if(B[j]&&B[j].color===ec)attack.add(j);});
+    guardianRange(s,i).forEach(j=>{if(isFoe(B[j],p.color))attack.add(j);});
   }else if(p.type==='siege'){
     // it never steps anywhere of its own accord: a move of its own is ordered a turn ahead (legalActions)
-    siegeLine(s,i).forEach(j=>{if(B[j]&&B[j].color===ec)attack.add(j);});
+    siegeLine(s,i).forEach(j=>{if(isFoe(B[j],p.color))attack.add(j);});
   }else if(p.type==='mage'){
     slide(s,i,DIAG,2,move);
-    mageRange(s,i).forEach(j=>{if(B[j]&&B[j].color===ec)attack.add(j);});
+    mageRange(s,i).forEach(j=>{if(isFoe(B[j],p.color))attack.add(j);});
   }else if(p.type==='queen'){
     slide(s,i,ALL8,2,move);
-    g.qr[i].forEach(j=>{if(B[j]&&B[j].color===ec)attack.add(j);});
+    g.qr[i].forEach(j=>{if(isFoe(B[j],p.color))attack.add(j);});
   }else if(p.type==='king'){
-    g.adj8[i].forEach(j=>{const t=B[j];if(!t&&!s.blocked[j])move.add(j);else if(t&&t.color===ec)attack.add(j);});
+    g.adj8[i].forEach(j=>{const t=B[j];if(!t&&!s.blocked[j])move.add(j);else if(isFoe(t,p.color))attack.add(j);});
   }
   for(const j of [...move])if(s.blocked[j])move.delete(j);
   // fog of war, except the Mage's own fire trajectory, which its own flame lights up as it burns down it
@@ -565,32 +584,33 @@ function getDests(s,i){
 
 // What two adjacent pieces of one side become, or null if they don't combine at all (mergeResultType
 // in js/actions.js, which this mirrors). Takes the pieces themselves, not bare type names: a fortified
-// pawn is still type 'pawn', and it is the flag that tells two of them (a Rook) from two plain ones
-// (a Knight) apart.
+// pawn is still type 'pawn', and it is the flag that tells a Rook (a helmet on one of the two) from a
+// Knight (two plain pawns) apart. The top tier is paid for in Elixir at the moment of merging, and
+// short of it the two don't combine.
 function mergeResultType(s,pa,pb){
   const A=pa.type,B=pb.type,fa=!!pa.fortified,fb=!!pb.fortified;
-  if(A==='pawn'&&B==='pawn'){
-    if(fa&&fb)return 'rook';
-    if(!fa&&!fb)return 'knight';
-    return null;
-  }
-  if(fa||fb)return null;
-  if((A==='pawn'&&B==='knight')||(A==='knight'&&B==='pawn'))return 'bishop';
-  if(A==='knight'&&B==='knight')return 'paladin';
-  if((A==='knight'&&B==='bishop')||(A==='bishop'&&B==='knight'))return 'queen';
-  if(A==='rook'&&B==='rook')return 'siege';
-  if((A==='rook'&&B==='knight')||(A==='knight'&&B==='rook'))return 'guardian';
-  if((A==='bishop'&&B==='rook')||(A==='rook'&&B==='bishop'))return s.elixir[pa.color]>=MAGE_ELIXIR?'mage':null;
-  return null;
+  let t=null;
+  if(A==='pawn'&&B==='pawn')t=(!fa&&!fb)?'knight':'rook';   // two helmets make a Rook too, a dearer one
+  else if(fa||fb)t=null;                                     // a fortified pawn merges with nothing but a pawn
+  else if((A==='pawn'&&B==='knight')||(A==='knight'&&B==='pawn'))t='bishop';
+  else if(A==='knight'&&B==='knight')t='paladin';
+  else if((A==='knight'&&B==='bishop')||(A==='bishop'&&B==='knight'))t='queen';
+  else if(A==='rook'&&B==='rook')t='siege';
+  else if((A==='rook'&&B==='knight')||(A==='knight'&&B==='rook'))t='guardian';
+  else if((A==='bishop'&&B==='rook')||(A==='rook'&&B==='bishop'))t='mage';
+  return t&&s.elixir[pa.color]>=elixirCost(t)?t:null;
 }
-const MAGE_ELIXIR=2;
+const ELIXIR_COST={paladin:3,mage:2,guardian:1,siege:1};   // elixirCost in js/state.js
+function elixirCost(type){return ELIXIR_COST[type]||0;}
 const FORTIFIED_MEND=5;   // a fortified pawn mends 1 HP five turns after its last hit (state.js)
 // delayed orders (MAX_DELAY, ORDER_COST in js/state.js): giving one spends part of the turn's order
 // budget instead of the turn itself, and a pawn's takes half of it
 const MAX_DELAY=3, ORDER_BUDGET=1, ORDER_COST={pawn:.5};
-const NO_ORDER_TYPES=new Set(['paladin','guardian','mage']);   // canOrder in js/state.js
+const NO_ORDER_TYPES=new Set(['paladin','guardian','mage','king']);   // canOrder in js/state.js
 const ORDER_MIN=ORDER_COST.pawn;   // the cheapest order there is: below this the turn has nothing left to give
 function orderCost(type){return ORDER_COST[type]||1;}
+// a pawn's order may be set up to MAX_DELAY turns ahead, anything else's one (maxDelay in js/state.js)
+function maxDelay(type){return type==='pawn'?MAX_DELAY:1;}
 
 // ── RULES: LEGAL ACTIONS ─────────────────────────────────────────────────────
 // Actions ({type, from, to}) mirror what the player can do by drag, tap or click:
@@ -604,7 +624,6 @@ function orderCost(type){return ORDER_COST[type]||1;}
 //             as its heal target, and the heal fires with the end-of-turn attacks
 //   spawn     king places a pawn on an adjacent empty tile
 //   fortify   a pawn becomes a fortified pawn, 3 HP, for 1 Gold (from === to)
-//   extract   a pawn on the Elixir spring spends its turn extracting one Elixir (from === to)
 //   scry      a bishop with both its mana lights a 3x3 it cannot see
 //   unsiege   siege tower splits back into rooks (from === to)
 //   skip      pass the turn
@@ -627,8 +646,7 @@ function legalActions(s,opts){
       if(p.type==='bishop'&&(p.mana||0)>0&&B[j].hp<B[j].maxHp)out.push({type:'healLock',from:i,to:j});
     });
     d.heal.forEach(j=>{if(!d.merge.has(j))out.push({type:'heal',from:i,to:j});});
-    // a pawn on the Elixir spring can spend its turn extracting; any plain pawn can be fortified for 1 Gold
-    if(p.type==='pawn'&&!p.fortified&&s.tiles[i]==='spring')out.push({type:'extract',from:i,to:i});
+    // any plain pawn can be fortified for 1 Gold
     if(p.type==='pawn'&&!p.fortified&&goldAllowed&&spawnRemaining(s,color)>=1)out.push({type:'fortify',from:i,to:i});
     // a bishop with both its mana can light any 3x3 on the board, seen or not
     if(p.type==='bishop'&&(p.mana||0)>=2)
@@ -655,7 +673,7 @@ function legalActions(s,opts){
       // a siege tower moves only this way, one square and a turn later, and cannot fire the turn it moves
       const dests=q.type==='siege'?g.adj8[i].filter(j=>!s.blocked[j]):[...getDests(s,i).move];
       for(const[k,p2]of all)B[k]=p2;                  // and everyone goes back where they were
-      dests.forEach(j=>{for(let k=1;k<=MAX_DELAY;k++)out.push({type:'order',from:i,to:j,turns:k});});
+      dests.forEach(j=>{for(let k=1;k<=maxDelay(q.type);k++)out.push({type:'order',from:i,to:j,turns:k});});
     }
   }
   const king=B.findIndex(p=>p&&p.color===color&&p.type==='king');
@@ -667,7 +685,7 @@ function legalActions(s,opts){
 
 // ── RULES: AUTO-ATTACKS (computeActions / applyActions in combat.js) ─────────
 function computeActions(s,color){
-  const g=geo(s),B=s.board,enemy=other(color),targets=s.targets[color],fog=fogFor(s,color);
+  const g=geo(s),B=s.board,targets=s.targets[color],fog=fogFor(s,color);
   const acts=[],targeted=new Set();
   for(let i=0;i<B.length;i++){
     const p=B[i];if(!p||p.color!==color)continue;
@@ -679,7 +697,7 @@ function computeActions(s,color){
       else if(tgt!==undefined)delete targets[i];
       if(healI>=0&&(p.mana||0)>0)acts.push({attacker:i,target:healI,action:'heal'});
       else{
-        let foes=bRange.filter(j=>B[j]&&B[j].color===enemy);
+        let foes=bRange.filter(j=>isFoe(B[j],color));
         if(fog)foes=foes.filter(j=>visible(s,j,color));
         foes=foes.filter(j=>!concealed(s,j,color));
         if(foes.length){
@@ -689,12 +707,12 @@ function computeActions(s,color){
       }
     }else{
       const range=p.type==='queen'?g.qr[i]:p.type==='mage'?mageRange(s,i):p.type==='siege'?siegeLine(s,i):p.type==='rook'?lineRange(s,i,CARD,3):p.type==='guardian'?guardianRange(s,i):(p.type==='knight'||p.type==='paladin')?g.kj[i]:g.adj8[i];
-      let foes=range.filter(j=>B[j]&&B[j].color===enemy);
+      let foes=range.filter(j=>isFoe(B[j],color));
       // fog of war, except the Mage's own fire trajectory, which its own flame lights up
       if(fog&&p.type!=='mage')foes=foes.filter(j=>visible(s,j,color));
       foes=foes.filter(j=>!concealed(s,j,color));
       const lock=targets[i];
-      const locked=lock!==undefined&&B[lock]&&B[lock].color===enemy&&range.includes(lock)&&!concealed(s,lock,color);
+      const locked=lock!==undefined&&isFoe(B[lock],color)&&range.includes(lock)&&!concealed(s,lock,color);
       // the Paladin's lance always kills, so it fires only on a target the player locked themselves,
       // never one it picked on its own the way every other piece does (js/combat.js's computeActions)
       if(p.type==='paladin'&&!locked)continue;
@@ -711,7 +729,7 @@ function computeActions(s,color){
 }
 
 function applyAttacks(s,acts,color,events){
-  const B=s.board,enemy=other(color);
+  const B=s.board;
   for(const{attacker,target,action}of acts){
     if(s.over)return;
     const t=B[target];
@@ -723,9 +741,9 @@ function applyAttacks(s,acts,color,events){
       if(events)events.push({type:'heal',from:attacker,to:target,hp:t.hp});
       continue;
     }
-    if(!t||t.color!==enemy)continue;
+    if(!isFoe(t,color))continue;
     const ap=B[attacker],dmg=ap&&ap.type==='siege'?2:ap&&ap.type==='paladin'?t.hp:1;
-    t.hp-=dmg;
+    t.hp-=dmg;standUp(t,dmg);   // the Scarecrow never falls
     if(t.fortified)t.lastHitTurn=clock(s,color);   // its armour mends from here (upkeep)
     // fighting from or into undergrowth reveals a piece for as long as it stays on that square (inCover)
     if(ap)ap.exposedAt=attacker;
@@ -748,8 +766,8 @@ function applyAttacks(s,acts,color,events){
       s.flares.push({tiles:line||[target],turns:1,color});
       if(!s.over&&line)for(const j of line){
         if(j===target||s.over)continue;
-        const q=B[j];if(!q||q.color!==enemy)continue;
-        q.hp-=1;
+        const q=B[j];if(!isFoe(q,color))continue;
+        q.hp-=1;standUp(q,1);
         if(q.fortified)q.lastHitTurn=clock(s,color);
         q.exposedAt=j;
         if(color==='w'&&q.hp>0)s.hitBy.push({target:j,attacker});
@@ -768,8 +786,8 @@ function applyAttacks(s,acts,color,events){
       const path=cardinalPath(s,attacker,target);
       if(path)for(const j of path){
         if(j===target||s.over)continue;
-        const q=B[j];if(!q||q.color!==enemy)continue;
-        q.hp-=1;
+        const q=B[j];if(!isFoe(q,color))continue;
+        q.hp-=1;standUp(q,1);
         if(q.fortified)q.lastHitTurn=clock(s,color);
         q.exposedAt=j;
         if(color==='w'&&q.hp>0)s.hitBy.push({target:j,attacker});
@@ -839,7 +857,7 @@ function applyAction(s,a,events){
         if(np.type==='mage')np.mana=1;
         if(np.type==='siege')np.sieged=true;
       }
-      if(np.type==='mage')s.elixir[color]-=MAGE_ELIXIR;
+      s.elixir[color]-=elixirCost(np.type);   // the top tier's Elixir, paid now
       B[a.from]=null;B[a.to]=np;s.moved=a.to;   // the merge was the move: the new piece holds its fire
       events.push({type:'merge',from:a.from,to:a.to,piece:np.type});
       return p.type==='knight'&&geo(s).kj[a.from].includes(a.to);
@@ -865,11 +883,6 @@ function applyAction(s,a,events){
       events.push({type:'order',from:a.from,to:a.to,turns:a.turns});
       // the budget is the turn: while half of it is left (a second pawn), the turn goes on
       return s.orderLeft[color]>=ORDER_MIN;
-    case'extract':
-      s.elixir[color]++;
-      s.moved=a.from;                       // the pawn worked instead of shooting
-      events.push({type:'extract',at:a.from});
-      return false;
     case'fortify':
       p.fortified=true;p.hp=FORTIFIED_HP;p.maxHp=FORTIFIED_HP;
       s.goldSpent[color]++;
@@ -922,7 +935,9 @@ function finishTurn(s,color,events){
   const justMoved=s.moved;
   s.moved=-1;
   s.turnCount[color]++;
-  if(pawnOnMine(s,color))s.mineTurns[color]++;   // the mine pays for the turn it was held
+  // the tiles pay for the turn they were held: a mine-turn for each mine, an Elixir for each spring
+  s.mineTurns[color]+=heldTiles(s,color,'mine').length;
+  s.elixir[color]+=heldTiles(s,color,'spring').length;
   if(s.mode==='pvp'){
     // the side that acted fires, except the piece that moved or healed; then the other side starts
     applyAttacks(s,computeActions(s,color).filter(a=>a.attacker!==justMoved&&!(B[a.attacker]&&B[a.attacker].rolled)),color,events);
@@ -993,7 +1008,7 @@ function runOrders(s,own,events){
     // to it regardless, discovering whoever it finds there
     if(t&&t.color!==p.color&&d.rawAttack.has(to)){
       const dmg=p.type==='siege'?2:1;
-      t.hp-=dmg;
+      t.hp-=dmg;standUp(t,dmg);
       if(t.fortified)t.lastHitTurn=clock(s,p.color);
       p.exposedAt=i;t.exposedAt=to;
       const killed=t.hp<=0;
@@ -1095,6 +1110,9 @@ function bMerge(s,ft,tt,rt,limit,events){
   const g=geo(s);
   for(const a of(pool[ft]||[]))for(const b of(pool[tt]||[])){
     if(a===b||!g.adj8[a].includes(b))continue;
+    // the pair has to make this very piece: a helmet, or Elixir short for the top tier, and it doesn't
+    if(mergeResultType(s,s.board[a],s.board[b])!==rt)continue;
+    s.elixir.b-=elixirCost(rt);
     const np=makePiece(rt,'b');
     if(rt==='bishop')np.mana=1;
     s.board[a]=null;s.board[b]=np;
@@ -1413,14 +1431,6 @@ function botTurn(s){
   if(s.over)throw new Error('the game is over');
   if(s.mode!=='classic'||s.turn!=='b')throw new Error('botTurn plays Black in classic mode');
   const events=[];
-  // a pawn of ours standing on the Elixir spring extracts first of all (fallbackAI in ai.js)
-  const dig=s.board.findIndex((p,i)=>p&&p.color==='b'&&p.type==='pawn'&&!p.fortified&&s.tiles[i]==='spring');
-  if(dig>=0){
-    s.elixir.b++;
-    events.push({type:'extract',at:dig});
-    finishTurn(s,'b',events);
-    return events;
-  }
   if(!reactiveAI(s,events)){
     // (the campaign AI runs the reactive check again, drawing new random numbers, as ai.js does)
     if(s.level)campaignAI(s,events);
@@ -1474,7 +1484,7 @@ const SemunEngine={
   // playing
   newGame,legalActions,step,botTurn,clone,isLegal,fromSnapshot,act,
   // rule queries
-  getDests,computeActions,applyAttacks,upkeep,spawnRemaining,pawnOnMine,visible,fogFor,inCover,concealed,campaignResult,sangTrajectories,sangLineFor,mageRange,
+  getDests,computeActions,applyAttacks,upkeep,spawnRemaining,heldTiles,visible,fogFor,inCover,concealed,campaignResult,sangTrajectories,sangLineFor,mageRange,
   // helpers and data
   generateMap,makeRandom,nextRandom,sqName,cheb,geo,STATS,STRATEGIES,THEME_TILES,
 };

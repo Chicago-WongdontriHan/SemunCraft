@@ -12,15 +12,24 @@ let movedThisTurn=-1; // idx of white piece that acted this turn (cannot auto-at
 // a whole Gold is in hand. The same sums are in js/engine.js, written the same way so both sides land
 // on the same number: turns are counted as whole numbers and divided once, never added up in sixths.
 const GOLD_START=8, GOLD_TURNS=6;
-// The spring and the mine: a pawn on the gold mine earns just by standing there; a pawn on the Elixir
-// spring can spend its whole turn extracting one Elixir, which is what makes banking it risky — the
-// pawn stands still, in the open, while the other side moves. ('extract' in js/engine.js)
+// The mines and the springs both pay for being held: every turn that ends with a plain pawn of yours on
+// a mine earns a sixth of Gold more, and on a spring a whole Elixir. There are five such tiles
+// (RESOURCE_SQUARES), so holding them all costs five pawns that fight nowhere else, and each is a
+// known square the other side can raid. (creditResources below, finishTurn in js/engine.js)
 const RESOURCE_TILES={spring:'elixir',mine:'gold'};
-let elixir={w:0,b:0};     // Elixir extracted at the spring
-let mineTurns={w:0,b:0};  // turns that ended with a pawn of that side on the gold mine
+// [row, col, tile]: a mine at e5, the same 3 squares from both kings; a mine (f2 / d8) and a spring
+// (b6 / h4) for each side, 4 from its own king and 6 from the other's, mirrored through the centre
+const RESOURCE_SQUARES=[[4,4,'mine'],[7,5,'mine'],[1,3,'mine'],[3,1,'spring'],[5,7,'spring']];
+let elixir={w:0,b:0};     // Elixir drawn from the springs
+let mineTurns={w:0,b:0};  // mine-turns: one for each mine a pawn of that side held at the end of a turn
 let goldSpent={w:0,b:0};  // Gold spent on anything but spawning: fortified pawns
 const FORTIFIED_HP=3;     // a fortified pawn is a pawn in a helmet, with three life
-const MAGE_ELIXIR=2;      // a bishop and a rook merge into a Mage for 2 Elixir (engine.js)
+// Elixir is the top tier's currency, paid at the moment of merging; short of it the two pieces simply
+// don't combine (mergeResultType in js/actions.js and js/engine.js). The Paladin's lance ends games,
+// so it costs the most.
+const ELIXIR_COST={paladin:3,mage:2,guardian:1,siege:1};
+function elixirCost(type){return ELIXIR_COST[type]||0;}
+function elixirTag(type){return elixirCost(type)?' ('+elixirCost(type)+' Elixir)':'';}   // for a button or a log line
 const FORTIFIED_MEND=5;   // and its armour mends 1 HP five turns after the last hit it took
 // Delayed orders: an order given now happens a few turns from now, and giving one does not use up the
 // turn — it spends part of an order budget instead, so several can be lined up to land together. A
@@ -29,6 +38,9 @@ const MAX_DELAY=3, ORDER_BUDGET=1;
 const ORDER_COST={pawn:.5};          // every other piece spends a whole turn's worth of orders
 const ORDER_MIN=ORDER_COST.pawn;     // with less than this left the turn is spent and passes on its own
 function orderCost(type){return ORDER_COST[type]||1;}
+// how far ahead an order may be set: a pawn (fortified or not), whose order is half a turn, up to
+// MAX_DELAY; every other piece one turn, no more (maxDelay in js/engine.js, delayCeiling in js/actions.js)
+function maxDelay(type){return type==='pawn'?MAX_DELAY:1;}
 let orderLeft={w:ORDER_BUDGET,b:ORDER_BUDGET};
 let orderTurns=0;                    // how far ahead the next order is set: the Delay button counts it up, and every turn starts at none
 // Whose eyes the board is drawn through. Normally your own side, which is also the side to move; in the
@@ -48,17 +60,22 @@ function pieceInHand(){
 }
 // The Paladin's lance always finishes the kill and leaps to the square it clears, the Guardian's shot
 // hits everything in its path, and the Mage's fire and meteor are cast, not reserved — none of the
-// three fits a square set aside a turn ahead, so none of them ever takes a delayed order.
-const NO_ORDER_TYPES=new Set(['paladin','guardian','mage']);
+// three fits a square set aside a turn ahead, so none of them ever takes a delayed order. Nor does the
+// King, who is moved by hand or not at all.
+const NO_ORDER_TYPES=new Set(['paladin','guardian','mage','king']);
 function canOrder(i){
   const p=pieces[i];
   return !!p&&!NO_ORDER_TYPES.has(p.type)&&p.color===myColor()&&orderLeft[p.color]>=orderCost(p.type)&&orderTargets(i).size>0;
 }
-// only a plain pawn works the spring or the mine; a fortified one can't (pawnOnMine in engine.js)
-function canExtract(i){ const p=pieces[i]; return !!p&&p.type==='pawn'&&!p.fortified&&tileData[i]==='spring'; }
-function pawnOnMine(color){ return pieces.some((p,i)=>p&&p.color===color&&p.type==='pawn'&&!p.fortified&&tileData[i]==='mine'); }
-// Gold income this turn: a sixth, doubled while a pawn of that side stands on the mine
-function goldRate(color){ return (pawnOnMine(color)?2:1)/GOLD_TURNS; }
+// the mines (or springs) a side holds: only a plain pawn works one, a fortified pawn can't (heldTiles in engine.js)
+function heldTiles(color,tile){ const out=[]; pieces.forEach((p,i)=>{if(p&&p.color===color&&p.type==='pawn'&&!p.fortified&&tileData[i]===tile)out.push(i);}); return out; }
+function minesHeld(color){ return heldTiles(color,'mine').length; }
+function springsHeld(color){ return heldTiles(color,'spring').length; }
+// Gold income this turn: a sixth, and a sixth more for every mine a pawn of that side holds
+function goldRate(color){ return (1+minesHeld(color))/GOLD_TURNS; }
+// The end of a side's turn pays its tiles: a mine-turn for each mine held, an Elixir for each spring
+// (finishTurn in engine.js). Returns the springs that paid, so the turn can sound them.
+function creditResources(color){ mineTurns[color]+=minesHeld(color); const sp=heldTiles(color,'spring'); elixir[color]+=sp.length; return sp; }
 function goldAllowed(){ return !campaignLevel||campaignLevel.allowSpawn!==false; }
 function canFortify(i){ const p=pieces[i]; return !!p&&p.type==='pawn'&&!p.fortified&&goldAllowed()&&spawnRemaining()>=1; }
 function oppColor(){ return myColor()==='w'?'b':'w'; }
@@ -244,7 +261,7 @@ const PC_DATA=[
   {gw:'♘',gb:'♞',name:'Knight', stats:'4HP · L-jump · atk L-dist'},
   {gw:'♘',gb:'♞',name:'Paladin',stats:'3HP · L-jump · lance always kills, then leaps in'},
   {gw:'♗',gb:'♝',name:'Bishop', stats:'2HP · diagonal 2 · heals (mana)'},
-  {gw:'♖',gb:'♜',name:'Rook',   stats:'4HP · card2 · pierce rng3 · 2 Fortified'},
+  {gw:'♖',gb:'♜',name:'Rook',   stats:'4HP · card2 · pierce rng3 · Fortified + Pawn'},
   {gw:'♖',gb:'♜',name:'Guardian',stats:'5HP · card2 · rook+knight range, hits the line'},
   {gw:'♛',gb:'♛',name:'Queen',  stats:'5HP · all dir rng2'},
   {gw:'♗',gb:'♝',name:'Mage',   stats:'3HP · diag 2 · fire line, atk rng3 · meteor (mana)'},

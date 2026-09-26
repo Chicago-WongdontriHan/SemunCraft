@@ -48,6 +48,9 @@ const TRAIN_UNITS=[
   {type:'queen',  art:'queen',    name:'Queen'},
   {type:'mage',   art:'mage',     name:'Mage'},
   {type:'king',   art:'king',     name:'King'},
+  // not one of the game's own: a target dummy to try the others' attacks on, and on neither side, so
+  // it comes out the same whichever colour is picked and both sides fire at it (standUp, isFoe)
+  {type:'scarecrow',art:'scarecrow',name:'Scarecrow',neutral:true},
 ];
 
 function startTraining(){
@@ -104,7 +107,7 @@ function trainingPalette(){
       +'</div><div class="tp-grid tp-units">';
     TRAIN_UNITS.forEach((u,k)=>{
       const on=trainBrush&&trainBrush.kind==='unit'&&trainBrush.idx===k;
-      h+=btn(pieceSVG(u.art,trainColor,mapTheme,px,true),u.name,on,'trainPickUnit('+k+')',u.name);
+      h+=btn(pieceSVG(u.art,u.neutral?NEUTRAL:trainColor,mapTheme,px,true),u.name,on,'trainPickUnit('+k+')',u.name);
     });
     h+='</div><div class="tp-grid tp-tools">'
       +wide('Default',false,'trainDefaultUnits()','The line-up a normal game starts with: the two kings, three pawns each')
@@ -117,7 +120,7 @@ function trainingPalette(){
     });
     h+='</div><div class="tp-grid tp-tiles">';
     // the two resource tiles, then whatever this map puts on the ground — the impassable ones marked
-    const tiles=[{key:'spring',icon:RES_ELIXIR,name:'Spring',effect:'a pawn standing here can spend its turn extracting Elixir'},
+    const tiles=[{key:'spring',icon:RES_ELIXIR,name:'Spring',effect:'a pawn standing here draws Elixir while it holds it'},
                  {key:'mine',icon:RES_GOLD,name:'Mine',effect:'a pawn standing here earns Gold while it holds it'}];
     const th=THEMES[mapTheme];
     if(th&&th.tiles)Object.keys(th.tiles).forEach(k=>tiles.push({key:k,icon:'<span class="tp-emoji">'+th.tiles[k].icon+'</span>',
@@ -216,6 +219,7 @@ function trainSetMouse(m){
   trainingPalette();render();syncUI();
   setStatus(m==='edit'?'Editing the board — clicks place, drag moves a piece, the right button clears'
                       :(turn==='w'?"White's":"Black's")+' turn — clicks play the game');
+  if(m==='play'&&trainSideIdle(turn))trainPassIdle();   // the side to move has nothing on the board
 }
 function trainSetColor(c){trainColor=c;trainingPalette();render();syncUI();}
 // whose eyes the board is drawn through (viewColor in js/state.js)
@@ -317,11 +321,11 @@ function trainSetTheme(t){
 
 function trainPickUnit(k){
   const u=TRAIN_UNITS[k];
-  trainBrush=(trainBrush&&trainBrush.kind==='unit'&&trainBrush.idx===k)?null:{kind:'unit',idx:k,type:u.type,fortified:!!u.fortified};
+  trainBrush=(trainBrush&&trainBrush.kind==='unit'&&trainBrush.idx===k)?null:{kind:'unit',idx:k,type:u.type,fortified:!!u.fortified,neutral:!!u.neutral};
   if(trainBrush)trainMouse='edit';
   trainFromPalette=true;
   trainingPalette();
-  trainStatus(trainBrush?(trainColor==='w'?'White ':'Black ')+u.name+' — tap a square':'');
+  trainStatus(trainBrush?(u.neutral?'':trainColor==='w'?'White ':'Black ')+u.name+' — tap a square':'');
 }
 function trainPickTile(t){
   trainBrush=(trainBrush&&trainBrush.kind==='tile'&&trainBrush.tile===t)?null:{kind:'tile',tile:t};
@@ -384,12 +388,29 @@ function trainEngineReady(){
 // called by endTurn once the turn has changed hands (js/game.js)
 function trainAfterPass(){
   if(!trainingMode||over)return;
+  if(trainSideIdle(turn)){trainPassIdle();return;}
   trainSchedule(TRAIN_BEAT/trainSpeed);
+}
+// A side with nothing on the board has nothing to do, so its turn goes straight back to the other one:
+// a board of one colour (with a Scarecrow, say) plays turn after turn of the same side. Not when both
+// sides are empty — then there is no one to hand the turn to. The Scarecrow is on neither side.
+function trainSideIdle(color){
+  const has=c=>pieces.some(p=>p&&p.color===c);
+  return !has(color)&&has(color==='w'?'b':'w');
+}
+function trainPassIdle(){
+  const side=turn;
+  setTimeout(()=>{
+    if(!trainingMode||over||thinking||turn!==side||!trainSideIdle(side))return;
+    movedThisTurn=-1;
+    endTurn();
+    setStatus((side==='w'?'White':'Black')+' has no units \u2014 '+(turn==='w'?"White's":"Black's")+' turn again');
+  },120);
 }
 function trainEngineState(side){
   const flip=side==='w';                 // the engine's bot plays Black: White borrows its side
   const sw=o=>flip?{w:o.b,b:o.w}:{w:o.w,b:o.b};
-  const board=pieces.map(p=>{if(!p)return null;const q=Object.assign({},p);if(flip)q.color=q.color==='w'?'b':'w';return q;});
+  const board=pieces.map(p=>{if(!p)return null;const q=Object.assign({},p);if(flip&&q.color!==NEUTRAL)q.color=q.color==='w'?'b':'w';return q;});
   return SemunEngine.fromSnapshot({cols:COLS,rows:ROWS,theme:mapTheme,mode:'classic',difficulty:'hard',
     board,tiles:tileData,turn:'b',fog:false,
     turnCount:sw({w:whiteTurnCount,b:blackTurnCount}),
@@ -426,7 +447,7 @@ function trainAiBotAction(side){
   try{
     const ev=(SemunEngine.botTurn(trainEngineState(side))||[])[0];
     if(!ev)return null;
-    return ev.type==='extract'?{type:'extract',from:ev.at,to:ev.at}:{type:ev.type,from:ev.from,to:ev.to};
+    return {type:ev.type,from:ev.from,to:ev.to};
   }catch(e){return null;}
 }
 // one of the trained networks, asked the way Single Player asks it (netAiChoose in js/netai.js)
@@ -443,7 +464,6 @@ function trainAiPlay(a){
     // a bishop's merge asks which of heal or merge it meant, which no AI here can answer: it passes
     if(a.type==='merge'&&d.merge.has(a.to)&&p.type!=='bishop'){executeDrop(from,a.to,d);return;}
     if(a.type==='heal'&&d.heal.has(a.to)){executeDrop(from,a.to,d);return;}
-    if(a.type==='extract'&&canExtract(from)){extractAt(from);return;}
     if(a.type==='fortify'&&canFortify(from)){fortifyAt(from);return;}
     if(a.type==='unsiege'&&p.type==='siege'){unsiegePiece(from);return;}
     if(a.type==='scry'&&p.type==='bishop'&&(p.mana||0)>=2){castScry(from,a.to);return;}
@@ -492,13 +512,13 @@ function trainingPlace(i){
       if(k>=0&&k!==i)pieces[k]=null;
     }
     const st=STATS[b.type]||{hp:1,maxHp:1};
-    const p={type:b.type,color:trainColor,hp:st.hp,maxHp:st.maxHp};
+    const p={type:b.type,color:b.neutral?NEUTRAL:trainColor,hp:st.hp,maxHp:st.maxHp};
     if(b.fortified){p.fortified=true;p.hp=FORTIFIED_HP;p.maxHp=FORTIFIED_HP;}
     if(b.type==='pawn')p.firstMove=true;
     if(b.type==='bishop'||b.type==='mage')p.mana=2;
     delete whiteTargets[i];delete blackTargets[i];
     pieces[i]=p;
-    addLog((trainColor==='w'?'White ':'Black ')+(b.fortified?'fortified pawn':b.type)+' at '+sqName(i));
+    addLog((b.neutral?'':trainColor==='w'?'White ':'Black ')+(b.fortified?'fortified pawn':b.type)+' at '+sqName(i));
   }
   selectedPieces=new Set();kingSelected=false;
   render();syncUI();

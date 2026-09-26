@@ -99,7 +99,7 @@ function aiVsAiStep(){
   if(s.over){aiVsAiFinish();return;}
   const color=s.turn,ai=color==='w'?g.white:g.black;
   const before=s.board.map(p=>p&&Object.assign({},p));
-  const a=freeExtract(s)||SemunNet.choose(aiVsAiNets[ai],aiVsAiEncoder,s).action;
+  const a=SemunNet.choose(aiVsAiNets[ai],aiVsAiEncoder,s).action;
   const events=SemunEngine.step(s,a);
   g.lastFrom=a.from===undefined?-1:a.from;
   g.lastTo=a.to===undefined?-1:a.to;
@@ -132,7 +132,6 @@ function aiVsAiSound(a,events,before){
   if(a.type==='merge')SFX.arrive(merge&&merge.piece);
   else if(a.type==='unsiege')SFX.arrive('rook');
   else if(a.type==='spawn')SFX.arrive('pawn');
-  else if(a.type==='extract')SFX.extract();
   else if(a.type==='heal'||events.some(e=>e.type==='heal'))SFX.heal();
   else if(!kills.length&&events.some(e=>e.type==='attack'))SFX.attack();
   else if(!kills.length)SFX.move();
@@ -149,7 +148,6 @@ function aiVsAiDescribe(color,ai,a,events,before){
     case'target':text=p.type+' '+sq(a.from)+' targets '+sq(a.to);break;
     case'heal':case'healLock':text='bishop '+sq(a.from)+' heals '+sq(a.to);break;
     case'unsiege':text='unsiege '+sq(a.from);break;
-    case'extract':text='extracts Elixir '+sq(a.from);break;
     default:text='skip';
   }
   const hits=events.filter(e=>e.type==='attack'),kills=hits.filter(e=>e.killed).length;

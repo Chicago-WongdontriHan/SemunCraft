@@ -232,11 +232,11 @@ const TUTORIAL_STEPS=[
         pieces[idx(4,3)]={type:'rook',color:'w',hp:4,maxHp:4};
         pieces[idx(4,4)]={type:'rook',color:'w',hp:4,maxHp:4};
         // stationary enemy queen at the top edge — out of both rooks' attack range (3 cardinal),
-        // but within the siege tower's 4-cardinal range once merged at (4,3)
+        // but within the siege tower's range (2 to 5 squares in a straight line) once merged at (4,3)
         pieces[idx(0,3)]={type:'queen',color:'b',hp:STATS.queen.hp,maxHp:STATS.queen.maxHp,stationary:true};
         tutEnemySpawn=idx(0,3);
         render();tutHighlightPiece(idx(4,4));
-        document.getElementById('tut-desc').textContent='Excellent! A distant enemy queen looms at the top edge — too far for rooks to reach. Merge the two rooks into a Siege Tower to unlock 4-tile cardinal attack range. Drag the highlighted rook onto the other rook.';
+        document.getElementById('tut-desc').textContent='Excellent! A distant enemy queen looms at the top edge — too far for rooks to reach. Merge the two rooks into a Siege Tower to fire 2 to 5 squares in a straight line. Drag the highlighted rook onto the other rook.';
         tutContinue('merge','\u2656+\u2656 \u2192 🏰: Drag the right rook onto the left rook to form a siege tower at the left position.');
         document.getElementById('tut-title').textContent='Merge: \u2656+\u2656 \u2192 🏰';
       });
@@ -248,7 +248,7 @@ const TUTORIAL_STEPS=[
   // ── SIEGE ─────────────────────────────────────────────────────────────────
   {
     title:'Siege Tower 🏰',
-    desc:'The Siege Tower cannot move, but attacks 4 tiles cardinally — now within range of the enemy queen. Wait for the siege tower to fire at the queen, then right-click (or tap twice) the siege tower to unsiege it back into two rooks.',
+    desc:'The Siege Tower cannot move, but fires 2 to 5 squares in a straight line (never the square beside it) — now within range of the enemy queen. Wait for the siege tower to fire at the queen, then right-click (or tap twice) the siege tower to unsiege it back into two rooks.',
     hint:'Let the siege tower attack the queen, then right-click (or tap twice) to unsiege.',
     action:'unsiege',
     setup(){},

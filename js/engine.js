@@ -349,9 +349,9 @@ function lineRange(s,i,dirs,len,thru){
   }
   return res;
 }
-// the siege tower's five cardinal squares, over obstacles and over anything standing in them
-// (siegeRange in js/constants.js)
-function siegeLine(s,i){return lineRange(s,i,CARD,5,true);}
+// the siege tower's cardinal squares 2 to 5 away, over obstacles and over anything standing in them —
+// never the square right beside it, too close for the shell (siegeRange in js/constants.js)
+function siegeLine(s,i){return lineRange(s,i,CARD,5,true).filter(j=>cheb(s,i,j)>=2);}
 // the Guardian's reach: everywhere its Rook half could hit, plus everywhere its Knight half could
 // (guardianRange in js/constants.js)
 function guardianRange(s,i){return [...new Set([...lineRange(s,i,CARD,3),...geo(s).kj[i]])];}
@@ -729,13 +729,13 @@ function computeActions(s,color){
 }
 
 // The Siege's shell bursts where it lands: the square it hit takes its 2, and every piece on the eight
-// squares around that one takes 1 as well — friend, foe or neither alike, the whole 3x3 caught — though
-// never the tower itself, when it fires at a square beside it. (siegeSplash in js/combat.js mirrors it;
+// squares around that one takes 1 as well — friend, foe or neither alike, the whole 3x3 caught. (The
+// tower never fires at a square beside it, so it is never inside its own burst.) (siegeSplash in js/combat.js mirrors it;
 // applyAttacks and runOrders call it.)
 function siegeSplash(s,attacker,target,color,events){
   const B=s.board;
   for(const j of geo(s).adj8[target]){
-    if(j===attacker||s.over)continue;
+    if(s.over)continue;
     const q=B[j];if(!q)continue;
     q.hp-=1;standUp(q,1);
     if(q.fortified)q.lastHitTurn=clock(s,color);

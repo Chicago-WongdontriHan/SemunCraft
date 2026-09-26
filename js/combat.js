@@ -501,13 +501,13 @@ function scarecrowHit(i,t,dmg,stood){
 }
 
 // The Siege's shell bursts where it lands: the square it hit takes its 2, and every piece on the eight
-// squares around that one takes 1 as well — friend, foe or neither alike, the whole 3x3 caught — though
-// never the tower itself, when it fires at a square beside it. Returns the log notes.
+// squares around that one takes 1 as well — friend, foe or neither alike, the whole 3x3 caught. (The
+// tower never fires at a square beside it, so it is never inside its own burst.) Returns the log notes.
 // (siegeSplash in js/engine.js mirrors it; applyActions and runOrders in js/game.js call it.)
 function siegeSplash(attacker,target,color){
   const notes=[];
   for(const j of adj8(target)){
-    if(j===attacker||over)continue;
+    if(over)continue;
     const q=pieces[j];if(!q)continue;
     q.hp-=1;flashSq(j,'hit-flash');
     const qs=standUp(q,1);

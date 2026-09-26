@@ -320,7 +320,7 @@ function executeDrop(from,to,dests){
   render();
 }
 
-function handleClick(i,additive){
+function handleClick(i,additive,pt){
   if(trainEditing()){if(!trainCarry)trainingPlace(i);return;}   // being built, not played (a carried piece lands on pointerup)
   const p=pieces[i];const mc=myColor();
   if(scryMode){
@@ -330,9 +330,10 @@ function handleClick(i,additive){
     return;
   }
   if(meteorMode){
-    // only a square within the Mage's own sight is a valid aim; anywhere else puts the meteor away,
-    // same as tapping outside a Scry's reach
-    if(meteorSrc>=0&&mageSight(meteorSrc).has(i))castMeteor(meteorSrc,i);else cancelMeteor();
+    // aimed by the corner nearest the tap (pt, from js/drag.js): the 2x2 around it, if one of its squares
+    // is in the Mage's sight; anywhere else puts the meteor away, same as tapping outside a Scry's reach
+    const a=pt?meteorAnchorFromPoint(pt.x,pt.y):-1;
+    if(meteorSrc>=0&&meteorReach(meteorSrc,a))castMeteor(meteorSrc,a);else cancelMeteor();
     return;
   }
   const ki=pieces.findIndex(q=>q&&q.color===mc&&q.type==='king');
@@ -485,11 +486,11 @@ function castScry(from,to){
 }
 
 // ── THE MAGE'S METEOR ────────────────────────────────────────────────────────
-// Cast for METEOR_MANA, anywhere within the Mage's own sight (mageSight in js/movement.js — its usual
-// 2-square watch, plus however far its fire trajectories reach). It doesn't strike now: it lands
-// METEOR_TURNS of the Mage's own side's turns from now, over the
-// 2x2 it was aimed at (meteorBox/meteorAnchorFor in js/state.js; the strike itself is runMeteors in
-// js/game.js). A ring of fire marks the tiles from the moment it is cast, so the target sees it coming.
+// Cast for METEOR_MANA on a 2x2 aimed by its middle — the corner its four squares share — with at least
+// one of them in the Mage's own sight (mageSight in js/movement.js: its usual 2-square watch, plus
+// however far its fire trajectories reach; meteorReach in js/state.js). It doesn't strike now: it lands
+// METEOR_TURNS of the Mage's own side's turns from now (the strike itself is runMeteors in js/game.js).
+// A ring of fire marks the tiles from the moment it is cast, so the target sees it coming.
 let meteorMode=false, meteorSrc=-1;
 function startMeteor(){
   const i=[...selectedPieces][0];
@@ -497,19 +498,19 @@ function startMeteor(){
   if(!p||p.color!==myColor()||p.type!=='mage'||(p.mana||0)<METEOR_MANA){setStatus('Select a Mage with full mana');return;}
   meteorMode=true;meteorSrc=i;targetMode=false;scryMode=false;
   render();syncUI();
-  setStatus('Tap a lit square: a meteor lands there in '+METEOR_TURNS+' turns ('+METEOR_MANA+' mana)');
+  setStatus('Tap the corner where four squares meet: the meteor lands on those four in '+METEOR_TURNS+' turns ('+METEOR_MANA+' mana) \u2014 any 2x2 touching a lit square');
 }
 function cancelMeteor(){meteorMode=false;meteorSrc=-1;render();syncUI();}
-function castMeteor(from,to){
+// `anchor` is the 2x2's top-left square, as the engine's 'meteor' action names it
+function castMeteor(from,anchor){
   const p=pieces[from];
-  if(!p||p.type!=='mage'||(p.mana||0)<METEOR_MANA||!mageSight(from).has(to))return;
+  if(!p||p.type!=='mage'||(p.mana||0)<METEOR_MANA||!meteorReach(from,anchor))return;
   p.mana=Math.max(0,(p.mana||0)-METEOR_MANA);
   p.lastHealTurn=whiteTurnCount;
-  const anchor=meteorAnchorFor(to);
   meteors.push({tiles:meteorBox(anchor),turns:METEOR_TURNS,color:p.color});
   meteorMode=false;meteorSrc=-1;
   movedThisTurn=from;
-  addLog('Mage summons a meteor over '+sqName(anchor));
+  addLog('Mage summons a meteor over '+sqName(anchor)+'\u2013'+sqName(anchor+COLS+1));
   SFX.scry();
   render();endTurn();
 }

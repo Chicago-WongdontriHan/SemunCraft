@@ -477,17 +477,18 @@ function runMeteors(s,color,events){
     }
   }
 }
-// the Mage's meteor: the 2x2 whose top-left corner is `anchor`, and the anchor a tapped square maps
-// to — clamped so it always fits the board, so every square picks exactly one such box
-// (meteorBox/meteorAnchorFor in js/state.js, which these mirror)
+// the Mage's meteor: the 2x2 whose top-left square is `anchor`, aimed at the corner its four squares
+// share, and in reach when any of the four is within the Mage's sight (meteorBox/meteorReach in
+// js/state.js, which these mirror)
 const METEOR_MANA=2, METEOR_TURNS=2, METEOR_DAMAGE=2;
 function meteorBox(s,anchor){
   const r=Math.floor(anchor/s.cols),c=anchor%s.cols;
   return[r*s.cols+c,r*s.cols+c+1,(r+1)*s.cols+c,(r+1)*s.cols+c+1];
 }
-function meteorAnchorFor(s,t){
-  const r=Math.min(rowOf(s,t),s.rows-2),c=Math.min(colOf(s,t),s.cols-2);
-  return r*s.cols+c;
+function meteorReach(s,i,anchor){
+  if(anchor<0||rowOf(s,anchor)>s.rows-2||colOf(s,anchor)>s.cols-2)return false;
+  const sight=mageSight(s,i);
+  return meteorBox(s,anchor).some(j=>sight.has(j));
 }
 // classic mode hides fogged enemies from White only (the AI ignores fog); in PvP each side is limited
 function fogFor(s,color){return s.fog&&(s.mode==='pvp'||color==='w');}
@@ -651,9 +652,12 @@ function legalActions(s,opts){
     // a bishop with both its mana can light any 3x3 on the board, seen or not
     if(p.type==='bishop'&&(p.mana||0)>=2)
       for(let j=0;j<B.length;j++)out.push({type:'scry',from:i,to:j});
-    // a Mage with a full charge can summon a meteor anywhere within its own sight
+    // a Mage with a full charge can summon a meteor on any 2x2 with a square in its sight, named by
+    // the 2x2's top-left square (meteorReach)
     if(p.type==='mage'&&(p.mana||0)>=METEOR_MANA)
-      mageSight(s,i).forEach(j=>out.push({type:'meteor',from:i,to:j}));
+      for(let r=0;r<s.rows-1;r++)for(let c=0;c<s.cols-1;c++){
+        const a=r*s.cols+c;if(meteorReach(s,i,a))out.push({type:'meteor',from:i,to:a});
+      }
     if(opts.anyTarget){
       for(let j=0;j<B.length;j++)if(B[j]&&B[j].color!==color&&!concealed(s,j,color))out.push({type:'target',from:i,to:j});
     }else d.attack.forEach(j=>out.push({type:'target',from:i,to:j}));
@@ -898,7 +902,7 @@ function applyAction(s,a,events){
       return false;
     }
     case'meteor':{
-      const anchor=meteorAnchorFor(s,a.to);
+      const anchor=a.to;                    // the 2x2's top-left square (legalActions)
       p.mana=Math.max(0,(p.mana||0)-METEOR_MANA);
       p.lastHealTurn=clock(s,color);
       s.meteors.push({tiles:meteorBox(s,anchor),turns:METEOR_TURNS,color});

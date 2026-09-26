@@ -10,6 +10,16 @@ function sqIdxFromPoint(x,y){
   const c=Math.floor((x-rect.left)/(rect.width/COLS)),r=Math.floor((y-rect.top)/(rect.height/ROWS));
   return(r>=0&&r<ROWS&&c>=0&&c<COLS)?idx(r,c):-1;
 }
+// A meteor is aimed by the middle of its 2x2: the corner where four squares meet that lies nearest the
+// point, kept one square in from the board's edge so the four are all on it. Returns the 2x2's top-left
+// square (meteorReach in js/state.js), or -1 off the board.
+function meteorAnchorFromPoint(x,y){
+  const rect=document.getElementById('board').getBoundingClientRect();
+  const fc=(x-rect.left)/(rect.width/COLS),fr=(y-rect.top)/(rect.height/ROWS);
+  if(fr<0||fr>ROWS||fc<0||fc>COLS)return -1;
+  const vr=Math.min(ROWS-1,Math.max(1,Math.round(fr))),vc=Math.min(COLS-1,Math.max(1,Math.round(fc)));
+  return idx(vr-1,vc-1);
+}
 
 // ── ZOOM AND PAN GESTURES ─────────────────────────────────────────────────────
 // Two fingers pinch the board and slide it at the same time. One finger slides it when the board is
@@ -150,13 +160,13 @@ function showScryPreview(x,y){
 }
 boardInput.addEventListener('pointerleave',()=>{if(scryPreview.length)clearScryPreview();if(meteorPreview.length)clearMeteorPreview();});
 
-// aiming a meteor with a mouse: the 2x2 a click would land it on, previewed the same way a scry is,
-// but only within the Mage's own sight (mageSight in js/movement.js)
+// aiming a meteor with a mouse: the 2x2 around the corner nearest the pointer, previewed the same way a
+// scry is, when one of its squares is in the Mage's sight (meteorReach in js/state.js)
 let meteorPreview=[];
 function clearMeteorPreview(){meteorPreview.forEach(j=>{const el=sqElAt(j);if(el)el.classList.remove('meteor-preview');});meteorPreview=[];}
 function showMeteorPreview(x,y){
-  const t=sqIdxFromPoint(x,y);
-  const box=t>=0&&meteorSrc>=0&&mageSight(meteorSrc).has(t)?meteorBox(meteorAnchorFor(t)):[];
+  const a=meteorSrc>=0?meteorAnchorFromPoint(x,y):-1;
+  const box=meteorReach(meteorSrc,a)?meteorBox(a):[];
   if(box.length===meteorPreview.length&&box.every(j=>meteorPreview.includes(j)))return;
   clearMeteorPreview();
   box.forEach(j=>{const el=sqElAt(j);if(el)el.classList.add('meteor-preview');});
@@ -201,7 +211,7 @@ boardInput.addEventListener('pointerup',e=>{
     return;
   }
   // a tap or a click: select a piece and show its action guide, or take an action the guide offers
-  if(!over&&!thinking&&isMyTurn())handleClick(pr.i,e.shiftKey||e.ctrlKey||e.metaKey);
+  if(!over&&!thinking&&isMyTurn())handleClick(pr.i,e.shiftKey||e.ctrlKey||e.metaKey,{x:e.clientX,y:e.clientY});
 });
 
 boardInput.addEventListener('pointercancel',e=>{

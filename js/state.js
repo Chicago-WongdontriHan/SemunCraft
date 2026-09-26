@@ -162,10 +162,14 @@ function meteorBox(anchor){
   const r=ROW(anchor),c=COL(anchor);
   return[idx(r,c),idx(r,c+1),idx(r+1,c),idx(r+1,c+1)];
 }
-// the anchor for a 2x2 that contains the tapped square, clamped so it always fits on the board —
-// every square maps to exactly one such box, so there is no separate "which box did you mean" step
-function meteorAnchorFor(t){
-  return idx(Math.min(ROW(t),ROWS-2),Math.min(COL(t),COLS-2));
+// A meteor is aimed at the corner four squares share, and lands on those four; a 2x2 is in a Mage's
+// reach when any one of them is within its sight. Aiming by the middle keeps the reach the same distance
+// out on every side, where a square aimed as the top-left let it run a square further right and down.
+// `anchor` is the 2x2's top-left square. (meteorAnchorFromPoint in js/drag.js; meteorReach in engine.js)
+function meteorReach(from,anchor){
+  if(anchor<0||ROW(anchor)>ROWS-2||COL(anchor)>COLS-2)return false;
+  const sight=mageSight(from);
+  return meteorBox(anchor).some(j=>sight.has(j));
 }
 // a pending meteor is drawn for both sides, never hidden by fog — it is the warning that it is coming
 

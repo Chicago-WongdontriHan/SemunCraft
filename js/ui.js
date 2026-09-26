@@ -86,7 +86,7 @@ function syncPieceButtons(){
     spBtn.disabled=locked||!((scry&&(sel.mana||0)>=2)||(meteor&&(sel.mana||0)>=METEOR_MANA));
     spBtn.classList.toggle('active-mode',!!scryMode||!!meteorMode);
     const label=scry?'Scry (2)':'Meteor ('+METEOR_MANA+')';
-    spBtn.innerHTML=uiLabel(meteor?'meteor':'scry',(scryMode||meteorMode)?'Pick a square':label);
+    spBtn.innerHTML=uiLabel(meteor?'meteor':'scry',meteorMode?'Pick a corner':scryMode?'Pick a square':label);
   }
   // The delay counter only comes up for a piece that could actually take an order (or already has one
   // standing, so it can still be cleared back to 0) — the same condition the on-board chooser uses

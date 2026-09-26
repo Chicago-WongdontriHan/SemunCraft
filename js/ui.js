@@ -88,12 +88,12 @@ function syncPieceButtons(){
     const label=extract?'Extract Elixir':scry?'Scry (2)':'Meteor ('+METEOR_MANA+')';
     spBtn.innerHTML=uiLabel(extract?'extract':meteor?'meteor':'scry',(scryMode||meteorMode)?'Pick a square':label);
   }
-  // The delay counter belongs to the turn rather than to any one piece, so it is always up: each press
-  // adds a turn to the delay the next move will carry, and the small button under it clears it.
+  // The delay counter only comes up for a piece that could actually take an order (or already has one
+  // standing, so it can still be cleared back to 0) — the same condition the on-board chooser uses
+  // (pieceChoices in js/actions.js). Each press adds a turn to the delay the next move will carry.
   const delayBtn=document.getElementById('btn-delay');
   if(delayBtn){
-    const noOrder=!!sel&&NO_ORDER_TYPES.has(sel.type);
-    delayBtn.style.display=noOrder?'none':'';
+    delayBtn.style.display=(!!sel&&(canOrder(selIdx)||orderTurns>0))?'':'none';
     delayBtn.disabled=locked;
     delayBtn.classList.toggle('active-mode',orderTurns>0);
     delayBtn.innerHTML=uiLabel('delay','Delay '+orderTurns);

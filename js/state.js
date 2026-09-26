@@ -151,6 +151,7 @@ function scryLit(i,color){return scans.some(sc=>sc.color===color&&sc.tiles.inclu
 // the 2x2 when it lands, friend or foe alike (runMeteors in js/game.js does the actual striking;
 // tickMeteors here only counts the turns down, the way tickScans counts a scry's own down)
 const METEOR_MANA=2, METEOR_TURNS=2, METEOR_DAMAGE=2;
+const METEOR_REACH=3;   // every square a meteor lands on is at most this far from its Mage (meteorReach)
 let meteors=[];
 function tickMeteors(color){
   const due=meteors.filter(m=>m.color===color&&--m.turns<=0);
@@ -162,14 +163,19 @@ function meteorBox(anchor){
   const r=ROW(anchor),c=COL(anchor);
   return[idx(r,c),idx(r,c+1),idx(r+1,c),idx(r+1,c+1)];
 }
-// A meteor is aimed at the corner four squares share, and lands on those four; a 2x2 is in a Mage's
-// reach when any one of them is within its sight. Aiming by the middle keeps the reach the same distance
-// out on every side, where a square aimed as the top-left let it run a square further right and down.
-// `anchor` is the 2x2's top-left square. (meteorAnchorFromPoint in js/drag.js; meteorReach in engine.js)
+// A meteor is aimed at the corner four squares share, and lands on those four. The corner has to be
+// within 2 squares of the Mage, so all four squares are within METEOR_REACH (3) of it: the 2x2 has to
+// lie inside the 7x7 around the Mage (meteorArea, lit while aiming), the same distance out every way.
+// Sight doesn't come into it. `anchor` is the 2x2's top-left square. (meteorAnchorFromPoint in
+// js/drag.js; meteorReach and meteorArea in js/engine.js mirror these.)
+function meteorArea(from){
+  const out=new Set();
+  for(let i=0;i<ROWS*COLS;i++)if(cheb(i,from)<=METEOR_REACH)out.add(i);
+  return out;
+}
 function meteorReach(from,anchor){
-  if(anchor<0||ROW(anchor)>ROWS-2||COL(anchor)>COLS-2)return false;
-  const sight=mageSight(from);
-  return meteorBox(anchor).some(j=>sight.has(j));
+  if(from<0||anchor<0||ROW(anchor)>ROWS-2||COL(anchor)>COLS-2)return false;
+  return meteorBox(anchor).every(j=>cheb(j,from)<=METEOR_REACH);
 }
 // a pending meteor is drawn for both sides, never hidden by fog — it is the warning that it is coming
 

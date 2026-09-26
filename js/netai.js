@@ -61,7 +61,7 @@ function netAiSnapshot(){
   return SemunEngine.fromSnapshot({cols:COLS,rows:ROWS,theme:mapTheme,mode:'classic',board:pieces,tiles:tileData,turn:'b',
     level:campaignLevel||null,
     turnCount:{w:whiteTurnCount,b:blackTurnCount},spawns:{w:spawnHistory.length,b:blackSpawnHistory.length},
-    targets:{w:whiteTargets,b:blackTargets},hitBy:blackHitBy,acted:[...blackActed],scans,
+    targets:{w:whiteTargets,b:blackTargets},hitBy:blackHitBy,acted:[...blackActed],scans,meteors,
     elixir:{w:elixir.w,b:elixir.b},mineTurns:{w:mineTurns.w,b:mineTurns.b},goldSpent:{w:goldSpent.w,b:goldSpent.b},
     orderLeft:{w:orderLeft.w,b:orderLeft.b},maxTurns:300});
 }
@@ -79,6 +79,7 @@ function netAiApply(action){
   pieces=s.board;
   whiteTargets=s.targets.w;blackTargets=s.targets.b;
   scans=s.scans; // a scry Black cast lives in the engine's state: bring it back with the board
+  meteors=s.meteors;   // and so does a meteor its Mage summoned, which would otherwise never land
   elixir=s.elixir;mineTurns=s.mineTurns;goldSpent=s.goldSpent;orderLeft=s.orderLeft;
   for(let k=spawned;k<s.spawns.b;k++)blackSpawnHistory.push(blackTurnCount);
   return result;

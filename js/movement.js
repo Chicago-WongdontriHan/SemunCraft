@@ -32,9 +32,6 @@ function mageRange(i){
 function sangLineFor(i,target){
   return sangTrajectories(i).find(line=>line.includes(target))||null;
 }
-// every square the Mage can see from here: the usual 2-square watch any piece keeps, plus however far
-// its own fire trajectories reach — also as far as it can aim a Meteor (mageSight in engine.js)
-function mageSight(i){return new Set([i,...range2(i),...mageRange(i)]);}
 
 function queenRange(i){
   const lJumps=new Set(kJumps(i));

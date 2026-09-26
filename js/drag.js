@@ -161,7 +161,7 @@ function showScryPreview(x,y){
 boardInput.addEventListener('pointerleave',()=>{if(scryPreview.length)clearScryPreview();if(meteorPreview.length)clearMeteorPreview();});
 
 // aiming a meteor with a mouse: the 2x2 around the corner nearest the pointer, previewed the same way a
-// scry is, when one of its squares is in the Mage's sight (meteorReach in js/state.js)
+// scry is, when it lies within 3 squares of the Mage (meteorReach in js/state.js)
 let meteorPreview=[];
 function clearMeteorPreview(){meteorPreview.forEach(j=>{const el=sqElAt(j);if(el)el.classList.remove('meteor-preview');});meteorPreview=[];}
 function showMeteorPreview(x,y){

@@ -330,8 +330,8 @@ function handleClick(i,additive,pt){
     return;
   }
   if(meteorMode){
-    // aimed by the corner nearest the tap (pt, from js/drag.js): the 2x2 around it, if one of its squares
-    // is in the Mage's sight; anywhere else puts the meteor away, same as tapping outside a Scry's reach
+    // aimed by the corner nearest the tap (pt, from js/drag.js): the 2x2 around it, if it lies within 3
+    // squares of the Mage; anywhere else puts the meteor away, same as tapping outside a Scry's reach
     const a=pt?meteorAnchorFromPoint(pt.x,pt.y):-1;
     if(meteorSrc>=0&&meteorReach(meteorSrc,a))castMeteor(meteorSrc,a);else cancelMeteor();
     return;
@@ -486,9 +486,9 @@ function castScry(from,to){
 }
 
 // ── THE MAGE'S METEOR ────────────────────────────────────────────────────────
-// Cast for METEOR_MANA on a 2x2 aimed by its middle — the corner its four squares share — with at least
-// one of them in the Mage's own sight (mageSight in js/movement.js: its usual 2-square watch, plus
-// however far its fire trajectories reach; meteorReach in js/state.js). It doesn't strike now: it lands
+// Cast for METEOR_MANA on a 2x2 aimed by its middle — the corner its four squares share — within 2
+// squares of the Mage, so the whole 2x2 is within 3 of it (meteorReach in js/state.js). It doesn't
+// strike now: it lands
 // METEOR_TURNS of the Mage's own side's turns from now (the strike itself is runMeteors in js/game.js).
 // A ring of fire marks the tiles from the moment it is cast, so the target sees it coming.
 let meteorMode=false, meteorSrc=-1;
@@ -498,7 +498,7 @@ function startMeteor(){
   if(!p||p.color!==myColor()||p.type!=='mage'||(p.mana||0)<METEOR_MANA){setStatus('Select a Mage with full mana');return;}
   meteorMode=true;meteorSrc=i;targetMode=false;scryMode=false;
   render();syncUI();
-  setStatus('Tap the corner where four squares meet: the meteor lands on those four in '+METEOR_TURNS+' turns ('+METEOR_MANA+' mana) \u2014 any 2x2 touching a lit square');
+  setStatus('Tap the corner where four squares meet: the meteor lands on those four in '+METEOR_TURNS+' turns ('+METEOR_MANA+' mana) \u2014 any 2x2 inside the lit squares');
 }
 function cancelMeteor(){meteorMode=false;meteorSrc=-1;render();syncUI();}
 // `anchor` is the 2x2's top-left square, as the engine's 'meteor' action names it

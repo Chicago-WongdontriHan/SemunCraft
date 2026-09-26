@@ -30,8 +30,8 @@ function render(){
   // scrying: every square out of sight the bishop can light, drawn over the fog (scryArea in actions.js)
   const scryZone=typeof scryMode!=='undefined'&&scryMode&&scrySrc>=0?scryArea(scrySrc):null;
   const scryMark=(sq,i)=>{if(scryZone&&scryZone.has(i)){sq.classList.add('scry-zone');const m=document.createElement('span');m.className='scry-mark';sq.appendChild(m);}};
-  // aiming a meteor: only a square within the Mage's own sight is a valid aim (mageSight in movement.js)
-  const meteorZone=typeof meteorMode!=='undefined'&&meteorMode&&meteorSrc>=0?mageSight(meteorSrc):null;
+  // aiming a meteor: the 7x7 around the Mage, which any 2x2 it lands on has to lie inside (meteorArea)
+  const meteorZone=typeof meteorMode!=='undefined'&&meteorMode&&meteorSrc>=0?meteorArea(meteorSrc):null;
   const meteorZoneMark=(sq,i)=>{if(meteorZone&&meteorZone.has(i)){sq.classList.add('meteor-zone');const m=document.createElement('span');m.className='meteor-zone-mark';sq.appendChild(m);}};
   // a pending meteor rings every one of its four tiles in fire, through the fog and for both sides —
   // the whole point is that its target sees it coming (meteors in js/state.js)

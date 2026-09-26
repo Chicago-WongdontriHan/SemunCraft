@@ -199,9 +199,10 @@ function svgCannonball(ax,ay,tx,ty,cb){
     if(s<1)requestAnimationFrame(step); else{svg.removeChild(flash);svg.removeChild(ball);svg.removeChild(trail);
       const burst=document.createElementNS('http://www.w3.org/2000/svg','circle');
       burst.setAttribute('cx',tx);burst.setAttribute('cy',ty);burst.setAttribute('r','4');
-      burst.setAttribute('fill','none');burst.setAttribute('stroke','#ffe060');burst.setAttribute('stroke-width','3');
+      burst.setAttribute('fill','rgba(255,150,40,.35)');burst.setAttribute('stroke','#ffe060');burst.setAttribute('stroke-width','3');
       svg.appendChild(burst);
-      let b=0;const bstep=()=>{b+=0.1;burst.setAttribute('r',(4+b*sqPx*.3)+'');burst.setAttribute('opacity',''+(1-b));if(b<1)requestAnimationFrame(bstep);else{svg.removeChild(burst);cb();}};
+      // it opens out over the 3x3 the shell splashes (siegeSplash), not just the square it hit
+      let b=0;const bstep=()=>{b+=0.08;burst.setAttribute('r',(4+b*sqPx*1.45)+'');burst.setAttribute('opacity',''+(1-b));if(b<1)requestAnimationFrame(bstep);else{svg.removeChild(burst);cb();}};
       requestAnimationFrame(bstep);
     }
   };
@@ -499,6 +500,31 @@ function scarecrowHit(i,t,dmg,stood){
   return 'scarecrow@'+sqName(i)+' \u2212'+dmg+(stood?', knocked down \u2192 back up at '+t.hp+'HP':' \u2192 '+t.hp+'HP')+' ('+t.taken+' taken)';
 }
 
+// The Siege's shell bursts where it lands: the square it hit takes its 2, and every piece on the eight
+// squares around that one takes 1 as well — friend, foe or neither alike, the whole 3x3 caught — though
+// never the tower itself, when it fires at a square beside it. Returns the log notes.
+// (siegeSplash in js/engine.js mirrors it; applyActions and runOrders in js/game.js call it.)
+function siegeSplash(attacker,target,color){
+  const notes=[];
+  for(const j of adj8(target)){
+    if(j===attacker||over)continue;
+    const q=pieces[j];if(!q)continue;
+    q.hp-=1;flashSq(j,'hit-flash');
+    const qs=standUp(q,1);
+    if(q.fortified)q.lastHitTurn=whiteTurnCount;
+    q.exposedAt=j;
+    if(color==='w'&&q.color==='b'&&q.hp>0)blackHitBy.push({target:j,attacker});
+    if(q.hp<=0){
+      showDeath(j,q.color,q.type);SFX.fall(q.type);
+      pieces[j]=null;
+      notes.push(q.type+'@'+sqName(j)+' \u2715 (splash)');
+      if(campaignLevel){const cr=checkCampaignWin();if(cr)over=true;}
+      else if(q.type==='king')over=true;
+    }else notes.push((q.type==='scarecrow'?scarecrowHit(j,q,1,qs):q.type+'@'+sqName(j)+' '+q.hp+'HP')+' (splash)');
+  }
+  return notes;
+}
+
 function applyActions(actions,color){
   const msgs=[];
   actions.forEach(({attacker,target,action})=>{
@@ -578,6 +604,8 @@ function applyActions(actions,color){
           }else msgs.push((q.type==='scarecrow'?scarecrowHit(j,q,1,qs):q.type+'@'+sqName(j)+' '+q.hp+'HP')+' (in its path)');
         }
       }
+      // the Siege's shell bursts over the 3x3 around the square it hit (siegeSplash)
+      if(ap&&ap.type==='siege'&&!over)msgs.push(...siegeSplash(attacker,target,color));
     }
   });
   if(msgs.length)addLog((color==='w'?'W':'B')+': '+msgs.join(', '));

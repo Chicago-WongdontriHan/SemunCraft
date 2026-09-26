@@ -728,6 +728,29 @@ function computeActions(s,color){
   return acts;
 }
 
+// The Siege's shell bursts where it lands: the square it hit takes its 2, and every piece on the eight
+// squares around that one takes 1 as well — friend, foe or neither alike, the whole 3x3 caught — though
+// never the tower itself, when it fires at a square beside it. (siegeSplash in js/combat.js mirrors it;
+// applyAttacks and runOrders call it.)
+function siegeSplash(s,attacker,target,color,events){
+  const B=s.board;
+  for(const j of geo(s).adj8[target]){
+    if(j===attacker||s.over)continue;
+    const q=B[j];if(!q)continue;
+    q.hp-=1;standUp(q,1);
+    if(q.fortified)q.lastHitTurn=clock(s,color);
+    q.exposedAt=j;
+    if(color==='w'&&q.color==='b'&&q.hp>0)s.hitBy.push({target:j,attacker});
+    const qkilled=q.hp<=0;
+    if(events)events.push({type:'attack',from:attacker,to:j,damage:1,hp:q.hp,killed:qkilled,splash:true});
+    if(qkilled){
+      B[j]=null;
+      if(s.level){const r=campaignResult(s);if(r){s.over=true;s.winner=r==='win'?'w':'b';}}
+      else if(q.type==='king'){s.over=true;s.winner=q.color==='w'?'b':'w';}   // its own side's king too
+    }
+  }
+}
+
 function applyAttacks(s,acts,color,events){
   const B=s.board;
   for(const{attacker,target,action}of acts){
@@ -800,6 +823,8 @@ function applyAttacks(s,acts,color,events){
         }
       }
     }
+    // the Siege's shell bursts over the 3x3 around the square it hit (siegeSplash)
+    if(ap&&ap.type==='siege'&&!s.over)siegeSplash(s,attacker,target,color,events);
   }
 }
 
@@ -1018,6 +1043,7 @@ function runOrders(s,own,events){
         if(s.level){const r=campaignResult(s);if(r){s.over=true;s.winner=r==='win'?'w':'b';}}
         else if(t.type==='king'){s.over=true;s.winner=p.color;}
       }
+      if(p.type==='siege'&&!s.over)siegeSplash(s,i,to,p.color,events);   // an ordered shell bursts too
     }else if(!t&&(d.move.has(to)||(p.type==='siege'&&geo(s).adj8[i].includes(to)&&!s.blocked[to]))){
       delete s.targets[p.color][i];
       if(p.type==='pawn')p.firstMove=false;

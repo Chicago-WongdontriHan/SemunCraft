@@ -213,6 +213,8 @@ function runOrders(own){
         if(campaignLevel){const cr=checkCampaignWin();if(cr)over=true;}
         else if(t.type==='king'){over=true;}
       }
+      // an ordered shell bursts over the 3x3 too (siegeSplash in js/combat.js)
+      if(p.type==='siege'&&!over){const notes=siegeSplash(i,to,p.color);if(notes.length)addLog('Splash: '+notes.join(', '));}
     }else if(!t&&(d.move.has(to)||(p.type==='siege'&&adj8(i).includes(to)&&!isTileBlocked(to)))){
       delete tgts[i];
       if(p.type==='pawn')p.firstMove=false;

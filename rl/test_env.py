@@ -7,10 +7,11 @@ import time
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from semuncraft_env import SemunCraftVecEnv, sample_legal  # noqa: E402
+from semuncraft_env import ENCODINGS, LATEST_ENCODING, SemunCraftVecEnv, sample_legal  # noqa: E402
 
-CHANNELS = 32
-FIRST = 31  # observation channel: moves first each round (White in the classic turn order)
+LAYOUT = ENCODINGS[LATEST_ENCODING]
+CHANNELS = LAYOUT["channels"]
+FIRST = CHANNELS - 1  # observation channel: moves first each round (White in the classic turn order)
 failures = 0
 
 
@@ -34,7 +35,7 @@ def classic_vs_bot():
     with SemunCraftVecEnv(16, {"mode": "classic"}, num_workers=4, seed=1) as env:
         obs = env.reset()
         check(obs.shape == (16, CHANNELS, 11, 11) and obs.dtype == np.float32, "observation shape %s" % (obs.shape,))
-        check(env.num_actions == 11 * 11 * 82 + 1, "action count %d" % env.num_actions)
+        check(env.num_actions == 11 * 11 * LAYOUT["slots"] + 1, "action count %d" % env.num_actions)
         winners, games = collections.Counter(), 0
         for _ in range(2000):
             masks = env.action_masks()
@@ -51,6 +52,24 @@ def classic_vs_bot():
                 games += 1
         check(games > 0, "no game finished")
         return "%d games, winners %s (random White vs the built-in AI)" % (games, dict(winners))
+
+
+def encoding_versions():
+    """The worker serves every version in ENCODINGS, and each matches rl/encoding.js."""
+    out = []
+    for version, layout in sorted(ENCODINGS.items()):
+        with SemunCraftVecEnv(2, {"mode": "classic"}, num_workers=1, seed=1, encoding=version) as env:
+            obs = env.reset()
+            got = {"channels": env.channels, "slots": env.slots, "on_board": env.on_board}
+            check(env.encoding == version and got == layout, "version %d: worker %s, table %s" % (version, got, layout))
+            check(obs.shape == (2, layout["channels"], 11, 11), "version %d observation shape %s" % (version, obs.shape))
+            check(np.all(obs[:, layout["on_board"], :9, :9] == 1.0) and not obs[:, layout["on_board"], 9:].any(),
+                  "version %d: the on-board channel is not where the table says" % version)
+            check(env.num_actions == 11 * 11 * layout["slots"] + 1, "version %d action count" % version)
+            out.append("v%d %d channels x %d slots" % (version, env.channels, env.slots))
+    with SemunCraftVecEnv(1, {"mode": "classic"}, num_workers=1) as env:
+        check(env.encoding == LATEST_ENCODING, "the default encoding is %s" % env.encoding)
+    return ", ".join(out)
 
 
 def same_seed_same_games():
@@ -169,6 +188,7 @@ def illegal_action_rejected():
 def throughput():
     n, workers, out = 64, min(os.cpu_count() or 1, 16), []
     for name, config in (("classic vs the built-in AI", {"mode": "classic"}),
+                         ("classic vs the scripted AI", {"mode": "classic", "opponent": "scripted"}),
                          ("pvp vs random", {"mode": "pvp", "opponent": "random"})):
         rng = np.random.default_rng(0)
         with SemunCraftVecEnv(n, config, num_workers=workers, seed=7) as env:
@@ -182,6 +202,7 @@ def throughput():
 
 
 if __name__ == "__main__":
+    section("encoding versions", encoding_versions)
     section("classic games against the built-in AI", classic_vs_bot)
     section("same seeds give the same games on any worker count", same_seed_same_games)
     section("pvp with an external opponent", external_opponent)

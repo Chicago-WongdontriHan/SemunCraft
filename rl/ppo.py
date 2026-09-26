@@ -20,10 +20,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from semuncraft_env import SemunCraftVecEnv  # noqa: E402
+from semuncraft_env import ENCODINGS, LATEST_ENCODING, SemunCraftVecEnv  # noqa: E402
 
-SLOTS = 82     # actions per board cell: 81 offsets and "spawn here" (rl/encoding.js)
-ON_BOARD = 19  # observation channel marking real board cells
+def encoding_of(state):
+    """The encoding version a network's weights were trained on, from their shapes."""
+    shape = (state["stem.weight"].shape[1], state["cell_logits.weight"].shape[0])
+    for version, e in ENCODINGS.items():
+        if (e["channels"], e["slots"]) == shape:
+            return version
+    raise ValueError("no encoding has %d channels and %d slots" % shape)
 
 
 class ResBlock(nn.Module):
@@ -37,13 +42,15 @@ class ResBlock(nn.Module):
 
 
 class PolicyValueNet(nn.Module):
-    """Convolutional network with 82 action logits per cell, a skip logit and a value."""
+    """Convolutional network with `slots` action logits per cell, a skip logit and a value."""
 
-    def __init__(self, channels, width=64, blocks=4):
+    def __init__(self, channels, width=64, blocks=4, slots=ENCODINGS[LATEST_ENCODING]["slots"],
+                 on_board=ENCODINGS[LATEST_ENCODING]["on_board"]):
         super().__init__()
+        self.on_board = on_board
         self.stem = nn.Conv2d(channels, width, 3, padding=1)
         self.body = nn.Sequential(*[ResBlock(width) for _ in range(blocks)])
-        self.cell_logits = nn.Conv2d(width, SLOTS, 1)
+        self.cell_logits = nn.Conv2d(width, slots, 1)
         self.skip_logit = nn.Linear(width, 1)
         self.value_head = nn.Sequential(nn.Linear(width, width), nn.ReLU(), nn.Linear(width, 1))
 
@@ -51,9 +58,9 @@ class PolicyValueNet(nn.Module):
         if self.stem.weight.is_contiguous(memory_format=torch.channels_last):
             obs = obs.contiguous(memory_format=torch.channels_last)
         x = self.body(F.relu(self.stem(obs)))
-        board = obs[:, ON_BOARD:ON_BOARD + 1]
+        board = obs[:, self.on_board:self.on_board + 1]
         pooled = (x * board).sum((2, 3)) / board.sum((2, 3)).clamp(min=1.0)
-        # (batch, 82, grid, grid) -> (batch, grid*grid*82) so that index = cell * 82 + slot, as in the encoding
+        # (batch, slots, grid, grid) -> (batch, grid*grid*slots) so that index = cell * slots + slot, as in the encoding
         logits = self.cell_logits(x).permute(0, 2, 3, 1).reshape(obs.shape[0], -1)
         return torch.cat([logits, self.skip_logit(pooled)], 1), self.value_head(pooled).squeeze(1)
 
@@ -179,7 +186,7 @@ def rate(outcomes, value):
 
 
 def train(args, env, device):
-    net = PolicyValueNet(env.channels, args.width, args.blocks).to(device)
+    net = PolicyValueNet(env.channels, args.width, args.blocks, env.slots, env.on_board).to(device)
     if args.channels_last and device.type == "cuda":
         net = net.to(memory_format=torch.channels_last)
     opt = torch.optim.Adam(net.parameters(), lr=args.lr, eps=1e-5)

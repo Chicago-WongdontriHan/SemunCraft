@@ -2,7 +2,8 @@
 // A Node process hosting game environments for the Python training code
 // (rl/semuncraft_env.py). One JSON request per line on stdin, one JSON reply per
 // line on stdout:
-//   {cmd:'init', grid, envs:[config,...]}           → {grid, channels, actions, envs}
+//   {cmd:'init', grid, encoding, envs:[config,...]} → {grid, encoding, channels, slots, onBoard, actions, envs}
+//                                                      (encoding: the rl/encoding.js version, LATEST by default)
 //   {cmd:'reset', envs:[k,...]}                     → {results:[result,...]}
 //   {cmd:'step', envs:[k,...], actions:[index,...]} → {results:[result,...]}
 //   {cmd:'configure', envs:[k,...], config}         → {}  (takes effect from each env's next game)
@@ -15,7 +16,7 @@
 'use strict';
 const readline=require('readline');
 const E=require('../js/engine.js');
-const {createEncoder,potential}=require('./encoding.js');
+const {createEncoder,potential,LATEST}=require('./encoding.js');
 const campaignLevels=require('./levels.js');
 const Scripted=require('./scripted.js');
 
@@ -54,7 +55,7 @@ function withDefaults(base,config){
   return c;
 }
 
-let enc=createEncoder({grid:11});
+let enc=createEncoder({grid:11,version:LATEST});
 const b64=u8=>Buffer.from(u8.buffer,u8.byteOffset,u8.byteLength).toString('base64');
 
 class Env{
@@ -150,9 +151,10 @@ function handle(msg){
   const ks=msg.envs||envs.map((_,k)=>k);
   switch(msg.cmd){
     case'init':
-      enc=createEncoder({grid:msg.grid||11});
+      enc=createEncoder({grid:msg.grid||11,version:msg.encoding||LATEST});
       envs=(msg.envs||[]).map((config,k)=>new Env(k,config));
-      return{grid:enc.grid,channels:enc.channels,actions:enc.numActions,envs:envs.length};
+      return{grid:enc.grid,encoding:enc.version,channels:enc.channels,slots:enc.slots,onBoard:enc.onBoard,
+        actions:enc.numActions,envs:envs.length};
     case'reset':
       return{results:ks.map(k=>env(k).reset())};
     case'step':

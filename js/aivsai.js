@@ -12,7 +12,7 @@ let aiVsAiSpeed=1,aiVsAiMatches=0,aiVsAiScore={1:0,2:0,draw:0};
 async function aiVsAiLoad(){
   if(aiVsAiNets)return;
   const[first,second]=await Promise.all([netAiLoadModel('ai-1'),netAiLoadModel('ai-2')]);
-  aiVsAiEncoder=netAiEncoder;
+  aiVsAiEncoder={1:netAiEncoderFor(first),2:netAiEncoderFor(second)};   // each plays in its own encoding
   aiVsAiNets={1:first,2:second};
 }
 
@@ -69,6 +69,7 @@ function aiVsAiSync(){
   const g=aiVsAi,s=g.s;
   pieces=s.board.map(p=>p&&Object.assign({},p));
   whiteTargets=Object.assign({},s.targets.w);blackTargets=Object.assign({},s.targets.b);
+  scans=s.scans.slice();meteors=s.meteors.slice();flareTiles=(s.flares||[]).slice();   // a Scry, a Meteor, the fire's afterglow
   blackLastFrom=g.lastFrom;blackLastTo=g.lastTo;
   turn=s.turn;
   const tc=document.getElementById('turn-counter');if(tc)tc.textContent='Turn '+(s.turnCount.w+s.turnCount.b);
@@ -99,7 +100,7 @@ function aiVsAiStep(){
   if(s.over){aiVsAiFinish();return;}
   const color=s.turn,ai=color==='w'?g.white:g.black;
   const before=s.board.map(p=>p&&Object.assign({},p));
-  const a=SemunNet.choose(aiVsAiNets[ai],aiVsAiEncoder,s).action;
+  const a=SemunNet.choose(aiVsAiNets[ai],aiVsAiEncoder[ai],s).action;
   const events=SemunEngine.step(s,a);
   g.lastFrom=a.from===undefined?-1:a.from;
   g.lastTo=a.to===undefined?-1:a.to;
@@ -148,6 +149,10 @@ function aiVsAiDescribe(color,ai,a,events,before){
     case'target':text=p.type+' '+sq(a.from)+' targets '+sq(a.to);break;
     case'heal':case'healLock':text='bishop '+sq(a.from)+' heals '+sq(a.to);break;
     case'unsiege':text='unsiege '+sq(a.from);break;
+    case'fortify':text='helmet on '+sq(a.from);break;
+    case'order':text=p.type+' '+sq(a.from)+'→'+sq(a.to)+' in '+a.turns;break;
+    case'scry':text='scry '+sq(a.to);break;
+    case'meteor':text='meteor '+sq(a.to);break;
     default:text='skip';
   }
   const hits=events.filter(e=>e.type==='attack'),kills=hits.filter(e=>e.killed).length;

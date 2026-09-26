@@ -161,10 +161,17 @@ function setTile(s,i,t){
   s.blocked[i]=t==='sandstone-spawner'||(!!t&&(THEME_TILES[s.theme]||[]).some(o=>o[0]===t&&o[2]));
 }
 
+function copyPiece(p){
+  if(!p)return p;
+  const q={...p};
+  if(p.order)q.order={to:p.order.to,turns:p.order.turns};
+  return q;
+}
 function clone(s){
   const c=Object.assign({},s);
   // a piece's pending order is its own object: sharing it would let a copy's turn count the original's down
-  c.board=s.board.map(p=>p&&Object.assign({},p,p.order?{order:{to:p.order.to,turns:p.order.turns}}:null));
+  // (a spread: quicker than Object.assign, and copying is a large share of the scripted AI's time)
+  c.board=s.board.map(copyPiece);
   c.tiles=s.tiles.slice();
   c.blocked=s.blocked.slice();
   c.turnCount={w:s.turnCount.w,b:s.turnCount.b};

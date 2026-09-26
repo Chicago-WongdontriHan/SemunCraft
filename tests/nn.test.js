@@ -42,10 +42,12 @@ for(const m of spec.models){
 }
 
 if(nets.length===2){
-  const enc=createEncoder({grid:11}),s=E.newGame({seed:7,mode:'classic',maxTurns:300}),random=E.makeRandom(3);
+  // each network plays in the encoding it was trained on (its meta), with normal sight like the game's AI
+  const enc=nets.map(n=>createEncoder({grid:n.grid,version:n.meta.encoding||1,sightPlane:false}));
+  const s=E.newGame({seed:7,mode:'classic',maxTurns:300,aiSight:true}),random=E.makeRandom(3);
   const t0=performance.now();
   let moves=0;
-  while(!s.over){E.step(s,Net.choose(s.turn==='w'?nets[0]:nets[1],enc,s,{random}).action);moves++;}
+  while(!s.over){const k=s.turn==='w'?0:1;E.step(s,Net.choose(nets[k],enc[k],s,{random}).action);moves++;}
   console.log('ok   a game between them: '+(s.winner==='draw'?'draw':(s.winner==='w'?'the first (White)':'the second (Black)')+' won')
     +' after '+moves+' moves, '+((performance.now()-t0)/moves).toFixed(0)+' ms per move');
 }

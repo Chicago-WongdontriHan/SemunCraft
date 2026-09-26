@@ -1,11 +1,17 @@
 """Curriculum and self-play training for SemunCraft.
 
-Training moves through three stages, promoted once the agent wins often enough:
-  easy    White against the Easy AI
-  hard    White against the Hard AI (a random strategy each game), still with some Easy games
-  league  self-play in the single-player turn order, plus some games against the built-in AI:
-          the agent plays either color against its current network, recent snapshots or a
-          hall of fame of older ones, so it also learns to play Black, the side the game's AI plays
+Training moves through four stages, promoted once the agent wins often enough:
+  easy      White against the Easy AI (the old built-in one, js/ai.js as E.botTurn)
+  hard      White against the Hard AI (a random strategy each game), still with some Easy games
+  scripted  either color against the scripted AI (rl/scripted.js: it Scrys, gives orders, builds
+            the whole unit tree), still with some Hard games
+  league    self-play in the single-player turn order, plus some games against the scripted and
+            built-in AIs: the agent plays either color against its current network, recent snapshots
+            or a hall of fame of older ones, so it also learns to play Black, the side the game's AI plays
+
+Every game is played with normal sight (aiSight in js/engine.js): each side attacks only what it can
+see, though it reads where the enemy stands. The network sees and acts in the latest rl/encoding.js
+version (--encoding); a checkpoint keeps playing the version it was trained on.
 
 Output goes to --out (default: a new folder under %LOCALAPPDATA%/semuncraft-rl/runs,
 outside Google Drive): log.csv (training), eval.csv (evaluation games), snapshots/ and
@@ -28,17 +34,18 @@ import numpy as np
 import torch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ppo import PolicyValueNet, Rollout, Runner, autocast, ppo_update  # noqa: E402
+from ppo import ENCODINGS, LATEST_ENCODING, PolicyValueNet, Rollout, Runner, autocast, ppo_update  # noqa: E402
 from semuncraft_env import SemunCraftVecEnv  # noqa: E402
 
 # share of training games against each kind of opponent, per stage (main() adds the league mix)
 MIX = {
     "easy": {"easy": 1.0},
     "hard": {"easy": 0.25, "hard": 0.75},
+    "scripted": {"hard": 0.25, "scripted": 0.75},
 }
-NEXT_STAGE = {"easy": "hard", "hard": "league"}
+NEXT_STAGE = {"easy": "hard", "hard": "scripted", "scripted": "league"}
 LOG_FIELDS = ["minutes", "update", "steps", "steps_per_s", "stage", "shaping", "lr", "entropy_coef", "games",
-              "win_easy", "win_hard", "win_self_w", "win_self_b", "draws", "moves_per_game", "entropy",
+              "win_easy", "win_hard", "win_scripted", "win_self_w", "win_self_b", "draws", "moves_per_game", "entropy",
               "value_loss", "approx_kl", "clip_frac"]
 EVAL_FIELDS = ["minutes", "update", "steps", "stage", "suite", "group", "games", "win", "loss", "draw"]
 EVAL_SEED = 12345  # every evaluation replays the same maps
@@ -50,15 +57,21 @@ def rate(outcomes, value=1):
 
 
 def game_kind(info):
-    """'easy', 'hard', 'self_w' or 'self_b' for a finished game."""
+    """'easy', 'hard', 'scripted', 'self_w' or 'self_b' for a finished game."""
     scenario = info["scenario"]
-    return scenario["difficulty"] if scenario["opponent"] == "bot" else "self_" + info["agent"]
+    if scenario["opponent"] == "bot":
+        return scenario["difficulty"]
+    if scenario["opponent"] == "scripted":
+        return "scripted"
+    return "self_" + info["agent"]
 
 
 def env_config(kind, args, shaping):
-    config = {"mode": "classic", "maxTurns": args.max_turns, "shaping": shaping, "gamma": args.gamma}
+    config = {"mode": "classic", "maxTurns": args.max_turns, "shaping": shaping, "gamma": args.gamma, "aiSight": True}
     if kind == "self":
         config.update(opponent="external", agentColor="random")
+    elif kind == "scripted":
+        config.update(opponent="scripted", agentColor="random")
     else:
         config.update(opponent="bot", difficulty=kind)
     return config
@@ -73,8 +86,8 @@ def split(num_envs, mix):
     return kinds
 
 
-def make_net(args, channels, device):
-    net = PolicyValueNet(channels, args.width, args.blocks).to(device)
+def make_net(args, layout, device):
+    net = PolicyValueNet(layout["channels"], args.width, args.blocks, layout["slots"], layout["on_board"]).to(device)
     return net.to(memory_format=torch.channels_last) if args.channels_last and device.type == "cuda" else net
 
 
@@ -107,13 +120,13 @@ class League:
     """Self-play opponents: recent snapshots of the network and a hall of fame of older ones. Only a few
     are in play at a time (refresh() picks them), so each step runs a handful of opponent networks."""
 
-    def __init__(self, args, channels, device):
-        self.args, self.channels, self.device = args, channels, device
+    def __init__(self, args, layout, device):
+        self.args, self.layout, self.device = args, layout, device
         self.recent, self.hall = [], []  # (path, network), oldest first
         self.active_recent, self.active_hall = [], []
 
     def load(self, path):
-        net = make_net(self.args, self.channels, self.device)
+        net = make_net(self.args, self.layout, self.device)
         net.load_state_dict(torch.load(path, map_location=self.device, weights_only=True))
         return net.eval()
 
@@ -182,11 +195,14 @@ class Trainer:
         self.rng = np.random.default_rng(args.seed + self.update)
         self.kinds = split(args.envs, MIX[self.stage])
         self.env = SemunCraftVecEnv(args.envs, [env_config(k, args, self.shaping) for k in self.kinds],
-                                    num_workers=args.workers, seed=args.seed + self.update)
-        self.channels = self.env.channels
-        self.net = make_net(args, self.channels, device)
+                                    num_workers=args.workers, seed=args.seed + self.update, encoding=args.encoding)
+        self.layout = {"channels": self.env.channels, "slots": self.env.slots, "on_board": self.env.on_board}
+        if self.layout != ENCODINGS[args.encoding]:
+            raise SystemExit("rl/encoding.js version %d is %s, rl/ppo.py expects %s"
+                             % (args.encoding, self.layout, ENCODINGS[args.encoding]))
+        self.net = make_net(args, self.layout, device)
         self.opt = torch.optim.Adam(self.net.parameters(), lr=args.lr, eps=1e-5)
-        self.league = League(args, self.channels, device)
+        self.league = League(args, self.layout, device)
         self.anchor = None     # (path, network) saved when the league stage began
         self.previous = None   # network at the previous evaluation
         self.run_start = None  # network when this run started
@@ -273,7 +289,7 @@ class Trainer:
             return
         elapsed = self.update - self.stage_start
         results = self.recent[stage]
-        threshold = args.promote_easy if stage == "easy" else args.promote_hard
+        threshold = {"easy": args.promote_easy, "hard": args.promote_hard, "scripted": args.promote_scripted}[stage]
         won = len(results) >= args.window and rate(results) >= threshold and elapsed >= args.min_stage_updates
         if not won and elapsed < args.max_stage_updates:
             return
@@ -310,7 +326,8 @@ class Trainer:
                  "steps": self.steps, "games": self.games, "stage": self.stage, "stage_start": self.stage_start,
                  "shaping": self.shaping, "league": [p for p, _ in self.league.recent],
                  "hall": [p for p, _ in self.league.hall],
-                 "anchor": self.anchor[0] if self.anchor else None, "args": vars(self.args)}
+                 "anchor": self.anchor[0] if self.anchor else None, "encoding": self.args.encoding,
+                 "args": vars(self.args)}
         torch.save(state, path + ".tmp")
         os.replace(path + ".tmp", path)
 
@@ -319,24 +336,26 @@ class Trainer:
         row = {"minutes": (time.time() - start) / 60, "update": self.update, "steps": self.steps,
                "steps_per_s": round(speed), "stage": self.stage, "shaping": self.shaping,
                "lr": self.opt.param_groups[0]["lr"], "entropy_coef": self.entropy_coef, "games": self.games,
-               "win_easy": rate(r["easy"]), "win_hard": rate(r["hard"]),
+               "win_easy": rate(r["easy"]), "win_hard": rate(r["hard"]), "win_scripted": rate(r["scripted"]),
                "win_self_w": rate(r["self_w"]), "win_self_b": rate(r["self_b"]),
                "draws": rate([o for d in r.values() for o in d], 0),
                "moves_per_game": float(np.mean(self.lengths)) if self.lengths else float("nan")}
         row.update({k: stats[k] for k in ("entropy", "value_loss", "approx_kl", "clip_frac")})
         self.log.write(row)
         show = lambda x: "  - " if x != x else "%.2f" % x
-        print("upd %5d | %6.2fM steps | %5d/s | %-6s | lr %.1e | win easy %s hard %s self W %s B %s"
+        print("upd %5d | %6.2fM steps | %5d/s | %-8s | lr %.1e | win easy %s hard %s scripted %s self W %s B %s"
               " | draws %s | moves %5.1f | entropy %.2f kl %.3f"
               % (self.update, self.steps / 1e6, speed, self.stage, row["lr"], show(row["win_easy"]),
-                 show(row["win_hard"]), show(row["win_self_w"]), show(row["win_self_b"]), show(row["draws"]),
+                 show(row["win_hard"]), show(row["win_scripted"]), show(row["win_self_w"]), show(row["win_self_b"]),
+                 show(row["draws"]),
                  row["moves_per_game"], stats["entropy"], stats["approx_kl"]), flush=True)
 
     def evaluate(self, start):
         args = self.args
         by_color = lambda info: "as White" if info["agent"] == "w" else "as Black"
         suites = [("easy", env_config("easy", args, 0.0), None, 1.0, lambda info: None),
-                  ("hard", env_config("hard", args, 0.0), None, 1.0, lambda info: info["scenario"]["strategy"])]
+                  ("hard", env_config("hard", args, 0.0), None, 1.0, lambda info: info["scenario"]["strategy"]),
+                  ("scripted", env_config("scripted", args, 0.0), None, 1.0, by_color)]
         if self.stage == "league":
             self_play = env_config("self", args, 0.0)
             if self.anchor:
@@ -361,7 +380,7 @@ class Trainer:
             parts.append("%s %.2f%s" % (name, rate(groups["all"]), " (%s)" % detail if detail else ""))
         print("eval @ update %d, win rates: %s" % (self.update, " | ".join(parts)), flush=True)
         if self.stage == "league":
-            self.previous = make_net(args, self.channels, self.device)
+            self.previous = make_net(args, self.layout, self.device)
             self.previous.load_state_dict(self.net.state_dict())
             self.previous.eval()
 
@@ -393,10 +412,13 @@ def parse_args():
     p.add_argument("--window", type=int, default=400, help="recent games per opponent kind for promotion and logs")
     p.add_argument("--promote-easy", type=float, default=0.9, help="win rate against Easy needed to move on")
     p.add_argument("--promote-hard", type=float, default=0.75, help="win rate against Hard needed to move on")
+    p.add_argument("--promote-scripted", type=float, default=0.6, help="win rate against the scripted AI needed to move on")
     p.add_argument("--min-stage-updates", type=int, default=30)
     p.add_argument("--max-stage-updates", type=int, default=400, help="move on anyway after this many updates")
-    p.add_argument("--league-easy", type=float, default=0.1, help="share of league games against the Easy AI")
-    p.add_argument("--league-hard", type=float, default=0.4, help="share of league games against the Hard AI (the rest is self-play)")
+    p.add_argument("--league-easy", type=float, default=0.05, help="share of league games against the Easy AI")
+    p.add_argument("--league-hard", type=float, default=0.15, help="share of league games against the Hard AI")
+    p.add_argument("--league-scripted", type=float, default=0.3,
+                   help="share of league games against the scripted AI (the rest is self-play)")
     p.add_argument("--snapshot-every", type=int, default=50)
     p.add_argument("--pool", type=int, default=10, help="recent snapshots kept as self-play opponents")
     p.add_argument("--latest-prob", type=float, default=0.5, help="share of self-play games against the current network")
@@ -409,6 +431,8 @@ def parse_args():
     p.add_argument("--eval-workers", type=int, default=8)
     p.add_argument("--log-every", type=int, default=10)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--encoding", type=int, default=LATEST_ENCODING, choices=sorted(ENCODINGS),
+                   help="rl/encoding.js version for a new run (a resumed run keeps its own)")
     return p.parse_args()
 
 
@@ -416,15 +440,22 @@ def main():
     args = parse_args()
     args.lr_end = args.lr if args.lr_end is None else args.lr_end
     args.entropy_end = args.entropy if args.entropy_end is None else args.entropy_end
-    if args.league_easy + args.league_hard > 1:
-        raise SystemExit("--league-easy and --league-hard add up to more than 1")
-    MIX["league"] = {"easy": args.league_easy, "hard": args.league_hard, "self": 1.0 - args.league_easy - args.league_hard}
+    others = args.league_easy + args.league_hard + args.league_scripted
+    if others > 1:
+        raise SystemExit("--league-easy, --league-hard and --league-scripted add up to more than 1")
+    MIX["league"] = {"easy": args.league_easy, "hard": args.league_hard, "scripted": args.league_scripted,
+                     "self": 1.0 - others}
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.backends.cudnn.benchmark = True
     checkpoint = torch.load(args.resume, map_location=device, weights_only=True) if args.resume else None
     if checkpoint:
-        # the network's shape is fixed by the checkpoint
+        # the network's shape is fixed by the checkpoint, and so is the encoding it sees and acts in (the
+        # runs before encoding 2 saved none)
         args.width, args.blocks = checkpoint["args"]["width"], checkpoint["args"]["blocks"]
+        args.encoding = checkpoint.get("encoding", 1)
+        if args.encoding != LATEST_ENCODING:
+            print("note: this checkpoint plays encoding %d; the latest is %d, and only a new run trains on it"
+                  % (args.encoding, LATEST_ENCODING), flush=True)
         args.out = args.out or os.path.dirname(os.path.abspath(args.resume))
     if not args.out:
         root = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")

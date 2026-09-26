@@ -3,7 +3,9 @@
 Writes networks' policy weights as half-precision JavaScript files that the game loads on
 demand, then checks js/nn.js against PyTorch on real positions. --run takes a training run's
 two most-trained networks (models/ai-1.js is the most trained, models/ai-2.js the next);
---checkpoints takes any files, named with --names (ai-1, ai-2, ... by default).
+--checkpoints takes any files, named with --names (ai-1, ai-2, ... by default). Each file's meta
+records the rl/encoding.js version its network was trained on (`encoding`, read from the weights'
+shapes) and its board channel (`onBoard`), so the game plays it with the right encoder.
 
     python rl/export_web.py --run %LOCALAPPDATA%/semuncraft-rl/runs/step3-run
     python rl/export_web.py --checkpoints run/snapshots/update_000100.pt run/snapshots/update_000400.pt --names easy medium
@@ -23,7 +25,7 @@ import numpy as np
 import torch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ppo import PolicyValueNet  # noqa: E402
+from ppo import ENCODINGS, PolicyValueNet, encoding_of  # noqa: E402
 from semuncraft_env import SemunCraftVecEnv, find_node, sample_legal  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -57,7 +59,9 @@ def architecture(state):
     blocks = 0
     while "body.%d.conv1.weight" % blocks in state:
         blocks += 1
-    return {"channels": state["stem.weight"].shape[1], "width": state["stem.weight"].shape[0], "blocks": blocks}
+    e = ENCODINGS[encoding_of(state)]
+    return {"channels": e["channels"], "width": state["stem.weight"].shape[0], "blocks": blocks,
+            "slots": e["slots"], "on_board": e["on_board"]}
 
 
 def export(state, info, name, source, out_dir):
@@ -66,7 +70,10 @@ def export(state, info, name, source, out_dir):
         if key.startswith(POLICY):
             tensors.append([key, list(value.shape)])
             chunks.append(value.detach().cpu().contiguous().to(torch.float16).numpy().astype("<f2").tobytes())
-    meta = dict(info, name=name, source=source, grid=11, exported=datetime.date.today().isoformat(), **architecture(state))
+    arch = architecture(state)
+    meta = dict(info, name=name, source=source, grid=11, exported=datetime.date.today().isoformat(),
+                encoding=encoding_of(state), onBoard=arch["on_board"],
+                **{k: arch[k] for k in ("channels", "width", "blocks", "slots")})
     body = {"meta": meta, "dtype": "float16", "tensors": tensors, "data": base64.b64encode(b"".join(chunks)).decode()}
     path = os.path.join(out_dir, name + ".js")
     with open(path, "w", newline="\n") as f:
@@ -85,9 +92,12 @@ def logits_of(state, obs, half=False):
 
 def check(exported, workdir):
     """Compares js/nn.js with PyTorch on positions from real games (classic order, both colors)."""
+    encodings = {encoding_of(state) for _, state in exported}
+    if len(encodings) != 1:
+        raise SystemExit("export networks of one encoding at a time, not %s" % sorted(encodings))
     config = {"mode": "classic", "opponent": "random", "agentColor": "random", "maxTurns": 160}
     rng, obs, legal = np.random.default_rng(0), [], []
-    with SemunCraftVecEnv(8, config, num_workers=2, seed=5) as env:
+    with SemunCraftVecEnv(8, config, num_workers=2, seed=5, encoding=encodings.pop()) as env:
         env.reset()
         for step in range(40):
             masks = env.action_masks()

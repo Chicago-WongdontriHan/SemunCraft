@@ -5,7 +5,9 @@
 // Loads as a classic <script> (global SemunNet) or in Node.
 (function(root){
 'use strict';
-const SLOTS=82,ON_BOARD=19; // action slots per cell, and the "on the board" observation channel
+// the "on the board" observation channel of the networks exported before it went into their meta
+// (encoding 1); a network's action slots per cell come from its own weights
+const ON_BOARD_V1=19;
 
 let HALF=null;
 // every 16-bit half-precision value, decoded once
@@ -71,7 +73,8 @@ function conv3x3(input,cin,grid,weight,bias,cout,out,cols){
 // load(model) → {meta, forward(observation bytes) → Float32Array of action logits}
 function load(model){
   const t=readTensors(model),meta=model.meta||{};
-  const width=t['stem.weight'].shape[0],channels=t['stem.weight'].shape[1];
+  const width=t['stem.weight'].shape[0],channels=t['stem.weight'].shape[1],SLOTS=t['cell_logits.weight'].shape[0];
+  const ON_BOARD=meta.onBoard!==undefined?meta.onBoard:ON_BOARD_V1;
   let blocks=0;
   while(t['body.'+blocks+'.conv1.weight'])blocks++;
   const grid=meta.grid||11,P=grid*grid,numActions=P*SLOTS+1;
@@ -90,7 +93,7 @@ function load(model){
       conv3x3(y,width,grid,t[pre+'conv2.weight'].data,t[pre+'conv2.bias'].data,width,z,cols);
       for(let i=0;i<x.length;i++){const v=x[i]+z[i];x[i]=v>0?v:0;}
     }
-    // 1×1 convolution: 82 logits per cell, laid out as cell × 82 + slot like the encoding
+    // 1×1 convolution: SLOTS logits per cell, laid out as cell × SLOTS + slot like the encoding
     const cw=t['cell_logits.weight'].data,cb=t['cell_logits.bias'].data,logits=new Float32Array(numActions);
     for(let s=0;s<SLOTS;s++)for(let p=0;p<P;p++){
       let v=cb[s];
@@ -109,7 +112,7 @@ function load(model){
     logits[numActions-1]=skip;
     return logits;
   }
-  return{meta,channels,width,blocks,grid,numActions,forward};
+  return{meta,channels,width,blocks,grid,slots:SLOTS,onBoard:ON_BOARD,numActions,forward};
 }
 
 // choose(net, encoder, state, {temperature, random}) picks a move for the side to move from the

@@ -170,14 +170,6 @@ function candidates(s){
   return out;
 }
 
-// the move played on a copy of the state, and optionally the opponent's pass after it
-function simulate(s,a,me,reply){
-  const c=E.clone(s);
-  E.step(c,a,{trusted:true});
-  if(reply&&!c.over&&c.turn!==me)E.step(c,{type:'skip'},{trusted:true});
-  return c;
-}
-
 // the state a plan leaves once this turn is over and the opponent has passed: what an order that leaves the
 // turn to be used is worth is what it changes here, against passing without it
 function afterPass(s,me,first){
@@ -198,31 +190,39 @@ function withSight(s){
   return c;
 }
 
+// Each candidate is played on one copy of the state, and that copy is carried on through its later looks
+// (the opponent's pass, and for an order the rest of the turn) instead of being played again from the start.
 function chooseAction(s){
   s=withSight(s);
   const me=s.turn,cand=candidates(s);
   if(cand.length===1)return cand[0];
   const scored=[],orders=[];
   for(const a of cand){
-    const c=simulate(s,a,me,false),v=evaluate(c,me);
+    const c=E.clone(s);
+    E.step(c,a,{trusted:true});
+    const v=evaluate(c,me);
     if(v>=1e6)return a;                       // wins on the spot
-    if(a.type==='order'&&!c.over&&c.turn===me){orders.push(a);continue;}   // judged below
-    scored.push({a,v1:v+noise(s,a)});
+    if(a.type==='order'&&!c.over&&c.turn===me){orders.push({a,c});continue;}   // judged below
+    scored.push({a,c,v1:v+noise(s,a)});
   }
   scored.sort((x,y)=>y.v1-x.v1);
   const top=scored.slice(0,TOP),pass=scored.find(x=>x.a.type==='skip');
   if(pass&&!top.includes(pass))top.push(pass);
-  let best=null,bv=-Infinity;
+  let best=null,bv=-Infinity,v0=null;
   for(const t of top){
-    const v=evaluate(simulate(s,t.a,me,true),me)+.2*t.v1;
+    if(!t.c.over&&t.c.turn!==me)E.step(t.c,{type:'skip'},{trusted:true});   // and the opponent passes
+    const raw=evaluate(t.c,me),v=raw+.2*t.v1;
+    if(t.a.type==='skip')v0=raw;              // passing now, and the opponent passing: what an order is measured against
     if(v>bv){bv=v;best=t.a;}
   }
   // the order that gains most over doing without one goes first, and the rest of the turn follows it
   if(orders.length){
-    const v0=evaluate(afterPass(s,me,null),me);
+    if(v0===null)v0=evaluate(afterPass(s,me,null),me);
     let bo=null,bg=ORDER_GAIN;
-    for(const a of orders){
-      const g=evaluate(afterPass(s,me,a),me)-v0+noise(s,a);
+    for(const{a,c}of orders){
+      if(!c.over&&c.turn===me)E.step(c,{type:'skip'},{trusted:true});
+      if(!c.over&&c.turn!==me)E.step(c,{type:'skip'},{trusted:true});
+      const g=evaluate(c,me)-v0+noise(s,a);
       if(g>bg){bg=g;bo=a;}
     }
     if(bo)return bo;

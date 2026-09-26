@@ -12,10 +12,11 @@ import numpy as np
 import torch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ppo import PolicyValueNet, Rollout, Runner, legal_dist, masked_dist, ppo_update  # noqa: E402
-from semuncraft_env import SemunCraftVecEnv  # noqa: E402
+from ppo import PolicyValueNet, Rollout, Runner, encoding_of, legal_dist, masked_dist, ppo_update  # noqa: E402
+from semuncraft_env import ENCODINGS, LATEST_ENCODING, SemunCraftVecEnv  # noqa: E402
 
-ACTIONS = 11 * 11 * 82 + 1
+LAYOUT = ENCODINGS[LATEST_ENCODING]
+ACTIONS = 11 * 11 * LAYOUT["slots"] + 1
 failures = 0
 
 
@@ -58,10 +59,21 @@ def legal_matches_all_actions():
     check(bool((samples < counts).all()), "sampled a padding position")
 
 
+def encoding_1_networks_still_load():
+    """A network shaped like the ones trained on encoding 1 is recognised and builds with its own head."""
+    e = ENCODINGS[1]
+    old = PolicyValueNet(e["channels"], width=16, blocks=1, slots=e["slots"], on_board=e["on_board"])
+    check(encoding_of(old.state_dict()) == 1, "an encoding 1 network is not recognised")
+    logits, _ = old(torch.zeros(2, e["channels"], 11, 11))
+    check(logits.shape == (2, 11 * 11 * e["slots"] + 1), "encoding 1 logits %s" % (tuple(logits.shape),))
+
+
 def short_training():
     device = torch.device("cpu")
     with SemunCraftVecEnv(8, {"mode": "classic", "levels": [0]}, num_workers=2, seed=3) as env:
-        net = PolicyValueNet(env.channels, width=16, blocks=1).to(device)
+        net = PolicyValueNet(env.channels, width=16, blocks=1, slots=env.slots, on_board=env.on_board).to(device)
+        check(encoding_of(net.state_dict()) == env.encoding, "encoding_of does not recognise the network")
+        check(net(torch.zeros((1,) + env.observation_shape))[0].shape == (1, env.num_actions), "logit count")
         opt = torch.optim.Adam(net.parameters(), lr=1e-3)
         rollout, runner = Rollout(16, env, device), Runner(env, device)
         games = []
@@ -76,8 +88,8 @@ def short_training():
 def bench(device):
     """Forward and backward of a 2,048-sample minibatch through the training network, both ways."""
     g = torch.Generator().manual_seed(1)
-    net = PolicyValueNet(32, width=96, blocks=6).to(device)
-    obs = torch.rand(2048, 32, 11, 11, generator=g).to(device)
+    net = PolicyValueNet(LAYOUT["channels"], width=96, blocks=6, slots=LAYOUT["slots"], on_board=LAYOUT["on_board"]).to(device)
+    obs = torch.rand(2048, LAYOUT["channels"], 11, 11, generator=g).to(device)
     masks, legal, counts = (x.to(device) for x in random_legal(2048, 60, g))
     picks = (torch.rand(2048, generator=g).to(device) * counts).long()
     actions = legal.gather(1, picks[:, None]).squeeze(1)
@@ -104,6 +116,7 @@ if __name__ == "__main__":
     p.add_argument("--bench", metavar="DEVICE", help="also benchmark on this device (cpu or cuda)")
     args = p.parse_args()
     section("the legal-actions distribution equals the masked one over all actions", legal_matches_all_actions)
+    section("an encoding 1 network is recognised and runs", encoding_1_networks_still_load)
     section("collect and update on campaign level 1", short_training)
     if args.bench:
         section("policy head speed", lambda: bench(torch.device(args.bench)))

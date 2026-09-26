@@ -20,7 +20,8 @@ const NETAI_CODE=[
 ];
 const netAiNets={};    // model name → network, once loaded
 const netAiModels={};  // model name → loading promise
-let netAiEncoder=null,netAiCode=null;
+const netAiEncoders={};   // encoding version → encoder (rl/encoding.js)
+let netAiCode=null;
 
 function netAiLoadScript(src){
   return new Promise((resolve,reject)=>{
@@ -35,9 +36,16 @@ function netAiLoadScript(src){
 function netAiLoadCode(){
   if(!netAiCode)netAiCode=(async()=>{
     for(const[src,loaded]of NETAI_CODE)if(!loaded())await netAiLoadScript(src);
-    netAiEncoder=SemunEncoding.createEncoder({grid:11,sightPlane:false});   // the trained networks' own picture (rl/encoding.js)
   })().catch(err=>{netAiCode=null;throw err;});
   return netAiCode;
+}
+
+// the encoder a network was trained with: the version in its meta (encoding 1 for the networks exported
+// before the meta said), which also keeps encoding 1's picture of the board as those networks saw it
+function netAiEncoderFor(net){
+  const version=(net.meta&&net.meta.encoding)||1;
+  if(!netAiEncoders[version])netAiEncoders[version]=SemunEncoding.createEncoder({grid:net.grid||11,version,sightPlane:false});
+  return netAiEncoders[version];
 }
 
 // loads the engine, the network code and one model's weights; resolves to the network
@@ -69,7 +77,8 @@ function netAiSnapshot(){
 // Black's move at this difficulty (tests/netai.test.js replaces this with random legal moves)
 function netAiChoose(state,level){
   const cfg=NETAI_LEVELS[level];
-  return SemunNet.choose(netAiNets[cfg.model],netAiEncoder,state,{temperature:cfg.temperature}).action;
+  const net=netAiNets[cfg.model];
+  return SemunNet.choose(net,netAiEncoderFor(net),state,{temperature:cfg.temperature}).action;
 }
 
 // applies an engine action for Black to the game's variables; the game runs the end of the turn itself
@@ -128,6 +137,10 @@ function netAiDescribe(a,p,events){
     case'target':return p.type+' targets '+sqName(a.to);
     case'heal':case'healLock':return 'bishop heals '+sqName(a.to);
     case'unsiege':return 'unsieges@'+sqName(a.from);
+    case'fortify':return 'puts a helmet on the pawn@'+sqName(a.from);
+    case'order':return 'orders its '+p.type+' '+(isConcealedFrom(a.from,'w')?'':sqName(a.from))+'→'+sqName(a.to)+' in '+a.turns+' turn'+(a.turns>1?'s':'');
+    case'scry':return 'bishop scries around '+sqName(a.to);
+    case'meteor':return 'Mage calls a Meteor on '+sqName(a.to);
   }
   return 'skips';
 }

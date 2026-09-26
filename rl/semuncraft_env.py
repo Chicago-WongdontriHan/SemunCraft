@@ -6,8 +6,8 @@ lock-step. Only NumPy is required.
 
     from semuncraft_env import SemunCraftVecEnv, sample_legal
     with SemunCraftVecEnv(num_envs=16, config={"mode": "classic"}) as env:
-        obs = env.reset()                    # (16, 32, 11, 11) float32 in [0, 1]
-        masks = env.action_masks()           # (16, 9923) bool, True = legal
+        obs = env.reset()                    # (16, 54, 11, 11) float32 in [0, 1]
+        masks = env.action_masks()           # (16, 19240) bool, True = legal
         obs, rewards, dones, infos = env.step(sample_legal(masks, rng))
 
 The agent always sees the board from its own side (rotated 180 degrees when it
@@ -28,6 +28,16 @@ import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WORKER = os.path.join(ROOT, "rl", "worker.js")
+
+# the rl/encoding.js versions: observation channels, action slots per board cell, and the channel that
+# marks real board cells (the last channel, in both, is "moves first each round"). A network plays only
+# in the version it was trained on. tests/encoding.test.js and rl/test_env.py check these against
+# rl/encoding.js.
+ENCODINGS = {
+    1: {"channels": 32, "slots": 82, "on_board": 19},   # the networks trained through 2026-09-14
+    2: {"channels": 54, "slots": 159, "on_board": 42},  # the current rules
+}
+LATEST_ENCODING = 2
 
 
 def find_node():
@@ -53,14 +63,17 @@ def sample_legal(masks, rng):
 class _Worker:
     """One Node worker process and its line-based JSON protocol."""
 
-    def __init__(self, node, grid, configs):
+    def __init__(self, node, grid, configs, encoding=None):
         self.proc = subprocess.Popen(
             [node, WORKER], cwd=ROOT,
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.stderr = collections.deque(maxlen=40)
         threading.Thread(target=self._drain_stderr, daemon=True).start()
         try:
-            self.info = self.call({"cmd": "init", "grid": grid, "envs": configs})
+            msg = {"cmd": "init", "grid": grid, "envs": configs}
+            if encoding is not None:
+                msg["encoding"] = encoding
+            self.info = self.call(msg)
         except BaseException:
             self.proc.kill()
             raise
@@ -116,12 +129,15 @@ class SemunCraftVecEnv:
     on_new_game: optional function(env_index), called whenever an env starts a
         game and before any opponent move in it (for example to pick that
         game's opponent).
+    encoding: the rl/encoding.js version to observe and act in (default: the
+        latest). A network plays only in the version it was trained on;
+        env.encoding, env.channels, env.slots and env.on_board describe it.
     Finished games restart automatically; infos[i] then describes the finished
     game, including its "terminal_observation".
     """
 
     def __init__(self, num_envs=8, config=None, num_workers=None, seed=0, grid=11, opponent=None,
-                 on_new_game=None, node=None):
+                 on_new_game=None, node=None, encoding=None):
         if isinstance(config, (list, tuple)):
             configs = [dict(c) for c in config]
             if len(configs) != num_envs:
@@ -143,13 +159,14 @@ class SemunCraftVecEnv:
         try:
             for w in range(num_workers):
                 lo, hi = bounds[w], bounds[w + 1]
-                self._workers.append(_Worker(node, grid, configs[lo:hi]))
+                self._workers.append(_Worker(node, grid, configs[lo:hi], encoding))
                 self._slots += [(w, k) for k in range(hi - lo)]
         except BaseException:
             self.close()
             raise
         info = self._workers[0].info
         self.grid, self.channels, self.num_actions = info["grid"], info["channels"], info["actions"]
+        self.encoding, self.slots, self.on_board = info["encoding"], info["slots"], info["onBoard"]
         self.observation_shape = (self.channels, self.grid, self.grid)
         self._obs = np.zeros((num_envs,) + self.observation_shape, np.uint8)
         self._masks = np.zeros((num_envs, self.num_actions), bool)

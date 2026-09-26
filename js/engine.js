@@ -322,7 +322,7 @@ function generateMap(s){
 }
 
 // the mines and the springs (RESOURCE_TILES, RESOURCE_SQUARES in state.js): both pay for being held at the
-// end of a turn — a sixth of Gold more for each mine, a quarter of an Elixir for each spring (finishTurn)
+// end of a turn — a sixth of Gold more for each mine, half an Elixir for each spring (finishTurn)
 const RESOURCE_TILES={spring:'elixir',mine:'gold'};
 // a mine at e5, the same 3 squares from both kings; a mine and a spring for each side, 4 from its own
 // king and 6 from the other's, mirrored through the centre
@@ -598,7 +598,7 @@ function mergeResultType(s,pa,pb){
   return t&&s.elixir[pa.color]>=elixirCost(t)?t:null;
 }
 const ELIXIR_COST={paladin:3,mage:2,guardian:1,siege:1};   // elixirCost in js/state.js
-const ELIXIR_RATE=.25;   // what a held spring pays a turn (js/state.js)
+const ELIXIR_RATE=.5;   // what a held spring pays a turn (js/state.js)
 function elixirCost(type){return ELIXIR_COST[type]||0;}
 const FORTIFIED_MEND=5;   // a fortified pawn mends 1 HP five turns after its last hit (state.js)
 // delayed orders (MAX_DELAY, ORDER_COST in js/state.js): giving one spends part of the turn's order

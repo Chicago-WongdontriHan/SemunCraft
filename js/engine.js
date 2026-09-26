@@ -158,7 +158,8 @@ function setTile(s,i,t){
 
 function clone(s){
   const c=Object.assign({},s);
-  c.board=s.board.map(p=>p&&Object.assign({},p));
+  // a piece's pending order is its own object: sharing it would let a copy's turn count the original's down
+  c.board=s.board.map(p=>p&&Object.assign({},p,p.order?{order:{to:p.order.to,turns:p.order.turns}}:null));
   c.tiles=s.tiles.slice();
   c.blocked=s.blocked.slice();
   c.turnCount={w:s.turnCount.w,b:s.turnCount.b};
@@ -1477,7 +1478,7 @@ function botTurn(s){
 // {cols, rows, theme, mode, board, tiles, turn, turnCount, spawns, targets, hitBy, acted, level, fog, maxTurns}
 function fromSnapshot(o){
   const s={cols:o.cols,rows:o.rows,theme:o.theme||'forest',mode:o.mode==='pvp'?'pvp':'classic',difficulty:o.difficulty||'hard',
-    board:o.board.map(p=>p&&Object.assign({},p)),tiles:null,blocked:null,turn:o.turn||'w',over:false,winner:null,
+    board:o.board.map(p=>p&&Object.assign({},p,p.order?{order:{to:p.order.to,turns:p.order.turns}}:null)),tiles:null,blocked:null,turn:o.turn||'w',over:false,winner:null,
     turnCount:{w:o.turnCount.w,b:o.turnCount.b},spawns:{w:o.spawns.w,b:o.spawns.b},
     orderLeft:{w:o.orderLeft?o.orderLeft.w:ORDER_BUDGET,b:o.orderLeft?o.orderLeft.b:ORDER_BUDGET},
     elixir:{w:(o.elixir&&o.elixir.w)||0,b:(o.elixir&&o.elixir.b)||0},

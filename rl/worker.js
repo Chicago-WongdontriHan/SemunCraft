@@ -17,13 +17,15 @@ const readline=require('readline');
 const E=require('../js/engine.js');
 const {createEncoder,potential}=require('./encoding.js');
 const campaignLevels=require('./levels.js');
+const Scripted=require('./scripted.js');
 
 const THEMES=['forest','jungle','desert','ocean'];
 const DEFAULTS={
   seed:0,
   mode:'classic',       // turn order: 'classic' (single-player: White acts and fires, Black fires, Black acts) or 'pvp'
-  opponent:'auto',      // 'bot' (the built-in AI; classic only, the agent plays White), 'random' (chosen here),
-                        // 'external' (chosen by Python), or 'auto' (bot in classic, random in pvp)
+  opponent:'auto',      // 'bot' (the built-in AI; classic only, the agent plays White), 'scripted' (rl/scripted.js: plays either
+                        // colour in either mode, standard games only), 'random' (chosen here), 'external' (chosen by
+                        // Python), or 'auto' (bot in classic, random in pvp)
   agentColor:'random',  // 'w', 'b' or 'random' each game (always White against the bot)
   difficulty:'random',  // the bot's level: 'easy', 'hard' or 'random' each game
   theme:'random',       // 'forest', 'jungle', 'desert', 'ocean' or 'random' each game
@@ -38,13 +40,14 @@ function withDefaults(base,config){
   const c=Object.assign({},base,config);
   for(const k of Object.keys(c))if(!(k in DEFAULTS))throw new Error('unknown config key '+k);
   if(c.mode!=='classic'&&c.mode!=='pvp')throw new Error('mode must be classic or pvp');
-  if(!['auto','bot','random','external'].includes(c.opponent))throw new Error('opponent must be auto, bot, random or external');
+  if(!['auto','bot','scripted','random','external'].includes(c.opponent))throw new Error('opponent must be auto, bot, scripted, random or external');
   if(c.opponent==='bot'&&c.mode!=='classic')throw new Error('the bot opponent needs mode classic');
   if(!['w','b','random'].includes(c.agentColor))throw new Error('agentColor must be w, b or random');
   if(!['easy','hard','random'].includes(c.difficulty))throw new Error('difficulty must be easy, hard or random');
   if(!THEMES.includes(c.theme)&&c.theme!=='random')throw new Error('unknown theme '+c.theme);
   if(c.levels!==null&&!Array.isArray(c.levels))throw new Error('levels must be a list or null');
   if(c.levels&&c.mode==='pvp'&&c.levels.some(l=>l!==null))throw new Error('campaign levels need mode classic');
+  if(c.opponent==='scripted'&&c.levels&&c.levels.some(l=>l!==null))throw new Error('the scripted opponent plays standard games, not campaign levels');
   return c;
 }
 
@@ -103,6 +106,7 @@ class Env{
     const s=this.s,c=this.config;
     while(!s.over&&s.turn!==this.agent){
       if(this.opponent==='bot')E.botTurn(s);
+      else if(this.opponent==='scripted')Scripted.playTurn(s);
       else if(this.opponent==='random'){
         const acts=E.legalActions(s);
         E.step(s,acts[Math.floor(this.opponentRand()*acts.length)],{trusted:true});

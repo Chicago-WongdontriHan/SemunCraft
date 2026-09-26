@@ -51,6 +51,10 @@ section('same seed and same choices give the same game',()=>{
 
 section('clone() is independent of the original',()=>{
   const s=E.newGame({seed:7,mode:'pvp'});
+  // put a delayed order on the board first: it is a piece's own nested object, and a copy must not share it
+  const ord=E.legalActions(s).find(a=>a.type==='order');
+  if(!ord)fail('no order to test the copy with');
+  else E.step(s,ord);
   const before=JSON.stringify(s),c=E.clone(s);
   const pick=E.makeRandom(3);
   for(let k=0;k<30&&!c.over;k++){const acts=E.legalActions(c);E.step(c,acts[Math.floor(pick()*acts.length)]);}

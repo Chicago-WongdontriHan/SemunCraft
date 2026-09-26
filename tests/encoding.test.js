@@ -194,6 +194,29 @@ function startWorker(){
     return games+' games finished, '+opponentMoves+' external opponent moves';
   });
 
+  await section('the scripted opponent plays either colour in either mode',async()=>{
+    const w=startWorker(),pick=E.makeRandom(8);
+    const init=await w.call({cmd:'init',grid:11,envs:[
+      {seed:1,mode:'classic',opponent:'scripted',agentColor:'b'},
+      {seed:2,mode:'pvp',opponent:'scripted',agentColor:'b'},
+      {seed:3,mode:'pvp',opponent:'scripted',agentColor:'w',maxTurns:60},
+    ]});
+    if(init.envs!==3)fail('init reply '+JSON.stringify(init));
+    let res=(await w.call({cmd:'reset'})).results,games=0;
+    for(let n=0;n<400;n++){
+      res.forEach((r,k)=>{
+        if(r.seat!=='agent')fail('env '+k+': the scripted opponent left the turn to '+r.seat);
+        if(r.done){games++;if(r.info.scenario.opponent!=='scripted')fail('the game is not recorded against the scripted opponent');}
+      });
+      res=(await w.call({cmd:'step',actions:res.map(r=>r.legal[Math.floor(pick()*r.legal.length)])})).results;
+    }
+    const level=await w.call({cmd:'configure',envs:[0],config:{levels:[0]}});
+    if(!String(level.error).includes('standard'))fail('a campaign level accepted with the scripted opponent: '+JSON.stringify(level));
+    await w.call({cmd:'close'});
+    if(!games)fail('no game finished');
+    return games+' games finished';
+  });
+
   console.log(failures?'\n'+failures+' failure(s)':'\nall encoding tests passed');
   process.exit(failures?1:0);
 })();

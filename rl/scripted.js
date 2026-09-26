@@ -1,0 +1,187 @@
+// ── SEMUNCRAFT SCRIPTED AI ───────────────────────────────────────────────────
+// A hand-written opponent for training and for measuring a trained network against. It knows no rules of
+// its own: every move it considers comes from the engine's legalActions, and every move is judged by
+// playing it out on a copy of the state with the engine's own step — so a change to the rules (a unit's
+// range, a splash, a price) changes what it sees without touching this file. What it does bring is a
+// yardstick for "good": an evaluation of a position in Gold-equivalents that rewards
+//   - material (every unit priced by what it costs to make, scaled by its health), and the two Kings' health;
+//   - Gold and Elixir in hand (an Elixir counts as a Gold up to a Paladin's 3, and hardly at all beyond, so
+//     a spring's income is there to be spent), and the mines and springs a plain pawn holds — a spring
+//     pays half an Elixir a turn (ELIXIR_RATE), three times what a mine pays in Gold, so springs come first;
+//   - pawns walking to a tile they don't hold yet, and the army closing on the enemy King;
+//   - pieces standing side by side that could merge into something dearer, each in at most one such pair;
+//   - a Meteor that is still on its way (what it will hit, friend and foe alike).
+// Each candidate is scored twice: right after the move (with the end-of-turn fire it triggers), and again
+// after the opponent passes, so it sees what its move leaves standing in the enemy's reach — including a
+// Siege shell's splash on its own pieces.
+//
+// It plays the standard game for either side in either turn order. It doesn't chase a campaign level's
+// objective, doesn't use delayed orders or Scry, and keeps its King at home. Loads as a classic <script>
+// after js/engine.js (global SemunScripted) or in Node, like rl/encoding.js.
+//
+//   chooseAction(state)  the one action it would take now, for state.turn
+//   playTurn(state)      plays until the turn passes, like SemunEngine.botTurn; returns the events
+(function(root){
+'use strict';
+const E=typeof module!=='undefined'&&module.exports?require('../js/engine.js'):root.SemunEngine;
+
+// What a full-health piece is worth, in Gold: about what it costs to make (Elixir counted as a Gold),
+// nudged up so each merge is a small step forward — except the Siege, which never moves of its own accord
+// and so isn't worth building.
+const VALUE={pawn:1,knight:2.6,bishop:3.9,rook:3.6,queen:7,siege:7.9,guardian:7.6,paladin:8.6,mage:9.8};
+const FORTIFIED=1.9;       // a pawn in a helmet
+const KING_HP=14;          // each point of a King's health
+const GOLD=.8, ELIXIR=1, MANA=.4;
+const ELIXIR_USE=3, ELIXIR_EXTRA=.1;   // Elixir is worth its price up to the dearest thing it buys (a Paladin's 3); a bank beyond that is mostly idle
+const MINE=3, SPRING=4;    // holding one, for as long as it is held (a spring pays half an Elixir a turn, a mine a sixth of Gold)
+const TOP=10;              // candidates that get the second, deeper look
+
+const elixirWorth=e=>ELIXIR*Math.min(e,ELIXIR_USE)+ELIXIR_EXTRA*Math.max(0,e-ELIXIR_USE);
+const full=p=>p.type==='pawn'&&p.fortified?FORTIFIED:(VALUE[p.type]||0);
+const worth=p=>full(p)*(.3+.7*p.hp/p.maxHp);
+const isSide=p=>!!p&&(p.color==='w'||p.color==='b');   // not the training ground's Scarecrow
+
+// How good `s` is for `me`, in Gold. A finished game is worth ±1e6 (a draw 0).
+function evaluate(s,me){
+  if(s.over)return s.winner===me?1e6:s.winner==='draw'?0:-1e6;
+  const you=me==='w'?'b':'w',B=s.board,g=E.geo(s);
+  let score=0,myKing=-1,theirKing=-1;
+  const mine=[],theirs=[];
+  for(let i=0;i<B.length;i++){
+    const p=B[i];if(!isSide(p))continue;
+    const own=p.color===me,sign=own?1:-1;
+    if(p.type==='king'){score+=sign*KING_HP*p.hp;if(own)myKing=i;else theirKing=i;continue;}
+    score+=sign*worth(p);
+    if(p.mana)score+=sign*MANA*p.mana;
+    (own?mine:theirs).push(i);
+  }
+  score+=GOLD*(E.spawnRemaining(s,me)-E.spawnRemaining(s,you));
+  score+=elixirWorth(s.elixir[me])-elixirWorth(s.elixir[you]);
+
+  // the mines and springs: what each side holds pays every turn; pawns of mine that hold nothing go
+  // looking for a tile I don't hold, the dearest first, each by its nearest free pawn
+  const held=new Set(),unheld=[];
+  for(let i=0;i<s.tiles.length;i++){
+    const t=s.tiles[i];if(t!=='mine'&&t!=='spring')continue;
+    const val=t==='mine'?MINE:SPRING,p=B[i];
+    const holder=isSide(p)&&p.type==='pawn'&&!p.fortified?p.color:null;
+    if(holder===me){score+=val;held.add(i);}
+    else{if(holder===you)score-=val;unheld.push([i,val]);}
+  }
+  const free=mine.filter(i=>B[i].type==='pawn'&&!B[i].fortified&&!held.has(i));
+  const seekers=new Set();
+  unheld.sort((a,b)=>b[1]-a[1]);
+  for(const[ti]of unheld){
+    let best=-1,bd=99;
+    for(let k=0;k<free.length;k++){const d=E.cheb(s,free[k],ti);if(d<bd){bd=d;best=k;}}
+    if(best<0)break;
+    score+=.22*(9-Math.min(bd,9));
+    seekers.add(free[best]);free.splice(best,1);
+  }
+  // the rest of the army closes on the enemy King, ever harder as the game wears on: approaching costs a
+  // volley (the piece that moves doesn't fire), so without a push two armies would sit out of range of
+  // each other until the turn cap
+  const push=1+s.turnCount[me]/12;
+  if(theirKing>=0)for(const i of mine){
+    if(seekers.has(i))continue;
+    const p=B[i],d=E.cheb(s,i,theirKing);
+    score+=push*(p.type==='pawn'?.03*(12-d):.05*Math.sqrt(full(p))*(12-d));
+  }
+  // enemy pieces close to my King
+  if(myKing>=0)for(const i of theirs)if(E.cheb(s,i,myKing)<=2)score-=B[i].type==='pawn'?.5:1;
+  // two of mine side by side that could merge into something dearer (Elixir and helmets counted): half of
+  // what the merge would gain, so making it is always a step forward. Each piece is in at most one such
+  // pair, the dearest first — a block of four Knights has one Paladin's worth of merging to do at a time,
+  // not six pairs' worth, or making the merge would look like losing the rest
+  const pairs=[];
+  for(const i of mine){
+    for(const j of g.adj8[i]){
+      if(j<=i)continue;
+      const b=B[j];if(!b||b.color!==me)continue;
+      const r=E.mergeResultType(s,B[i],b);if(!r)continue;
+      const gain=VALUE[r]-full(B[i])-full(b)-(elixirWorth(s.elixir[me])-elixirWorth(s.elixir[me]-E.elixirCost(r)));
+      if(gain>0)pairs.push([gain,i,j]);
+    }
+  }
+  pairs.sort((x,y)=>y[0]-x[0]);
+  const paired=new Set();
+  for(const[gain,i,j]of pairs){
+    if(paired.has(i)||paired.has(j))continue;
+    paired.add(i);paired.add(j);
+    score+=.5*gain;
+  }
+  // a Meteor still on its way: half of what it will take from whoever stands under it, either side
+  for(const m of s.meteors||[])for(const t of m.tiles){
+    const p=B[t];if(!isSide(p))continue;
+    let loss;
+    if(p.type==='king')loss=KING_HP*Math.min(2,p.hp);
+    else{const hp=Math.max(0,p.hp-2);loss=worth(p)-(hp>0?full(p)*(.3+.7*hp/p.maxHp):0);}
+    score+=(p.color===me?-.5:.5)*loss;
+  }
+  return score;
+}
+
+// the same choice every time for the same position, without touching the game's random stream
+const TYPE_CODE={move:1,merge:2,target:3,heal:4,spawn:5,fortify:6,meteor:7,skip:8};
+function noise(s,a){
+  let h=((a.from|0)*73856093)^((a.to|0)*19349663)^(s.turnCount.w*83492791)^(s.turnCount.b*2654435)^((TYPE_CODE[a.type]||0)*40503);
+  h=Math.imul(h^(h>>>13),1274126177);
+  return((h>>>0)%1000)/1000*.03;
+}
+
+// what it will consider: no Scry, no orders, no unsieging, no heal-locks, no aimless target locks (only
+// the Paladin, which fires on nothing else), and the King stays home
+function candidates(s){
+  const out=[];
+  for(const a of E.legalActions(s)){
+    switch(a.type){
+      case'scry':case'order':case'unsiege':case'healLock':continue;
+      case'target':if(s.board[a.from].type!=='paladin')continue;break;
+      case'move':if(s.board[a.from].type==='king')continue;break;
+    }
+    out.push(a);
+  }
+  return out;
+}
+
+// the move played on a copy of the state, and optionally the opponent's pass after it
+function simulate(s,a,me,reply){
+  const c=E.clone(s);
+  E.step(c,a,{trusted:true});
+  if(reply&&!c.over&&c.turn!==me)E.step(c,{type:'skip'},{trusted:true});
+  return c;
+}
+
+function chooseAction(s){
+  const me=s.turn,cand=candidates(s);
+  if(cand.length===1)return cand[0];
+  const scored=[];
+  for(const a of cand){
+    const v=evaluate(simulate(s,a,me,false),me);
+    if(v>=1e6)return a;                       // wins on the spot
+    scored.push({a,v1:v+noise(s,a)});
+  }
+  scored.sort((x,y)=>y.v1-x.v1);
+  const top=scored.slice(0,TOP),pass=scored.find(x=>x.a.type==='skip');
+  if(pass&&!top.includes(pass))top.push(pass);
+  let best=null,bv=-Infinity;
+  for(const t of top){
+    const v=evaluate(simulate(s,t.a,me,true),me)+.2*t.v1;
+    if(v>bv){bv=v;best=t.a;}
+  }
+  return best;
+}
+
+// plays actions until the turn passes: a merge by a Knight's L-jump, or a second order, leaves it the
+// same side's turn (the cap only guards against a state that never lets it end)
+function playTurn(s){
+  const me=s.turn,events=[];
+  for(let k=0;k<8&&!s.over&&s.turn===me;k++)events.push(...E.step(s,chooseAction(s),{trusted:true}));
+  if(!s.over&&s.turn===me)events.push(...E.step(s,{type:'skip'},{trusted:true}));
+  return events;
+}
+
+const SemunScripted={chooseAction,playTurn,evaluate};
+if(typeof module!=='undefined'&&module.exports)module.exports=SemunScripted;
+else root.SemunScripted=SemunScripted;
+})(typeof globalThis!=='undefined'?globalThis:this);

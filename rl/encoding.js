@@ -34,8 +34,12 @@ const CHANNELS=CHANNEL_NAMES.length;
 const WINDOW=4,SIDE=2*WINDOW+1,SPAWN_SLOT=SIDE*SIDE,SLOTS=SIDE*SIDE+1;
 
 // createEncoder({grid}) handles boards up to grid×grid, placed in the grid's top-left corner
+// opts: {grid: 11, sightPlane: true}. sightPlane false keeps the visible plane at what fog alone shows, as
+// the networks trained before aiSight (js/engine.js) saw it: every cell, without fog, even when the side's
+// attacks reach only what it sees. Those networks still get the sight-limited legal actions.
 function createEncoder(opts){
   const G=(opts&&opts.grid)||11;
+  const sightPlane=!opts||opts.sightPlane!==false;
   const numActions=G*G*SLOTS+1,SKIP=numActions-1;
 
   function fits(s){
@@ -58,11 +62,15 @@ function createEncoder(opts){
     const fog=E.fogFor(s,side);
     // fog hides what is out of sight; undergrowth hides what stands in it (for either side, fog or not)
     const seen=i=>(!fog||E.visible(s,i,side))&&!E.inCover(s,i,side);
+    // an AI's side (aiSight) still reads where the enemy stands, but attacks only what it sees: the
+    // visible plane shows that sight, while pieces stay in the picture
+    const limited=sightPlane&&E.sightLimited?E.sightLimited(s,side):fog;
+    const sees=i=>(!limited||E.visible(s,i,side))&&!E.inCover(s,i,side);
     for(let i=0;i<B.length;i++){
       const g=cell(s,i,side),p=B[i],vis=seen(i);
       set(CH.onBoard,g,1);
       if(s.blocked[i])set(CH.obstacle,g,1);
-      if(vis)set(CH.visible,g,1);
+      if(sees(i))set(CH.visible,g,1);
       // fog hides enemy pieces, not terrain
       if(!p||(p.color===enemy&&!vis))continue;
       set((p.color===side?CH.own:CH.enemy)+TYPES.indexOf(TYPE_ALIAS[p.type]||p.type),g,1);

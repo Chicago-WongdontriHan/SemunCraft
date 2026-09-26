@@ -204,14 +204,30 @@ let exploredTiles=new Set(); // tiles that have ever been visible (fogged but pa
 function tileVisibility(i){
   if(mapCheat)return 'visible';
   const mc=(typeof viewColor==='function')?viewColor():'w';
-  if(scryLit(i,mc))return 'visible'; // a bishop is looking at it
+  if(visibleTo(i,mc))return 'visible';
+  return exploredTiles.has(i)?'explored':'unknown';
+}
+
+// whether `color` can see tile i right now, Map Cheat or not: a bishop's scry is on it, or one of its
+// pieces is within 2 of it (3 for a Guardian), or it lies along its Mage's own fire (visible in js/engine.js)
+function visibleTo(i,color){
+  if(scryLit(i,color))return true; // a bishop is looking at it
   for(let j=0;j<ROWS*COLS;j++){
     const p=pieces[j];
-    if(!p||p.color!==mc)continue;
-    if(cheb(i,j)<=(p.type==='guardian'?3:2))return 'visible';   // the Guardian keeps a farther watch
-    if(p.type==='mage'&&mageRange(j).includes(i))return 'visible';   // its own fire lights the line
+    if(!p||p.color!==color)continue;
+    if(cheb(i,j)<=(p.type==='guardian'?3:2))return true;   // the Guardian keeps a farther watch
+    if(p.type==='mage'&&mageRange(j).includes(i))return true;   // its own fire lights the line
   }
-  return exploredTiles.has(i)?'explored':'unknown';
+  return false;
+}
+
+// The AI has the normal sight of a player with Map Cheat off, whatever the toggle says (that is for the
+// person at the screen): what it reads of where you stand doesn't let it attack what it can't see, which
+// is what a bishop's scry is for. Black in a regular single-player game; the campaign, the training
+// ground and PvP keep their own rules. aiSight in js/engine.js is the same rule; AI_SIGHT turns it off.
+const AI_SIGHT=true;
+function aiSightLimited(color){
+  return AI_SIGHT&&color==='b'&&!campaignLevel&&!pvpActive&&!trainingMode&&(gameMode==='easy'||gameMode==='medium'||gameMode==='hard');
 }
 
 function isTileVisible(i){

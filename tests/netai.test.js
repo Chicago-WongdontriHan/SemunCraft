@@ -80,7 +80,7 @@ for(let n=0;n<GAMES;n++){
     // the "network" counts as loaded, so Black moves without loading anything
     +'netAiNets[NETAI_LEVELS[difficulty].model]={};');
   game.set('mapCheat',!fog);
-  const s=E.newGame({seed,theme,difficulty:difficulty==='easy'?'easy':'hard',fog});
+  const s=E.newGame({seed,theme,difficulty:difficulty==='easy'?'easy':'hard',fog,aiSight:{w:false,b:true}});   // Black's attacks reach only what it sees (aiSightLimited)
   const pick=E.makeRandom(seed*7919+13);
   for(let k=0;k<MAX_ACTIONS&&!s.over;k++){
     const a=choose(E.legalActions(s),pick);

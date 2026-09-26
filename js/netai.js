@@ -35,7 +35,7 @@ function netAiLoadScript(src){
 function netAiLoadCode(){
   if(!netAiCode)netAiCode=(async()=>{
     for(const[src,loaded]of NETAI_CODE)if(!loaded())await netAiLoadScript(src);
-    netAiEncoder=SemunEncoding.createEncoder({grid:11});
+    netAiEncoder=SemunEncoding.createEncoder({grid:11,sightPlane:false});   // the trained networks' own picture (rl/encoding.js)
   })().catch(err=>{netAiCode=null;throw err;});
   return netAiCode;
 }
@@ -59,7 +59,7 @@ function netAiPreload(){
 function netAiSnapshot(){
   // a campaign level's own rules (no merging, no spawning, its objective) go with the snapshot
   return SemunEngine.fromSnapshot({cols:COLS,rows:ROWS,theme:mapTheme,mode:'classic',board:pieces,tiles:tileData,turn:'b',
-    level:campaignLevel||null,
+    level:campaignLevel||null,aiSight:{w:false,b:aiSightLimited('b')},   // Black's targets only what it sees (js/state.js)
     turnCount:{w:whiteTurnCount,b:blackTurnCount},spawns:{w:spawnHistory.length,b:blackSpawnHistory.length},
     targets:{w:whiteTargets,b:blackTargets},hitBy:blackHitBy,acted:[...blackActed],scans,meteors,
     elixir:{w:elixir.w,b:elixir.b},mineTurns:{w:mineTurns.w,b:mineTurns.b},goldSpent:{w:goldSpent.w,b:goldSpent.b},

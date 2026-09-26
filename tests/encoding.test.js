@@ -149,6 +149,27 @@ function startWorker(){
     return classicBlack+' positions with Black to move in the classic order';
   });
 
+  await section("an AI side's visible plane shows its sight while the enemy stays in the picture",()=>{
+    // White's King in one corner, Black's in the other: neither sees the other's
+    const mk=aiSight=>{
+      const s=E.newGame({seed:1,mode:'pvp',theme:'forest',aiSight});
+      s.board.fill(null);s.tiles.fill('');s.blocked.fill(false);s.targets={w:{},b:{}};
+      s.board[8*9]={type:'king',color:'w',hp:5,maxHp:5};s.board[8]={type:'king',color:'b',hp:5,maxHp:5};
+      return s;
+    };
+    const count=(o,ch)=>{let n=0;for(let g=ch*P;g<(ch+1)*P;g++)n+=o[g]>0;return n;};
+    const plain=enc.observe(mk(false),'w'),limited=enc.observe(mk(true),'w');
+    if(count(plain,20)!==81)fail('without aiSight every cell is visible: '+count(plain,20));
+    // the networks trained before aiSight keep their all-ones plane (js/netai.js asks for it), and still get
+    // the sight-limited legal actions
+    const legacy=createEncoder({grid:11,sightPlane:false});
+    if(count(legacy.observe(mk(true),'w'),20)!==81)fail('sightPlane:false should keep the old visible plane');
+    // the corner within two squares of White's King: 3x3 cells
+    if(count(limited,20)!==9)fail('with aiSight only what White sees is visible: '+count(limited,20));
+    if(count(limited,7+5)!==1)fail('the enemy King must still be in the picture: '+count(limited,12));
+    if(count(plain,7+5)!==1)fail('the enemy King is missing without aiSight');
+  });
+
   await section('the shaping potential is zero-sum',()=>{
     for(const s of positions(500))if(Math.abs(potential(s,'w')+potential(s,'b'))>1e-9)fail('potential is not zero-sum');
   });
@@ -212,6 +233,10 @@ function startWorker(){
     }
     const level=await w.call({cmd:'configure',envs:[0],config:{levels:[0]}});
     if(!String(level.error).includes('standard'))fail('a campaign level accepted with the scripted opponent: '+JSON.stringify(level));
+    const bad=await w.call({cmd:'configure',envs:[0],config:{aiSight:'yes'}});
+    if(!String(bad.error).includes('aiSight'))fail('a non-boolean aiSight accepted: '+JSON.stringify(bad));
+    const off=await w.call({cmd:'configure',envs:[0],config:{aiSight:false}});
+    if(off.error)fail('aiSight:false rejected: '+JSON.stringify(off));
     await w.call({cmd:'close'});
     if(!games)fail('no game finished');
     return games+' games finished';

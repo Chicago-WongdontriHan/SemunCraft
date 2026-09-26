@@ -80,6 +80,11 @@ const sqName=(s,i)=>FILES[colOf(s,i)]+(s.rows-rowOf(s,i));
 //   level:          a CAMPAIGN_LEVELS entry (the engine keeps no copy of the level data)
 //   fog:            limit each side's attacks and heals to tiles it can see (default: off,
 //                   campaign levels use their own default)
+//   aiSight:        true, or {w,b}: the sides an AI plays, whose attacks and heals are limited to what they
+//                   see whatever `fog` says (fog is the Map Cheat toggle of the person at the screen; an
+//                   AI is assumed to have the normal sight of Map Cheat off, which is what makes a
+//                   Bishop's Scry worth casting). Reading where the enemy stands is not the same as
+//                   seeing it. Default: off, the way the browser game's Black AI plays today.
 //   maxTurns:       draw once both sides together have taken this many turns (0 = no limit)
 function newGame(o){
   o=o||{};
@@ -101,7 +106,7 @@ function newGame(o){
                 // (js/state.js's flareTiles): [{tiles, turns, color}]
     hitBy:[],   // classic: Black pieces White hit this round, for the reactive AI
     acted:[],   // classic: Black pieces that auto-attacked this round
-    level:lv,fog:o.fog!==undefined?!!o.fog:(lv?lv.mapCheatDefault===false:false),
+    level:lv,fog:o.fog!==undefined?!!o.fog:(lv?lv.mapCheatDefault===false:false),aiSight:sightSides(o.aiSight),
     maxTurns:o.maxTurns||0,strategy:null,animals:[],rng:o.seed|0,
   };
   const n=s.cols*s.rows;
@@ -489,6 +494,11 @@ function meteorReach(s,i,anchor){
 }
 // classic mode hides fogged enemies from White only (the AI ignores fog); in PvP each side is limited
 function fogFor(s,color){return s.fog&&(s.mode==='pvp'||color==='w');}
+// aiSight (newGame): true for both sides, {w,b} for one, falsy for none
+function sightSides(v){return v&&typeof v==='object'?{w:!!v.w,b:!!v.b}:{w:!!v,b:!!v};}
+// whether `color`'s attacks and heals reach only what it can see: fog for a person playing the side, and
+// always for a side an AI plays (aiSight). fogFor alone still decides what its observation hides.
+function sightLimited(s,color){return !!fogFor(s,color)||!!(s.aiSight&&s.aiSight[color]);}
 // Undergrowth (jungle): whatever stands in it is hidden from a side, even a piece right next to it,
 // until it fights from there — attacking out of cover, or taking a hit while in it, reveals it from
 // that turn on, for as long as it stays on that same square (exposedAt, stamped in applyAttacks /
@@ -569,7 +579,7 @@ function getDests(s,i){
   }
   for(const j of [...move])if(s.blocked[j])move.delete(j);
   // fog of war, except the Mage's own fire trajectory, which its own flame lights up as it burns down it
-  if(fogFor(s,p.color)){
+  if(sightLimited(s,p.color)){
     if(p.type!=='mage')for(const j of [...attack])if(!visible(s,j,p.color))attack.delete(j);
     for(const j of [...heal])if(!visible(s,j,p.color))heal.delete(j);
   }
@@ -632,6 +642,7 @@ function legalActions(s,opts){
   if(s.over)return[];
   const color=s.turn,B=s.board,g=geo(s),out=[];
   const noMerge=!!(s.level&&s.level.noMerge);
+  const blindTo=!!(s.aiSight&&s.aiSight[color]);   // an AI's side names only what it can see (aiSight)
   const goldAllowed=!s.level||s.level.allowSpawn!==false;   // a level with no spawning has no Gold
   const mine=[];
   for(let i=0;i<B.length;i++){
@@ -652,12 +663,14 @@ function legalActions(s,opts){
       for(let j=0;j<B.length;j++)out.push({type:'scry',from:i,to:j});
     // a Mage with a full charge can summon a meteor on any 2x2 within 3 squares of it, named by the
     // 2x2's top-left square (meteorReach)
+    // — an AI's side, only on a 2x2 it can see all of
     if(p.type==='mage'&&(p.mana||0)>=METEOR_MANA)
       for(let r=0;r<s.rows-1;r++)for(let c=0;c<s.cols-1;c++){
-        const a=r*s.cols+c;if(meteorReach(s,i,a))out.push({type:'meteor',from:i,to:a});
+        const a=r*s.cols+c;
+        if(meteorReach(s,i,a)&&(!blindTo||meteorBox(s,a).every(j=>visible(s,j,color))))out.push({type:'meteor',from:i,to:a});
       }
     if(opts.anyTarget){
-      for(let j=0;j<B.length;j++)if(B[j]&&B[j].color!==color&&!concealed(s,j,color))out.push({type:'target',from:i,to:j});
+      for(let j=0;j<B.length;j++)if(B[j]&&B[j].color!==color&&!concealed(s,j,color)&&(!blindTo||visible(s,j,color)))out.push({type:'target',from:i,to:j});
     }else d.attack.forEach(j=>out.push({type:'target',from:i,to:j}));
   }
   // An order reserves a square a few turns ahead and leaves the turn to be used — unless it takes the
@@ -687,7 +700,7 @@ function legalActions(s,opts){
 
 // ── RULES: AUTO-ATTACKS (computeActions / applyActions in combat.js) ─────────
 function computeActions(s,color){
-  const g=geo(s),B=s.board,targets=s.targets[color],fog=fogFor(s,color);
+  const g=geo(s),B=s.board,targets=s.targets[color],fog=sightLimited(s,color);
   const acts=[],targeted=new Set();
   for(let i=0;i<B.length;i++){
     const p=B[i];if(!p||p.color!==color)continue;
@@ -714,7 +727,10 @@ function computeActions(s,color){
       if(fog&&p.type!=='mage')foes=foes.filter(j=>visible(s,j,color));
       foes=foes.filter(j=>!concealed(s,j,color));
       const lock=targets[i];
-      const locked=lock!==undefined&&isFoe(B[lock],color)&&range.includes(lock)&&!concealed(s,lock,color);
+      // (a lock on a target its AI can no longer see, its spotter gone, stops firing — aiSight only, so the
+      // browser game's people-side rules stay as they are)
+      const locked=lock!==undefined&&isFoe(B[lock],color)&&range.includes(lock)&&!concealed(s,lock,color)
+        &&(!(s.aiSight&&s.aiSight[color])||p.type==='mage'||visible(s,lock,color));
       // the Paladin's lance always kills, so it fires only on a target the player locked themselves,
       // never one it picked on its own the way every other piece does (js/combat.js's computeActions)
       if(p.type==='paladin'&&!locked)continue;
@@ -1489,7 +1505,7 @@ function fromSnapshot(o){
     meteors:(o.meteors||[]).map(m=>({tiles:m.tiles.slice(),turns:m.turns,color:m.color})),
     flares:(o.flareTiles||o.flares||[]).map(f=>({tiles:f.tiles.slice(),turns:f.turns,color:f.color})),
     hitBy:(o.hitBy||[]).map(h=>({target:h.target,attacker:h.attacker})),acted:(o.acted||[]).slice(),
-    level:o.level||null,fog:!!o.fog,maxTurns:o.maxTurns||0,strategy:o.strategy||null,animals:[],rng:o.seed|0};
+    level:o.level||null,fog:!!o.fog,aiSight:sightSides(o.aiSight),maxTurns:o.maxTurns||0,strategy:o.strategy||null,animals:[],rng:o.seed|0};
   const n=s.cols*s.rows;
   s.tiles=new Array(n).fill('');
   s.blocked=new Array(n).fill(false);
@@ -1512,7 +1528,7 @@ const SemunEngine={
   // playing
   newGame,legalActions,step,botTurn,clone,isLegal,fromSnapshot,act,
   // rule queries
-  getDests,computeActions,applyAttacks,upkeep,spawnRemaining,heldTiles,visible,fogFor,inCover,concealed,campaignResult,sangTrajectories,sangLineFor,mageRange,
+  getDests,computeActions,applyAttacks,upkeep,spawnRemaining,heldTiles,visible,fogFor,sightLimited,inCover,concealed,campaignResult,sangTrajectories,sangLineFor,mageRange,
   mergeResultType,elixirCost,
   // helpers and data
   generateMap,makeRandom,nextRandom,sqName,cheb,geo,STATS,STRATEGIES,THEME_TILES,

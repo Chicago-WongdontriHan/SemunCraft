@@ -148,7 +148,7 @@ function playClassic(opts,label,stats){
       +'gameMode='+q(opts.difficulty)+';difficulty='+q(opts.difficulty)+';initGame();'
       // the engine doesn't simulate animals yet (a move onto an animal's tile attacks it instead)
       +'animals=[];');
-    s=E.newGame({seed:opts.seed,theme:opts.theme,difficulty:opts.difficulty,fog:opts.fog});
+    s=E.newGame({seed:opts.seed,theme:opts.theme,difficulty:opts.difficulty,fog:opts.fog,aiSight:{w:false,b:true}});   // Black is the AI: normal sight (aiSightLimited in js/state.js)
     game.set('mapCheat',!opts.fog);
   }
   // a fresh page starts with these empty; initGame doesn't clear them between games

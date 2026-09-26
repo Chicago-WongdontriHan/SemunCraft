@@ -30,7 +30,9 @@ const DEFAULTS={
   difficulty:'random',  // the bot's level: 'easy', 'hard' or 'random' each game
   theme:'random',       // 'forest', 'jungle', 'desert', 'ocean' or 'random' each game
   levels:null,          // classic only: campaign level indices to draw from each game (null in the list = standard game)
-  fog:false,
+  fog:false,            // limit both sides' observations and attacks to what they see, as Map Cheat off does for a person
+  aiSight:true,         // whoever plays a side here is an AI: its attacks reach only what it sees (normal sight), fog or not,
+                        // though it still reads where the enemy stands; standard games only, campaign levels keep their rules
   maxTurns:300,         // both sides' turns together; reaching it is a draw
   shaping:0,            // weight of the potential-based shaping reward (0 = win/loss only)
   gamma:0.99,           // the learner's discount, used by the shaping term
@@ -47,6 +49,7 @@ function withDefaults(base,config){
   if(!THEMES.includes(c.theme)&&c.theme!=='random')throw new Error('unknown theme '+c.theme);
   if(c.levels!==null&&!Array.isArray(c.levels))throw new Error('levels must be a list or null');
   if(c.levels&&c.mode==='pvp'&&c.levels.some(l=>l!==null))throw new Error('campaign levels need mode classic');
+  if(typeof c.aiSight!=='boolean')throw new Error('aiSight must be true or false');
   if(c.opponent==='scripted'&&c.levels&&c.levels.some(l=>l!==null))throw new Error('the scripted opponent plays standard games, not campaign levels');
   return c;
 }
@@ -73,14 +76,14 @@ class Env{
     let level=c.levels&&c.levels.length?pick(c.levels):null;
     if(level===undefined)level=null;
     if(c.mode==='pvp'){
-      this.s=E.newGame({seed,mode:'pvp',theme,fog:c.fog,maxTurns:c.maxTurns});
+      this.s=E.newGame({seed,mode:'pvp',theme,fog:c.fog,aiSight:c.aiSight,maxTurns:c.maxTurns});
     }else if(level!==null){
       const lv=campaignLevels()[level];
       if(!lv)throw new Error('no campaign level '+level);
       this.s=E.newGame({seed,level:lv,fog:c.fog,maxTurns:c.maxTurns});
     }else{
       const difficulty=c.difficulty==='random'?pick(['easy','hard']):c.difficulty;
-      this.s=E.newGame({seed,mode:'classic',difficulty,theme,fog:c.fog,maxTurns:c.maxTurns});
+      this.s=E.newGame({seed,mode:'classic',difficulty,theme,fog:c.fog,aiSight:c.aiSight,maxTurns:c.maxTurns});
     }
     const s=this.s,bot=opponent==='bot';
     this.opponent=opponent;

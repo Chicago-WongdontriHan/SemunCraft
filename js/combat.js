@@ -442,6 +442,7 @@ function computeActions(color){
         let bEnemies=bishopRange(i).filter(j=>isFoe(pieces[j],color));
         // fog of war: the local player cannot attack fogged enemies
         if(color===myColor()&&!mapCheat)bEnemies=bEnemies.filter(j=>isTileVisible(j));
+        else if(aiSightLimited(color))bEnemies=bEnemies.filter(j=>visibleTo(j,color));   // the AI sees no farther than you would
         // undergrowth: enemies hidden in cover can't be hit (either side)
         bEnemies=bEnemies.filter(j=>!isConcealedFrom(j,color));
         if(bEnemies.length){
@@ -454,9 +455,11 @@ function computeActions(color){
       let enemies=range.filter(j=>isFoe(pieces[j],color));
       // fog of war: not for the Mage, whose own fire lights its trajectory as it burns down it
       if(p.type!=='mage'&&color===myColor()&&!mapCheat)enemies=enemies.filter(j=>isTileVisible(j));
+      else if(p.type!=='mage'&&aiSightLimited(color))enemies=enemies.filter(j=>visibleTo(j,color));
       enemies=enemies.filter(j=>!isConcealedFrom(j,color));
       const manualTgt=targets[i];
-      const locked=manualTgt!==undefined&&isFoe(pieces[manualTgt],color)&&range.includes(manualTgt)&&!isConcealedFrom(manualTgt,color);
+      const locked=manualTgt!==undefined&&isFoe(pieces[manualTgt],color)&&range.includes(manualTgt)&&!isConcealedFrom(manualTgt,color)
+        &&(!aiSightLimited(color)||p.type==='mage'||visibleTo(manualTgt,color));
       // the Paladin's lance always kills, so it fires only on a target the player locked themselves
       // (dragged onto, or right-clicked) — never one it picked on its own, the way every other piece does
       if(p.type==='paladin'&&!locked)continue;

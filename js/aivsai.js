@@ -44,7 +44,7 @@ function aiVsAiNewMatch(){
   hideGameOver();
   aiVsAiMatches++;
   const white=aiVsAiMatches%2?1:2; // the AIs swap colors every match
-  const s=SemunEngine.newGame({seed:Math.floor(Math.random()*2147483647),mode:'classic',theme:mapTheme,maxTurns:300});
+  const s=SemunEngine.newGame({seed:Math.floor(Math.random()*2147483647),mode:'classic',theme:mapTheme,maxTurns:300,aiSight:true});   // both are AIs: each attacks only what it sees
   aiVsAi={s,white,black:3-white,timer:null,paused:false,lastFrom:-1,lastTo:-1};
   COLS=s.cols;ROWS=s.rows;
   setBodyTheme(s.theme);

@@ -65,7 +65,7 @@ section('invariants hold in random games',()=>{
   const results={w:0,b:0,draw:0};
   for(let n=0;n<GAMES;n++){
     const mode=n%2?'pvp':'classic',theme=['forest','jungle','desert','ocean'][n%4];
-    const {s}=playRandom({seed:n+1,mode,theme,difficulty:n%4<2?'easy':'hard',fog:n%5===0,maxTurns:400},n+5000,st=>invariants(st,mode+' game '+(n+1)));
+    const {s}=playRandom({seed:n+1,mode,theme,difficulty:n%4<2?'easy':'hard',fog:n%5===0,aiSight:n%3===0,maxTurns:400},n+5000,st=>invariants(st,mode+' game '+(n+1)));
     if(!s.winner)fail('game '+(n+1)+' ended without a winner');
     else results[s.winner]++;
   }
@@ -75,7 +75,7 @@ section('invariants hold in random games',()=>{
 section('every legal action is accepted',()=>{
   const pick=E.makeRandom(99);
   for(let n=0;n<30;n++){
-    const s=E.newGame({seed:500+n,mode:'pvp',maxTurns:300});
+    const s=E.newGame({seed:500+n,mode:'pvp',aiSight:n%2===0,maxTurns:300});
     while(!s.over){
       const acts=E.legalActions(s,{anyTarget:true});
       for(const a of acts){
@@ -164,6 +164,44 @@ section('undergrowth hides a piece until it fights from it',()=>{
   E.upkeep(s,'w',[]);
   if(s.board[movedTo].hp>=before)fail('an order arriving on a hidden enemy should strike it, not lapse');
   if(E.concealed(s,movedTo,'w'))fail('an order that strikes a hidden enemy should reveal it');
+});
+
+section('an AI side attacks only what it sees; reading where the enemy stands is not enough',()=>{
+  // an empty 9x9 board: a White Siege at e1 (row 8, column 4) and a Black pawn four squares up the file
+  const mk=aiSight=>{
+    const s=E.newGame({seed:1,mode:'pvp',theme:'forest',aiSight});
+    s.board.fill(null);s.tiles.fill('');s.blocked.fill(false);s.targets={w:{},b:{}};
+    const put=(r,c,type,color)=>{s.board[r*s.cols+c]={type,color,hp:E.STATS[type].hp,maxHp:E.STATS[type].maxHp};};
+    put(8,0,'king','w');put(0,8,'king','b');put(8,4,'siege','w');put(4,4,'pawn','b');
+    return{s,put,siege:8*9+4,pawn:4*9+4};
+  };
+  const shoots=(s,siege,pawn)=>E.computeActions(s,'w').some(a=>a.attacker===siege&&a.target===pawn);
+  let m=mk(false);
+  if(!shoots(m.s,m.siege,m.pawn))fail('without aiSight the Siege should reach 4 squares');
+  m=mk(true);
+  if(m.s.aiSight.w!==true||m.s.aiSight.b!==true)fail('aiSight:true should limit both sides');
+  if(E.visible(m.s,m.pawn,'w'))fail('the pawn four squares from the Siege is out of sight');
+  if(shoots(m.s,m.siege,m.pawn))fail('an AI side fired at a square it could not see');
+  if(E.legalActions(m.s,{anyTarget:true}).some(a=>a.type==='target'&&a.to===m.pawn))fail('an AI side may lock onto a square it cannot see');
+  m.s.targets.w[m.siege]=m.pawn;
+  if(shoots(m.s,m.siege,m.pawn))fail('a lock on an unseen target fired');
+  // a scry lights it, and a piece of its own within two squares does too
+  m.s.scans.push({tiles:[m.pawn],turns:2,color:'w'});
+  if(!shoots(m.s,m.siege,m.pawn))fail('a scried square should be in reach');
+  m=mk(true);m.put(6,4,'pawn','w');
+  if(!shoots(m.s,m.siege,m.pawn))fail('a spotter two squares away should light the target');
+  m=mk({w:false,b:true});
+  if(!shoots(m.s,m.siege,m.pawn))fail('aiSight for Black alone must not limit White');
+  m.s.turn='b';
+  const bp=E.clone(m.s);
+  if(JSON.stringify(bp.aiSight)!==JSON.stringify(m.s.aiSight))fail('clone lost aiSight');
+  // the Mage's meteor needs all four squares in sight
+  m=mk(true);m.s.board[m.siege]={type:'mage',color:'w',hp:3,maxHp:3,mana:2};
+  const meteors=E.legalActions(m.s).filter(a=>a.type==='meteor');
+  if(!meteors.length)fail('a Mage should be able to cast on squares it sees');
+  for(const a of meteors)for(const j of [a.to,a.to+1,a.to+m.s.cols,a.to+m.s.cols+1])if(!E.visible(m.s,j,'w'))fail('a Meteor on '+j+' which its caster cannot see');
+  m=mk(false);m.s.board[m.siege]={type:'mage',color:'w',hp:3,maxHp:3,mana:2};
+  if(E.legalActions(m.s).filter(a=>a.type==='meteor').length<=meteors.length)fail('without aiSight the Mage should have more Meteor squares');
 });
 
 section('speed',()=>{

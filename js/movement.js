@@ -198,6 +198,9 @@ function getDragDests(i){
   if(p.color===myColor()&&!mapCheat){
     for(const j of [...attack]){if(!isTileVisible(j))attack.delete(j);}
     for(const j of [...heal]){if(!isTileVisible(j))heal.delete(j);}
+  }else if(aiSightLimited(p.color)){   // and the AI's, whatever Map Cheat says (aiSightLimited in js/state.js)
+    for(const j of [...attack]){if(!visibleTo(j,p.color))attack.delete(j);}
+    for(const j of [...heal]){if(!visibleTo(j,p.color))heal.delete(j);}
   }
   // undergrowth: an enemy hidden in cover can't be attacked (for both sides) — except by a delayed
   // order arriving on its very square, which discovers it regardless; rawAttack keeps those in

@@ -107,8 +107,9 @@ class SemunCraftVecEnv:
 
     config: a dict for every env, or a list with one dict per env. Keys (see
         rl/worker.js): mode ("classic" or "pvp" turn order), opponent ("bot",
-        "random", "external" or "auto"), agentColor, difficulty, theme, levels,
-        fog, maxTurns, shaping, gamma.
+        "scripted", "random", "external" or "auto"), agentColor, difficulty, theme,
+        levels, fog, aiSight (on by default: every player attacks only what it
+        sees), maxTurns, shaping, gamma.
     opponent: for envs with opponent "external", a function
         (obs, masks, env_ids) -> actions choosing the opponent's moves; the
         default picks random legal moves.

@@ -15,9 +15,21 @@
 // after the opponent passes, so it sees what its move leaves standing in the enemy's reach — including a
 // Siege shell's splash on its own pieces.
 //
+// It has the normal sight of a player with Map Cheat off, and no more. It reads the whole board — where
+// the enemy stands is in the state it is handed — but the engine lets a side whose sight is limited
+// (aiSight, which playTurn switches on for the side it plays) attack only what that side can see: within
+// two squares of one of its pieces (three of a Guardian), along a Mage's fire, or in a Scry. So a Rook or
+// a Siege shooting three or four squares out needs a spotter beside the target or a Bishop's Scry, and it
+// casts a Scry when the 3x3 it lights, with an enemy in it, is worth the turn.
+//
+// It also gives delayed orders. A pawn's order costs half the turn's budget and leaves the turn free, so
+// each turn a pawn walks a square on its order while the King spawns or two pieces merge; the Siege moves
+// no other way. An order is judged by what it changes once the turn is over and the opponent has passed,
+// against not giving it.
+//
 // It plays the standard game for either side in either turn order. It doesn't chase a campaign level's
-// objective, doesn't use delayed orders or Scry, and keeps its King at home. Loads as a classic <script>
-// after js/engine.js (global SemunScripted) or in Node, like rl/encoding.js.
+// objective, and keeps its King at home. Loads as a classic <script> after js/engine.js (global
+// SemunScripted) or in Node, like rl/encoding.js.
 //
 //   chooseAction(state)  the one action it would take now, for state.turn
 //   playTurn(state)      plays until the turn passes, like SemunEngine.botTurn; returns the events
@@ -26,10 +38,11 @@
 const E=typeof module!=='undefined'&&module.exports?require('../js/engine.js'):root.SemunEngine;
 
 // What a full-health piece is worth, in Gold: about what it costs to make (Elixir counted as a Gold),
-// nudged up so each merge is a small step forward — except the Siege, which never moves of its own accord
-// and so isn't worth building.
-const VALUE={pawn:1,knight:2.6,bishop:3.9,rook:3.6,queen:7,siege:7.9,guardian:7.6,paladin:8.6,mage:9.8};
-const FORTIFIED=1.9;       // a pawn in a helmet
+// nudged up so each merge is a small step forward. A helmet (1 Gold) makes a pawn worth 2.6 — three Health
+// to a pawn's one, and half of a Rook — and a Rook a little more than its two parts, which is what gets
+// the Rooks, and the Siege, Guardian and Mage made of them, built at all.
+const VALUE={pawn:1,knight:2.6,bishop:3.9,rook:4.2,queen:7,siege:9.6,guardian:8.2,paladin:8.6,mage:10.4};
+const FORTIFIED=2.6;       // a pawn in a helmet
 const KING_HP=14;          // each point of a King's health
 const GOLD=.8, ELIXIR=1, MANA=.4;
 const ELIXIR_USE=3, ELIXIR_EXTRA=.1;   // Elixir is worth its price up to the dearest thing it buys (a Paladin's 3); a bank beyond that is mostly idle
@@ -122,22 +135,35 @@ function evaluate(s,me){
 }
 
 // the same choice every time for the same position, without touching the game's random stream
-const TYPE_CODE={move:1,merge:2,target:3,heal:4,spawn:5,fortify:6,meteor:7,skip:8};
+const TYPE_CODE={move:1,merge:2,target:3,heal:4,spawn:5,fortify:6,meteor:7,skip:8,order:9,scry:10};
 function noise(s,a){
-  let h=((a.from|0)*73856093)^((a.to|0)*19349663)^(s.turnCount.w*83492791)^(s.turnCount.b*2654435)^((TYPE_CODE[a.type]||0)*40503);
+  let h=((a.from|0)*73856093)^((a.to|0)*19349663)^(s.turnCount.w*83492791)^(s.turnCount.b*2654435)^((TYPE_CODE[a.type]||0)*40503)^((a.turns|0)*97);
   h=Math.imul(h^(h>>>13),1274126177);
   return((h>>>0)%1000)/1000*.03;
 }
 
-// what it will consider: no Scry, no orders, no unsieging, no heal-locks, no aimless target locks (only
-// the Paladin, which fires on nothing else), and the King stays home
+// what it will consider: no unsieging, no heal-locks, no aimless target locks (only the Paladin, which
+// fires on nothing else), and the King stays home. Two kinds of action are picked over:
+//   Scry   only a 3x3 with an enemy in it that it can't see now — reading where the enemy stands is not
+//          seeing it, and a side of normal sight (aiSight) can attack only what it sees
+//   orders only a pawn's, and the Siege's (its only way to move), for the next turn: a piece the engine
+//          would let move now is better moved now, but a pawn's order costs half the turn's budget
+//          and so leaves the turn for something else
 function candidates(s){
-  const out=[];
+  const out=[],me=s.turn,you=me==='w'?'b':'w',B=s.board;
+  const unseen=[];
+  for(let j=0;j<B.length;j++)if(B[j]&&B[j].color===you&&!E.visible(s,j,me))unseen.push(j);
   for(const a of E.legalActions(s)){
     switch(a.type){
-      case'scry':case'order':case'unsiege':case'healLock':continue;
-      case'target':if(s.board[a.from].type!=='paladin')continue;break;
-      case'move':if(s.board[a.from].type==='king')continue;break;
+      case'unsiege':case'healLock':continue;
+      case'target':if(B[a.from].type!=='paladin')continue;break;
+      case'move':if(B[a.from].type==='king')continue;break;
+      case'scry':if(!unseen.some(j=>E.cheb(s,j,a.to)<=1))continue;break;
+      case'order':{
+        const p=B[a.from];
+        if(a.turns!==1||p.order||B[a.to]||(p.type!=='pawn'&&p.type!=='siege'))continue;
+        break;
+      }
     }
     out.push(a);
   }
@@ -152,13 +178,35 @@ function simulate(s,a,me,reply){
   return c;
 }
 
+// the state a plan leaves once this turn is over and the opponent has passed: what an order that leaves the
+// turn to be used is worth is what it changes here, against passing without it
+function afterPass(s,me,first){
+  const c=E.clone(s);
+  if(first)E.step(c,first,{trusted:true});
+  if(!c.over&&c.turn===me)E.step(c,{type:'skip'},{trusted:true});
+  if(!c.over&&c.turn!==me)E.step(c,{type:'skip'},{trusted:true});
+  return c;
+}
+const ORDER_GAIN=.05;   // an order must be worth at least this much more than none
+
+// the state as a side of normal sight sees it: the same state if `me` already has aiSight, else a copy that does
+function withSight(s){
+  const me=s.turn;
+  if(s.aiSight&&s.aiSight[me])return s;
+  const c=E.clone(s);
+  c.aiSight=Object.assign({w:false,b:false},s.aiSight,{[me]:true});
+  return c;
+}
+
 function chooseAction(s){
+  s=withSight(s);
   const me=s.turn,cand=candidates(s);
   if(cand.length===1)return cand[0];
-  const scored=[];
+  const scored=[],orders=[];
   for(const a of cand){
-    const v=evaluate(simulate(s,a,me,false),me);
+    const c=simulate(s,a,me,false),v=evaluate(c,me);
     if(v>=1e6)return a;                       // wins on the spot
+    if(a.type==='order'&&!c.over&&c.turn===me){orders.push(a);continue;}   // judged below
     scored.push({a,v1:v+noise(s,a)});
   }
   scored.sort((x,y)=>y.v1-x.v1);
@@ -169,6 +217,16 @@ function chooseAction(s){
     const v=evaluate(simulate(s,t.a,me,true),me)+.2*t.v1;
     if(v>bv){bv=v;best=t.a;}
   }
+  // the order that gains most over doing without one goes first, and the rest of the turn follows it
+  if(orders.length){
+    const v0=evaluate(afterPass(s,me,null),me);
+    let bo=null,bg=ORDER_GAIN;
+    for(const a of orders){
+      const g=evaluate(afterPass(s,me,a),me)-v0+noise(s,a);
+      if(g>bg){bg=g;bo=a;}
+    }
+    if(bo)return bo;
+  }
   return best;
 }
 
@@ -176,6 +234,7 @@ function chooseAction(s){
 // same side's turn (the cap only guards against a state that never lets it end)
 function playTurn(s){
   const me=s.turn,events=[];
+  if(!(s.aiSight&&s.aiSight[me]))s.aiSight=Object.assign({w:false,b:false},s.aiSight,{[me]:true});   // normal sight, always
   for(let k=0;k<8&&!s.over&&s.turn===me;k++)events.push(...E.step(s,chooseAction(s),{trusted:true}));
   if(!s.over&&s.turn===me)events.push(...E.step(s,{type:'skip'},{trusted:true}));
   return events;

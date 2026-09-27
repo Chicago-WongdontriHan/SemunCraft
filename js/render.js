@@ -71,7 +71,7 @@ function render(){
         sq.classList.add('fog','fog-unknown');
         sq.appendChild(fogCover(i,'unknown'));
         scryMark(sq,i);meteorMark(sq,i);flareMark(sq,i);meteorZoneMark(sq,i);
-        if(res){sq.title=RESOURCE_TIPS[tileData[i]];sq.appendChild(pawnNeededBadge(tileData[i],true));}
+        if(res){sq.title=tileData[i]==='spring'?springTip(i):RESOURCE_TIPS[tileData[i]];sq.appendChild(pawnNeededBadge(tileData[i],true));if(tileData[i]==='spring')sq.appendChild(springStockBadge(i));}
         if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
         if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
         boardEl.appendChild(sq);
@@ -91,7 +91,7 @@ function render(){
         sq.classList.add('fog','fog-explored');
         sq.appendChild(fogCover(i,'explored'));
         scryMark(sq,i);meteorMark(sq,i);flareMark(sq,i);meteorZoneMark(sq,i);
-        if(res){sq.title=RESOURCE_TIPS[tileData[i]];sq.appendChild(pawnNeededBadge(tileData[i],true));}
+        if(res){sq.title=tileData[i]==='spring'?springTip(i):RESOURCE_TIPS[tileData[i]];sq.appendChild(pawnNeededBadge(tileData[i],true));if(tileData[i]==='spring')sq.appendChild(springStockBadge(i));}
         if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
         if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
         boardEl.appendChild(sq);
@@ -121,6 +121,7 @@ function render(){
       if(RESOURCE_TILES[ttype]){
         sq.title=ttype==='spring'?springTip(i):RESOURCE_TIPS[ttype];
         if(!(pieces[i]&&pieces[i].type==='pawn'&&!pieces[i].fortified))sq.appendChild(pawnNeededBadge(ttype,false));
+        if(ttype==='spring')sq.appendChild(springStockBadge(i));
       }
       // an order's reserved square, and the piece that has one out
       if(orderZone&&orderZone.has(i))sq.classList.add('order-target');
@@ -237,6 +238,17 @@ function springTip(i){
   if(!sp||sp.stock>=SPRING_CAP)return 'Elixir spring: full ('+SPRING_CAP+' Elixir). A plain pawn standing here draws '+ELIXIR_RATE+' a turn until it runs dry, then it needs '+SPRING_REFILL+' turns to refill.';
   if(sp.stock<=0)return 'Elixir spring: dry. It refills to '+SPRING_CAP+' Elixir '+SPRING_REFILL+' turns after it ran out.';
   return 'Elixir spring: '+sp.stock.toFixed(1)+' of '+SPRING_CAP+' Elixir left. A plain pawn standing here draws '+ELIXIR_RATE+' a turn until it runs dry.';
+}
+// the number in it right now, out of SPRING_CAP — its own corner, always on, fog or not: a hover tooltip
+// alone doesn't reach a phone
+function springStock(i){ const sp=springs[i]; return sp?sp.stock:SPRING_CAP; }
+function springStockBadge(i){
+  const stock=springStock(i);
+  const b=document.createElement('span');
+  b.className='res-stock'+(stock<=0?' res-stock-dry':'');
+  b.textContent=(stock<=0?'0':stock%1===0?String(stock):stock.toFixed(1))+'/'+SPRING_CAP;
+  b.style.fontSize=Math.max(9,Math.round(sqPx*.19))+'px';
+  return b;
 }
 // the badge shows the game's own pawn, in your colour; under fog it sits in the middle of the square,
 // where it also marks the tile as a landmark

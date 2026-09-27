@@ -167,11 +167,32 @@ def configure_switches_mode():
 
 
 def bad_config_rejected():
-    try:
-        SemunCraftVecEnv(1, {"mode": "pvp", "opponent": "bot"}, num_workers=1).close()
-        check(False, "a bot opponent was accepted in pvp mode")
-    except RuntimeError as err:
-        check("classic" in str(err), "unexpected error: %s" % err)
+    for config, word in (({"mode": "pvp", "opponent": "bot"}, "classic"), ({"agentBlack": 1.5}, "agentBlack")):
+        try:
+            SemunCraftVecEnv(1, config, num_workers=1).close()
+            check(False, "accepted %s" % config)
+        except RuntimeError as err:
+            check(word in str(err), "unexpected error: %s" % err)
+
+
+def black_share():
+    """agentBlack sets how often a random agentColor comes out Black."""
+    rng = np.random.default_rng(2)
+    out = []
+    for share in (1.0, 0.0, 0.75):
+        config = {"mode": "pvp", "opponent": "random", "agentColor": "random", "agentBlack": share, "maxTurns": 30}
+        colors = collections.Counter()
+        with SemunCraftVecEnv(16, config, num_workers=2, seed=6) as env:
+            env.reset()
+            for _ in range(200):
+                _, _, dones, infos = env.step(sample_legal(env.action_masks(), rng))
+                colors.update(infos[i]["agent"] for i in np.flatnonzero(dones))
+        total = sum(colors.values())
+        check(total > 40, "only %d games finished" % total)
+        black = colors["b"] / max(1, total)
+        check(abs(black - share) < (0.01 if share in (0.0, 1.0) else 0.15), "agentBlack %s gave %.2f Black" % (share, black))
+        out.append("%.2f -> %.2f" % (share, black))
+    return "share of Black games: " + ", ".join(out)
 
 
 def illegal_action_rejected():
@@ -210,6 +231,7 @@ if __name__ == "__main__":
     section("campaign levels with reward shaping", campaign_with_shaping)
     section("configure applies from the next game", configure_switches_mode)
     section("invalid configs are rejected", bad_config_rejected)
+    section("agentBlack weights the agent's color", black_share)
     section("illegal actions are rejected", illegal_action_rejected)
     section("throughput", throughput)
     print("\n" + ("%d failure(s)" % failures if failures else "all environment tests passed"))

@@ -302,15 +302,17 @@ function emptyBoard(opts){
     if(count(legacy.observe(emptyBoard({aiSight:true}).s,'w'),20)!==81)fail('sightPlane:false should keep the old visible plane');
   });
 
-  await section('the shaping potential is zero-sum, and buying something leaves it unchanged',()=>{
+  await section('the shaping potential is zero-sum, and building the army raises it',()=>{
     for(const s of positions(500))if(Math.abs(potential(s,'w')+potential(s,'b'))>1e-9)fail('potential is not zero-sum');
-    // spawning a pawn, putting a helmet on it and merging two pawns only turn Gold into pieces
+    // Gold and Elixir in hand count for nothing: a spawned pawn is worth a tenth, a helmet a tenth more
     const s=E.newGame({seed:3,mode:'pvp'});
     const v0=potential(s,'w'),spawn=E.legalActions(s).find(a=>a.type==='spawn');
     const c=E.clone(s);c.board[spawn.to]={type:'pawn',color:'w',hp:1,maxHp:1};c.spawns.w++;
-    if(Math.abs(potential(c,'w')-v0)>1e-9)fail('spawning changed the potential by '+(potential(c,'w')-v0));
+    if(Math.abs(potential(c,'w')-v0-.1)>1e-9)fail('spawning changed the potential by '+(potential(c,'w')-v0));
     c.board[spawn.to]=Object.assign(c.board[spawn.to],{fortified:true,hp:3,maxHp:3});c.goldSpent.w++;
-    if(Math.abs(potential(c,'w')-v0)>1e-9)fail('a helmet changed the potential by '+(potential(c,'w')-v0));
+    if(Math.abs(potential(c,'w')-v0-.2)>1e-9)fail('a helmet changed the potential by '+(potential(c,'w')-v0-.1));
+    c.elixir.w+=3;
+    if(Math.abs(potential(c,'w')-v0-.2)>1e-9)fail('Elixir in hand changed the potential');
   });
 
   await section('worker protocol',async()=>{
@@ -350,6 +352,8 @@ function emptyBoard(opts){
     if(!badKey.error)fail('unknown config key accepted');
     const botInPvp=await w.call({cmd:'configure',envs:[0],config:{mode:'pvp',opponent:'bot'}});
     if(!String(botInPvp.error).includes('classic'))fail('bot opponent accepted in pvp: '+JSON.stringify(botInPvp));
+    const badBlack=await w.call({cmd:'configure',envs:[0],config:{agentBlack:2}});
+    if(!String(badBlack.error).includes('agentBlack'))fail('agentBlack 2 accepted: '+JSON.stringify(badBlack));
     await w.call({cmd:'close'});
     if(!await Promise.race([w.exited,new Promise(r=>setTimeout(()=>r(false),5000))])){fail('worker did not exit');w.proc.kill();}
     // a worker can still serve version 1, for the networks trained on it
@@ -368,13 +372,18 @@ function emptyBoard(opts){
       {seed:1,mode:'classic',opponent:'scripted',agentColor:'b'},
       {seed:2,mode:'pvp',opponent:'scripted',agentColor:'b'},
       {seed:3,mode:'pvp',opponent:'scripted',agentColor:'w',maxTurns:60},
+      {seed:4,mode:'pvp',opponent:'scripted',agentColor:'random',agentBlack:1,maxTurns:60},   // always Black
     ]});
-    if(init.envs!==3)fail('init reply '+JSON.stringify(init));
+    if(init.envs!==4)fail('init reply '+JSON.stringify(init));
     let res=(await w.call({cmd:'reset'})).results,games=0;
     for(let n=0;n<400;n++){
       res.forEach((r,k)=>{
         if(r.seat!=='agent')fail('env '+k+': the scripted opponent left the turn to '+r.seat);
-        if(r.done){games++;if(r.info.scenario.opponent!=='scripted')fail('the game is not recorded against the scripted opponent');}
+        if(r.done){
+          games++;
+          if(r.info.scenario.opponent!=='scripted')fail('the game is not recorded against the scripted opponent');
+          if(k===3&&r.info.agent!=='b')fail('agentBlack 1 gave the agent '+r.info.agent);
+        }
       });
       res=(await w.call({cmd:'step',actions:res.map(r=>r.legal[Math.floor(pick()*r.legal.length)])})).results;
     }

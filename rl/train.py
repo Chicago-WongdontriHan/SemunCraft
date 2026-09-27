@@ -1,13 +1,16 @@
 """Curriculum and self-play training for SemunCraft.
 
-Training moves through four stages, promoted once the agent wins often enough:
-  easy      White against the Easy AI (the old built-in one, js/ai.js as E.botTurn)
-  hard      White against the Hard AI (a random strategy each game), still with some Easy games
-  scripted  either color against the scripted AI (rl/scripted.js: it Scrys, gives orders, builds
-            the whole unit tree), still with some Hard games
-  league    self-play in the single-player turn order, plus some games against the scripted and
-            built-in AIs: the agent plays either color against its current network, recent snapshots
-            or a hall of fame of older ones, so it also learns to play Black, the side the game's AI plays
+Training moves through three stages, promoted once the agent wins often enough:
+  easy    White against the Easy AI (the old built-in one, js/ai.js as E.botTurn)
+  hard    White against the Hard AI (a random strategy each game), still with some Easy games
+  league  self-play in the single-player turn order, plus some games against the scripted AI
+          (rl/scripted.js: it Scrys, gives orders, builds the whole unit tree) and the built-in AIs:
+          the agent plays either color, Black more often (--black-share, since the game's AI plays
+          Black), against its current network, recent snapshots or a hall of fame of older ones
+
+There is no stage against the scripted AI on purpose: a fresh network cannot beat it at all, and the
+first version-2 run spent 37 of its 60 minutes there without a win and came out stalling as Black
+("nothing wins, so don't lose"). It stays a small share of the league and the yardstick in evaluations.
 
 Every game is played with normal sight (aiSight in js/engine.js): each side attacks only what it can
 see, though it reads where the enemy stands. The network sees and acts in the latest rl/encoding.js
@@ -34,16 +37,15 @@ import numpy as np
 import torch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ppo import ENCODINGS, LATEST_ENCODING, PolicyValueNet, Rollout, Runner, autocast, ppo_update  # noqa: E402
+from ppo import ENCODINGS, LATEST_ENCODING, SLOT_BIAS, PolicyValueNet, Rollout, Runner, autocast, ppo_update  # noqa: E402
 from semuncraft_env import SemunCraftVecEnv  # noqa: E402
 
 # share of training games against each kind of opponent, per stage (main() adds the league mix)
 MIX = {
     "easy": {"easy": 1.0},
     "hard": {"easy": 0.25, "hard": 0.75},
-    "scripted": {"hard": 0.25, "scripted": 0.75},
 }
-NEXT_STAGE = {"easy": "hard", "hard": "scripted", "scripted": "league"}
+NEXT_STAGE = {"easy": "hard", "hard": "league"}
 LOG_FIELDS = ["minutes", "update", "steps", "steps_per_s", "stage", "shaping", "lr", "entropy_coef", "games",
               "win_easy", "win_hard", "win_scripted", "win_self_w", "win_self_b", "draws", "moves_per_game", "entropy",
               "value_loss", "approx_kl", "clip_frac"]
@@ -66,12 +68,15 @@ def game_kind(info):
     return "self_" + info["agent"]
 
 
-def env_config(kind, args, shaping):
+def env_config(kind, args, shaping, black=None):
+    """Env config for a kind of opponent; `black` is the agent's share of Black games where the opponent
+    allows either color (default --black-share; evaluations pass 0.5)."""
+    black = args.black_share if black is None else black
     config = {"mode": "classic", "maxTurns": args.max_turns, "shaping": shaping, "gamma": args.gamma, "aiSight": True}
     if kind == "self":
-        config.update(opponent="external", agentColor="random")
+        config.update(opponent="external", agentColor="random", agentBlack=black)
     elif kind == "scripted":
-        config.update(opponent="scripted", agentColor="random")
+        config.update(opponent="scripted", agentColor="random", agentBlack=black)
     else:
         config.update(opponent="bot", difficulty=kind)
     return config
@@ -87,7 +92,8 @@ def split(num_envs, mix):
 
 
 def make_net(args, layout, device):
-    net = PolicyValueNet(layout["channels"], args.width, args.blocks, layout["slots"], layout["on_board"]).to(device)
+    net = PolicyValueNet(layout["channels"], args.width, args.blocks, layout["slots"], layout["on_board"],
+                         SLOT_BIAS.get(args.encoding)).to(device)
     return net.to(memory_format=torch.channels_last) if args.channels_last and device.type == "cuda" else net
 
 
@@ -189,6 +195,9 @@ class Trainer:
         c = checkpoint or {}
         self.update, self.steps, self.games = c.get("update", 0), c.get("steps", 0), c.get("games", 0)
         self.stage, self.stage_start = c.get("stage", "easy"), c.get("stage_start", 0)
+        if self.stage not in MIX and self.stage != "league":   # a checkpoint from a stage that no longer exists
+            print("note: checkpoint stage %r is gone; continuing in the league" % self.stage, flush=True)
+            self.stage, self.stage_start = "league", self.update
         self.shaping = c.get("shaping", args.shaping)
         self.entropy_coef = args.entropy
         torch.manual_seed(args.seed + self.update)
@@ -289,7 +298,7 @@ class Trainer:
             return
         elapsed = self.update - self.stage_start
         results = self.recent[stage]
-        threshold = {"easy": args.promote_easy, "hard": args.promote_hard, "scripted": args.promote_scripted}[stage]
+        threshold = {"easy": args.promote_easy, "hard": args.promote_hard}[stage]
         won = len(results) >= args.window and rate(results) >= threshold and elapsed >= args.min_stage_updates
         if not won and elapsed < args.max_stage_updates:
             return
@@ -355,9 +364,9 @@ class Trainer:
         by_color = lambda info: "as White" if info["agent"] == "w" else "as Black"
         suites = [("easy", env_config("easy", args, 0.0), None, 1.0, lambda info: None),
                   ("hard", env_config("hard", args, 0.0), None, 1.0, lambda info: info["scenario"]["strategy"]),
-                  ("scripted", env_config("scripted", args, 0.0), None, 1.0, by_color)]
+                  ("scripted", env_config("scripted", args, 0.0, black=0.5), None, 1.0, by_color)]
         if self.stage == "league":
-            self_play = env_config("self", args, 0.0)
+            self_play = env_config("self", args, 0.0, black=0.5)
             if self.anchor:
                 suites.append(("vs league start", self_play, self.anchor[1], 1.0, by_color))
             suites.append(("vs run start", self_play, self.run_start, 1.0, by_color))
@@ -391,7 +400,8 @@ def parse_args():
     p.add_argument("--out", help="run folder (default: a new folder under %%LOCALAPPDATA%%/semuncraft-rl/runs)")
     p.add_argument("--resume", help="checkpoint to continue from, e.g. <run folder>/latest.pt")
     p.add_argument("--envs", type=int, default=192)
-    p.add_argument("--workers", type=int, default=min(16, os.cpu_count() or 1))
+    p.add_argument("--workers", type=int, default=min(28, os.cpu_count() or 1),
+                   help="Node worker processes; each step waits for the slowest, so spread the slow scripted games")
     p.add_argument("--steps", type=int, default=64, help="steps per env between updates")
     p.add_argument("--epochs", type=int, default=4)
     p.add_argument("--minibatch", type=int, default=2048)
@@ -412,13 +422,14 @@ def parse_args():
     p.add_argument("--window", type=int, default=400, help="recent games per opponent kind for promotion and logs")
     p.add_argument("--promote-easy", type=float, default=0.9, help="win rate against Easy needed to move on")
     p.add_argument("--promote-hard", type=float, default=0.75, help="win rate against Hard needed to move on")
-    p.add_argument("--promote-scripted", type=float, default=0.6, help="win rate against the scripted AI needed to move on")
     p.add_argument("--min-stage-updates", type=int, default=30)
     p.add_argument("--max-stage-updates", type=int, default=400, help="move on anyway after this many updates")
     p.add_argument("--league-easy", type=float, default=0.05, help="share of league games against the Easy AI")
     p.add_argument("--league-hard", type=float, default=0.15, help="share of league games against the Hard AI")
-    p.add_argument("--league-scripted", type=float, default=0.3,
-                   help="share of league games against the scripted AI (the rest is self-play)")
+    p.add_argument("--league-scripted", type=float, default=0.1,
+                   help="share of league games against the scripted AI (the rest is self-play); its games simulate 4x slower")
+    p.add_argument("--black-share", type=float, default=0.67,
+                   help="how often the agent plays Black where the opponent allows either color (self-play, the scripted AI)")
     p.add_argument("--snapshot-every", type=int, default=50)
     p.add_argument("--pool", type=int, default=10, help="recent snapshots kept as self-play opponents")
     p.add_argument("--latest-prob", type=float, default=0.5, help="share of self-play games against the current network")
@@ -440,6 +451,8 @@ def main():
     args = parse_args()
     args.lr_end = args.lr if args.lr_end is None else args.lr_end
     args.entropy_end = args.entropy if args.entropy_end is None else args.entropy_end
+    if not 0 <= args.black_share <= 1:
+        raise SystemExit("--black-share must be between 0 and 1")
     others = args.league_easy + args.league_hard + args.league_scripted
     if others > 1:
         raise SystemExit("--league-easy, --league-hard and --league-scripted add up to more than 1")

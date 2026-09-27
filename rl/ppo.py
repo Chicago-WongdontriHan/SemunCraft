@@ -22,6 +22,14 @@ import torch.nn.functional as F
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from semuncraft_env import ENCODINGS, LATEST_ENCODING, SemunCraftVecEnv  # noqa: E402
 
+# How a fresh network's per-slot logits start, per encoding version: (first slot, one past the last, bias).
+# In version 2 orders take 75 of the 159 slots and a Bishop with both its mana has 81 squares to Scry, so a
+# network that starts even over slots gives orders most of the time and hardly explores anything else (the
+# first version-2 run gave orders in 70-93% of its moves and never built an army). These start the untrained
+# policy roughly even over kinds of action instead. The slot numbers are V2_SLOT in rl/encoding.js.
+SLOT_BIAS = {2: [(82, 83, -3.0), (83, 84, -2.0), (84, 159, -2.0)]}   # Scry, Meteor, orders
+
+
 def encoding_of(state):
     """The encoding version a network's weights were trained on, from their shapes."""
     shape = (state["stem.weight"].shape[1], state["cell_logits.weight"].shape[0])
@@ -45,12 +53,16 @@ class PolicyValueNet(nn.Module):
     """Convolutional network with `slots` action logits per cell, a skip logit and a value."""
 
     def __init__(self, channels, width=64, blocks=4, slots=ENCODINGS[LATEST_ENCODING]["slots"],
-                 on_board=ENCODINGS[LATEST_ENCODING]["on_board"]):
+                 on_board=ENCODINGS[LATEST_ENCODING]["on_board"], slot_bias=None):
         super().__init__()
         self.on_board = on_board
         self.stem = nn.Conv2d(channels, width, 3, padding=1)
         self.body = nn.Sequential(*[ResBlock(width) for _ in range(blocks)])
         self.cell_logits = nn.Conv2d(width, slots, 1)
+        if slot_bias:
+            with torch.no_grad():
+                for first, end, bias in slot_bias:
+                    self.cell_logits.bias[first:end] = bias
         self.skip_logit = nn.Linear(width, 1)
         self.value_head = nn.Sequential(nn.Linear(width, width), nn.ReLU(), nn.Linear(width, 1))
 
@@ -186,7 +198,7 @@ def rate(outcomes, value):
 
 
 def train(args, env, device):
-    net = PolicyValueNet(env.channels, args.width, args.blocks, env.slots, env.on_board).to(device)
+    net = PolicyValueNet(env.channels, args.width, args.blocks, env.slots, env.on_board, SLOT_BIAS.get(env.encoding)).to(device)
     if args.channels_last and device.type == "cuda":
         net = net.to(memory_format=torch.channels_last)
     opt = torch.optim.Adam(net.parameters(), lr=args.lr, eps=1e-5)

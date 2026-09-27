@@ -12,8 +12,8 @@ import numpy as np
 import torch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ppo import PolicyValueNet, Rollout, Runner, encoding_of, legal_dist, masked_dist, ppo_update  # noqa: E402
-from semuncraft_env import ENCODINGS, LATEST_ENCODING, SemunCraftVecEnv  # noqa: E402
+from ppo import SLOT_BIAS, PolicyValueNet, Rollout, Runner, encoding_of, legal_dist, masked_dist, ppo_update  # noqa: E402
+from semuncraft_env import ENCODINGS, LATEST_ENCODING, SemunCraftVecEnv, sample_legal  # noqa: E402
 
 LAYOUT = ENCODINGS[LATEST_ENCODING]
 ACTIONS = 11 * 11 * LAYOUT["slots"] + 1
@@ -68,6 +68,38 @@ def encoding_1_networks_still_load():
     check(logits.shape == (2, 11 * 11 * e["slots"] + 1), "encoding 1 logits %s" % (tuple(logits.shape),))
 
 
+def fresh_policy_is_even_over_kinds():
+    """With SLOT_BIAS a new network gives orders in a minority of its moves; without it, in most of them."""
+    rng, g = np.random.default_rng(4), torch.Generator().manual_seed(2)
+    slots = ENCODINGS[2]["slots"]
+    kind = lambda i: "skip" if i == 11 * 11 * slots else ("order" if i % slots >= 84 else "scry" if i % slots == 82 else "other")
+    out = []
+    with SemunCraftVecEnv(16, {"mode": "classic", "opponent": "random", "agentColor": "random"}, num_workers=2, seed=8) as env:
+        check(env.encoding == 2, "this test is about encoding 2")
+        frames = [env.reset()]
+        for _ in range(12):
+            frames.append(env.step(sample_legal(env.action_masks(), rng))[0])
+        obs, masks = torch.as_tensor(np.concatenate(frames)), None
+        # the masks belong to the last frame only, so judge the policy on that frame's legal actions
+        legal = torch.as_tensor(env.action_masks())
+        obs = obs[-16:]
+        shares = {}
+        for name, bias in (("biased", SLOT_BIAS[2]), ("plain", None)):
+            torch.manual_seed(1)
+            net = PolicyValueNet(env.channels, width=16, blocks=1, slots=slots, on_board=env.on_board, slot_bias=bias)
+            with torch.no_grad():
+                dist = masked_dist(net(obs)[0], legal)
+            picks = dist.sample((200,)).reshape(-1).tolist()
+            counts = {}
+            for p in picks:
+                counts[kind(p)] = counts.get(kind(p), 0) + 1
+            shares[name] = counts.get("order", 0) / len(picks)
+            out.append("%s: orders %.0f%%, Scry %.0f%%" % (name, 100 * shares[name], 100 * counts.get("scry", 0) / len(picks)))
+        check(0.03 < shares["biased"] < 0.45, "the biased start gives orders %.2f of the time" % shares["biased"])
+        check(shares["plain"] > shares["biased"] + 0.2, "the plain start gives orders only %.2f of the time" % shares["plain"])
+    return "; ".join(out)
+
+
 def short_training():
     device = torch.device("cpu")
     with SemunCraftVecEnv(8, {"mode": "classic", "levels": [0]}, num_workers=2, seed=3) as env:
@@ -117,6 +149,7 @@ if __name__ == "__main__":
     args = p.parse_args()
     section("the legal-actions distribution equals the masked one over all actions", legal_matches_all_actions)
     section("an encoding 1 network is recognised and runs", encoding_1_networks_still_load)
+    section("a fresh network starts roughly even over kinds of action", fresh_policy_is_even_over_kinds)
     section("collect and update on campaign level 1", short_training)
     if args.bench:
         section("policy head speed", lambda: bench(torch.device(args.bench)))

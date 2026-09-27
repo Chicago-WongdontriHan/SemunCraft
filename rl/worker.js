@@ -28,6 +28,7 @@ const DEFAULTS={
                         // colour in either mode, standard games only), 'random' (chosen here), 'external' (chosen by
                         // Python), or 'auto' (bot in classic, random in pvp)
   agentColor:'random',  // 'w', 'b' or 'random' each game (always White against the bot)
+  agentBlack:.5,        // with agentColor 'random', how often the agent is Black (the side the game's AI plays)
   difficulty:'random',  // the bot's level: 'easy', 'hard' or 'random' each game
   theme:'random',       // 'forest', 'jungle', 'desert', 'ocean' or 'random' each game
   levels:null,          // classic only: campaign level indices to draw from each game (null in the list = standard game)
@@ -46,6 +47,7 @@ function withDefaults(base,config){
   if(!['auto','bot','scripted','random','external'].includes(c.opponent))throw new Error('opponent must be auto, bot, scripted, random or external');
   if(c.opponent==='bot'&&c.mode!=='classic')throw new Error('the bot opponent needs mode classic');
   if(!['w','b','random'].includes(c.agentColor))throw new Error('agentColor must be w, b or random');
+  if(!(typeof c.agentBlack==='number'&&c.agentBlack>=0&&c.agentBlack<=1))throw new Error('agentBlack must be a number from 0 to 1');
   if(!['easy','hard','random'].includes(c.difficulty))throw new Error('difficulty must be easy, hard or random');
   if(!THEMES.includes(c.theme)&&c.theme!=='random')throw new Error('unknown theme '+c.theme);
   if(c.levels!==null&&!Array.isArray(c.levels))throw new Error('levels must be a list or null');
@@ -88,7 +90,7 @@ class Env{
     }
     const s=this.s,bot=opponent==='bot';
     this.opponent=opponent;
-    this.agent=bot?'w':c.agentColor==='random'?pick(['w','b']):c.agentColor;
+    this.agent=bot?'w':c.agentColor==='random'?(this.rand()<c.agentBlack?'b':'w'):c.agentColor;
     this.scenario={mode:c.mode,opponent,level,difficulty:bot&&level===null?s.difficulty:null,
       strategy:bot&&level===null?s.strategy:null,theme:s.theme,seed};
     this.opponentRand=E.makeRandom(seed^0x5bd1e995);

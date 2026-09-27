@@ -25,7 +25,7 @@ const WINDOW=4,SIDE=2*WINDOW+1,OFFSETS=SIDE*SIDE,CENTRE=WINDOW*SIDE+WINDOW;
 // — a helmet 1, a Rook a helmeted pawn and a pawn, the top tier its two parts and its Elixir
 const PIECE_VALUE={pawn:1,knight:2,bishop:3,rook:3,queen:5,siege:7,king:0,mage:8,paladin:7,guardian:6,scarecrow:0};
 const FORTIFIED_VALUE=2;
-const ELIXIR_CAP=6;   // Elixir in hand counts up to this much (the dearest unit costs 3)
+const ELIXIR_CAP=6;   // the Elixir-in-hand planes show up to this much (the dearest unit costs 3)
 
 // ── VERSION 1 ────────────────────────────────────────────────────────────────
 const V1_TYPES=['pawn','knight','bishop','rook','queen','king','siege'];
@@ -288,9 +288,10 @@ function createEncoder(opts){
     numActions,skipIndex:SKIP,observe,actionIndex,legalMap,cell};
 }
 
-// shaping potential from `side`'s view: material (a piece's value × its health / 10), Gold and Elixir in
-// hand (/10, Elixir up to ELIXIR_CAP) and King health / 5. Spending Gold or Elixir on what it buys leaves
-// it unchanged; damage, and what the mines and springs pay, move it.
+// shaping potential from `side`'s view: material (a piece's value × its health / 10) and King health / 5.
+// Gold and Elixir in hand count for nothing, so spending them — a pawn, a helmet, a top-tier merge — reads
+// as a gain and the shaping pushes the army to be built. (The first version-2 run counted them, which made
+// buying neutral and hoarding rewarded; that network hardly built anything.)
 function potential(s,side){
   let v=0;
   for(const p of s.board){
@@ -298,10 +299,6 @@ function potential(s,side){
     const value=p.type==='pawn'&&p.fortified?FORTIFIED_VALUE:(PIECE_VALUE[p.type]||0);
     const worth=p.type==='king'?p.hp/5:value*p.hp/p.maxHp/10;
     if(p.color===side)v+=worth;else if(p.color===(side==='w'?'b':'w'))v-=worth;
-  }
-  for(const[c,sign]of[[side,1],[side==='w'?'b':'w',-1]]){
-    const elixir=s.elixir?Math.min(ELIXIR_CAP,s.elixir[c]||0):0;
-    v+=sign*(E.spawnRemaining(s,c)+elixir)/10;
   }
   return v;
 }

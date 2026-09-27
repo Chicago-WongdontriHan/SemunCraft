@@ -8,7 +8,9 @@
 //   - Gold and Elixir in hand (an Elixir counts as a Gold up to a Paladin's 3, and hardly at all beyond, so
 //     a spring's income is there to be spent), and the mines and springs a plain pawn holds — a spring
 //     pays half an Elixir a turn (ELIXIR_RATE), three times what a mine pays in Gold, so springs come first;
-//   - pawns walking to a tile they don't hold yet, and the army closing on the enemy King;
+//   - pawns walking to a tile they don't hold yet, and the army closing on the enemy King, much harder
+//     still with a material lead already in hand — it commits once it's actually ahead, rather than
+//     building an ever bigger army than the win needed (LEAD_PUSH, below);
 //   - pieces standing side by side that could merge into something dearer, each in at most one such pair;
 //   - a Meteor that is still on its way (what it will hit, friend and foe alike).
 // Each candidate is scored twice: right after the move (with the end-of-turn fire it triggers), and again
@@ -93,13 +95,19 @@ function evaluate(s,me){
     score+=.22*(9-Math.min(bd,9));
     seekers.add(free[best]);free.splice(best,1);
   }
-  // the rest of the army closes on the enemy King, ever harder as the game wears on and harder still with
-  // a material lead already in hand: approaching costs a volley (the piece that moves doesn't fire), so
-  // without a push two armies would sit out of range of each other until the turn cap — and without the
-  // lead term, a big enough lead had nothing pulling it toward the kill, so it just kept spawning and
-  // merging instead (each spawn pays for itself in raw material, whatever the score already stands at)
+  // the rest of the army closes on the enemy King, ever harder as the game wears on and much harder
+  // still with a material lead already in hand: approaching costs a volley (the piece that moves doesn't
+  // fire), so without a push two armies would sit out of range of each other until the turn cap — and
+  // without the lead term, a big enough lead had nothing pulling it toward the kill, so it just kept
+  // spawning and merging instead (each spawn pays for itself in raw material, whatever the score already
+  // stands at). LEAD_PUSH is high on purpose: against the old Hard AI, a gentler pull (each Gold of lead
+  // worth 1/6 of a turn's push) still won 39/40 games but with a Gold-equivalent army of 43 on average
+  // (max 92) by the time it did; this pull (10 per Gold of lead) wins just as often, in fewer turns, with
+  // an army under a third the size (16 on average, max 30) — it commits once it's actually ahead, instead
+  // of piling up far more force than the win needed
+  const LEAD_PUSH=10;
   const lead=mine.reduce((a,i)=>a+worth(B[i]),0)-theirs.reduce((a,i)=>a+worth(B[i]),0);
-  const push=1+s.turnCount[me]/12+Math.max(0,lead)/6;
+  const push=1+s.turnCount[me]/12+Math.max(0,lead)*LEAD_PUSH;
   if(theirKing>=0)for(const i of mine){
     if(seekers.has(i))continue;
     const p=B[i],d=E.cheb(s,i,theirKing);

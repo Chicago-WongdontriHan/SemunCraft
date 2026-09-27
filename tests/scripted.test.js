@@ -205,6 +205,24 @@ section('a dominant position keeps closing the distance to the enemy King, not j
   if(closest()>=before)fail('the closest piece to the enemy King is no nearer after 30 decisions ('+before+' -> '+closest()+')');
 });
 
+section("it wins economically: the army it has when it wins isn't much bigger than the win needed",()=>{
+  // the same Gold-equivalent unit prices as VALUE in rl/scripted.js, to size up its own army independently
+  const VALUE={pawn:1,knight:2.6,bishop:3.9,rook:4.2,queen:7,siege:9.6,guardian:8.2,paladin:8.6,mage:10.4};
+  const full=p=>p.type==='pawn'&&p.fortified?2.6:(VALUE[p.type]||0);
+  const armyWorth=(s,color)=>s.board.reduce((v,p)=>v+(p&&p.color===color&&p.type!=='king'?full(p)*(.3+.7*p.hp/p.maxHp):0),0);
+  const games=Math.max(16,GAMES/2|0);
+  let won=0;const worths=[];
+  for(let seed=1;seed<=games;seed++){
+    const s=play(seed*13+5,'classic','w','builtin');
+    if(s.winner==='w'){won++;worths.push(armyWorth(s,'w'));}
+  }
+  const avg=worths.reduce((a,b)=>a+b,0)/worths.length;
+  // before it pulled toward a lead, the average was around 43 (up to 92) against this same opponent
+  if(avg>=30)fail('average army at the moment of victory is '+avg.toFixed(1)+', not meaningfully smaller than before the lead pull');
+  if(won<games*.7)fail('won only '+won+' of '+games+' against the old built-in AI');
+  return won+' of '+games+' won; army at victory, Gold-equivalent: avg '+avg.toFixed(1)+', max '+Math.max(...worths).toFixed(1);
+});
+
 section('speed',()=>{
   const s=E.newGame({seed:5,mode:'pvp',theme:'forest'}),pick=E.makeRandom(9);
   for(let k=0;k<30;k++){const acts=E.legalActions(s);E.step(s,acts[Math.floor(pick()*acts.length)],{trusted:true});}   // a mid-game position

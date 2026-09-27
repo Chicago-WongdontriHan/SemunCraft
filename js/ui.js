@@ -212,10 +212,13 @@ function renderResources(){
   el.classList.toggle('two-sides',!!both);
   el.innerHTML=sides.map(color=>{
     const gold=noGold?'—':goldText(goldCount(color));
-    const boost=!noGold&&minesHeld(color)>0,springs=springsHeld(color);
+    const boost=!noGold&&minesHeld(color)>0;
+    // only the springs that still have something in them pay this turn (a dry one shows in the badge on
+    // the board, not as income here — heldTiles/springs in js/state.js)
+    const paying=heldTiles(color,'spring').filter(i=>!springs[i]||springs[i].stock>0).length;
     return '<div class="res-side">'+(both?'<span class="res-team">'+(color==='w'?'White':'Black')+'</span>':'')
       +line('res-line-gold',RES_GOLD,'Gold',gold,noGold?'':'+'+goldRate(color).toFixed(2),boost)
-      +line('res-line-elixir',RES_ELIXIR,'Elixir',goldText(elixirCount(color)),springs?'+'+goldText(springs*ELIXIR_RATE):'',!!springs)+'</div>';
+      +line('res-line-elixir',RES_ELIXIR,'Elixir',goldText(elixirCount(color)),paying?'+'+goldText(paying*ELIXIR_RATE):'',!!paying)+'</div>';
   }).join('');
   fitResources();
 }

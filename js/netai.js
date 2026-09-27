@@ -79,7 +79,7 @@ function netAiSnapshot(){
     level:campaignLevel||null,aiSight:{w:false,b:aiSightLimited('b')},   // Black's targets only what it sees (js/state.js)
     turnCount:{w:whiteTurnCount,b:blackTurnCount},spawns:{w:spawnHistory.length,b:blackSpawnHistory.length},
     targets:{w:whiteTargets,b:blackTargets},hitBy:blackHitBy,acted:[...blackActed],scans,meteors,
-    elixir:{w:elixir.w,b:elixir.b},mineTurns:{w:mineTurns.w,b:mineTurns.b},goldSpent:{w:goldSpent.w,b:goldSpent.b},
+    elixir:{w:elixir.w,b:elixir.b},mineTurns:{w:mineTurns.w,b:mineTurns.b},goldSpent:{w:goldSpent.w,b:goldSpent.b},springs,
     orderLeft:{w:orderLeft.w,b:orderLeft.b},maxTurns:300});
 }
 
@@ -101,7 +101,7 @@ function netAiApply(action){
   whiteTargets=s.targets.w;blackTargets=s.targets.b;
   scans=s.scans; // a scry Black cast lives in the engine's state: bring it back with the board
   meteors=s.meteors;   // and so does a meteor its Mage summoned, which would otherwise never land
-  elixir=s.elixir;mineTurns=s.mineTurns;goldSpent=s.goldSpent;orderLeft=s.orderLeft;
+  elixir=s.elixir;mineTurns=s.mineTurns;goldSpent=s.goldSpent;orderLeft=s.orderLeft;springs=s.springs;
   for(let k=spawned;k<s.spawns.b;k++)blackSpawnHistory.push(blackTurnCount);
   return result;
 }

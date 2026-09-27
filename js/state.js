@@ -13,8 +13,9 @@ let movedThisTurn=-1; // idx of white piece that acted this turn (cannot auto-at
 // on the same number: turns are counted as whole numbers and divided once, never added up in sixths.
 const GOLD_START=8, GOLD_TURNS=6;
 // The mines and the springs both pay for being held: every turn that ends with a plain pawn of yours on
-// a mine earns a sixth of Gold more, and on a spring half an Elixir (ELIXIR_RATE). There are five such tiles
-// (RESOURCE_SQUARES), so holding them all costs five pawns that fight nowhere else, and each is a
+// a mine earns a sixth of Gold more; a spring pays the same half an Elixir a turn (ELIXIR_RATE), but out of
+// its own reservoir (SPRING_CAP, SPRING_REFILL below) — a mine never runs dry, a spring can. There are five
+// such tiles (RESOURCE_SQUARES), so holding them all costs five pawns that fight nowhere else, and each is a
 // known square the other side can raid. (creditResources below, finishTurn in js/engine.js)
 const RESOURCE_TILES={spring:'elixir',mine:'gold'};
 // [row, col, tile]: a mine at e5, the same 3 squares from both kings; a mine (f2 / d8) and a spring
@@ -23,6 +24,12 @@ const RESOURCE_SQUARES=[[4,4,'mine'],[7,5,'mine'],[1,3,'mine'],[3,1,'spring'],[5
 let elixir={w:0,b:0};     // Elixir drawn from the springs
 let mineTurns={w:0,b:0};  // mine-turns: one for each mine a pawn of that side held at the end of a turn
 let goldSpent={w:0,b:0};  // Gold spent on anything but spawning: fortified pawns
+// a spring is a well, not a tap: it holds SPRING_CAP Elixir of its own (full at the start of the game), pays
+// it out ELIXIR_RATE at a time to whoever holds it, and once it runs dry it takes SPRING_REFILL turns —
+// counted from the moment it ran dry, held or not — before it's full again. {tileIndex: {stock, emptyAt}}
+// (creditResources below, creditSprings in js/engine.js)
+let springs={};
+const SPRING_CAP=3, SPRING_REFILL=5;
 const FORTIFIED_HP=3;     // a fortified pawn is a pawn in a helmet, with three life
 // Elixir is the top tier's currency, paid at the moment of merging; short of it the two pieces simply
 // don't combine (mergeResultType in js/actions.js and js/engine.js). The Paladin's lance ends games,
@@ -78,7 +85,35 @@ function springsHeld(color){ return heldTiles(color,'spring').length; }
 function goldRate(color){ return (1+minesHeld(color))/GOLD_TURNS; }
 // The end of a side's turn pays its tiles: a mine-turn for each mine held, ELIXIR_RATE for each spring
 // (finishTurn in engine.js). Returns the springs that paid, so the turn can sound them.
-function creditResources(color){ mineTurns[color]+=minesHeld(color); const sp=heldTiles(color,'spring'); elixir[color]+=sp.length*ELIXIR_RATE; return sp; }
+// pays the tiles held for the turn just ended: a mine-turn for each mine, and for each spring held,
+// ELIXIR_RATE out of its own reservoir (nothing once it runs dry). Checks every spring's cooldown first,
+// not just the held ones — an unheld spring still refills on its own clock. Returns the springs that
+// actually paid, so the turn can sound them.
+function creditResources(color){
+  mineTurns[color]+=minesHeld(color);
+  const now=whiteTurnCount+blackTurnCount;
+  // a spring just back from its cooldown doesn't also pay out the same moment it refills — otherwise
+  // whether a held spring loses half of what it just regained would hinge on which side's turn happened
+  // to be the one that crossed the 5-turn mark, an arbitrary coincidence rather than a rule
+  const justRefilled=new Set();
+  for(let i=0;i<tileData.length;i++){
+    if(tileData[i]!=='spring')continue;
+    if(!springs[i])springs[i]={stock:SPRING_CAP,emptyAt:undefined};
+    const sp=springs[i];
+    if(sp.stock<SPRING_CAP&&sp.emptyAt!==undefined&&now-sp.emptyAt>=SPRING_REFILL){sp.stock=SPRING_CAP;sp.emptyAt=undefined;justRefilled.add(i);}
+  }
+  const paid=[];
+  for(const i of heldTiles(color,'spring')){
+    if(justRefilled.has(i))continue;
+    const sp=springs[i];
+    if(!sp||sp.stock<=0)continue;
+    const amt=Math.min(ELIXIR_RATE,sp.stock);
+    elixir[color]+=amt;sp.stock-=amt;
+    if(sp.stock<=0){sp.stock=0;sp.emptyAt=now;}
+    paid.push(i);
+  }
+  return paid;
+}
 function goldAllowed(){ return !campaignLevel||campaignLevel.allowSpawn!==false; }
 function canFortify(i){ const p=pieces[i]; return !!p&&p.type==='pawn'&&!p.fortified&&goldAllowed()&&spawnRemaining()>=1; }
 function oppColor(){ return myColor()==='w'?'b':'w'; }

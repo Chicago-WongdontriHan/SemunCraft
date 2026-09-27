@@ -54,7 +54,7 @@ function aiVsAiNewMatch(){
   COLS=s.cols;ROWS=s.rows;
   setBodyTheme(s.theme);
   tileData=s.tiles.slice();
-  mapCheat=true;exploredTiles=new Set();scans=[];meteors=[];flareTiles=[];elixir={w:0,b:0};mineTurns={w:0,b:0};goldSpent={w:0,b:0};orderLeft={w:ORDER_BUDGET,b:ORDER_BUDGET};
+  mapCheat=true;exploredTiles=new Set();scans=[];meteors=[];flareTiles=[];elixir={w:0,b:0};mineTurns={w:0,b:0};goldSpent={w:0,b:0};springs={};orderLeft={w:ORDER_BUDGET,b:ORDER_BUDGET};
   const cheat=document.getElementById('btn-mapcheat');if(cheat)cheat.innerHTML=uiLabel('map','Map Cheat: ON');
   resetView();
   logLines=[];document.getElementById('log').textContent='';

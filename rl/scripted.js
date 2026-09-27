@@ -80,7 +80,9 @@ function evaluate(s,me){
   const held=new Set(),unheld=[];
   for(let i=0;i<s.tiles.length;i++){
     const t=s.tiles[i];if(t!=='mine'&&t!=='spring')continue;
-    const val=t==='mine'?MINE:SPRING,p=B[i];
+    // a dry spring (nothing left until it refills, s.springs) is worth holding onto but not fighting for
+    const dry=t==='spring'&&s.springs&&s.springs[i]&&s.springs[i].stock<=0;
+    const val=t==='mine'?MINE:(dry?SPRING*.25:SPRING),p=B[i];
     const holder=isSide(p)&&p.type==='pawn'&&!p.fortified?p.color:null;
     if(holder===me){score+=val;held.add(i);}
     else{if(holder===you)score-=val;unheld.push([i,val]);}

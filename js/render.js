@@ -107,16 +107,19 @@ function render(){
         }
       }
 
-      // a mine or a spring while a pawn works it: it pulses, and a badge says what it adds each turn
+      // a mine or a spring while a pawn works it: it pulses, and a badge says what it adds each turn (a dry
+      // spring says so instead, and doesn't pulse — there's nothing to draw until it refills)
+      const springDry=ttype==='spring'&&springs[i]&&springs[i].stock<=0;
       if(RESOURCE_TILES[ttype]&&pieces[i]&&pieces[i].type==='pawn'&&!pieces[i].fortified){
-        sq.classList.add('tile-worked');
-        const b=document.createElement('span');b.className='res-badge res-badge-'+RESOURCE_TILES[ttype];b.textContent=ttype==='mine'?'+0.16':'+'+ELIXIR_RATE;
+        if(!springDry)sq.classList.add('tile-worked');
+        const b=document.createElement('span');b.className='res-badge res-badge-'+RESOURCE_TILES[ttype]+(springDry?' res-badge-dry':'');
+        b.textContent=ttype==='mine'?'+0.16':(springDry?'dry':'+'+ELIXIR_RATE);
         b.style.fontSize=Math.max(11,Math.round(sqPx*.28))+'px';sq.appendChild(b);
       }
       // the spring and the mine need a plain pawn: say so until one stands there (a knight or a fortified
       // pawn on it earns nothing)
       if(RESOURCE_TILES[ttype]){
-        sq.title=RESOURCE_TIPS[ttype];
+        sq.title=ttype==='spring'?springTip(i):RESOURCE_TIPS[ttype];
         if(!(pieces[i]&&pieces[i].type==='pawn'&&!pieces[i].fortified))sq.appendChild(pawnNeededBadge(ttype,false));
       }
       // an order's reserved square, and the piece that has one out
@@ -226,8 +229,15 @@ function render(){
 // Both only work for a pawn, so until one stands there each carries a small pawn badge, ringed in its
 // resource's colour; hovering the square says what it does.
 const RESOURCE_TIPS={
-  spring:'Elixir spring: a plain pawn standing here draws '+ELIXIR_RATE+' Elixir at the end of each of your turns',
   mine:'Gold mine: a plain pawn standing here earns +0.16 Gold at the end of each of your turns'};
+// a spring holds SPRING_CAP Elixir of its own; drawing from it (ELIXIR_RATE a turn) empties it, and once dry
+// it takes SPRING_REFILL turns to fill back up, held or not
+function springTip(i){
+  const sp=springs[i];
+  if(!sp||sp.stock>=SPRING_CAP)return 'Elixir spring: full ('+SPRING_CAP+' Elixir). A plain pawn standing here draws '+ELIXIR_RATE+' a turn until it runs dry, then it needs '+SPRING_REFILL+' turns to refill.';
+  if(sp.stock<=0)return 'Elixir spring: dry. It refills to '+SPRING_CAP+' Elixir '+SPRING_REFILL+' turns after it ran out.';
+  return 'Elixir spring: '+sp.stock.toFixed(1)+' of '+SPRING_CAP+' Elixir left. A plain pawn standing here draws '+ELIXIR_RATE+' a turn until it runs dry.';
+}
 // the badge shows the game's own pawn, in your colour; under fog it sits in the middle of the square,
 // where it also marks the tile as a landmark
 function pawnNeededBadge(tile,fog){

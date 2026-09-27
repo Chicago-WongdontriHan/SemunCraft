@@ -90,7 +90,10 @@ section('plays the current economy: spawns, holds mines and springs, merges up',
   if(per('spawn')<5)fail('spawned only '+per('spawn').toFixed(1)+' pawns a game');
   if(per('merge')<2)fail('merged only '+per('merge').toFixed(1)+' times a game');
   if(per('tier')<.5)fail('built only '+per('tier').toFixed(2)+' Elixir-tier units a game, so the Elixir from the springs goes unspent');
-  if(per('held')<5)fail('the mines and springs paid only '+per('held').toFixed(1)+' a game');
+  // lower than before the spring's own cap and the LEAD_PUSH fix (2026-09-27): a capped spring pays at most
+  // SPRING_CAP before it needs SPRING_REFILL turns to recover, and games are shorter now that it presses a
+  // lead instead of turtling — so there's less time, and less to draw, for the tiles to pay altogether
+  if(per('held')<1.5)fail('the mines and springs paid only '+per('held').toFixed(1)+' a game');
   if(lost>won)fail('lost '+lost+' games to the old built-in AI and won only '+won);
   return 'per game '+per('spawn').toFixed(1)+' spawns, '+per('fortify').toFixed(1)+' helmets, '+per('merge').toFixed(1)
     +' merges ('+per('tier').toFixed(2)+' Elixir-tier, '+per('spent').toFixed(1)+' Elixir spent), '+per('held').toFixed(0)+' banked from tiles; '

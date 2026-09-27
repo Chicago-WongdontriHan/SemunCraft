@@ -416,7 +416,7 @@ function trainEngineState(side){
     turnCount:sw({w:whiteTurnCount,b:blackTurnCount}),
     spawns:sw({w:spawnHistory.length,b:blackSpawnHistory.length}),
     targets:{w:{},b:{}},
-    elixir:sw(elixir),mineTurns:sw(mineTurns),goldSpent:sw(goldSpent),orderLeft:sw(orderLeft)});
+    elixir:sw(elixir),mineTurns:sw(mineTurns),goldSpent:sw(goldSpent),orderLeft:sw(orderLeft),springs});
 }
 function trainAiTurn(){
   if(!trainingMode||over||trainPaused||!trainAI[turn])return;

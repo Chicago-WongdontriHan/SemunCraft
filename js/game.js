@@ -29,7 +29,7 @@ function initGame(){
   turn='w'; over=false; thinking=false; logLines=[]; kingSelected=false;
   whiteTargets={}; blackTargets={};
   spawnHistory=[]; blackSpawnHistory=[]; whiteTurnCount=0; blackTurnCount=0; movedThisTurn=-1;
-  scans=[];meteors=[];flareTiles=[];elixir={w:0,b:0};mineTurns={w:0,b:0};goldSpent={w:0,b:0};
+  scans=[];meteors=[];flareTiles=[];elixir={w:0,b:0};mineTurns={w:0,b:0};goldSpent={w:0,b:0};springs={};
   orderLeft={w:ORDER_BUDGET,b:ORDER_BUDGET};orderTurns=0;
   exploredTiles=new Set();
   // regular games start fogged (the tutorial and campaign set their own default)

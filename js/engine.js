@@ -134,6 +134,7 @@ function newGame(o){
     generateMap(s);
     if(s.mode!=='pvp')s.strategy=s.difficulty==='easy'?'easy_rook_rush':STRATEGIES[Math.floor(nextRandom(s)*STRATEGIES.length)];
   }
+  s.springs=freshSprings(s.tiles);
   return s;
 }
 
@@ -180,6 +181,7 @@ function clone(s){
   c.elixir={w:s.elixir.w,b:s.elixir.b};
   c.mineTurns={w:s.mineTurns.w,b:s.mineTurns.b};
   c.goldSpent={w:s.goldSpent.w,b:s.goldSpent.b};
+  c.springs=cloneSprings(s.springs);
   c.targets={w:Object.assign({},s.targets.w),b:Object.assign({},s.targets.b)};
   c.scans=s.scans.map(sc=>({tiles:sc.tiles.slice(),turns:sc.turns,color:sc.color}));
   c.meteors=(s.meteors||[]).map(m=>({tiles:m.tiles.slice(),turns:m.turns,color:m.color}));
@@ -620,8 +622,48 @@ function mergeResultType(s,pa,pb){
   return t&&s.elixir[pa.color]>=elixirCost(t)?t:null;
 }
 const ELIXIR_COST={paladin:3,mage:2,guardian:1,siege:1};   // elixirCost in js/state.js
-const ELIXIR_RATE=.5;   // what a held spring pays a turn (js/state.js)
+const ELIXIR_RATE=.5;   // what a held spring pays a turn, while it still has some Elixir of its own left (js/state.js)
+// a spring is a well, not a tap: it holds SPRING_CAP Elixir of its own (full at the start of the game), pays it out
+// ELIXIR_RATE at a time to whoever holds it, and once it runs dry it takes SPRING_REFILL turns — counted from the
+// moment it ran dry, held or not — before it's full again (creditSprings, js/state.js's creditResources)
+const SPRING_CAP=3, SPRING_REFILL=5;
 function elixirCost(type){return ELIXIR_COST[type]||0;}
+// every spring on the board, fresh: full, with no cooldown running
+function freshSprings(tiles){
+  const out={};
+  for(let i=0;i<tiles.length;i++)if(tiles[i]==='spring')out[i]={stock:SPRING_CAP,emptyAt:undefined};
+  return out;
+}
+function cloneSprings(springs){
+  const out={};
+  for(const i in springs)out[i]={stock:springs[i].stock,emptyAt:springs[i].emptyAt};
+  return out;
+}
+// the tiles pay for the turn just ended (finishTurn): a mine-turn for each mine held, and for each spring
+// held, ELIXIR_RATE out of what it still has (nothing once it runs dry). Checks every spring's cooldown
+// first, not just the held ones — an unheld spring still refills on its own clock.
+function creditSprings(s,color){
+  const now=s.turnCount.w+s.turnCount.b;
+  // a spring just back from its cooldown doesn't also pay out the same moment it refills — otherwise
+  // whether a held spring loses half of what it just regained would hinge on which side's turn happened
+  // to be the one that crossed the 5-turn mark, an arbitrary coincidence rather than a rule
+  const justRefilled=new Set();
+  for(const i in s.springs){
+    const sp=s.springs[i];
+    if(sp.stock<SPRING_CAP&&sp.emptyAt!==undefined&&now-sp.emptyAt>=SPRING_REFILL){sp.stock=SPRING_CAP;sp.emptyAt=undefined;justRefilled.add(+i);}
+  }
+  const paid=[];
+  for(const i of heldTiles(s,color,'spring')){
+    if(justRefilled.has(i))continue;
+    const sp=s.springs[i];
+    if(!sp||sp.stock<=0)continue;
+    const amt=Math.min(ELIXIR_RATE,sp.stock);
+    s.elixir[color]+=amt;sp.stock-=amt;
+    if(sp.stock<=0){sp.stock=0;sp.emptyAt=now;}
+    paid.push(i);
+  }
+  return paid;
+}
 const FORTIFIED_MEND=5;   // a fortified pawn mends 1 HP five turns after its last hit (state.js)
 // delayed orders (MAX_DELAY, ORDER_COST in js/state.js): giving one spends part of the turn's order
 // budget instead of the turn itself, and a pawn's takes half of it
@@ -989,9 +1031,10 @@ function finishTurn(s,color,events){
   const justMoved=s.moved;
   s.moved=-1;
   s.turnCount[color]++;
-  // the tiles pay for the turn they were held: a mine-turn for each mine, ELIXIR_RATE for each spring
+  // the tiles pay for the turn they were held: a mine-turn for each mine, and for each spring, ELIXIR_RATE
+  // out of its own reservoir (creditSprings)
   s.mineTurns[color]+=heldTiles(s,color,'mine').length;
-  s.elixir[color]+=heldTiles(s,color,'spring').length*ELIXIR_RATE;
+  creditSprings(s,color);
   if(s.mode==='pvp'){
     // the side that acted fires, except the piece that moved or healed; then the other side starts
     applyAttacks(s,computeActions(s,color).filter(a=>a.attacker!==justMoved&&!(B[a.attacker]&&B[a.attacker].rolled)),color,events);
@@ -1521,6 +1564,11 @@ function fromSnapshot(o){
   s.tiles=new Array(n).fill('');
   s.blocked=new Array(n).fill(false);
   for(let i=0;i<n;i++)if(o.tiles&&o.tiles[i])setTile(s,i,o.tiles[i]);
+  // per spring tile, not all-or-nothing: the browser's own springs fills each tile's entry only the first
+  // time creditResources runs on it, so an early snapshot's o.springs can be a real object that's still
+  // missing some (or all) of the board's springs — those default to fresh, same as a game just starting
+  s.springs=freshSprings(s.tiles);
+  if(o.springs)for(const i in s.springs)if(o.springs[i])s.springs[i]={stock:o.springs[i].stock,emptyAt:o.springs[i].emptyAt};
   return s;
 }
 
@@ -1540,7 +1588,7 @@ const SemunEngine={
   newGame,legalActions,step,botTurn,clone,isLegal,fromSnapshot,act,
   // rule queries
   getDests,computeActions,applyAttacks,upkeep,spawnRemaining,heldTiles,visible,fogFor,sightLimited,inCover,concealed,campaignResult,sangTrajectories,sangLineFor,mageRange,
-  mergeResultType,elixirCost,
+  mergeResultType,elixirCost,freshSprings,SPRING_CAP,SPRING_REFILL,
   // helpers and data
   generateMap,makeRandom,nextRandom,sqName,cheb,geo,STATS,STRATEGIES,THEME_TILES,
 };

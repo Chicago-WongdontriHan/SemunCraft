@@ -179,6 +179,32 @@ section('it does not need aiSight switched on for it: it plays by normal sight r
   if(s.aiSight.b)fail('playTurn switched sight on for the other side too');
 });
 
+section('a dominant position keeps closing the distance to the enemy King, not just spawning and merging',()=>{
+  // White has an overwhelming army parked near its own King; Black is a lone King far across an empty
+  // board. White should spend at least some of its turns advancing (by move or by a delayed order),
+  // not only building — the closest piece should end up meaningfully nearer than where it started
+  const s=E.newGame({seed:1,mode:'pvp',theme:'forest',aiSight:true});
+  s.board.fill(null);s.tiles.fill('');s.blocked.fill(false);s.targets={w:{},b:{}};
+  const at=(r,c)=>r*s.cols+c,put=(r,c,type,color,extra)=>{s.board[at(r,c)]=Object.assign({type,color,hp:E.STATS[type].hp,maxHp:E.STATS[type].maxHp},extra);};
+  put(8,0,'king','w');put(0,8,'king','b');
+  put(7,0,'knight','w');put(7,1,'knight','w');put(6,0,'rook','w');put(6,1,'bishop','w',{mana:2});
+  put(7,2,'pawn','w');put(6,2,'pawn','w');
+  s.spawns={w:0,b:0};s.elixir={w:0,b:0};
+  const bKing=()=>s.board.findIndex(p=>p&&p.type==='king'&&p.color==='b');
+  const closest=()=>{let m=99;s.board.forEach((p,i)=>{if(p&&p.color==='w'&&p.type!=='king')m=Math.min(m,E.cheb(s,i,bKing()));});return m;};
+  const before=closest();
+  let advanced=0;
+  for(let t=0;t<30&&!s.over;t++){
+    if(s.turn==='w'){
+      const a=S.chooseAction(s);
+      if(a.type==='move'||a.type==='order')advanced++;
+      E.step(s,a,{trusted:true});
+    }else E.step(s,{type:'skip'},{trusted:true});
+  }
+  if(!advanced)fail('30 White decisions and none of them moved or ordered a piece forward');
+  if(closest()>=before)fail('the closest piece to the enemy King is no nearer after 30 decisions ('+before+' -> '+closest()+')');
+});
+
 section('speed',()=>{
   const s=E.newGame({seed:5,mode:'pvp',theme:'forest'}),pick=E.makeRandom(9);
   for(let k=0;k<30;k++){const acts=E.legalActions(s);E.step(s,acts[Math.floor(pick()*acts.length)],{trusted:true});}   // a mid-game position

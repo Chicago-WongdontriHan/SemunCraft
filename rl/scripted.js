@@ -93,10 +93,13 @@ function evaluate(s,me){
     score+=.22*(9-Math.min(bd,9));
     seekers.add(free[best]);free.splice(best,1);
   }
-  // the rest of the army closes on the enemy King, ever harder as the game wears on: approaching costs a
-  // volley (the piece that moves doesn't fire), so without a push two armies would sit out of range of
-  // each other until the turn cap
-  const push=1+s.turnCount[me]/12;
+  // the rest of the army closes on the enemy King, ever harder as the game wears on and harder still with
+  // a material lead already in hand: approaching costs a volley (the piece that moves doesn't fire), so
+  // without a push two armies would sit out of range of each other until the turn cap — and without the
+  // lead term, a big enough lead had nothing pulling it toward the kill, so it just kept spawning and
+  // merging instead (each spawn pays for itself in raw material, whatever the score already stands at)
+  const lead=mine.reduce((a,i)=>a+worth(B[i]),0)-theirs.reduce((a,i)=>a+worth(B[i]),0);
+  const push=1+s.turnCount[me]/12+Math.max(0,lead)/6;
   if(theirKing>=0)for(const i of mine){
     if(seekers.has(i))continue;
     const p=B[i],d=E.cheb(s,i,theirKing);

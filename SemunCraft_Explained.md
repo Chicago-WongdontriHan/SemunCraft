@@ -23,7 +23,7 @@ The goal: **destroy the enemy King** while building up your army through a merge
 
 | Piece | Glyph | HP | Movement | Attack |
 |-------|-------|----|----------|--------|
-| **Pawn** | ♙/♟ | 1 | 1 step, any of 8 directions; 2 straight forward on its first move | Adjacent (8 dirs) |
+| **Pawn** | ♙/♟ | 1 | 1 step, any of 8 directions; 2 squares dead ahead, or 2 along its own rank either way, on its first move | Adjacent (8 dirs) |
 | **Fortified Pawn** | ♙/♟ in a helmet | 3 | As a pawn | As a pawn |
 | **Knight** | ♘/♞ | 4 | L-shape jump (2+1), jumps over pieces | L-shape range |
 | **Paladin** | ♘/♞ (twin knights) | 3 | L-shape jump (2+1), jumps over pieces | L-shape range; **always destroys** the target, and the Paladin **leaps onto the cleared square** as part of the attack. **Never fires on its own** — it only strikes a target the player has locked themselves (drag or right-click), unlike every other piece, which auto-fires at whatever's in range. No merges, no delayed orders |

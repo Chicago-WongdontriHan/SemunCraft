@@ -539,13 +539,17 @@ function getDests(s,i){
   if(p.type==='pawn'){
     // a fortified pawn merges only with a pawn, into a Rook (movement.js)
     g.adj8[i].forEach(j=>{const t=B[j];if(!t)move.add(j);else if(t.color===p.color){if(mergeResultType(s,p,t))merge.add(j);}else attack.add(j);});
-    // first move: two squares straight toward the enemy side
+    // first move: two squares dead ahead (toward the enemy side), or two squares along its own rank
+    // either way, both the passed-over square and the landing square clear
     if(p.firstMove){
-      const fwd=p.color==='w'?-1:1,r1=rowOf(s,i)+fwd,r2=rowOf(s,i)+fwd*2,c=colOf(s,i);
-      if(g.inB(r1,c)&&g.inB(r2,c)){
-        const mid=r1*s.cols+c,far=r2*s.cols+c;
+      const fwd=p.color==='w'?-1:1,r=rowOf(s,i),c=colOf(s,i);
+      const twoStep=(dr,dc)=>{
+        const r1=r+dr,c1=c+dc,r2=r+dr*2,c2=c+dc*2;
+        if(!g.inB(r1,c1)||!g.inB(r2,c2))return;
+        const mid=r1*s.cols+c1,far=r2*s.cols+c2;
         if(!B[mid]&&!s.blocked[mid]&&!B[far]&&!s.blocked[far])move.add(far);
-      }
+      };
+      twoStep(fwd,0);twoStep(0,-1);twoStep(0,1);
     }
   }else if(p.type==='knight'){
     g.kj[i].forEach(j=>{if(s.blocked[j])return;const t=B[j];if(!t)move.add(j);else if(isFoe(t,p.color))attack.add(j);});

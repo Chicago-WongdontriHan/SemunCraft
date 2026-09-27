@@ -78,19 +78,19 @@ function getDragDests(i){
   if(p.type==='pawn'){
     // a fortified pawn merges only with a pawn, into a Rook: its helmet was paid for (mergeResultType)
     adj8(i).forEach(j=>{const t=pieces[j];if(!t)move.add(j);else if(t.color===p.color){if(mergeResultType(p,t))merge.add(j);}else attack.add(j);});
-    // first move: allow 2-tile forward push (toward enemy king side)
+    // first move: allow a 2-tile push, dead ahead (toward enemy king side) or sideways along its own rank
     if(p.firstMove){
       // "forward" = toward the opposite side of the board relative to pawn color
       // white pawns start near the bottom, so forward is -1 row (up)
       // black pawns start near the top, so forward is +1 row (down)
-      const fwd=p.color==='w'?-1:1;
-      const r1=ROW(i)+fwd,r2=ROW(i)+fwd*2,c=COL(i);
-      if(inB(r1,c)&&inB(r2,c)){
-        const mid=idx(r1,c),far=idx(r2,c);
-        if(!pieces[mid]&&!isTileBlocked(mid)&&!pieces[far]&&!isTileBlocked(far)){
-          move.add(far);
-        }
-      }
+      const fwd=p.color==='w'?-1:1,r=ROW(i),c=COL(i);
+      const twoStep=(dr,dc)=>{
+        const r1=r+dr,c1=c+dc,r2=r+dr*2,c2=c+dc*2;
+        if(!inB(r1,c1)||!inB(r2,c2))return;
+        const mid=idx(r1,c1),far=idx(r2,c2);
+        if(!pieces[mid]&&!isTileBlocked(mid)&&!pieces[far]&&!isTileBlocked(far))move.add(far);
+      };
+      twoStep(fwd,0);twoStep(0,-1);twoStep(0,1);
     }
   }else if(p.type==='knight'){
     kJumps(i).forEach(j=>{

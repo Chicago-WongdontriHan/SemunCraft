@@ -166,6 +166,28 @@ section('undergrowth hides a piece until it fights from it',()=>{
   if(E.concealed(s,movedTo,'w'))fail('an order that strikes a hidden enemy should reveal it');
 });
 
+section("a pawn's first move can also push two squares sideways along its own rank, not just dead ahead",()=>{
+  const s=E.newGame({seed:1,mode:'pvp',theme:'forest'});
+  s.board.fill(null);s.tiles.fill('');s.blocked.fill(false);s.targets={w:{},b:{}};
+  const at=(r,c)=>r*s.cols+c,put=(r,c,type,color,extra)=>{s.board[at(r,c)]=Object.assign({type,color,hp:E.STATS[type].hp,maxHp:E.STATS[type].maxHp},extra);};
+  put(8,0,'king','w');put(0,8,'king','b');
+  const p=at(4,4);put(4,4,'pawn','w',{firstMove:true});
+  const dests=E.getDests(s,p).move;
+  if(!dests.has(at(4,6)))fail('two squares right along its own rank should be a legal first move');
+  if(!dests.has(at(4,2)))fail('two squares left along its own rank should be a legal first move');
+  if(!dests.has(at(2,4)))fail('two squares dead ahead should still be a legal first move');
+  // a piece in the way, on the passed-over square or the landing square, blocks it in either direction
+  const s2=E.clone(s);
+  s2.board[at(4,5)]={type:'pawn',color:'b',hp:1,maxHp:1};
+  if(E.getDests(s2,p).move.has(at(4,6)))fail('a piece on the passed-over square should block the sideways push');
+  const s3=E.clone(s);
+  s3.board[at(4,2)]={type:'pawn',color:'b',hp:1,maxHp:1};
+  if(E.getDests(s3,p).move.has(at(4,2)))fail('the landing square must be empty too');
+  // spent once it has moved at all
+  const s4=E.clone(s);E.step(s4,{type:'move',from:p,to:at(4,3)},{trusted:true});
+  if(E.getDests(s4,at(4,3)).move.has(at(4,1)))fail('the double push is gone after any first move, including a single step');
+});
+
 section('an AI side attacks only what it sees; reading where the enemy stands is not enough',()=>{
   // an empty 9x9 board: a White Siege at e1 (row 8, column 4) and a Black pawn four squares up the file
   const mk=aiSight=>{

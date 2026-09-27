@@ -1,19 +1,24 @@
 // ── AI VS AI ─────────────────────────────────────────────────────────────────
-// Watch the two most-trained networks (models/ai-1.js and models/ai-2.js, written by
-// rl/export_web.py) play each other. Matches run in the headless engine (js/engine.js:
-// the game's rules, checked against this game by tests/parity.test.js) and are drawn
-// on the normal board. The code and weights (about 6 MB) load through js/netai.js the first time.
+// Watch two of Single Player's difficulties play each other — by default Trained (the current network)
+// against Master (the scripted AI), the two strongest and newest. AIVSAI_LEVELS names which two
+// NETAI_LEVELS entries (js/netai.js) face off; change it here to try a different pairing, network or
+// scripted. Matches run in the headless engine (js/engine.js: the game's rules, checked against this game
+// by tests/parity.test.js) and are drawn on the normal board. Both sides play at temperature 1 ("as
+// trained"), not each difficulty's own tuned value. Code and weights load through js/netai.js the first time.
+const AIVSAI_LEVELS=['trained','master'];
 const AIVSAI_SPEEDS=[1,2,4,8];
 const AIVSAI_DELAY=700; // ms between moves at 1× speed
 let aiVsAi=null;        // the match being watched
-let aiVsAiNets=null,aiVsAiEncoder=null;
+let aiVsAiLoaded=false;
 let aiVsAiSpeed=1,aiVsAiMatches=0,aiVsAiScore={1:0,2:0,draw:0};
 
 async function aiVsAiLoad(){
-  if(aiVsAiNets)return;
-  const[first,second]=await Promise.all([netAiLoadModel('ai-1'),netAiLoadModel('ai-2')]);
-  aiVsAiEncoder={1:netAiEncoderFor(first),2:netAiEncoderFor(second)};   // each plays in its own encoding
-  aiVsAiNets={1:first,2:second};
+  if(aiVsAiLoaded)return;
+  await Promise.all(AIVSAI_LEVELS.map(level=>{
+    const cfg=NETAI_LEVELS[level];
+    return cfg.model?netAiLoadModel(cfg.model):netAiLoadCode();
+  }));
+  aiVsAiLoaded=true;
 }
 
 async function startAiVsAi(){
@@ -26,7 +31,7 @@ async function startAiVsAi(){
   aiVsAiControls(true);
   syncUI();resizeBoard();
   document.getElementById('thinking-dot').classList.add('on');
-  setStatus('Loading the trained AIs…');
+  setStatus('Loading the AIs…');
   try{await aiVsAiLoad();}
   catch(err){
     setStatus('Could not load the AIs: '+err.message);
@@ -39,7 +44,7 @@ async function startAiVsAi(){
 }
 
 function aiVsAiNewMatch(){
-  if(!aiVsAiNets)return;
+  if(!aiVsAiLoaded)return;
   if(aiVsAi)clearTimeout(aiVsAi.timer);
   hideGameOver();
   aiVsAiMatches++;
@@ -77,8 +82,10 @@ function aiVsAiSync(){
 }
 
 function aiVsAiLabel(n){
-  const meta=SemunModels['ai-'+n].meta||{};
-  return 'AI #'+n+(meta.update!==undefined?' (update '+meta.update+')':'');
+  const level=AIVSAI_LEVELS[n-1],cfg=NETAI_LEVELS[level],name=level[0].toUpperCase()+level.slice(1);
+  if(!cfg.model)return 'AI #'+n+' · '+name+' (scripted)';
+  const meta=(SemunModels[cfg.model]&&SemunModels[cfg.model].meta)||{};
+  return 'AI #'+n+' · '+name+(meta.update!==undefined?' (update '+meta.update+')':'');
 }
 
 function aiVsAiStatus(){
@@ -100,7 +107,7 @@ function aiVsAiStep(){
   if(s.over){aiVsAiFinish();return;}
   const color=s.turn,ai=color==='w'?g.white:g.black;
   const before=s.board.map(p=>p&&Object.assign({},p));
-  const a=SemunNet.choose(aiVsAiNets[ai],aiVsAiEncoder[ai],s).action;
+  const a=netAiChoose(s,AIVSAI_LEVELS[ai-1],{temperature:1});   // "as trained", not that difficulty's tuned value
   const events=SemunEngine.step(s,a);
   g.lastFrom=a.from===undefined?-1:a.from;
   g.lastTo=a.to===undefined?-1:a.to;

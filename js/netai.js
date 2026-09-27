@@ -83,9 +83,11 @@ function netAiSnapshot(){
     orderLeft:{w:orderLeft.w,b:orderLeft.b},maxTurns:300});
 }
 
-// Black's move at this difficulty (tests/netai.test.js replaces this with random legal moves)
-function netAiChoose(state,level){
-  const cfg=NETAI_LEVELS[level];
+// Black's move at this difficulty (tests/netai.test.js replaces this with random legal moves). `opts`
+// overrides that difficulty's own settings — js/aivsai.js forces temperature 1 for both sides, "as trained",
+// whatever difficulty each is standing in for.
+function netAiChoose(state,level,opts){
+  const cfg=Object.assign({},NETAI_LEVELS[level],opts);
   if(!cfg.model)return SemunScripted.chooseAction(state);   // Master: the scripted AI, no network
   const net=netAiNets[cfg.model];
   return SemunNet.choose(net,netAiEncoderFor(net),state,{temperature:cfg.temperature}).action;

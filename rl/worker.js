@@ -35,6 +35,9 @@ const DEFAULTS={
   fog:false,            // limit both sides' observations and attacks to what they see, as Map Cheat off does for a person
   aiSight:true,         // whoever plays a side here is an AI: its attacks reach only what it sees (normal sight), fog or not,
                         // though it still reads where the enemy stands; standard games only, campaign levels keep their rules
+  blackOrders:true,     // false: in the classic order Black gives no delayed orders (the agent and its opponent, scripted or a
+                        // network alike). There Black's orders come due at the start of White's turn, so an arriving piece is
+                        // shot at before Black's volley while White's fires first; training keeps them out until Black can play
   maxTurns:300,         // both sides' turns together; reaching it is a draw
   shaping:0,            // weight of the potential-based shaping reward (0 = win/loss only)
   gamma:0.99,           // the learner's discount, used by the shaping term
@@ -48,6 +51,7 @@ function withDefaults(base,config){
   if(c.opponent==='bot'&&c.mode!=='classic')throw new Error('the bot opponent needs mode classic');
   if(!['w','b','random'].includes(c.agentColor))throw new Error('agentColor must be w, b or random');
   if(!(typeof c.agentBlack==='number'&&c.agentBlack>=0&&c.agentBlack<=1))throw new Error('agentBlack must be a number from 0 to 1');
+  if(typeof c.blackOrders!=='boolean')throw new Error('blackOrders must be true or false');
   if(!['easy','hard','random'].includes(c.difficulty))throw new Error('difficulty must be easy, hard or random');
   if(!THEMES.includes(c.theme)&&c.theme!=='random')throw new Error('unknown theme '+c.theme);
   if(c.levels!==null&&!Array.isArray(c.levels))throw new Error('levels must be a list or null');
@@ -112,7 +116,7 @@ class Env{
     const s=this.s,c=this.config;
     while(!s.over&&s.turn!==this.agent){
       if(this.opponent==='bot')E.botTurn(s);
-      else if(this.opponent==='scripted')Scripted.playTurn(s);
+      else if(this.opponent==='scripted')Scripted.playTurn(s,{orders:this.ordersAllowed()});
       else if(this.opponent==='random'){
         const acts=E.legalActions(s);
         E.step(s,acts[Math.floor(this.opponentRand()*acts.length)],{trusted:true});
@@ -139,8 +143,12 @@ class Env{
       this.return+=reward;
     }
     this.legal=enc.legalMap(s);
+    if(!this.ordersAllowed())for(const[k,a]of this.legal)if(a.type==='order')this.legal.delete(k);
     return{seat,obs:b64(enc.observe(s)),legal:[...this.legal.keys()],reward,done:false,info:null};
   }
+
+  // whether the side to move may give a delayed order (config.blackOrders)
+  ordersAllowed(){return this.config.blackOrders||this.s.mode!=='classic'||this.s.turn!=='b';}
 }
 
 let envs=[];

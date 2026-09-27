@@ -151,6 +151,24 @@ section('it gives delayed orders: a pawn walks on its order while the turn goes 
   return c.orders+' orders in '+c.turns+' turns, '+c.turnsWithOrderAndMore+' of them beside another action';
 });
 
+section("opts.orders:false keeps its orders out (training leaves Black's out at first)",()=>{
+  let withOrders=0,without=0;
+  for(let seed=1;seed<=6;seed++){
+    for(const orders of [true,false]){
+      const s=E.newGame({seed,mode:'classic',theme:THEMES[seed%4],aiSight:true,maxTurns:80}),pick=E.makeRandom(seed);
+      while(!s.over){
+        if(s.turn==='b'){
+          const n=S.playTurn(s,{orders}).filter(e=>e.type==='order').length;
+          if(orders)withOrders+=n;else without+=n;
+        }else{const acts=E.legalActions(s);E.step(s,acts[Math.floor(pick()*acts.length)],{trusted:true});}
+      }
+    }
+  }
+  if(!withOrders)fail('it gave no orders by default');
+  if(without)fail('it gave '+without+' orders with orders:false');
+  return withOrders+' orders by default, none with orders:false';
+});
+
 section('it does not need aiSight switched on for it: it plays by normal sight regardless',()=>{
   const s=E.newGame({seed:9,mode:'pvp',theme:'forest'});   // no aiSight in the state
   const before=JSON.stringify(s.aiSight);

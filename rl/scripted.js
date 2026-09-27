@@ -31,8 +31,10 @@
 // objective, and keeps its King at home. Loads as a classic <script> after js/engine.js (global
 // SemunScripted) or in Node, like rl/encoding.js.
 //
-//   chooseAction(state)  the one action it would take now, for state.turn
-//   playTurn(state)      plays until the turn passes, like SemunEngine.botTurn; returns the events
+//   chooseAction(state, opts)  the one action it would take now, for state.turn
+//   playTurn(state, opts)      plays until the turn passes, like SemunEngine.botTurn; returns the events
+//   opts.orders === false      gives no delayed orders (training keeps Black's out at first: in the
+//                              classic turn order Black's orders come due before its volley, not after)
 (function(root){
 'use strict';
 const E=typeof module!=='undefined'&&module.exports?require('../js/engine.js'):root.SemunEngine;
@@ -149,8 +151,8 @@ function noise(s,a){
 //   orders only a pawn's, and the Siege's (its only way to move), for the next turn: a piece the engine
 //          would let move now is better moved now, but a pawn's order costs half the turn's budget
 //          and so leaves the turn for something else
-function candidates(s){
-  const out=[],me=s.turn,you=me==='w'?'b':'w',B=s.board;
+function candidates(s,opts){
+  const out=[],me=s.turn,you=me==='w'?'b':'w',B=s.board,orders=!(opts&&opts.orders===false);
   const unseen=[];
   for(let j=0;j<B.length;j++)if(B[j]&&B[j].color===you&&!E.visible(s,j,me))unseen.push(j);
   for(const a of E.legalActions(s)){
@@ -161,7 +163,7 @@ function candidates(s){
       case'scry':if(!unseen.some(j=>E.cheb(s,j,a.to)<=1))continue;break;
       case'order':{
         const p=B[a.from];
-        if(a.turns!==1||p.order||B[a.to]||(p.type!=='pawn'&&p.type!=='siege'))continue;
+        if(!orders||a.turns!==1||p.order||B[a.to]||(p.type!=='pawn'&&p.type!=='siege'))continue;
         break;
       }
     }
@@ -192,9 +194,9 @@ function withSight(s){
 
 // Each candidate is played on one copy of the state, and that copy is carried on through its later looks
 // (the opponent's pass, and for an order the rest of the turn) instead of being played again from the start.
-function chooseAction(s){
+function chooseAction(s,opts){
   s=withSight(s);
-  const me=s.turn,cand=candidates(s);
+  const me=s.turn,cand=candidates(s,opts);
   if(cand.length===1)return cand[0];
   const scored=[],orders=[];
   for(const a of cand){
@@ -232,10 +234,10 @@ function chooseAction(s){
 
 // plays actions until the turn passes: a merge by a Knight's L-jump, or a second order, leaves it the
 // same side's turn (the cap only guards against a state that never lets it end)
-function playTurn(s){
+function playTurn(s,opts){
   const me=s.turn,events=[];
   if(!(s.aiSight&&s.aiSight[me]))s.aiSight=Object.assign({w:false,b:false},s.aiSight,{[me]:true});   // normal sight, always
-  for(let k=0;k<8&&!s.over&&s.turn===me;k++)events.push(...E.step(s,chooseAction(s),{trusted:true}));
+  for(let k=0;k<8&&!s.over&&s.turn===me;k++)events.push(...E.step(s,chooseAction(s,opts),{trusted:true}));
   if(!s.over&&s.turn===me)events.push(...E.step(s,{type:'skip'},{trusted:true}));
   return events;
 }

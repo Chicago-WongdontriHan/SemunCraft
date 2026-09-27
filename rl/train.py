@@ -12,6 +12,13 @@ There is no stage against the scripted AI on purpose: a fresh network cannot bea
 first version-2 run spent 37 of its 60 minutes there without a win and came out stalling as Black
 ("nothing wins, so don't lose"). It stays a small share of the league and the yardstick in evaluations.
 
+Black's delayed orders are left out at first (--black-orders later, the default). In the classic turn
+order they come due at the start of White's turn, so a Black piece that arrives by order is shot at
+before Black's volley, while White's arrives and fires first: orders are a trap for Black, and the second
+version-2 run, where they were allowed from the start, learned to stall as Black instead of playing. They
+are switched on for both sides once Black wins enough self-play games (--black-orders-winrate) or after
+--black-orders-max-updates of the league, so the network then learns where they are safe.
+
 Every game is played with normal sight (aiSight in js/engine.js): each side attacks only what it can
 see, though it reads where the enemy stands. The network sees and acts in the latest rl/encoding.js
 version (--encoding); a checkpoint keeps playing the version it was trained on.
@@ -46,7 +53,7 @@ MIX = {
     "hard": {"easy": 0.25, "hard": 0.75},
 }
 NEXT_STAGE = {"easy": "hard", "hard": "league"}
-LOG_FIELDS = ["minutes", "update", "steps", "steps_per_s", "stage", "shaping", "lr", "entropy_coef", "games",
+LOG_FIELDS = ["minutes", "update", "steps", "steps_per_s", "stage", "black_orders", "shaping", "lr", "entropy_coef", "games",
               "win_easy", "win_hard", "win_scripted", "win_self_w", "win_self_b", "draws", "moves_per_game", "entropy",
               "value_loss", "approx_kl", "clip_frac"]
 EVAL_FIELDS = ["minutes", "update", "steps", "stage", "suite", "group", "games", "win", "loss", "draw"]
@@ -70,9 +77,11 @@ def game_kind(info):
 
 def env_config(kind, args, shaping, black=None):
     """Env config for a kind of opponent; `black` is the agent's share of Black games where the opponent
-    allows either color (default --black-share; evaluations pass 0.5)."""
+    allows either color (default --black-share; evaluations pass 0.5). Whether Black may give orders is
+    args.orders_for_black, which the trainer switches on."""
     black = args.black_share if black is None else black
-    config = {"mode": "classic", "maxTurns": args.max_turns, "shaping": shaping, "gamma": args.gamma, "aiSight": True}
+    config = {"mode": "classic", "maxTurns": args.max_turns, "shaping": shaping, "gamma": args.gamma, "aiSight": True,
+              "blackOrders": args.orders_for_black}
     if kind == "self":
         config.update(opponent="external", agentColor="random", agentBlack=black)
     elif kind == "scripted":
@@ -199,6 +208,10 @@ class Trainer:
             print("note: checkpoint stage %r is gone; continuing in the league" % self.stage, flush=True)
             self.stage, self.stage_start = "league", self.update
         self.shaping = c.get("shaping", args.shaping)
+        # may Black give orders yet? A checkpoint remembers; one from before this existed (its run let Black
+        # give orders from the start) is treated like a new run
+        args.orders_for_black = c.get("orders_for_black", args.black_orders == "always")
+        self.orders_start = c.get("orders_start", 0)
         self.entropy_coef = args.entropy
         torch.manual_seed(args.seed + self.update)
         self.rng = np.random.default_rng(args.seed + self.update)
@@ -242,6 +255,23 @@ class Trainer:
         self.recent[game_kind(info)].append(info["outcome"])
         self.lengths.append(info["episode"]["l"])
 
+    def advance_orders(self):
+        """Lets Black give orders once it has learned to play without them (see the module docstring)."""
+        args = self.args
+        if args.orders_for_black or self.stage != "league" or args.black_orders == "never":
+            return
+        if self.orders_start == 0:
+            self.orders_start = self.update
+        elapsed, results = self.update - self.orders_start, self.recent["self_b"]
+        ready = len(results) >= args.window and rate(results) >= args.black_orders_winrate
+        if not (ready and elapsed >= args.black_orders_min_updates) and elapsed < args.black_orders_max_updates:
+            return
+        args.orders_for_black = True
+        self.env.configure({"blackOrders": True})
+        print("update %d: Black may give orders now (%s; self-play as Black %s over %d games)"
+              % (self.update, "wins enough" if ready else "update limit",
+                 "%.2f" % rate(results) if results else "-", len(results)), flush=True)
+
     def run(self):
         args = self.args
         with open(os.path.join(args.out, "args_%06d.json" % self.update), "w") as f:
@@ -267,6 +297,7 @@ class Trainer:
                                    epochs=args.epochs, minibatch=args.minibatch, entropy_coef=self.entropy_coef,
                                    amp=args.amp)
                 self.advance_stage()
+                self.advance_orders()
                 self.schedule_shaping()
                 if self.update % args.snapshot_every == 0:
                     self.snapshot()
@@ -336,6 +367,7 @@ class Trainer:
                  "shaping": self.shaping, "league": [p for p, _ in self.league.recent],
                  "hall": [p for p, _ in self.league.hall],
                  "anchor": self.anchor[0] if self.anchor else None, "encoding": self.args.encoding,
+                 "orders_for_black": self.args.orders_for_black, "orders_start": self.orders_start,
                  "args": vars(self.args)}
         torch.save(state, path + ".tmp")
         os.replace(path + ".tmp", path)
@@ -343,7 +375,8 @@ class Trainer:
     def write_log(self, stats, speed, start):
         r = self.recent
         row = {"minutes": (time.time() - start) / 60, "update": self.update, "steps": self.steps,
-               "steps_per_s": round(speed), "stage": self.stage, "shaping": self.shaping,
+               "steps_per_s": round(speed), "stage": self.stage, "black_orders": int(self.args.orders_for_black),
+               "shaping": self.shaping,
                "lr": self.opt.param_groups[0]["lr"], "entropy_coef": self.entropy_coef, "games": self.games,
                "win_easy": rate(r["easy"]), "win_hard": rate(r["hard"]), "win_scripted": rate(r["scripted"]),
                "win_self_w": rate(r["self_w"]), "win_self_b": rate(r["self_b"]),
@@ -428,6 +461,13 @@ def parse_args():
     p.add_argument("--league-hard", type=float, default=0.15, help="share of league games against the Hard AI")
     p.add_argument("--league-scripted", type=float, default=0.1,
                    help="share of league games against the scripted AI (the rest is self-play); its games simulate 4x slower")
+    p.add_argument("--black-orders", choices=["later", "always", "never"], default="later",
+                   help="Black's delayed orders (classic order): left out until Black plays well without them (later), "
+                        "allowed from the start (always), or never")
+    p.add_argument("--black-orders-winrate", type=float, default=0.35,
+                   help="self-play win rate as Black (over --window games) that lets Black give orders")
+    p.add_argument("--black-orders-min-updates", type=int, default=300, help="league updates before that can happen")
+    p.add_argument("--black-orders-max-updates", type=int, default=3000, help="league updates after which they are allowed anyway")
     p.add_argument("--black-share", type=float, default=0.67,
                    help="how often the agent plays Black where the opponent allows either color (self-play, the scripted AI)")
     p.add_argument("--snapshot-every", type=int, default=50)

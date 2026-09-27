@@ -398,6 +398,37 @@ function emptyBoard(opts){
     return games+' games finished';
   });
 
+  await section("blackOrders:false keeps delayed orders out of Black's hands, and only Black's",async()=>{
+    const w=startWorker(),pick=E.makeRandom(11),slots=enc.slots,orderSlot=k=>k<enc.numActions-1&&k%slots>=V2_SLOT.order;
+    // A: the scripted opponent (White) may order, the agent (Black) may not; B: a network opponent as Black may not,
+    // the agent (White) may; C: the default lets Black order; D: pvp is symmetric, whatever the flag says
+    const init=await w.call({cmd:'init',grid:11,envs:[
+      {seed:1,mode:'classic',opponent:'scripted',agentColor:'b',blackOrders:false},
+      {seed:2,mode:'classic',opponent:'external',agentColor:'w',blackOrders:false},
+      {seed:3,mode:'classic',opponent:'external',agentColor:'b'},
+      {seed:4,mode:'pvp',opponent:'external',agentColor:'b',blackOrders:false},
+    ]});
+    if(init.envs!==4)fail('init reply '+JSON.stringify(init));
+    let res=(await w.call({cmd:'reset'})).results;
+    // who is Black in each env: the agent in A, C and D, the opponent seat in B
+    const blackSeat=['agent','opponent','agent','agent'],offered=[{w:0,b:0},{w:0,b:0},{w:0,b:0},{w:0,b:0}];
+    for(let n=0;n<600;n++){
+      res.forEach((r,k)=>{
+        if(r.legal.some(orderSlot))offered[k][r.seat===blackSeat[k]?'b':'w']++;
+      });
+      res=(await w.call({cmd:'step',actions:res.map(r=>r.legal[Math.floor(pick()*r.legal.length)])})).results;
+    }
+    if(offered[0].b)fail('A: Black was offered orders with blackOrders false ('+offered[0].b+' times)');
+    if(offered[1].b)fail('B: the opponent as Black was offered orders with blackOrders false');
+    if(!offered[1].w)fail('White lost its orders too: '+JSON.stringify(offered));   // (A plays White inside the worker: not seen here)
+    if(!offered[2].b)fail('C: Black was never offered an order by default');
+    if(!offered[3].b)fail('D: the pvp game took the flag');
+    const bad=await w.call({cmd:'configure',envs:[0],config:{blackOrders:'no'}});
+    if(!String(bad.error).includes('blackOrders'))fail('a non-boolean blackOrders accepted: '+JSON.stringify(bad));
+    await w.call({cmd:'close'});
+    return 'orders offered (White/Black): '+offered.map((o,k)=>'ABCD'[k]+' '+o.w+'/'+o.b).join(', ');
+  });
+
   console.log(failures?'\n'+failures+' failure(s)':'\nall encoding tests passed');
   process.exit(failures?1:0);
 })();

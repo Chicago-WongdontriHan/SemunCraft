@@ -167,7 +167,8 @@ def configure_switches_mode():
 
 
 def bad_config_rejected():
-    for config, word in (({"mode": "pvp", "opponent": "bot"}, "classic"), ({"agentBlack": 1.5}, "agentBlack")):
+    for config, word in (({"mode": "pvp", "opponent": "bot"}, "classic"), ({"agentBlack": 1.5}, "agentBlack"),
+                         ({"blackOrders": "no"}, "blackOrders")):
         try:
             SemunCraftVecEnv(1, config, num_workers=1).close()
             check(False, "accepted %s" % config)

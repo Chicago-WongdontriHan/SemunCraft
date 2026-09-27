@@ -4,7 +4,10 @@ function pickStrategy(){
   else aiStrategy=STRATEGIES[Math.floor(Math.random()*STRATEGIES.length)];
   // the strategy guides the built-in AI and Claude; the trained network (js/netai.js) doesn't use one
   const claude=difficulty==='hard'&&document.getElementById('api-key').value.trim();
-  if(!claude&&typeof NETAI_LEVELS!=='undefined'&&NETAI_LEVELS[difficulty])addLog('Enemy: trained AI · '+difficulty[0].toUpperCase()+difficulty.slice(1));
+  if(!claude&&typeof NETAI_LEVELS!=='undefined'&&NETAI_LEVELS[difficulty]){
+    const kind=NETAI_LEVELS[difficulty].model?'trained AI':'scripted AI';
+    addLog('Enemy: '+kind+' · '+difficulty[0].toUpperCase()+difficulty.slice(1));
+  }
   else addLog('Enemy: '+(claude?'Claude · ':'')+(difficulty==='easy'?'rook rush':aiStrategy.replace(/_/g,' ')));
 }
 

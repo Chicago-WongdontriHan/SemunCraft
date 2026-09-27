@@ -1,22 +1,28 @@
 // ── TRAINED AI ───────────────────────────────────────────────────────────────
-// Single Player's Easy, Medium and Hard opponents are trained networks (rl/train.py)
-// playing Black. On Black's turn the game's variables become an engine state
-// (js/engine.js, checked against this game by tests/parity.test.js), the network
-// picks a move, and the move is applied back to the game (tests/netai.test.js checks
-// that). Code and weights load in the background when a game starts; AI vs AI
-// (js/aivsai.js) uses the same loader.
+// Single Player's Easy, Medium, Hard and Trained opponents are trained networks (rl/train.py) playing
+// Black; Master is the scripted AI (rl/scripted.js) instead, playing the same way a network does — one
+// action at a time, from the same engine snapshot. On Black's turn the game's variables become an engine
+// state (js/engine.js, checked against this game by tests/parity.test.js), the network or the scripted AI
+// picks a move, and the move is applied back to the game (tests/netai.test.js checks that). Code and
+// weights load in the background when a game starts; AI vs AI (js/aivsai.js) uses the same loader.
 const NETAI_VERSION=((document.currentScript&&/[?&]v=([^&]+)/.exec(document.currentScript.src))||[])[1]||'';
 // the network behind each difficulty and its sampling temperature (1 plays as in training, 0 always the most
-// likely move); for Hard, 0.25 scored best of 0, 0.05, 0.25, 0.5 and 1 over 1,000 games each, and keeps some variety
+// likely move); for Hard, 0.25 scored best of 0, 0.05, 0.25, 0.5 and 1 over 1,000 games each, and keeps some
+// variety. `model:null` (Master) has no weights and no temperature: it's rl/scripted.js, always its one best
+// move. Trained is rl/train.py's encoding-2 run (v2-long, update 4,983): it beats Easy and Hard solidly but
+// only holds level with Master about half the time, so it sits between Hard and Master here.
 const NETAI_LEVELS={
   easy:{model:'easy',temperature:1},
   medium:{model:'medium',temperature:1},
   hard:{model:'ai-1',temperature:0.25},
+  trained:{model:'trained',temperature:0.5},
+  master:{model:null},
 };
 const NETAI_CODE=[
   ['js/engine.js',()=>window.SemunEngine],
   ['rl/encoding.js',()=>window.SemunEncoding],
   ['js/nn.js',()=>window.SemunNet],
+  ['rl/scripted.js',()=>window.SemunScripted],
 ];
 const netAiNets={};    // model name → network, once loaded
 const netAiModels={};  // model name → loading promise
@@ -57,10 +63,13 @@ function netAiLoadModel(name){
   return netAiModels[name];
 }
 
-// called when a Single Player game starts, so the network is ready by Black's first turn
+// called when a Single Player game starts, so the network (or, for Master, just the code) is ready by
+// Black's first turn
 function netAiPreload(){
   const level=NETAI_LEVELS[difficulty];
-  if(level)netAiLoadModel(level.model).catch(()=>{});
+  if(!level)return;
+  if(level.model)netAiLoadModel(level.model).catch(()=>{});
+  else netAiLoadCode().catch(()=>{});
 }
 
 // the game's variables as an engine state with Black to move
@@ -77,6 +86,7 @@ function netAiSnapshot(){
 // Black's move at this difficulty (tests/netai.test.js replaces this with random legal moves)
 function netAiChoose(state,level){
   const cfg=NETAI_LEVELS[level];
+  if(!cfg.model)return SemunScripted.chooseAction(state);   // Master: the scripted AI, no network
   const net=netAiNets[cfg.model];
   return SemunNet.choose(net,netAiEncoderFor(net),state,{temperature:cfg.temperature}).action;
 }
@@ -97,6 +107,17 @@ function netAiApply(action){
 // Black's turn in Single Player (called by aiAct)
 function netAiTurn(){
   const level=NETAI_LEVELS[difficulty]?difficulty:'hard',model=NETAI_LEVELS[level].model;
+  if(!model){   // Master: no weights to load, just the engine and rl/scripted.js
+    if(typeof SemunScripted!=='undefined'){netAiMove(level,0);return;}
+    setStatus('Loading the AI…');
+    const board=pieces;
+    netAiLoadCode().then(()=>{if(!over&&pieces===board)netAiMove(level,0);},err=>{
+      if(over||pieces!==board)return;
+      addLog('Scripted AI unavailable ('+err.message+'); the built-in AI plays');
+      fallbackAI();
+    });
+    return;
+  }
   if(netAiNets[model]){netAiMove(level,0);return;}
   setStatus('Loading the AI…');
   const board=pieces; // starting another game replaces the board, and this turn is then abandoned

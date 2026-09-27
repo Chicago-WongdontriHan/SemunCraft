@@ -4,6 +4,7 @@
 // game to match js/engine.js after every turn. Run: node tests/netai.test.js [games]
 'use strict';
 const E=require('../js/engine.js');
+const S=require('../rl/scripted.js');
 const {loadOriginalGame}=require('./original-game.js');
 
 const GAMES=+process.argv[2]||60;
@@ -29,7 +30,7 @@ function check(label,game,engine){
   return !d;
 }
 
-const game=loadOriginalGame({extraScripts:['js/engine.js','rl/encoding.js','js/nn.js','js/netai.js']});
+const game=loadOriginalGame({extraScripts:['js/engine.js','rl/encoding.js','js/nn.js','rl/scripted.js','js/netai.js']});
 const q=JSON.stringify;
 game.run(`function __snap(){return{board:pieces,tiles:tileData,over,whiteTurnCount,blackTurnCount,
   whiteSpawns:spawnHistory.length,blackSpawns:blackSpawnHistory.length,whiteTargets,blackTargets,
@@ -71,15 +72,15 @@ function applyOriginal(a,s){
 
 const stats={},t0=Date.now();
 for(let n=0;n<GAMES;n++){
-  const seed=n+1,theme=['forest','jungle','desert','ocean'][n%4],difficulty=['easy','medium','hard'][n%3],fog=n%4===0;
+  const seed=n+1,theme=['forest','jungle','desert','ocean'][n%4],difficulty=['easy','medium','hard','trained','master'][n%5],fog=n%4===0;
   game.created.length=0;
   game.setRandom(E.makeRandom(seed));
   const pickBlack=E.makeRandom(seed*104729+7);
   game.ctx.__pick=k=>Math.floor(pickBlack()*k);
   game.run('pvpActive=false;pvpRole=null;campaignLevel=null;COLS=9;ROWS=9;titleTileData=null;mapTheme='+q(theme)+';'
     +'gameMode='+q(difficulty)+';difficulty='+q(difficulty)+';initGame();animals=[];blackActed=new Set();blackHitBy=[];'
-    // the "network" counts as loaded, so Black moves without loading anything
-    +'netAiNets[NETAI_LEVELS[difficulty].model]={};');
+    // the "network" counts as loaded, so Black moves without loading anything (Master has none to load)
+    +'if(NETAI_LEVELS['+q(difficulty)+'].model)netAiNets[NETAI_LEVELS['+q(difficulty)+'].model]={};');
   game.set('mapCheat',!fog);
   const s=E.newGame({seed,theme,difficulty:difficulty==='easy'?'easy':'hard',fog,aiSight:{w:false,b:true}});   // Black's attacks reach only what it sees (aiSightLimited)
   const pick=E.makeRandom(seed*7919+13);
@@ -135,6 +136,28 @@ function randomModel(version,seed){
   for(const t of ['order','scry','fortify','meteor'])if(kinds[1][t]){failures++;console.log('  FAIL an encoding 1 network played '+t);}
   if(!kinds[2].order){failures++;console.log('  FAIL an encoding 2 network never gave an order');}
   console.log((failures===before?'ok  ':'FAIL')+' the real netAiChoose plays each network in its own encoding: v1 '+q(kinds[1])+', v2 '+q(kinds[2]));
+}
+
+{
+  // Master (rl/scripted.js): no model to load, and the same move the Node-side bot would choose
+  const before=failures;
+  if(game.get('NETAI_LEVELS.trained.model')!=='trained'){failures++;console.log('  FAIL NETAI_LEVELS.trained does not point at models/trained.js');}
+  if(game.get('NETAI_LEVELS.master.model')!=null){failures++;console.log('  FAIL NETAI_LEVELS.master should have no model (it is the scripted AI)');}
+  let n=0;
+  for(let seed=1;seed<=8;seed++){
+    const s=E.newGame({seed,mode:'classic',theme:['forest','jungle','desert','ocean'][seed%4],aiSight:{w:false,b:true},maxTurns:120});
+    const pick=E.makeRandom(seed);
+    while(!s.over){
+      let a;
+      if(s.turn==='b'){
+        a=game.ctx.__realChoose(s,'master');n++;
+        const want=S.chooseAction(E.clone(s));
+        if(JSON.stringify(a)!==JSON.stringify(want)){failures++;console.log('  FAIL Master chose '+q(a)+', the scripted AI itself chose '+q(want));break;}
+      }else{const acts=E.legalActions(s);a=acts[Math.floor(pick()*acts.length)];}
+      E.step(s,a);
+    }
+  }
+  console.log((failures===before?'ok  ':'FAIL')+' Master plays exactly what rl/scripted.js chooses ('+n+' moves)');
 }
 console.log('\n'+(checks-failures)+'/'+checks+' checks passed');
 process.exit(failures?1:0);

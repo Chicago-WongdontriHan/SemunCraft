@@ -227,7 +227,8 @@ function visibleTo(i,color){
 // ground and PvP keep their own rules. aiSight in js/engine.js is the same rule; AI_SIGHT turns it off.
 const AI_SIGHT=true;
 function aiSightLimited(color){
-  return AI_SIGHT&&color==='b'&&!campaignLevel&&!pvpActive&&!trainingMode&&(gameMode==='easy'||gameMode==='medium'||gameMode==='hard');
+  return AI_SIGHT&&color==='b'&&!campaignLevel&&!pvpActive&&!trainingMode
+    &&(gameMode==='easy'||gameMode==='medium'||gameMode==='hard'||gameMode==='trained'||gameMode==='master');
 }
 
 function isTileVisible(i){

@@ -21,6 +21,8 @@ const campaignLevels=require('./levels.js');
 const Scripted=require('./scripted.js');
 
 const THEMES=['forest','jungle','desert','ocean'];
+const DRAW_FLOOR=-0.5;   // drawPenalty's floor: a draw's reward never drops below this — half of a loss's -1, so
+                          // losing always costs a great deal more than even the most wasted draw, not just a little
 const DEFAULTS={
   seed:0,
   mode:'classic',       // turn order: 'classic' (single-player: White acts and fires, Black fires, Black acts) or 'pvp'
@@ -139,8 +141,10 @@ class Env{
       // the potential of a finished game is 0
       let reward=outcome-(c.shaping&&this.phi!==null?c.shaping*this.phi:0);
       // a draw that ends with the agent still ahead on material costs more than a draw that was
-      // always going to be level — turtling on a lead instead of finishing it stops paying off
-      if(s.winner==='draw'&&c.drawPenalty)reward-=c.drawPenalty*(1+Math.max(0,potential(s,this.agent)));
+      // always going to be level — turtling on a lead instead of finishing it stops paying off. Capped
+      // at DRAW_FLOOR, well clear of a loss's -1: losing must always cost far more than any draw, or a
+      // big enough lead would make throwing the game look better than a mere draw, backwards from the point
+      if(s.winner==='draw'&&c.drawPenalty)reward=Math.max(DRAW_FLOOR,reward-c.drawPenalty*(1+Math.max(0,potential(s,this.agent))));
       this.return+=reward;
       const info={outcome,winner:s.winner,agent:this.agent,turns:s.turnCount.w+s.turnCount.b,
         truncated:s.winner==='draw',episode:{r:this.return,l:this.length},scenario:this.scenario,

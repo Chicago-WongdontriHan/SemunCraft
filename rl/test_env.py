@@ -194,6 +194,19 @@ def draw_and_turn_penalty():
         check(all(r <= -0.3 + 1e-6 for r in draws), "a draw with drawPenalty 0.3 should cost at least 0.3: %s" % draws[:5])
         check(any(r < -0.3 + 1e-6 - 1e-3 for r in draws), "no draw cost more than the base penalty (no material lead was ever measured): %s" % draws)
 
+    # losing must always cost far more than any draw: even a wildly large drawPenalty is capped well clear of -1
+    with SemunCraftVecEnv(24, {"mode": "pvp", "opponent": "random", "maxTurns": 6, "drawPenalty": 5.0}, num_workers=4, seed=7) as env:
+        env.reset()
+        draws = []
+        for _ in range(400):
+            _, rewards, dones, infos = env.step(sample_legal(env.action_masks(), rng))
+            for i in np.flatnonzero(dones):
+                if infos[i]["outcome"] == 0:
+                    draws.append(rewards[i])
+        check(len(draws) > 10, "too few draws to check (%d)" % len(draws))
+        check(all(r > -1 for r in draws), "a draw must never cost as much as losing (-1): %s" % draws[:5])
+        check(all(r >= -1 + 0.4 for r in draws), "a draw should be capped well clear of a loss, not just barely: %s" % draws[:5])
+
     with SemunCraftVecEnv(8, {"mode": "pvp", "opponent": "random", "maxTurns": 200, "turnPenalty": 0.01}, num_workers=2, seed=4) as env:
         obs = env.reset()
         _, rewards, dones, infos = env.step(sample_legal(env.action_masks(), rng))

@@ -41,6 +41,16 @@ const DEFAULTS={
   maxTurns:300,         // both sides' turns together; reaching it is a draw
   shaping:0,            // weight of the potential-based shaping reward (0 = win/loss only)
   gamma:0.99,           // the learner's discount, used by the shaping term
+  drawPenalty:0,        // subtracted from the terminal reward when the game ends a draw (info.outcome, win rates
+                        // and promotion stay 0/1/-1 either way — this only makes a draw cost the learner something,
+                        // so it stops preferring a safe stall, sitting on a lead, over pressing for the win).
+                        // Games this agent has any material lead in count double: a draw it could plausibly have
+                        // won should sting more than one that was always going to end level
+  turnPenalty:0,        // subtracted from the reward at each of the agent's own decisions (not each raw engine
+                        // turn — a turn that keeps the move, like a knight's L-jump merge, is several decisions),
+                        // a small constant cost of taking another move so winning sooner is worth a little more
+                        // than winning slowly. Both default to 0 (no effect); see rl/train.py --draw-penalty
+                        // and --turn-penalty
 };
 
 function withDefaults(base,config){
@@ -57,6 +67,8 @@ function withDefaults(base,config){
   if(c.levels!==null&&!Array.isArray(c.levels))throw new Error('levels must be a list or null');
   if(c.levels&&c.mode==='pvp'&&c.levels.some(l=>l!==null))throw new Error('campaign levels need mode classic');
   if(typeof c.aiSight!=='boolean')throw new Error('aiSight must be true or false');
+  if(!(typeof c.drawPenalty==='number'&&isFinite(c.drawPenalty)&&c.drawPenalty>=0))throw new Error('drawPenalty must be a non-negative number');
+  if(!(typeof c.turnPenalty==='number'&&isFinite(c.turnPenalty)&&c.turnPenalty>=0))throw new Error('turnPenalty must be a non-negative number');
   if(c.opponent==='scripted'&&c.levels&&c.levels.some(l=>l!==null))throw new Error('the scripted opponent plays standard games, not campaign levels');
   return c;
 }
@@ -125,7 +137,10 @@ class Env{
     if(s.over){
       const outcome=s.winner==='draw'?0:s.winner===this.agent?1:-1;
       // the potential of a finished game is 0
-      const reward=outcome-(c.shaping&&this.phi!==null?c.shaping*this.phi:0);
+      let reward=outcome-(c.shaping&&this.phi!==null?c.shaping*this.phi:0);
+      // a draw that ends with the agent still ahead on material costs more than a draw that was
+      // always going to be level — turtling on a lead instead of finishing it stops paying off
+      if(s.winner==='draw'&&c.drawPenalty)reward-=c.drawPenalty*(1+Math.max(0,potential(s,this.agent)));
       this.return+=reward;
       const info={outcome,winner:s.winner,agent:this.agent,turns:s.turnCount.w+s.turnCount.b,
         truncated:s.winner==='draw',episode:{r:this.return,l:this.length},scenario:this.scenario,
@@ -136,10 +151,13 @@ class Env{
     }
     const seat=s.turn===this.agent?'agent':'opponent';
     let reward=0;
-    if(seat==='agent'&&c.shaping){
-      const phi=potential(s,this.agent);
-      if(this.phi!==null)reward=c.shaping*(c.gamma*phi-this.phi);
-      this.phi=phi;
+    if(seat==='agent'){
+      if(c.shaping){
+        const phi=potential(s,this.agent);
+        if(this.phi!==null)reward+=c.shaping*(c.gamma*phi-this.phi);
+        this.phi=phi;
+      }
+      if(c.turnPenalty)reward-=c.turnPenalty;   // a small, constant cost of taking another decision
       this.return+=reward;
     }
     this.legal=enc.legalMap(s);

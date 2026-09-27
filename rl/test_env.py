@@ -168,12 +168,43 @@ def configure_switches_mode():
 
 def bad_config_rejected():
     for config, word in (({"mode": "pvp", "opponent": "bot"}, "classic"), ({"agentBlack": 1.5}, "agentBlack"),
-                         ({"blackOrders": "no"}, "blackOrders")):
+                         ({"blackOrders": "no"}, "blackOrders"), ({"drawPenalty": -1}, "drawPenalty"),
+                         ({"turnPenalty": -1}, "turnPenalty")):
         try:
             SemunCraftVecEnv(1, config, num_workers=1).close()
             check(False, "accepted %s" % config)
         except RuntimeError as err:
             check(word in str(err), "unexpected error: %s" % err)
+
+
+def draw_and_turn_penalty():
+    """drawPenalty costs more on a draw than 0, more still with a material lead at the turn cap; turnPenalty
+    costs a constant a little on every one of the agent's own decisions. Neither touches info["outcome"]."""
+    rng = np.random.default_rng(9)
+    # short games (maxTurns 6) against a random opponent draw almost every time before either side can act much
+    with SemunCraftVecEnv(24, {"mode": "pvp", "opponent": "random", "maxTurns": 6, "drawPenalty": 0.3}, num_workers=4, seed=3) as env:
+        env.reset()
+        draws = []
+        for _ in range(400):
+            _, rewards, dones, infos = env.step(sample_legal(env.action_masks(), rng))
+            for i in np.flatnonzero(dones):
+                if infos[i]["outcome"] == 0:
+                    draws.append(rewards[i])
+        check(len(draws) > 10, "too few draws to check (%d)" % len(draws))
+        check(all(r <= -0.3 + 1e-6 for r in draws), "a draw with drawPenalty 0.3 should cost at least 0.3: %s" % draws[:5])
+        check(any(r < -0.3 + 1e-6 - 1e-3 for r in draws), "no draw cost more than the base penalty (no material lead was ever measured): %s" % draws)
+
+    with SemunCraftVecEnv(8, {"mode": "pvp", "opponent": "random", "maxTurns": 200, "turnPenalty": 0.01}, num_workers=2, seed=4) as env:
+        obs = env.reset()
+        _, rewards, dones, infos = env.step(sample_legal(env.action_masks(), rng))
+        check(np.allclose(rewards[~dones], -0.01), "a non-terminal agent step with turnPenalty 0.01 should cost exactly that: %s" % rewards)
+        check(all(infos[i]["outcome"] in (-1, 0, 1) for i in np.flatnonzero(dones)), "outcome should stay 0/1/-1")
+
+    # neither penalty is required: the default config is unaffected
+    with SemunCraftVecEnv(4, {"mode": "classic", "maxTurns": 40}, num_workers=1, seed=5) as env:
+        env.reset()
+        _, rewards, dones, infos = env.step(sample_legal(env.action_masks(), rng))
+        check(np.all(rewards[~dones] == 0), "a plain config should give 0 reward on a non-terminal agent step")
 
 
 def black_share():
@@ -233,6 +264,7 @@ if __name__ == "__main__":
     section("configure applies from the next game", configure_switches_mode)
     section("invalid configs are rejected", bad_config_rejected)
     section("agentBlack weights the agent's color", black_share)
+    section("draw and turn penalties push back against turtling", draw_and_turn_penalty)
     section("illegal actions are rejected", illegal_action_rejected)
     section("throughput", throughput)
     print("\n" + ("%d failure(s)" % failures if failures else "all environment tests passed"))

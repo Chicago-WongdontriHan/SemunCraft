@@ -19,6 +19,16 @@ version-2 run, where they were allowed from the start, learned to stall as Black
 are switched on for both sides once Black wins enough self-play games (--black-orders-winrate) or after
 --black-orders-max-updates of the league, so the network then learns where they are safe.
 
+--draw-penalty and --turn-penalty (both 0 by default, worker.js) push back against turtling: winning
++1, losing -1 and a draw worth exactly 0 leaves a network that has built a dominant, safe position no
+reason to risk attacking to finish the game rather than just sitting on the lead until maxTurns — a draw
+costs it nothing. --draw-penalty makes a draw cost something, scaled up further by any material lead the
+agent still had when the turn cap was reached (so a draw that was always going to be level isn't punished
+as hard as one it should have won). --turn-penalty is a small constant cost on every one of the agent's
+own decisions, so winning in fewer moves is worth a little more than winning slowly. Neither changes
+info["outcome"] (still 0/1/-1) or the win-rate stats and stage promotions built from it — only the reward
+PPO trains on.
+
 Every game is played with normal sight (aiSight in js/engine.js): each side attacks only what it can
 see, though it reads where the enemy stands. The network sees and acts in the latest rl/encoding.js
 version (--encoding); a checkpoint keeps playing the version it was trained on.
@@ -81,7 +91,7 @@ def env_config(kind, args, shaping, black=None):
     args.orders_for_black, which the trainer switches on."""
     black = args.black_share if black is None else black
     config = {"mode": "classic", "maxTurns": args.max_turns, "shaping": shaping, "gamma": args.gamma, "aiSight": True,
-              "blackOrders": args.orders_for_black}
+              "blackOrders": args.orders_for_black, "drawPenalty": args.draw_penalty, "turnPenalty": args.turn_penalty}
     if kind == "self":
         config.update(opponent="external", agentColor="random", agentBlack=black)
     elif kind == "scripted":
@@ -451,6 +461,12 @@ def parse_args():
     p.add_argument("--channels-last", action=argparse.BooleanOptionalAction, default=True)
     p.add_argument("--max-turns", type=int, default=300)
     p.add_argument("--shaping", type=float, default=0.5, help="shaping weight; fades to 0 during the league stage")
+    p.add_argument("--draw-penalty", type=float, default=0.0,
+                   help="extra cost of a draw, scaled up by any material lead still held at the turn cap (worker.js) - "
+                        "against turtling on a winning position instead of finishing it")
+    p.add_argument("--turn-penalty", type=float, default=0.0,
+                   help="small constant cost of each of the agent's own decisions (worker.js) - winning sooner is "
+                        "worth a little more than winning slowly")
     p.add_argument("--shaping-anneal", type=int, default=400, help="league updates over which shaping fades out")
     p.add_argument("--window", type=int, default=400, help="recent games per opponent kind for promotion and logs")
     p.add_argument("--promote-easy", type=float, default=0.9, help="win rate against Easy needed to move on")

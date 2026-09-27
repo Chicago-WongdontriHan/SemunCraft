@@ -124,7 +124,8 @@ class SemunCraftVecEnv:
         often a random agentColor is Black), blackOrders (False: no delayed orders
         for Black in the classic order, agent or opponent), difficulty, theme, levels, fog,
         aiSight (on by default: every player attacks only what it sees),
-        maxTurns, shaping, gamma.
+        maxTurns, shaping, gamma, drawPenalty, turnPenalty (both 0 by default; against
+        turtling — see rl/train.py's --draw-penalty and --turn-penalty).
     opponent: for envs with opponent "external", a function
         (obs, masks, env_ids) -> actions choosing the opponent's moves; the
         default picks random legal moves.

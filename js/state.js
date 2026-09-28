@@ -7,6 +7,11 @@ let blackSpawnHistory=[]; // how many total spawns used (black)
 let whiteTurnCount=0; // total white turns this game
 let blackTurnCount=0; // total black turns this game
 let movedThisTurn=-1; // idx of white piece that acted this turn (cannot auto-attack)
+// idx of the square Black's own move/merge/heal/fortify/scry/meteor landed on this turn (classic mode
+// only — pvp/training share movedThisTurn above, one seat at a time): read and reset by finishBlackTurn,
+// set by whichever of ai.js/netai.js just applied Black's move, so that piece holds its fire too, exactly
+// as movedThisTurn already does for White (endTurn)
+let blackMovedThisTurn=-1;
 // Gold: 8 to start and a sixth a turn — a sixth more for every turn that ends with a pawn of yours
 // on the gold mine. A pawn from the King costs one, and so does fortifying a pawn, so both wait until
 // a whole Gold is in hand. The same sums are in js/engine.js, written the same way so both sides land

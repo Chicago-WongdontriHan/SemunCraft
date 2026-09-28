@@ -40,7 +40,7 @@ function bMergeQueen(limit){
     if(k===b)continue;
     if(adj8(k).includes(b)){
       const nq={type:'queen',color:'b',hp:STATS.queen.hp,maxHp:STATS.queen.maxHp};
-      pieces[k]=null;pieces[b]=nq;addLog('Black merges->queen');SFX.arrive('queen');render();mergeFlash(b);finishBlackTurn();return true;
+      pieces[k]=null;pieces[b]=nq;addLog('Black merges->queen');SFX.arrive('queen');render();mergeFlash(b);blackMovedThisTurn=b;finishBlackTurn();return true;
     }
   }
   return false;
@@ -57,7 +57,7 @@ function bMerge(ft,tt,rt,limit){
     if(mergeResultType(pieces[a],pieces[b])!==rt)continue;
     elixir.b-=elixirCost(rt);
     const nb3={type:rt,color:'b',hp:STATS[rt].hp,maxHp:STATS[rt].maxHp};if(rt==='bishop')nb3.mana=1;
-    pieces[a]=null;pieces[b]=nb3;addLog('Black merges->'+rt+elixirTag(rt));SFX.arrive(rt);render();mergeFlash(b);finishBlackTurn();return true;
+    pieces[a]=null;pieces[b]=nb3;addLog('Black merges->'+rt+elixirTag(rt));SFX.arrive(rt);render();mergeFlash(b);blackMovedThisTurn=b;finishBlackTurn();return true;
   }
   return false;
 }
@@ -99,6 +99,7 @@ function bMoveAll(dirStr){
       blackLastFrom=from;blackLastTo=dest;
       render();
       animatePieceMove(from,dest,p.type,'b',true,()=>{},p.type==='knight'?260:180);
+      blackMovedThisTurn=dest;
       setTimeout(()=>finishBlackTurn(),260);
       return;
     }
@@ -244,6 +245,7 @@ function hardTacticalAI(bKi,cands,bp){
       blackLastFrom=result.f;blackLastTo=result.t;
       render();
       animatePieceMove(result.f,result.t,result.type,'b',true,()=>{},result.type==='knight'?260:180);
+      blackMovedThisTurn=result.t;
       setTimeout(()=>finishBlackTurn(),280);
       return;
     }
@@ -281,6 +283,7 @@ function reactiveAI(){
             pieces[good]=bp;pieces[bi]=null;
             addLog('Black counter-attacks!');blackLastFrom=bi;blackLastTo=good;
             render();animatePieceMove(bi,good,bp.type,'b',true,()=>{},260);
+            blackMovedThisTurn=good;
             setTimeout(()=>finishBlackTurn(),280);return true;
           }
         }else if(bp.type==='pawn'){
@@ -291,6 +294,7 @@ function reactiveAI(){
             pieces[step]=bp;pieces[bi]=null;
             addLog('Black counter-attacks!');blackLastFrom=bi;blackLastTo=step;
             render();animatePieceMove(bi,step,bp.type,'b',true,()=>{},180);
+            blackMovedThisTurn=step;
             setTimeout(()=>finishBlackTurn(),200);return true;
           }
         }else if(bp.type==='rook'||bp.type==='bishop'||bp.type==='queen'){
@@ -304,6 +308,7 @@ function reactiveAI(){
               pieces[dest]=bp;pieces[bi]=null;
               addLog('Black counter-attacks!');blackLastFrom=bi;blackLastTo=dest;
               render();animatePieceMove(bi,dest,bp.type,'b',true,()=>{},180);
+              blackMovedThisTurn=dest;
               setTimeout(()=>finishBlackTurn(),200);return true;
             }
           }
@@ -355,6 +360,7 @@ function reactiveAI(){
       pieces[best]=victim;pieces[target]=null;
       addLog('Black flees!');blackLastFrom=target;blackLastTo=best;
       render();animatePieceMove(target,best,victim.type,'b',true,()=>{},victim.type==='knight'?260:180);
+      blackMovedThisTurn=best;
       setTimeout(()=>finishBlackTurn(),victim.type==='knight'?280:200);return true;
     }
   }
@@ -425,6 +431,7 @@ function campaignAI(){
       if(newRange.includes(threatBy)){
         addLog('Black counter-positions');blackLastFrom=result.f;blackLastTo=result.t;
         render();animatePieceMove(result.f,result.t,result.type,'b',true,()=>{},result.type==='knight'?260:180);
+        blackMovedThisTurn=result.t;
         setTimeout(()=>finishBlackTurn(),280);return;
       }
       // move didn't help — undo and try flee instead
@@ -473,6 +480,7 @@ function campaignAI(){
       pieces[fleeTarget]=p;pieces[bi]=null;
       addLog('Black retreats');blackLastFrom=bi;blackLastTo=fleeTarget;
       render();animatePieceMove(bi,fleeTarget,p.type,'b',true,()=>{},p.type==='knight'?260:180);
+      blackMovedThisTurn=fleeTarget;
       setTimeout(()=>finishBlackTurn(),200);return;
     }
   }
@@ -508,6 +516,7 @@ function campaignAI(){
     pieces[bestMove.t]=mp;pieces[bestMove.f]=null;
     addLog('Black advances');blackLastFrom=bestMove.f;blackLastTo=bestMove.t;
     render();animatePieceMove(bestMove.f,bestMove.t,bestMove.type,'b',true,()=>{},bestMove.type==='knight'?260:180);
+    blackMovedThisTurn=bestMove.t;
     setTimeout(()=>finishBlackTurn(),280);return;
   }
 
@@ -526,6 +535,7 @@ function campaignAI(){
       if(result){
         addLog('Black moves');blackLastFrom=result.f;blackLastTo=result.t;
         render();animatePieceMove(result.f,result.t,result.type,'b',true,()=>{},result.type==='knight'?260:180);
+        blackMovedThisTurn=result.t;
         setTimeout(()=>finishBlackTurn(),280);return;
       }
       const step=p.type==='rook'?stepTowardCardinal(bi,target,'b')
@@ -539,6 +549,7 @@ function campaignAI(){
       pieces[dest]=p;pieces[bi]=null;
       addLog('Black moves');blackLastFrom=bi;blackLastTo=dest;
       render();animatePieceMove(bi,dest,p.type,'b',true,()=>{},p.type==='knight'?260:180);
+      blackMovedThisTurn=dest;
       setTimeout(()=>finishBlackTurn(),p.type==='knight'?280:200);return;
     }
   }
@@ -623,7 +634,7 @@ function applyBlackMove(text){
   text=text.slice(Math.max(0,text.toUpperCase().search(/MERGE|MOVE_ALL|PRODUCE/)));
   const up=text.toUpperCase();const coords=text.match(/[a-lA-L](?:1[0-2]|[1-9])/g)||[];
   const bKi=pieces.findIndex(p=>p&&p.color==='b'&&p.type==='king');
-  if(up.startsWith('MERGE')&&coords.length>=2){const a=sqFrom(coords[0]),b=sqFrom(coords[1]),pa=pieces[a],pb=pieces[b];if(a>=0&&b>=0&&pa?.color==='b'&&pb?.color==='b'&&adj8(a).includes(b)){const nt={'pawn+pawn':'knight','knight+pawn':'bishop','knight+knight':'rook','bishop+knight':'queen','rook+rook':'siege'}[[pa.type,pb.type].sort().join('+')];if(nt){const nb2={type:nt,color:'b',hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};if(nt==='bishop')nb2.mana=1;if(nt==='siege')nb2.sieged=true;pieces[a]=null;pieces[b]=nb2;addLog('Black merges->'+nt);SFX.arrive(nt);render();mergeFlash(b);finishBlackTurn();return;}}}
+  if(up.startsWith('MERGE')&&coords.length>=2){const a=sqFrom(coords[0]),b=sqFrom(coords[1]),pa=pieces[a],pb=pieces[b];if(a>=0&&b>=0&&pa?.color==='b'&&pb?.color==='b'&&adj8(a).includes(b)){const nt={'pawn+pawn':'knight','knight+pawn':'bishop','knight+knight':'rook','bishop+knight':'queen','rook+rook':'siege'}[[pa.type,pb.type].sort().join('+')];if(nt){const nb2={type:nt,color:'b',hp:STATS[nt].hp,maxHp:STATS[nt].maxHp};if(nt==='bishop')nb2.mana=1;if(nt==='siege')nb2.sieged=true;pieces[a]=null;pieces[b]=nb2;addLog('Black merges->'+nt);SFX.arrive(nt);render();mergeFlash(b);blackMovedThisTurn=b;finishBlackTurn();return;}}}
   if(up.startsWith('MOVE_ALL')){const dm=up.match(/\b(NE|NW|SE|SW|N|S|E|W)\b/);if(dm){bMoveAll(dm[1]);return;}}
   if(up.startsWith('PRODUCE')&&coords.length>=1){const sq=sqFrom(coords[0]);if(sq>=0&&!pieces[sq]&&!isTileBlocked(sq)&&blackSpawnRemaining()>=1&&bKi>=0&&adj8(bKi).includes(sq)){pieces[sq]={type:'pawn',color:'b',hp:STATS.pawn.hp,maxHp:STATS.pawn.maxHp,firstMove:true};blackSpawnHistory.push(blackTurnCount);addLog('Black spawns@'+sqName(sq));SFX.arrive('pawn');render();spawnFlash(sq);finishBlackTurn();return;}}
   aiFallback();

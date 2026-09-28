@@ -1043,21 +1043,20 @@ function finishTurn(s,color,events){
     applyAttacks(s,computeActions(s,color).filter(a=>a.attacker!==justMoved&&!(B[a.attacker]&&B[a.attacker].rolled)),color,events);
     if(!s.over){s.turn=other(color);tickScans(s,s.turn);tickFlares(s,s.turn);runMeteors(s,s.turn,events);upkeep(s,s.turn,events);}
   }else if(color==='w'){
-    // White fires (except the mover), then Black fires, then Black acts
+    // White fires (except the mover); then Black's turn begins. Black used to fire here too, reactively,
+    // before it had even chosen its own move — so nothing was ever excluded from that pass, and whatever
+    // Black went on to do (move, spawn, let an order land) got a free shot no White piece ever gets. Fixed
+    // by giving Black the exact same one-shot-per-own-turn treatment as White, in the branch below,
+    // instead of a second, earlier pass of its own.
     s.hitBy=[];
     applyAttacks(s,computeActions(s,'w').filter(a=>a.attacker!==justMoved&&!(B[a.attacker]&&B[a.attacker].rolled)),'w',events);
-    if(!s.over){
-      // Black's own stale flare from last round clears before its attacks here can make a fresh one
-      // (runBlack in js/game.js ticks flares before computing Black's attacks, in that order)
-      tickFlares(s,'b');
-      const bActs=computeActions(s,'b').filter(a=>!(B[a.attacker]&&B[a.attacker].rolled));
-      s.acted=bActs.map(a=>a.attacker);
-      applyAttacks(s,bActs,'b',events);
-    }
-    if(!s.over){s.turn='b';tickScans(s,'b');runMeteors(s,'b',events);}
+    if(!s.over){s.turn='b';tickScans(s,'b');tickFlares(s,'b');runMeteors(s,'b',events);upkeep(s,'b',events);}
   }else if(!s.over){
-    s.turn='w';tickScans(s,'w');tickFlares(s,'w');runMeteors(s,'w',events);
-    upkeep(s,null,events);
+    // Black fires (except the mover), mirroring White's own turn exactly — see the note above
+    const bActs=computeActions(s,'b').filter(a=>a.attacker!==justMoved&&!(B[a.attacker]&&B[a.attacker].rolled));
+    s.acted=bActs.map(a=>a.attacker);
+    applyAttacks(s,bActs,'b',events);
+    if(!s.over){s.turn='w';tickScans(s,'w');tickFlares(s,'w');runMeteors(s,'w',events);upkeep(s,'w',events);}
   }
   if(!s.over&&s.level){const r=campaignResult(s);if(r){s.over=true;s.winner=r==='win'?'w':'b';}}
   if(!s.over&&s.maxTurns&&s.turnCount.w+s.turnCount.b>=s.maxTurns){s.over=true;s.winner='draw';}
@@ -1123,7 +1122,7 @@ function runOrders(s,own,events){
       delete s.targets[p.color][i];
       if(p.type==='pawn')p.firstMove=false;
       B[to]=p;B[i]=null;
-      if(p.type==='siege')p.rolled=true;     // it spent the turn rolling; the guns stay quiet
+      p.rolled=true;   // it spent the turn arriving, same as any other move: the guns stay quiet till next upkeep
       if(events)events.push({type:'move',from:i,to,piece:p.type});
     }
   }
@@ -1187,6 +1186,7 @@ function bPieces(s){
 function botMove(s,from,to,events){
   const p=s.board[from];
   s.board[to]=p;s.board[from]=null;
+  s.moved=to;   // holds its fire this turn, same as any other move (finishTurn's justMoved)
   events.push({type:'move',from,to,piece:p.type});
 }
 
@@ -1217,6 +1217,7 @@ function bMerge(s,ft,tt,rt,limit,events){
     const np=makePiece(rt,'b');
     if(rt==='bishop')np.mana=1;
     s.board[a]=null;s.board[b]=np;
+    s.moved=b;   // holds its fire this turn, same as any other move (finishTurn's justMoved)
     events.push({type:'merge',from:a,to:b,piece:rt});
     return true;
   }
@@ -1230,6 +1231,7 @@ function bMergeQueen(s,limit,events){
   for(const k of bp.knights)for(const b of bp.bishops){
     if(k===b||!g.adj8[k].includes(b))continue;
     s.board[k]=null;s.board[b]=makePiece('queen','b');
+    s.moved=b;   // holds its fire this turn, same as any other move (finishTurn's justMoved)
     events.push({type:'merge',from:k,to:b,piece:'queen'});
     return true;
   }
@@ -1368,7 +1370,7 @@ function hardTacticalAI(s,cands,bp,events){
   for(const{bi}of moveList){
     if(!s.board[bi])continue;
     const r=movePieceToward(s,bi,wK);
-    if(r){events.push({type:'move',from:r.f,to:r.t,piece:r.type});return;}
+    if(r){s.moved=r.t;events.push({type:'move',from:r.f,to:r.t,piece:r.type});return;}
   }
   bAdvance(s,null,events);
 }
@@ -1468,7 +1470,7 @@ function campaignAI(s,events){
     if(aiRange(s,bi,p.type).includes(threatBy))continue;
     const res=movePieceToward(s,bi,threatBy);
     if(res){
-      if(aiRange(s,res.t,p.type).includes(threatBy)){events.push({type:'move',from:res.f,to:res.t,piece:res.type});return;}
+      if(aiRange(s,res.t,p.type).includes(threatBy)){s.moved=res.t;events.push({type:'move',from:res.f,to:res.t,piece:res.type});return;}
       // undo the trial move (like ai.js, a pawn stays without its double step)
       B[bi]=p;B[res.t]=null;
     }
@@ -1504,6 +1506,7 @@ function campaignAI(s,events){
     const mp=B[bestMove.f];
     if(mp&&mp.type==='pawn')mp.firstMove=false;
     B[bestMove.t]=mp;B[bestMove.f]=null;
+    s.moved=bestMove.t;
     events.push({type:'move',from:bestMove.f,to:bestMove.t,piece:bestMove.type});
     return;
   }
@@ -1517,7 +1520,7 @@ function campaignAI(s,events){
       if(jumps.length)dest=jumps.reduce((a,b)=>cheb(s,a,target)<cheb(s,b,target)?a:b);
     }else{
       const res=movePieceToward(s,bi,target);
-      if(res){events.push({type:'move',from:res.f,to:res.t,piece:res.type});return;}
+      if(res){s.moved=res.t;events.push({type:'move',from:res.f,to:res.t,piece:res.type});return;}
       const st=stepFor(s,p.type,bi,target);
       if(st>=0&&!B[st]&&!s.blocked[st]&&cheb(s,st,target)<cheb(s,bi,target))dest=st;
     }

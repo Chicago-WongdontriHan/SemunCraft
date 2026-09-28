@@ -105,6 +105,10 @@ function netAiApply(action){
   meteors=s.meteors;   // and so does a meteor its Mage summoned, which would otherwise never land
   elixir=s.elixir;mineTurns=s.mineTurns;goldSpent=s.goldSpent;orderLeft=s.orderLeft;springs=s.springs;
   for(let k=spawned;k<s.spawns.b;k++)blackSpawnHistory.push(blackTurnCount);
+  // this action's own square, exactly as the engine tracked it (s.moved) — read fresh at finishBlackTurn,
+  // so that piece holds its fire the same way movedThisTurn does for White (a later action this same
+  // turn, from a chained knight merge, overwrites it — only the last one of the turn should count)
+  blackMovedThisTurn=s.moved;
   return result;
 }
 

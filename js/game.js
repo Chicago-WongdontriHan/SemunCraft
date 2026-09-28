@@ -28,7 +28,7 @@ function initGame(){
   resetView();
   turn='w'; over=false; thinking=false; logLines=[]; kingSelected=false;
   whiteTargets={}; blackTargets={};
-  spawnHistory=[]; blackSpawnHistory=[]; whiteTurnCount=0; blackTurnCount=0; movedThisTurn=-1;
+  spawnHistory=[]; blackSpawnHistory=[]; whiteTurnCount=0; blackTurnCount=0; movedThisTurn=-1; blackMovedThisTurn=-1;
   scans=[];meteors=[];flareTiles=[];elixir={w:0,b:0};mineTurns={w:0,b:0};goldSpent={w:0,b:0};springs={};
   orderLeft={w:ORDER_BUDGET,b:ORDER_BUDGET};orderTurns=0;
   exploredTiles=new Set();
@@ -80,7 +80,7 @@ function initGame(){
 function keepPlaying(){
   if(campaignLevel||pvpActive||gameMode==='aivsai')return;
   hideGameOver();
-  over=false;thinking=false;movedThisTurn=-1;
+  over=false;thinking=false;movedThisTurn=-1;blackMovedThisTurn=-1;
   turn='w';
   const dot=document.getElementById('thinking-dot');if(dot)dot.classList.remove('on');
   addLog('Playing on');
@@ -130,7 +130,7 @@ function startWhiteTurn(){
     }
   }
   tickScans('w');tickFlares('w');runMeteors('w');
-  turnUpkeep();
+  turnUpkeep('w');
   if(over){   // an order that came due ended it
     const mine=pieces.some(q=>q&&q.color===myColor()&&q.type==='king');
     syncUI();render();
@@ -143,7 +143,9 @@ function startWhiteTurn(){
   setStatus("White's turn");
 }
 
-// start-of-turn upkeep; in PvP each client only touches its own pieces
+// start-of-turn upkeep, for whichever side is about to move; in PvP each client only touches its own
+// pieces, and classic mode now calls this once per side too (own='w' or 'b'), each right as that side's
+// own turn begins, instead of bundling both together at the head of White's turn alone
 function turnUpkeep(own){
   if(own===undefined)own=pvpActive?myColor():null;
   // clear newborn aura from previous turn
@@ -219,8 +221,9 @@ function runOrders(own){
       delete tgts[i];
       if(p.type==='pawn')p.firstMove=false;
       pieces[to]=p;pieces[i]=null;
-      // it spent the turn rolling, so its guns stay quiet until the next one (turnUpkeep clears this)
-      if(p.type==='siege')p.rolled=true;
+      // it spent the turn arriving, same as any other move: the guns stay quiet till next upkeep clears
+      // this (heldFire below) — used to be siege-only, but every piece type needs it, not just siege
+      p.rolled=true;
       flashSq(to,'order-flash');SFX.move();
       addLog(p.type+' moves to '+sqName(to)+' as ordered');
       // and it is seen going: the piece slides across while the board behind it already shows the move
@@ -326,31 +329,27 @@ function endTurn(){
     }
   }else{
     const wActions=computeActions('w').filter(a=>a.attacker!==justMoved&&!heldFire(a.attacker));
+    // Black used to fire here too, reactively, before it had even chosen its own move — so nothing was
+    // ever excluded from that pass, and whatever Black went on to do (move, spawn, let an order land)
+    // got a free shot no White piece ever gets. Fixed by giving Black the exact same one-shot-per-own-
+    // turn treatment as White: its own orders/mana/mend resolve here, then it acts, then IT fires
+    // (finishBlackTurn), excluding whatever it just moved — never before it's decided anything.
     const runBlack=()=>{
       tickScans('b');tickFlares('b');
       const meteorWinner=runMeteors('b');
+      turnUpkeep('b');
       if(over){
-        if(campaignLevel){const cr=checkCampaignWin();setTimeout(()=>handleCampaignEnd(cr||'lose'),600);}
+        if(campaignLevel){const cr=checkCampaignWin();setTimeout(()=>handleCampaignEnd(cr||(meteorWinner==='w'?'win':'lose')),600);}
         else{setStatus(meteorWinner==='w'?'White wins! ♔':'Black wins! ♚');(meteorWinner===myColor()?SFX.win:SFX.lose)();syncUI();
-          setTimeout(()=>showGameOver(myColor()===meteorWinner?'win':'lose'),600);}
+          setTimeout(()=>showGameOver(myColor()===(meteorWinner||'b')?'win':'lose'),600);}
         return;
       }
       thinking=true;syncUI();render();
       document.getElementById('thinking-dot').classList.add('on');
       setStatus('Enemy thinking...');
-      const bActions=computeActions('b').filter(a=>!heldFire(a.attacker));
-      blackActed=new Set(bActions.map(a=>a.attacker));
-      if(bActions.length){
-        setTimeout(()=>executeActions(bActions,'b',()=>{
-          render();if(over){if(campaignLevel){const cr=checkCampaignWin();setTimeout(()=>handleCampaignEnd(cr||'lose'),600);}else{setStatus('Black wins! ♚');SFX.lose();syncUI();setTimeout(()=>showGameOver(myColor()==='b'?'win':'lose'),600);}return;}
-          if(campaignCheckpoint())return;
-          setTimeout(aiAct,200);
-        }),200);
-      }else{
-        blackActed=new Set();
-        if(campaignCheckpoint())return;
-        setTimeout(aiAct,300);
-      }
+      blackMovedThisTurn=-1;   // nothing of Black's has acted yet this turn
+      if(campaignCheckpoint())return;
+      setTimeout(aiAct,300);
     };
     if(wActions.length){
       setStatus('Attacking...');
@@ -367,11 +366,25 @@ function endTurn(){
 
 function finishBlackTurn(){
   thinking=false;
-  blackTurnCount++;
-  creditResources('b');
   document.getElementById('thinking-dot').classList.remove('on');
   if(over){orderEndsGame('b');return;}
-  startWhiteTurn();
+  // Black fires now, excluding whatever it just moved — its own turn ending exactly like White's does
+  // (endTurn's wActions), instead of firing reactively before it had even chosen a move
+  const justMovedB=blackMovedThisTurn;
+  blackMovedThisTurn=-1;
+  const bActions=computeActions('b').filter(a=>a.attacker!==justMovedB&&!heldFire(a.attacker));
+  blackActed=new Set(bActions.map(a=>a.attacker));
+  const proceed=()=>{
+    blackTurnCount++;
+    creditResources('b');
+    if(over){orderEndsGame('b');return;}
+    startWhiteTurn();
+  };
+  if(bActions.length){
+    setTimeout(()=>executeActions(bActions,'b',()=>{render();proceed();}),150);
+  }else{
+    proceed();
+  }
 }
 
 // an order that came due took the last king: the side whose order it was has won

@@ -139,7 +139,10 @@ stacked so they land together (`MAX_DELAY`, `ORDER_BUDGET`, `orderCost` in `js/s
   moment it reaches nought — at the **head of that turn**, before its side does anything else
   (`runOrders`, from `turnUpkeep`, mirrored in the engine's `upkeep`). The move plays out where you can
   watch it, so the rest of the turn is decided on the board as it then stands. Then:
-  - the square is **empty and still reachable** → the piece moves there (and the square flashes amber);
+  - the square is **empty and still reachable** → the piece moves there (and the square flashes amber) —
+    and, like any other move, it holds its fire for the rest of that turn rather than also auto-attacking
+    from its new square (fixed 2026-09-28: this used to only apply to a Siege Tower rolling into place;
+    every other piece quietly got a free shot too);
   - an **enemy** stands there and it is in reach → the move becomes an **attack** (1 damage — it can
     finish a game). A siege tower's ordered square is always the one beside it, which its shell can't
     reach, so an enemy there simply makes its order lapse;
@@ -181,9 +184,10 @@ stacked so they land together (`MAX_DELAY`, `ORDER_BUDGET`, `orderCost` in `js/s
 1. **White's orders come due**: the ones that counted down to nought move or strike, before anything else, and the board is left for White to read.
 1. **White's turn**: Player moves/merges/spawns/heals/sets a target — or books a delayed order, which leaves the turn in hand until the order budget runs out.
 2. **White auto-attacks** fire (excluding the piece that moved or healed).
-3. **Black auto-attacks** fire.
+3. **Black's orders come due**, newborn highlights clear and its bishops/Mages regain mana — the same start-of-turn upkeep White just had, now for Black.
 4. **Black AI** takes its action (spawn, merge, or move).
-5. Newborn highlights clear and bishops regain mana; return to step 1.
+5. **Black auto-attacks** fire (excluding the piece that just moved or healed) — Black used to fire *before* choosing its move instead, which meant nothing was ever excluded and it effectively got a free shot every round White never gets (fixed 2026-09-28).
+6. Return to step 1, for White.
 
 ---
 

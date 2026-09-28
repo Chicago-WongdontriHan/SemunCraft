@@ -352,7 +352,7 @@ function startCampaignLevel(levelIdx){
   turn='w'; over=false; thinking=false; logLines=[]; kingSelected=false;
   whiteTargets={}; blackTargets={};
   spawnHistory=[]; blackSpawnHistory=[];
-  whiteTurnCount=0; blackTurnCount=0; movedThisTurn=-1;
+  whiteTurnCount=0; blackTurnCount=0; movedThisTurn=-1; blackMovedThisTurn=-1;
   blackLastFrom=-1; blackLastTo=-1;
   targetMode=false; targetSrc=-1;
   dragSrc=-1; dragging=false;

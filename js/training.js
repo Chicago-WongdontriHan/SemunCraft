@@ -130,7 +130,10 @@ function trainingPalette(){
       const mark=t.block?'<span class="tp-block" aria-hidden="true">\u26D4</span>':'';
       h+=btn(t.icon+mark,t.name,on,"trainPickTile('"+t.key+"')",t.name+' \u2014 '+(t.effect||'')+'. Tap it again on the board to take it away');
     });
-    h+='</div><div class="tp-grid tp-tools">';
+    h+='</div><div class="tp-grid tp-tools">'
+      +wide('\uD83D\uDCBE Save Map',false,'trainSaveMap()',
+        ROWS===9&&COLS===9?'Save this ground\u2019s obstacles under a name of your own \u2014 it then shows up in Single Player\u2019s map list'
+                          :'Single Player only ever plays 9\u00D79, so only a 9\u00D79 ground can be saved (resize with the steppers above first)');
   }else{
     // the match itself: who plays which side, which AI it is, how fast, and what the two sides own
     h+='<div class="tp-grid tp-mode">'
@@ -317,6 +320,20 @@ function trainSetTheme(t){
   trainingPalette();                     // the tile brushes belong to the map
   resizeBoard();render();syncUI();
   addLog('Map: '+t);
+}
+
+// saves the ground you built here as a named map in Single Player's own list (js/maps.js), the current
+// theme and whichever of its tiles are impassable — units, resources and everything else in this sandbox
+// are its own, not part of the map itself
+function trainSaveMap(){
+  if(ROWS!==9||COLS!==9){addLog('Only a 9×9 ground can be saved as a map — resize it first');return;}
+  const name=(prompt('Name this map:')||'').trim();
+  if(!name)return;
+  const th=THEMES[mapTheme];
+  const blocked=[];
+  for(let i=0;i<81;i++){const info=th&&th.tiles[tileData[i]];if(info&&info.block)blocked.push(i);}
+  saveCustomMap(name,mapTheme,blocked);
+  addLog('Map "'+name+'" saved — it now shows up in Single Player’s map list');
 }
 
 function trainPickUnit(k){

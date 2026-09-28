@@ -231,6 +231,16 @@ Four selectable themes that change visuals, obstacles, ambient wildlife, and bac
 - **Animals are switched off** for now: `ANIMALS_ON` in `js/constants.js` (and the same switch in `js/engine.js`). Map generation still draws the same random numbers for them, so boards and enemy strategies are unchanged, but nothing is placed and the roaming loop never starts. The system stays in `js/animals.js`.
 - When switched on, animals roam in real time: two neutral and one aggressive per map. Any piece can attack them; aggressive animals bite adjacent pieces, and animals sometimes bump pieces aside. Campaign levels and multiplayer games never had them.
 
+### Named maps (2026-09-28)
+
+Single Player's pre-game screen (opened by the **Single Player** button, before **Start Game**) picks a **map** from one list, grouped Random / Curated / My Maps (`js/maps.js`):
+
+- **Random** — one entry per theme (Forest/Jungle/Desert/Ocean), each a fresh `generateMap()` roll every game, exactly as maps always worked before this existed.
+- **Curated** — five named, fixed layouts shipped with the game (Open Plains, Twin Ridges, Ironwall, The Narrows, Crossfire), each one obstacle list frozen from the same generator (so each already has a guaranteed rook path and bishop path between the two King zones) and a theme baked in — picking a map also picks its skin, there's no separate theme choice for a named map.
+- **My Maps** — anything saved from **Training mode's Map tab**: build a ground there (its existing obstacle-placement brushes — pick a tile, tap the board, tap again to clear), then **💾 Save Map**, name it, and it's written to the browser's own storage (`localStorage`, key `semuncraft-custom-maps`) and shows up in this same list from then on. Only a 9x9 ground can be saved — Single Player never plays any other size.
+
+A map only ever fixes the obstacle layout and the theme; the mines and springs, the roaming animals and everything else `generateMap()` places are exactly the same regardless of which map is chosen (`placeResourcesAndExtras` in `js/themes.js`, shared by both the random path and a fixed map's `loadMap` in `js/maps.js`).
+
 ---
 
 ## Campaign

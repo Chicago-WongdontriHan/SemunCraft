@@ -69,6 +69,12 @@ function selectMap(theme){
     if(b)b.classList.toggle('sel-map',t===theme);
   });
   setBodyTheme(theme);
+  // the Single Player map picker (js/game.js) shows the same theme buttons this row does — keep it in
+  // step, back to a random map of the theme just picked here, rather than silently falling out of sync
+  if(typeof spMapId!=='undefined'){
+    spMapId='random-'+theme;
+    const sel=document.getElementById('sp-map-select');if(sel&&sel.value!==spMapId)sel.value=spMapId;
+  }
   // Regenerate obstacle preview on title screen
   const boardEl=document.getElementById('board');
   if(boardEl&&document.getElementById('intro')&&!document.getElementById('intro').classList.contains('hidden')){
@@ -253,6 +259,14 @@ function generateMap(){
     blockers.forEach(ti=>{tileData[ti]='';tileData[mirrorOf(ti)]='';});
   }
 
+  placeResourcesAndExtras();
+}
+
+// the shared tail of any map, fixed or freshly rolled: the mines and springs, each theme's own extra
+// roaming animal, and the ordinary neutral/attacker pair. Split out of generateMap so a fixed map
+// (js/maps.js) only has to lay down its own obstacles and can share everything after that.
+function placeResourcesAndExtras(){
+  const th=THEMES[mapTheme];if(!th)return;
   // The mines and the springs (RESOURCE_SQUARES in state.js): a mine at e5, the same distance from both
   // kings, and a mine and a spring for each side, 4 squares from its own king and 6 from the other's,
   // mirrored through the centre so the race for them starts even. (generateMap in engine.js)

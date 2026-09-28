@@ -232,6 +232,8 @@ function pcPage(dir){
 // ── INTRO ────────────────────────────────────────────────────────────────────
 function showDiff(){
   document.getElementById('diff-row').style.display='flex';
+  populateSpMapSelect();
+  selectSpMap(spMapId);   // fresh preview + titleTileData for whichever map is (still) selected
 }
 
 function showGameOver(result){

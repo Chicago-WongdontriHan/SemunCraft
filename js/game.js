@@ -1,4 +1,35 @@
 // ── GAME ─────────────────────────────────────────────────────────────────────
+// Single Player's own pre-game choices, made on the title screen before Start Game (js/maps.js has the
+// map library itself): which map (its own theme is baked in, see selectSpMap) and which difficulty.
+let spMapId='random-forest', spDifficulty='easy';
+function populateSpMapSelect(){
+  const sel=document.getElementById('sp-map-select');if(!sel)return;
+  const{random,curated,custom}=allMapGroups();
+  const opt=m=>'<option value="'+m.id+'"'+(m.id===spMapId?' selected':'')+'>'
+    +m.name+(m.blocked===null?' – '+(THEMES[m.theme]?THEMES[m.theme].name:m.theme):'')+'</option>';
+  let h='<optgroup label="Random">'+random.map(opt).join('')+'</optgroup>'
+    +'<optgroup label="Curated">'+curated.map(opt).join('')+'</optgroup>';
+  if(custom.length)h+='<optgroup label="My Maps">'+custom.map(opt).join('')+'</optgroup>';
+  sel.innerHTML=h;
+}
+// picking a map on the title screen previews it right away, the same trick selectMap already does for
+// a plain theme (initGame reuses titleTileData so the board you start on is the one you just saw)
+function selectSpMap(mapId){
+  spMapId=mapId;
+  loadMap(mapId);
+  titleTileData=tileData.slice();
+  titleAnimals=animals.map(a=>({...a}));
+  stopAnimalLoop();animals=[];
+  render();resizeBoard();
+}
+function selectSpDifficulty(d){
+  spDifficulty=d;
+  ['easy','medium','hard','trained','master'].forEach(x=>{
+    const b=document.getElementById('spd-'+x);if(b)b.classList.toggle('sel-map',x===d);
+  });
+}
+function confirmStartSp(){startGame(spDifficulty);}
+
 function startGame(mode){
   gameMode=mode;
   difficulty=['easy','medium','hard','trained','master'].includes(mode)?mode:mode==='pvp'?'pvp':'easy';

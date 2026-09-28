@@ -230,11 +230,9 @@ function pcPage(dir){
 }
 
 // ── INTRO ────────────────────────────────────────────────────────────────────
-function showDiff(){
-  document.getElementById('diff-row').style.display='flex';
-  populateSpMapSelect();
-  selectSpMap(spMapId);   // fresh preview + titleTileData for whichever map is (still) selected
-}
+// Single Player's own setup screen is showSpSetup()/hideSpSetup(), in js/game.js next to the state
+// it reads and writes (spMapId, spDifficulty) — the same place selectMap/RESOURCE_SQUARES live for
+// the plain title-screen theme row.
 
 function showGameOver(result){
   const el=document.getElementById('game-over');

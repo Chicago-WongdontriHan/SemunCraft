@@ -69,11 +69,11 @@ function selectMap(theme){
     if(b)b.classList.toggle('sel-map',t===theme);
   });
   setBodyTheme(theme);
-  // the Single Player map picker (js/game.js) shows the same theme buttons this row does — keep it in
-  // step, back to a random map of the theme just picked here, rather than silently falling out of sync
+  // the Single Player setup screen (js/game.js) has its own map list — keep it in step, back to a
+  // random map of the theme just picked here, rather than silently falling out of sync
   if(typeof spMapId!=='undefined'){
     spMapId='random-'+theme;
-    const sel=document.getElementById('sp-map-select');if(sel&&sel.value!==spMapId)sel.value=spMapId;
+    if(typeof renderSpMapList==='function')renderSpMapList();
   }
   // Regenerate obstacle preview on title screen
   const boardEl=document.getElementById('board');

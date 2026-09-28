@@ -1,19 +1,55 @@
 // ── GAME ─────────────────────────────────────────────────────────────────────
-// Single Player's own pre-game choices, made on the title screen before Start Game (js/maps.js has the
-// map library itself): which map (its own theme is baked in, see selectSpMap) and which difficulty.
+// Single Player's own pre-game choices, made in its own setup overlay before Start Game (js/maps.js has
+// the map library itself): which map (its own theme is baked in, see selectSpMap) and which difficulty.
+// The overlay itself matches the campaign select screen's own look (#campaign-select), not the plain
+// title-screen buttons — a map or a difficulty is a row you tap, never a native <select>.
 let spMapId='random-forest', spDifficulty='easy';
-function populateSpMapSelect(){
-  const sel=document.getElementById('sp-map-select');if(!sel)return;
-  const{random,curated,custom}=allMapGroups();
-  const opt=m=>'<option value="'+m.id+'"'+(m.id===spMapId?' selected':'')+'>'
-    +m.name+(m.blocked===null?' – '+(THEMES[m.theme]?THEMES[m.theme].name:m.theme):'')+'</option>';
-  let h='<optgroup label="Random">'+random.map(opt).join('')+'</optgroup>'
-    +'<optgroup label="Curated">'+curated.map(opt).join('')+'</optgroup>';
-  if(custom.length)h+='<optgroup label="My Maps">'+custom.map(opt).join('')+'</optgroup>';
-  sel.innerHTML=h;
+function showSpSetup(){
+  const overlay=document.getElementById('sp-setup');if(!overlay)return;
+  selectSpDifficulty(spDifficulty);
+  selectSpMap(spMapId);   // fresh preview + titleTileData for whichever map is (still) selected, and
+                          // (re)builds the map list itself — see selectSpMap
+  overlay.classList.add('show');
 }
-// picking a map on the title screen previews it right away, the same trick selectMap already does for
-// a plain theme (initGame reuses titleTileData so the board you start on is the one you just saw)
+function hideSpSetup(){
+  const overlay=document.getElementById('sp-setup');if(overlay)overlay.classList.remove('show');
+}
+function renderSpMapList(){
+  const list=document.getElementById('sp-map-list');if(!list)return;
+  const{random,curated,custom}=allMapGroups();
+  const row=m=>{
+    const b=document.createElement('div');
+    b.className='sp-map-btn'+(m.id===spMapId?' sel':'');
+    const icon=(THEMES[m.theme]&&THEMES[m.theme].tiles&&Object.values(THEMES[m.theme].tiles)[0]?.icon)||'🗺';
+    const sub=m.blocked===null?'Regenerates fresh every game · '+(THEMES[m.theme]?THEMES[m.theme].name:m.theme)
+                               :(THEMES[m.theme]?THEMES[m.theme].name:m.theme)+' · fixed layout';
+    b.innerHTML='<span class="sp-map-icon">'+icon+'</span>'
+      +'<div class="sp-map-info"><div class="sp-map-name">'+m.name+'</div><div class="sp-map-sub">'+sub+'</div></div>';
+    b.onclick=()=>selectSpMap(m.id);
+    if(m.id.startsWith('custom-')){
+      const del=document.createElement('button');
+      del.className='sp-map-del';del.textContent='✕';del.title='Delete this map';
+      del.onclick=e=>{e.stopPropagation();deleteSpMap(m.id);};
+      b.appendChild(del);
+    }
+    return b;
+  };
+  const group=(label,maps)=>{
+    if(!maps.length)return;
+    const g=document.createElement('div');g.className='sp-map-group';g.textContent=label;
+    list.appendChild(g);
+    maps.forEach(m=>list.appendChild(row(m)));
+  };
+  list.innerHTML='';
+  group('Random',random);group('Curated',curated);group('My Maps',custom);
+}
+function deleteSpMap(id){
+  deleteCustomMap(id);
+  if(spMapId===id)selectSpMap('random-forest');
+  renderSpMapList();
+}
+// picking a map previews it right away, the same trick selectMap already does for a plain theme
+// (initGame reuses titleTileData so the board you start on is the one you just saw)
 function selectSpMap(mapId){
   spMapId=mapId;
   loadMap(mapId);
@@ -21,6 +57,7 @@ function selectSpMap(mapId){
   titleAnimals=animals.map(a=>({...a}));
   stopAnimalLoop();animals=[];
   render();resizeBoard();
+  renderSpMapList();   // rebuild so the newly-picked row's .sel highlight moves with it
 }
 function selectSpDifficulty(d){
   spDifficulty=d;
@@ -28,7 +65,7 @@ function selectSpDifficulty(d){
     const b=document.getElementById('spd-'+x);if(b)b.classList.toggle('sel-map',x===d);
   });
 }
-function confirmStartSp(){startGame(spDifficulty);}
+function confirmStartSp(){hideSpSetup();startGame(spDifficulty);}
 
 function startGame(mode){
   gameMode=mode;

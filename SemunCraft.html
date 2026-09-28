@@ -16,7 +16,7 @@
 <meta name="apple-mobile-web-app-title" content="SemunCraft">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <!-- fetch the UI font with the page, so the title does not flash in a fallback face -->
-<link rel="preload" href="fonts/LilitaOne.woff2?v=20260928c" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/LilitaOne.woff2?v=20260928d" as="font" type="font/woff2" crossorigin>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 /* a double tap must not zoom the page: the board has its own pinch and zoom (js/drag.js) */
@@ -72,13 +72,13 @@ html,body{width:100%;height:100%;overflow:hidden;}
 body{font-family:var(--ui-font);background:#0c1a08;color:#c8d4a0;display:flex;flex-direction:column;align-items:center;height:100vh;height:100dvh;padding:6px 10px 4px;gap:5px;background-image:radial-gradient(ellipse at 20% 10%,rgba(30,60,10,.6) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(10,40,5,.7) 0%,transparent 50%);}
 
 /* ── INTRO ── */
-@font-face{font-family:'Lilita One';src:url(fonts/LilitaOne.woff2?v=20260928c) format('woff2');font-display:swap;}
+@font-face{font-family:'Lilita One';src:url(fonts/LilitaOne.woff2?v=20260928d) format('woff2');font-display:swap;}
 /* the title screen: a war scene behind (Battle Lines on wide screens, The Clash on tall ones, from
    img/make-title-wallpapers.js), the SemunCraft title, and the menu on a translucent card. Every
    size follows --tw, the title's width, so the whole menu scales with the screen and still fits. */
 #intro{--tw:min(92vw,640px,60vh);position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;gap:calc(var(--tw)*.02);padding:12px 8px;overflow-y:auto;
-  background:#8ED6F2 url(img/title-wide.svg?v=20260928c) center bottom/cover no-repeat;}
-@media (orientation:portrait){#intro{background-image:url(img/title-tall.svg?v=20260928c);}}
+  background:#8ED6F2 url(img/title-wide.svg?v=20260928d) center bottom/cover no-repeat;}
+@media (orientation:portrait){#intro{background-image:url(img/title-tall.svg?v=20260928d);}}
 #intro-title{width:var(--tw);height:auto;display:block;flex-shrink:0;overflow:visible;}
 #intro-title text{font-family:'Lilita One',Georgia,serif;font-size:120px;text-anchor:middle;stroke-linejoin:round;}
 #intro-title .title-shadow{fill:#2A1706;stroke:#2A1706;stroke-width:20px;}
@@ -95,13 +95,10 @@ body:has(#intro.hidden) #btn-settings{display:none;}
 .intro-btn:hover{background:#1a3010;color:#c8e860;border-color:#8ab840;box-shadow:0 0 16px rgba(140,200,60,.2);}
 .intro-btn.gold{color:#c8a840;border-color:#7a6020;}
 .intro-btn.gold:hover{background:#1a1808;color:#e8c860;border-color:#c8a840;}
-#diff-row{display:flex;flex-direction:column;align-items:center;gap:calc(var(--tw)*.014);animation:fadeIn .3s ease;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:none;}}
-.sp-row{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:calc(var(--tw)*.015);}
 .diff-btn{padding:.12em .8em .18em;font-size:calc(var(--tw)*.058);font-family:'Lilita One',Georgia,serif;letter-spacing:.02em;background:#0e1a08;border:2px solid #3a5820;color:#8ab840;border-radius:.3em;cursor:pointer;transition:all .2s;}
 .diff-btn:hover{background:#162a10;color:#c8e860;border-color:#6a9830;}
 .diff-btn.sel-map{border-color:#c8a840;color:#c8a840;background:#1a1808;}
-#sp-map-select{font-family:'Lilita One',Georgia,serif;font-size:calc(var(--tw)*.042);background:#0e1a08;border:2px solid #3a5820;color:#8ab840;border-radius:.3em;padding:.22em .5em;cursor:pointer;max-width:calc(var(--tw)*.62);}
 
 /* ── TOP BAR ── */
 /* right padding leaves room for the fixed ⚙ Audio button so it doesn't cover the turn counter */
@@ -480,6 +477,28 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 .clb-stars{font-size:calc(var(--tw)*.048);color:var(--gold-lit);}
 #campaign-select .go-btn{font-size:calc(var(--tw)*.042);padding:calc(var(--tw)*.022) calc(var(--tw)*.07);}
 
+/* ── SINGLE PLAYER SETUP ── */
+/* same box the campaign list uses: a map or a difficulty is a row you tap, not a native dropdown */
+#sp-setup{--tw:min(92vw,640px,60vh);display:none;position:fixed;inset:0;z-index:160;background:rgba(0,0,0,.72);align-items:center;justify-content:center;}
+#sp-setup.show{display:flex;}
+#sp-setup-box{background:linear-gradient(var(--leather-a),var(--leather-b));border:2px solid var(--gold);border-radius:var(--ui-r);padding:calc(var(--tw)*.04) calc(var(--tw)*.045);width:clamp(300px,52vw,580px);max-height:86vh;display:flex;flex-direction:column;gap:calc(var(--tw)*.016);box-shadow:0 12px 40px rgba(0,0,0,.9);overflow-y:auto;}
+#sp-setup-box h2{font-size:calc(var(--tw)*.058);color:var(--gold-lit);letter-spacing:.1em;text-align:center;margin-bottom:2px;font-family:var(--ui-font);}
+#sp-map-list{display:flex;flex-direction:column;gap:calc(var(--tw)*.01);max-height:34vh;overflow-y:auto;padding-right:2px;}
+.sp-map-group{font-size:calc(var(--tw)*.03);color:var(--parch-dim);letter-spacing:.1em;text-transform:uppercase;font-family:var(--ui-font);margin:calc(var(--tw)*.012) 0 0;}
+.sp-map-group:first-child{margin-top:0;}
+.sp-map-btn{display:flex;align-items:center;gap:calc(var(--tw)*.02);width:100%;padding:calc(var(--tw)*.016) calc(var(--tw)*.024);background:#162208;border:1px solid #3a5820;border-radius:6px;cursor:pointer;transition:all .15s;font-family:var(--ui-font);text-align:left;}
+.sp-map-btn:hover{background:#1e3210;border-color:#6a9830;}
+.sp-map-btn.sel{border-color:var(--gold);background:#1a1808;}
+.sp-map-icon{font-size:calc(var(--tw)*.05);flex-shrink:0;}
+.sp-map-info{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.sp-map-name{font-size:calc(var(--tw)*.038);color:var(--parch);letter-spacing:.03em;}
+.sp-map-sub{font-size:calc(var(--tw)*.026);color:var(--parch-dim);}
+.sp-map-del{margin-left:auto;flex-shrink:0;background:none;border:none;color:var(--parch-dim);font-size:calc(var(--tw)*.032);cursor:pointer;padding:0 .3em;}
+.sp-map-del:hover{color:#d86a4a;}
+#sp-diff-row{display:flex;flex-wrap:wrap;justify-content:center;gap:calc(var(--tw)*.015);}
+#sp-setup-btns{display:flex;justify-content:center;gap:calc(var(--tw)*.02);margin-top:calc(var(--tw)*.008);}
+#sp-setup .go-btn{font-size:calc(var(--tw)*.042);padding:calc(var(--tw)*.022) calc(var(--tw)*.07);}
+
 /* ── CAMPAIGN BRIEFING ── */
 #briefing{display:none;position:fixed;inset:0;z-index:170;background:rgba(0,0,0,.72);align-items:center;justify-content:center;padding:12px;}
 #briefing.show{display:flex;}
@@ -744,18 +763,7 @@ body.theme-ocean{--tile-frame:#1e3c74;}
   </svg>
   <div id="intro-card">
   <div id="intro-buttons">
-    <button class="intro-btn" onclick="showDiff()">Single Player</button>
-    <div id="diff-row" style="display:none">
-      <div class="sp-row"><select id="sp-map-select" onchange="selectSpMap(this.value)"></select></div>
-      <div class="sp-row">
-        <button class="diff-btn sel-map" id="spd-easy" onclick="selectSpDifficulty('easy')">🌿 Easy</button>
-        <button class="diff-btn" id="spd-medium" onclick="selectSpDifficulty('medium')">⚔ Medium</button>
-        <button class="diff-btn" id="spd-hard" onclick="selectSpDifficulty('hard')">🔥 Hard</button>
-        <button class="diff-btn" id="spd-trained" onclick="selectSpDifficulty('trained')">🧠 Trained</button>
-        <button class="diff-btn" id="spd-master" onclick="selectSpDifficulty('master')">👑 Master</button>
-      </div>
-      <button class="intro-btn gold" onclick="confirmStartSp()">▶ Start Game</button>
-    </div>
+    <button class="intro-btn" onclick="showSpSetup()">Single Player</button>
     <button class="intro-btn" onclick="showCampaignSelect()" style="border-color:#7a5830;color:#e0a840;">🏰 Campaign</button>
     <button class="intro-btn gold" onclick="showPvpLobby()">⚡ Multiplayer</button>
     <button class="intro-btn" onclick="startTutorial()" style="border-color:#5a7830;color:#a0c860;">📖 Tutorial</button>
@@ -817,6 +825,27 @@ body.theme-ocean{--tile-frame:#1e3c74;}
     <div class="pvp-lbl">Open Rooms (same device)</div>
     <div id="pvp-lobby-rooms"><div class="pvp-room-entry empty">press Find Rooms to scan</div></div>
     <div id="pvp-lobby-status" style="color:#4a6828">offline</div>
+  </div>
+</div>
+
+<!-- ── SINGLE PLAYER SETUP OVERLAY ── -->
+<div id="sp-setup">
+  <div id="sp-setup-box">
+    <h2>⚔ Single Player</h2>
+    <div class="panel-label">Map</div>
+    <div id="sp-map-list"></div>
+    <div class="panel-label">Difficulty</div>
+    <div id="sp-diff-row">
+      <button class="diff-btn sel-map" id="spd-easy" onclick="selectSpDifficulty('easy')">🌿 Easy</button>
+      <button class="diff-btn" id="spd-medium" onclick="selectSpDifficulty('medium')">⚔ Medium</button>
+      <button class="diff-btn" id="spd-hard" onclick="selectSpDifficulty('hard')">🔥 Hard</button>
+      <button class="diff-btn" id="spd-trained" onclick="selectSpDifficulty('trained')">🧠 Trained</button>
+      <button class="diff-btn" id="spd-master" onclick="selectSpDifficulty('master')">👑 Master</button>
+    </div>
+    <div id="sp-setup-btns">
+      <button class="go-btn secondary" onclick="hideSpSetup()">↺ Back</button>
+      <button class="go-btn primary" onclick="confirmStartSp()">▶ Start Game</button>
+    </div>
   </div>
 </div>
 
@@ -969,36 +998,36 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 <!-- ?v= is the release version: bump it on every release so browsers (GitHub Pages lets them
      cache files for 10 minutes) never mix old cached scripts with new ones -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-<script src="js/constants.js?v=20260928c"></script>
-<script src="js/state.js?v=20260928c"></script>
-<script src="js/audio.js?v=20260928c"></script>
-<script src="js/music.js?v=20260928c"></script>
-<script src="pieces/pieces.js?v=20260928c"></script>
-<script src="pieces/forest.js?v=20260928c"></script>
-<script src="pieces/jungle.js?v=20260928c"></script>
-<script src="pieces/desert.js?v=20260928c"></script>
-<script src="pieces/ocean.js?v=20260928c"></script>
-<script src="pieces/units-art.js?v=20260928c"></script>
-<script src="js/movement.js?v=20260928c"></script>
-<script src="js/themes.js?v=20260928c"></script>
-<script src="js/maps.js?v=20260928c"></script>
-<script src="js/scenery.js?v=20260928c"></script>
-<script src="js/render.js?v=20260928c"></script>
-<script src="js/combat.js?v=20260928c"></script>
-<script src="js/animals.js?v=20260928c"></script>
-<script src="js/actions.js?v=20260928c"></script>
-<script src="js/ui.js?v=20260928c"></script>
-<script src="js/tutorial.js?v=20260928c"></script>
-<script src="js/campaign.js?v=20260928c"></script>
-<script src="js/training.js?v=20260928c"></script>
-<script src="js/pvp.js?v=20260928c"></script>
-<script src="js/ai.js?v=20260928c"></script>
-<script src="js/game.js?v=20260928c"></script>
-<script src="js/drag.js?v=20260928c"></script>
-<script src="js/resize.js?v=20260928c"></script>
+<script src="js/constants.js?v=20260928d"></script>
+<script src="js/state.js?v=20260928d"></script>
+<script src="js/audio.js?v=20260928d"></script>
+<script src="js/music.js?v=20260928d"></script>
+<script src="pieces/pieces.js?v=20260928d"></script>
+<script src="pieces/forest.js?v=20260928d"></script>
+<script src="pieces/jungle.js?v=20260928d"></script>
+<script src="pieces/desert.js?v=20260928d"></script>
+<script src="pieces/ocean.js?v=20260928d"></script>
+<script src="pieces/units-art.js?v=20260928d"></script>
+<script src="js/movement.js?v=20260928d"></script>
+<script src="js/themes.js?v=20260928d"></script>
+<script src="js/maps.js?v=20260928d"></script>
+<script src="js/scenery.js?v=20260928d"></script>
+<script src="js/render.js?v=20260928d"></script>
+<script src="js/combat.js?v=20260928d"></script>
+<script src="js/animals.js?v=20260928d"></script>
+<script src="js/actions.js?v=20260928d"></script>
+<script src="js/ui.js?v=20260928d"></script>
+<script src="js/tutorial.js?v=20260928d"></script>
+<script src="js/campaign.js?v=20260928d"></script>
+<script src="js/training.js?v=20260928d"></script>
+<script src="js/pvp.js?v=20260928d"></script>
+<script src="js/ai.js?v=20260928d"></script>
+<script src="js/game.js?v=20260928d"></script>
+<script src="js/drag.js?v=20260928d"></script>
+<script src="js/resize.js?v=20260928d"></script>
 <!-- trained AI (Single Player difficulties, AI vs AI); the engine, network and weights load only when needed -->
-<script src="js/netai.js?v=20260928c"></script>
-<script src="js/aivsai.js?v=20260928c"></script>
-<script src="js/update.js?v=20260928c"></script>
+<script src="js/netai.js?v=20260928d"></script>
+<script src="js/aivsai.js?v=20260928d"></script>
+<script src="js/update.js?v=20260928d"></script>
 </body>
 </html>

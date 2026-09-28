@@ -9,8 +9,10 @@ const NETAI_VERSION=((document.currentScript&&/[?&]v=([^&]+)/.exec(document.curr
 // the network behind each difficulty and its sampling temperature (1 plays as in training, 0 always the most
 // likely move); for Hard, 0.25 scored best of 0, 0.05, 0.25, 0.5 and 1 over 1,000 games each, and keeps some
 // variety. `model:null` (Master) has no weights and no temperature: it's rl/scripted.js, always its one best
-// move. Trained is rl/train.py's encoding-2 run (v2-long, update 4,983): it beats Easy and Hard solidly but
-// only holds level with Master about half the time, so it sits between Hard and Master here.
+// move. Trained is rl/train.py's encoding-2 run (v2-final, update 11,248, 2026-09-28): it beats Easy and Hard
+// solidly, and in league eval won 64% of its games against Master's own scripted play (up from 8% at the
+// start of this run) — though markedly better as Black (94%) than as White (38%), an asymmetry not yet
+// tracked down. It still sits between Hard and Master here.
 const NETAI_LEVELS={
   easy:{model:'easy',temperature:1},
   medium:{model:'medium',temperature:1},

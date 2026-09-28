@@ -25,8 +25,8 @@ let elixir={w:0,b:0};     // Elixir drawn from the springs
 let mineTurns={w:0,b:0};  // mine-turns: one for each mine a pawn of that side held at the end of a turn
 let goldSpent={w:0,b:0};  // Gold spent on anything but spawning: fortified pawns
 // a spring is a well, not a tap: it holds SPRING_CAP Elixir of its own (full at the start of the game), pays
-// it out ELIXIR_RATE at a time to whoever holds it, and once it runs dry it takes SPRING_REFILL turns —
-// counted from the moment it ran dry, held or not — before it's full again. {tileIndex: {stock, emptyAt}}
+// it out ELIXIR_RATE at a time to whoever holds it, and whenever it's below its cap it gains 1 back every
+// SPRING_REFILL turns — held or not. {tileIndex: {stock, cooldown}}
 // (creditResources below, creditSprings in js/engine.js)
 let springs={};
 const SPRING_CAP=3, SPRING_REFILL=5;
@@ -83,33 +83,32 @@ function minesHeld(color){ return heldTiles(color,'mine').length; }
 function springsHeld(color){ return heldTiles(color,'spring').length; }
 // Gold income this turn: a sixth, and a sixth more for every mine a pawn of that side holds
 function goldRate(color){ return (1+minesHeld(color))/GOLD_TURNS; }
-// The end of a side's turn pays its tiles: a mine-turn for each mine held, ELIXIR_RATE for each spring
-// (finishTurn in engine.js). Returns the springs that paid, so the turn can sound them.
 // pays the tiles held for the turn just ended: a mine-turn for each mine, and for each spring held,
-// ELIXIR_RATE out of its own reservoir (nothing once it runs dry). Checks every spring's cooldown first,
-// not just the held ones — an unheld spring still refills on its own clock. Returns the springs that
-// actually paid, so the turn can sound them.
+// ELIXIR_RATE out of what it still has. A spring below its cap counts its own cooldown down by 1 every
+// time this runs — once a real half-turn, from either side, held or not — and gains 1 back when it
+// reaches zero; being drawn from resets that cooldown too, so it only regenerates once left alone for a
+// full SPRING_REFILL turns. This is a plain per-turn countdown rather than a shared timestamp on purpose:
+// outside the training ground this seat only ever knows its own side's turn count (turnsOf above), so a
+// clock the two peers could disagree about would let the same spring drift out of sync between them.
+// Returns the springs that actually paid, so the turn can sound them.
 function creditResources(color){
   mineTurns[color]+=minesHeld(color);
-  const now=whiteTurnCount+blackTurnCount;
-  // a spring just back from its cooldown doesn't also pay out the same moment it refills — otherwise
-  // whether a held spring loses half of what it just regained would hinge on which side's turn happened
-  // to be the one that crossed the 5-turn mark, an arbitrary coincidence rather than a rule
-  const justRefilled=new Set();
   for(let i=0;i<tileData.length;i++){
     if(tileData[i]!=='spring')continue;
-    if(!springs[i])springs[i]={stock:SPRING_CAP,emptyAt:undefined};
+    if(!springs[i])springs[i]={stock:SPRING_CAP,cooldown:SPRING_REFILL};
     const sp=springs[i];
-    if(sp.stock<SPRING_CAP&&sp.emptyAt!==undefined&&now-sp.emptyAt>=SPRING_REFILL){sp.stock=SPRING_CAP;sp.emptyAt=undefined;justRefilled.add(i);}
+    if(sp.stock<SPRING_CAP){
+      sp.cooldown--;
+      if(sp.cooldown<=0){sp.stock=Math.min(SPRING_CAP,sp.stock+1);sp.cooldown=SPRING_REFILL;}
+    }
   }
   const paid=[];
   for(const i of heldTiles(color,'spring')){
-    if(justRefilled.has(i))continue;
     const sp=springs[i];
     if(!sp||sp.stock<=0)continue;
     const amt=Math.min(ELIXIR_RATE,sp.stock);
-    elixir[color]+=amt;sp.stock-=amt;
-    if(sp.stock<=0){sp.stock=0;sp.emptyAt=now;}
+    elixir[color]+=amt;sp.stock-=amt;sp.cooldown=SPRING_REFILL;
+    if(sp.stock<0)sp.stock=0;
     paid.push(i);
   }
   return paid;

@@ -624,42 +624,45 @@ function mergeResultType(s,pa,pb){
 const ELIXIR_COST={paladin:3,mage:2,guardian:1,siege:1};   // elixirCost in js/state.js
 const ELIXIR_RATE=.5;   // what a held spring pays a turn, while it still has some Elixir of its own left (js/state.js)
 // a spring is a well, not a tap: it holds SPRING_CAP Elixir of its own (full at the start of the game), pays it out
-// ELIXIR_RATE at a time to whoever holds it, and once it runs dry it takes SPRING_REFILL turns — counted from the
-// moment it ran dry, held or not — before it's full again (creditSprings, js/state.js's creditResources)
+// ELIXIR_RATE at a time to whoever holds it, and whenever it's below its cap it gains 1 back every SPRING_REFILL
+// turns — held or not (creditSprings, js/state.js's creditResources)
 const SPRING_CAP=3, SPRING_REFILL=5;
 function elixirCost(type){return ELIXIR_COST[type]||0;}
-// every spring on the board, fresh: full, with no cooldown running
+// every spring on the board, fresh: full, with a full cooldown queued up (irrelevant until it first
+// dips below cap)
 function freshSprings(tiles){
   const out={};
-  for(let i=0;i<tiles.length;i++)if(tiles[i]==='spring')out[i]={stock:SPRING_CAP,emptyAt:undefined};
+  for(let i=0;i<tiles.length;i++)if(tiles[i]==='spring')out[i]={stock:SPRING_CAP,cooldown:SPRING_REFILL};
   return out;
 }
 function cloneSprings(springs){
   const out={};
-  for(const i in springs)out[i]={stock:springs[i].stock,emptyAt:springs[i].emptyAt};
+  for(const i in springs)out[i]={stock:springs[i].stock,cooldown:springs[i].cooldown};
   return out;
 }
 // the tiles pay for the turn just ended (finishTurn): a mine-turn for each mine held, and for each spring
-// held, ELIXIR_RATE out of what it still has (nothing once it runs dry). Checks every spring's cooldown
-// first, not just the held ones — an unheld spring still refills on its own clock.
+// held, ELIXIR_RATE out of what it still has. A spring below its cap counts its own cooldown down by 1
+// every time this runs — once a real half-turn, from either side, held or not — and gains 1 back when it
+// reaches zero; being drawn from resets that cooldown too, so it only regenerates once left alone for a
+// full SPRING_REFILL turns. This is a plain per-turn countdown rather than a shared timestamp on purpose:
+// in real PvP each browser only ever tracks its own side's turn count locally (see turnsOf in
+// js/state.js), so a clock the two clients could disagree about would let the same spring drift out of
+// sync between them.
 function creditSprings(s,color){
-  const now=s.turnCount.w+s.turnCount.b;
-  // a spring just back from its cooldown doesn't also pay out the same moment it refills — otherwise
-  // whether a held spring loses half of what it just regained would hinge on which side's turn happened
-  // to be the one that crossed the 5-turn mark, an arbitrary coincidence rather than a rule
-  const justRefilled=new Set();
   for(const i in s.springs){
     const sp=s.springs[i];
-    if(sp.stock<SPRING_CAP&&sp.emptyAt!==undefined&&now-sp.emptyAt>=SPRING_REFILL){sp.stock=SPRING_CAP;sp.emptyAt=undefined;justRefilled.add(+i);}
+    if(sp.stock<SPRING_CAP){
+      sp.cooldown--;
+      if(sp.cooldown<=0){sp.stock=Math.min(SPRING_CAP,sp.stock+1);sp.cooldown=SPRING_REFILL;}
+    }
   }
   const paid=[];
   for(const i of heldTiles(s,color,'spring')){
-    if(justRefilled.has(i))continue;
     const sp=s.springs[i];
     if(!sp||sp.stock<=0)continue;
     const amt=Math.min(ELIXIR_RATE,sp.stock);
-    s.elixir[color]+=amt;sp.stock-=amt;
-    if(sp.stock<=0){sp.stock=0;sp.emptyAt=now;}
+    s.elixir[color]+=amt;sp.stock-=amt;sp.cooldown=SPRING_REFILL;
+    if(sp.stock<0)sp.stock=0;
     paid.push(i);
   }
   return paid;
@@ -1568,7 +1571,7 @@ function fromSnapshot(o){
   // time creditResources runs on it, so an early snapshot's o.springs can be a real object that's still
   // missing some (or all) of the board's springs — those default to fresh, same as a game just starting
   s.springs=freshSprings(s.tiles);
-  if(o.springs)for(const i in s.springs)if(o.springs[i])s.springs[i]={stock:o.springs[i].stock,emptyAt:o.springs[i].emptyAt};
+  if(o.springs)for(const i in s.springs)if(o.springs[i])s.springs[i]={stock:o.springs[i].stock,cooldown:o.springs[i].cooldown||SPRING_REFILL};
   return s;
 }
 

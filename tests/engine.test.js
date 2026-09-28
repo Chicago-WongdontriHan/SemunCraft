@@ -188,7 +188,7 @@ section("a pawn's first move can also push two squares sideways along its own ra
   if(E.getDests(s4,at(4,3)).move.has(at(4,1)))fail('the double push is gone after any first move, including a single step');
 });
 
-section('a spring holds up to SPRING_CAP Elixir of its own, runs dry, and refills SPRING_REFILL turns later',()=>{
+section('a spring holds up to SPRING_CAP Elixir of its own, runs dry, and gains 1 back every SPRING_REFILL turns',()=>{
   const s=E.newGame({seed:1,mode:'pvp',theme:'forest'});
   s.board.fill(null);s.tiles.fill('');s.blocked.fill(false);s.targets={w:{},b:{}};
   const at=(r,c)=>r*s.cols+c;
@@ -196,44 +196,44 @@ section('a spring holds up to SPRING_CAP Elixir of its own, runs dry, and refill
   const si=at(4,4);s.tiles[si]='spring';
   s.board[si]={type:'pawn',color:'w',hp:1,maxHp:1};   // a plain White pawn parked on the spring
   s.springs=E.freshSprings(s.tiles);
-  const now=()=>s.turnCount.w+s.turnCount.b;
   if(s.springs[si].stock!==E.SPRING_CAP)fail('a spring should start full ('+E.SPRING_CAP+'), got '+s.springs[si].stock);
   const skip=()=>E.step(s,{type:'skip'},{trusted:true});   // both sides just pass; only White holds the spring
   // one White turn every round pays 0.5, so it takes SPRING_CAP/0.5 White turns to run it dry
   for(let k=0;k<E.SPRING_CAP/0.5;k++){skip();skip();}
   if(s.springs[si].stock!==0)fail('should be dry after draining it, stock is '+s.springs[si].stock);
   if(s.elixir.w!==E.SPRING_CAP)fail('should have banked exactly '+E.SPRING_CAP+' Elixir, banked '+s.elixir.w);
-  const emptyAt=s.springs[si].emptyAt;
-  if(emptyAt===undefined)fail('a dry spring should remember when it ran out');
-  // it stays dry, paying nothing more, until exactly SPRING_REFILL turns (by the shared clock) have passed
-  for(let guard=0;now()-emptyAt<E.SPRING_REFILL&&guard<50;guard++){
-    if(s.springs[si].stock!==0)fail('refilled early, at '+(now()-emptyAt)+' of '+E.SPRING_REFILL+' turns');
+  // it counts its own cooldown down by 1 every half-turn from here (own countdown, not a shared clock —
+  // see creditSprings), and only gains +1 once that reaches zero — not a jump straight back to full
+  for(let guard=0;s.springs[si].stock===0&&guard<50;guard++){
     if(s.elixir.w!==E.SPRING_CAP)fail('a dry spring should not pay anything more');
     skip();
   }
-  if(s.springs[si].stock!==E.SPRING_CAP)fail('should be full again '+E.SPRING_REFILL+' turns after running dry, stock is '+s.springs[si].stock+' ('+(now()-emptyAt)+' turns passed)');
-  if(s.springs[si].emptyAt!==undefined)fail('a refilled spring should have no cooldown running');
-  // and it pays out again now that it is full
-  skip();skip();
-  if(s.elixir.w!==E.SPRING_CAP+.5)fail('a refilled spring held again should pay ELIXIR_RATE, banked '+s.elixir.w);
+  if(s.springs[si].stock!==1)fail('should have gained exactly +1, not jumped to full, stock is '+s.springs[si].stock);
+  // the pawn never left, so as soon as the spring has anything in it again, holding it pays out again —
+  // it doesn't need to reach the cap first (with a permanent holder drawing 0.5 every White turn against
+  // only +1 every SPRING_REFILL turns, it never will: extraction outpaces regen, same as a real siege)
+  skip();
+  if(s.elixir.w!==E.SPRING_CAP+.5)fail('a spring with any stock left should keep paying its holder, banked '+s.elixir.w);
 });
 
-section('an unheld spring still refills on its own clock',()=>{
+section('an unheld spring still gains its regen ticks on its own clock',()=>{
   const s=E.newGame({seed:2,mode:'pvp',theme:'forest'});
   s.board.fill(null);s.tiles.fill('');s.blocked.fill(false);s.targets={w:{},b:{}};
   const at=(r,c)=>r*s.cols+c;
   s.board[at(8,0)]={type:'king',color:'w',hp:5,maxHp:5};s.board[at(0,8)]={type:'king',color:'b',hp:5,maxHp:5};
   const si=at(4,4);s.tiles[si]='spring';   // nobody standing on it
   s.springs=E.freshSprings(s.tiles);
-  s.springs[si].stock=0;s.springs[si].emptyAt=0;   // already dry as of turn 0
-  const now=()=>s.turnCount.w+s.turnCount.b;
+  s.springs[si].stock=0;s.springs[si].cooldown=E.SPRING_REFILL;   // already dry, cooldown just queued up
   const skip=()=>E.step(s,{type:'skip'},{trusted:true});
-  for(let guard=0;now()<E.SPRING_REFILL-1&&guard<50;guard++){
-    if(s.springs[si].stock!==0)fail('refilled too early with nobody standing on it');
+  for(let guard=0;s.springs[si].cooldown>1&&guard<50;guard++){
+    if(s.springs[si].stock!==0)fail('gained a tick too early with nobody standing on it');
     skip();
   }
   skip();
-  if(s.springs[si].stock!==E.SPRING_CAP)fail('an unheld spring should refill on schedule too, stock is '+s.springs[si].stock+' after '+now()+' turns');
+  if(s.springs[si].stock!==1)fail('an unheld spring should gain +1 on schedule too, stock is '+s.springs[si].stock);
+  // and it keeps ticking upward on its own, unheld, until it caps out
+  for(let guard=0;s.springs[si].stock<E.SPRING_CAP&&guard<100;guard++)skip();
+  if(s.springs[si].stock!==E.SPRING_CAP)fail('an unheld spring should still climb all the way to the cap, stock is '+s.springs[si].stock);
 });
 
 section('an AI side attacks only what it sees; reading where the enemy stands is not enough',()=>{

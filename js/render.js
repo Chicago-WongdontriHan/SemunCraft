@@ -231,13 +231,13 @@ function render(){
 // resource's colour; hovering the square says what it does.
 const RESOURCE_TIPS={
   mine:'Gold mine: a plain pawn standing here earns +0.16 Gold at the end of each of your turns'};
-// a spring holds SPRING_CAP Elixir of its own; drawing from it (ELIXIR_RATE a turn) empties it, and once dry
-// it takes SPRING_REFILL turns to fill back up, held or not
+// a spring holds SPRING_CAP Elixir of its own; drawing from it (ELIXIR_RATE a turn) empties it, and whenever
+// it's below cap it gains 1 back every SPRING_REFILL turns left undisturbed, held or not
 function springTip(i){
   const sp=springs[i];
-  if(!sp||sp.stock>=SPRING_CAP)return 'Elixir spring: full ('+SPRING_CAP+' Elixir). A plain pawn standing here draws '+ELIXIR_RATE+' a turn until it runs dry, then it needs '+SPRING_REFILL+' turns to refill.';
-  if(sp.stock<=0)return 'Elixir spring: dry. It refills to '+SPRING_CAP+' Elixir '+SPRING_REFILL+' turns after it ran out.';
-  return 'Elixir spring: '+sp.stock.toFixed(1)+' of '+SPRING_CAP+' Elixir left. A plain pawn standing here draws '+ELIXIR_RATE+' a turn until it runs dry.';
+  if(!sp||sp.stock>=SPRING_CAP)return 'Elixir spring: full ('+SPRING_CAP+' Elixir). A plain pawn standing here draws '+ELIXIR_RATE+' a turn until it runs dry, then it recovers 1 Elixir every '+SPRING_REFILL+' turns.';
+  if(sp.stock<=0)return 'Elixir spring: dry. It recovers 1 Elixir every '+SPRING_REFILL+' turns until it’s full again.';
+  return 'Elixir spring: '+sp.stock.toFixed(1)+' of '+SPRING_CAP+' Elixir left. A plain pawn standing here draws '+ELIXIR_RATE+' a turn; below full, it also recovers 1 every '+SPRING_REFILL+' turns.';
 }
 // the number in it right now, out of SPRING_CAP — its own corner, always on, fog or not: a hover tooltip
 // alone doesn't reach a phone

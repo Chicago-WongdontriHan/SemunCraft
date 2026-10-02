@@ -305,7 +305,7 @@ section('a piece arriving by delayed order fires from its new square at the end 
   else if(!t.board[at(6,5)].rolled)fail('a Siege that rolled by order is not holding its fire');
 });
 
-section('a piece with an order pending holds its fire on the square it is leaving; an order that strikes is its one shot',()=>{
+section('a piece holds its fire on its old square on its moving turn only; an order that strikes is its one shot',()=>{
   const board=()=>{
     const s=E.newGame({seed:3,mode:'classic',theme:'forest',aiSight:{w:false,b:false}});
     s.board.fill(null);s.tiles.fill('');s.blocked.fill(false);s.targets={w:{},b:{}};s.springs={};
@@ -327,17 +327,24 @@ section('a piece with an order pending holds its fire on the square it is leavin
   if(control.near===undefined){fail('setup: no square in the pawn\'s reach');return;}
   skip(control.s);
   if(hp(control.s,control.near)!==3)fail('setup: without an order the pawn should have fired');
-  // ordered two turns ahead: it holds its fire the turn it is ordered, and the next, while the order waits
+  // ordered one turn ahead: the turn it is ordered is its moving turn, and it holds its fire
+  const one=setup();
+  const order1=E.legalActions(one.s).find(a=>a.type==='order'&&a.from===pawn&&a.turns===1);
+  if(!order1){fail('setup: the pawn has no one-turn order');return;}
+  E.step(one.s,order1,{trusted:true});
+  if(one.s.turn==='w')skip(one.s);
+  if(hp(one.s,one.near)!==4)fail('the pawn fired from the square it is leaving, on its moving turn');
+  // ordered two turns ahead: it fires as usual the turn it is ordered, and holds only the next, its moving turn
   const{s,near}=setup();
   const order=E.legalActions(s).find(a=>a.type==='order'&&a.from===pawn&&a.turns===2);
   if(!order){fail('setup: the pawn has no two-turn order');return;}
   E.step(s,order,{trusted:true});
   if(s.turn==='w')skip(s);
-  if(hp(s,near)!==4)fail('the pawn fired from the square it is leaving, the turn it was ordered');
+  if(hp(s,near)!==3)fail('a pawn ordered two turns ahead should fire as usual the turn it is ordered');
   skip(s);                                        // Black's turn ends; White's begins, the order a turn from due
-  if(!(s.board[pawn]&&s.board[pawn].order))fail('setup: the order should still be pending');
+  if(!(s.board[pawn]&&s.board[pawn].order&&s.board[pawn].order.turns===1))fail('setup: the order should be one turn from due');
   skip(s);
-  if(hp(s,near)!==4)fail('the pawn fired from the square it is leaving while its order was still pending');
+  if(hp(s,near)!==3)fail('the pawn fired from the square it is leaving, on its moving turn');
   // an order whose square an enemy has stepped onto strikes it instead; that strike is the turn's one shot
   const t=board();
   t.board[pawn]={type:'pawn',color:'w',hp:3,maxHp:3,fortified:true};

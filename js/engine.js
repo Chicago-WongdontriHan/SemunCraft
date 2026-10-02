@@ -1028,12 +1028,15 @@ function applyAction(s,a,events){
   throw new Error('unknown action type '+a.type);
 }
 
-// who keeps quiet in its own side's volley (heldFire in js/game.js), besides the piece that moved: a piece
-// with an order still pending, which shoots from the square it's going to once it gets there, never from
-// the one it's leaving (the user, 2026-10-02: "the unit should not be able to attack at the previous tile
-// but only attack on the new tile"); and one marked `rolled` this turn — a Siege that rolled in on its
-// order, or any piece whose order struck an enemy instead of moving (runOrders): that strike was its shot
-function holdsFire(p){return !!(p&&(p.rolled||p.order));}
+// who keeps quiet in its own side's volley (heldFire in js/game.js), besides the piece that moved:
+//  - a piece on its moving turn: its order has one turn left, so it goes off at the head of its side's next
+//    turn, and the piece shoots from the square it lands on then, not from the one it's leaving now. The
+//    earlier turns of a 2- or 3-turn order fire as usual. One piece, one shot a turn: before this a pawn
+//    ordered a turn ahead fired from its old square and again from its new one (the user, 2026-10-02:
+//    "only the moving turn ... 2-3 turns ahead should stay as normal")
+//  - one marked `rolled` this turn: a Siege that rolled in on its order, or any piece whose order struck an
+//    enemy instead of moving (runOrders) — that strike was its shot
+function holdsFire(p){return !!(p&&(p.rolled||(p.order&&p.order.turns===1)));}
 
 // end of a turn (endTurn / finishBlackTurn in game.js)
 function finishTurn(s,color,events){
@@ -1132,9 +1135,9 @@ function runOrders(s,own,events){
       B[to]=p;B[i]=null;
       // the order comes due at the head of its own side's turn (upkeep), so the piece has already arrived by
       // the time that turn's volley goes off, and fires from its new square, not the one it left — having held
-      // its fire while the order was pending (holdsFire). Only a Siege holds it one turn more: it spent this
-      // one rolling (the user, 2026-10-02 — every arrival holding fire, tried 2026-09-28, was the wrong
-      // reading of "attack only after the move is done")
+      // its fire there the turn before, its moving turn (holdsFire). Only a Siege holds it one turn more: it
+      // spent this one rolling (the user, 2026-10-02 — every arrival holding fire, tried 2026-09-28, was the
+      // wrong reading of "attack only after the move is done")
       if(p.type==='siege')p.rolled=true;
       if(events)events.push({type:'move',from:i,to,piece:p.type});
     }
@@ -1610,7 +1613,7 @@ const SemunEngine={
   // playing
   newGame,legalActions,step,botTurn,clone,isLegal,fromSnapshot,act,
   // rule queries
-  getDests,computeActions,applyAttacks,upkeep,spawnRemaining,heldTiles,visible,fogFor,sightLimited,inCover,concealed,campaignResult,sangTrajectories,sangLineFor,mageRange,
+  getDests,computeActions,holdsFire,applyAttacks,upkeep,spawnRemaining,heldTiles,visible,fogFor,sightLimited,inCover,concealed,campaignResult,sangTrajectories,sangLineFor,mageRange,
   mergeResultType,elixirCost,freshSprings,SPRING_CAP,SPRING_REFILL,
   // helpers and data
   generateMap,makeRandom,nextRandom,sqName,cheb,geo,STATS,STRATEGIES,THEME_TILES,

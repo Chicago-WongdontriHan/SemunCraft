@@ -12,8 +12,8 @@ const NETAI_VERSION=((document.currentScript&&/[?&]v=([^&]+)/.exec(document.curr
 // move. Trained is rl/train.py's encoding-2 run v2-vsmaster (update 18,900, 2026-10-02): v2-turnfix's knight
 // rush, retrained against the rebuilt Master (its eight strategies in 30% of games), went from ~20% to ~80%
 // wins against it in 100 minutes. It wins by a march of helmeted pawns moved by delayed orders — two pawns a
-// turn, each still firing the turn it was ordered (a rule since changed: a piece with an order out now
-// holds its fire until it lands, see heldFire in js/game.js) — and kills the King before Master's high-tier
+// turn, each still firing the turn it was ordered (a rule since changed: a piece now holds its fire on its
+// old square on its moving turn, see heldFire in js/game.js) — and kills the King before Master's high-tier
 // strategies have built anything; it hardly merges and holds no springs.
 const NETAI_LEVELS={
   easy:{model:'easy',temperature:1},

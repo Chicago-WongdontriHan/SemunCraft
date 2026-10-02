@@ -139,8 +139,9 @@ function kingSafety(s,me,you,myKing,theirs,mine,P){
   if(myKing<0||!theirs.some(i=>E.cheb(s,i,myKing)<=4))return{fire:0,cost:0};
   let fire=0,close=0;
   const shooters=new Set();
-  // a piece with an order pending won't fire from where it stands (holdsFire in js/engine.js); it counts as close
-  for(const a of E.computeActions(s,you))if(a.action==='attack'&&a.target===myKing&&!s.board[a.attacker].order){fire++;shooters.add(a.attacker);}
+  // a piece on its moving turn, or one that just rolled or struck by order, won't fire (holdsFire in
+  // js/engine.js); it counts as close instead
+  for(const a of E.computeActions(s,you))if(a.action==='attack'&&a.target===myKing&&!E.holdsFire(s.board[a.attacker])){fire++;shooters.add(a.attacker);}
   for(const i of theirs){
     const d=E.cheb(s,i,myKing);
     if(d<=3&&!shooters.has(i))close+=(d<=2?.5:.25)*Math.sqrt(full(s.board[i]));

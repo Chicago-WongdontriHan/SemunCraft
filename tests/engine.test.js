@@ -305,6 +305,53 @@ section('a piece arriving by delayed order fires from its new square at the end 
   else if(!t.board[at(6,5)].rolled)fail('a Siege that rolled by order is not holding its fire');
 });
 
+section('a piece with an order pending holds its fire on the square it is leaving; an order that strikes is its one shot',()=>{
+  const board=()=>{
+    const s=E.newGame({seed:3,mode:'classic',theme:'forest',aiSight:{w:false,b:false}});
+    s.board.fill(null);s.tiles.fill('');s.blocked.fill(false);s.targets={w:{},b:{}};s.springs={};
+    s.board[8*9+0]={type:'king',color:'w',hp:5,maxHp:5};s.board[0*9+8]={type:'king',color:'b',hp:5,maxHp:5};
+    s.turn='w';return s;
+  };
+  const at=(r,c)=>r*9+c,skip=s=>E.step(s,{type:'skip'},{trusted:true}),pawn=at(6,4);
+  const knight=()=>({type:'knight',color:'b',hp:4,maxHp:4}),hp=(s,j)=>s.board[j]?s.board[j].hp:0;
+  // a helmeted White pawn with a Black Knight in its reach (helmeted, so the Knight's own volley can't end the test)
+  const setup=()=>{
+    const s=board();
+    s.board[pawn]={type:'pawn',color:'w',hp:3,maxHp:3,fortified:true};
+    const near=[at(5,3),at(5,4),at(5,5)].find(j=>{s.board[j]=knight();
+      const ok=E.computeActions(s,'w').some(a=>a.attacker===pawn&&a.target===j);s.board[j]=null;return ok;});
+    if(near!==undefined)s.board[near]=knight();
+    return{s,near};
+  };
+  const control=setup();
+  if(control.near===undefined){fail('setup: no square in the pawn\'s reach');return;}
+  skip(control.s);
+  if(hp(control.s,control.near)!==3)fail('setup: without an order the pawn should have fired');
+  // ordered two turns ahead: it holds its fire the turn it is ordered, and the next, while the order waits
+  const{s,near}=setup();
+  const order=E.legalActions(s).find(a=>a.type==='order'&&a.from===pawn&&a.turns===2);
+  if(!order){fail('setup: the pawn has no two-turn order');return;}
+  E.step(s,order,{trusted:true});
+  if(s.turn==='w')skip(s);
+  if(hp(s,near)!==4)fail('the pawn fired from the square it is leaving, the turn it was ordered');
+  skip(s);                                        // Black's turn ends; White's begins, the order a turn from due
+  if(!(s.board[pawn]&&s.board[pawn].order))fail('setup: the order should still be pending');
+  skip(s);
+  if(hp(s,near)!==4)fail('the pawn fired from the square it is leaving while its order was still pending');
+  // an order whose square an enemy has stepped onto strikes it instead; that strike is the turn's one shot
+  const t=board();
+  t.board[pawn]={type:'pawn',color:'w',hp:3,maxHp:3,fortified:true};
+  E.step(t,{type:'order',from:pawn,to:at(5,4),turns:1},{trusted:true});
+  if(t.turn==='w')skip(t);
+  t.board[at(5,4)]=knight();                      // a Black Knight steps onto the reserved square
+  skip(t);                                        // Black's turn ends; White's begins, and the order strikes
+  if(hp(t,at(5,4))!==3)fail('the order did not strike the Knight standing on its square');
+  skip(t);
+  if(hp(t,at(5,4))!==3)fail('the pawn whose order struck fired again from the square it never left');
+  skip(t);skip(t);                                // its next turn, it fires as usual
+  if(hp(t,at(5,4))!==2)fail('the pawn should fire as usual the turn after its order struck');
+});
+
 section('speed',()=>{
   const pick=E.makeRandom(1);
   let steps=0,games=0;const t0=Date.now();

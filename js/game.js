@@ -290,12 +290,14 @@ function runOrders(own){
       }
       // an ordered shell bursts over the 3x3 too (siegeSplash in js/combat.js)
       if(p.type==='siege'&&!over){const notes=siegeSplash(i,to,p.color);if(notes.length)addLog('Splash: '+notes.join(', '));}
+      p.rolled=true;   // the strike was its attack on the new square: no second shot from the old one (heldFire)
     }else if(!t&&(d.move.has(to)||(p.type==='siege'&&adj8(i).includes(to)&&!isTileBlocked(to)))){
       delete tgts[i];
       if(p.type==='pawn')p.firstMove=false;
       pieces[to]=p;pieces[i]=null;
-      // it arrives at the head of its own turn and fires from here at the end of it (runOrders in js/engine.js);
-      // only a Siege, which spent the turn rolling, keeps its guns quiet until turnUpkeep clears this
+      // it arrives at the head of its own turn and fires from here at the end of it (runOrders in js/engine.js),
+      // having held its fire while the order was pending (heldFire); only a Siege, which spent the turn
+      // rolling, keeps its guns quiet one turn more, until turnUpkeep clears this
       if(p.type==='siege')p.rolled=true;
       flashSq(to,'order-flash');SFX.move();
       addLog(p.type+' moves to '+sqName(to)+' as ordered');
@@ -305,11 +307,14 @@ function runOrders(own){
     }else addLog(p.type+"'s order at "+sqName(to)+' lapses');
   }
 }
-// who holds their fire this turn: a siege tower that rolled to its ordered square (runOrders), and
-// every piece of a group that walked together — one move each, so none of them shoot as well.
+// who holds their fire this turn (holdsFire in js/engine.js): a piece with an order still pending — it
+// shoots from the square it's going to once it gets there, never from the one it's leaving (the user,
+// 2026-10-02); a siege tower that rolled to its ordered square, or any piece whose order struck instead of
+// moving, that strike being its shot (both marked `rolled` by runOrders); and every piece of a group that
+// walked together — one move each, so none of them shoot as well.
 // (A single piece's move is remembered in movedThisTurn, which the attack lists already leave out.)
 let movedGroup=[];
-function heldFire(i){const p=pieces[i];return !!(p&&p.rolled)||movedGroup.indexOf(i)>=0;}
+function heldFire(i){const p=pieces[i];return !!(p&&(p.rolled||p.order))||movedGroup.indexOf(i)>=0;}
 
 // ── THE MAGE'S METEOR ────────────────────────────────────────────────────────
 // A meteor comes due at the start of its caster's own turn, METEOR_TURNS after it was cast (tickMeteors

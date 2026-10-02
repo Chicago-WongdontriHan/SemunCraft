@@ -1028,6 +1028,13 @@ function applyAction(s,a,events){
   throw new Error('unknown action type '+a.type);
 }
 
+// who keeps quiet in its own side's volley (heldFire in js/game.js), besides the piece that moved: a piece
+// with an order still pending, which shoots from the square it's going to once it gets there, never from
+// the one it's leaving (the user, 2026-10-02: "the unit should not be able to attack at the previous tile
+// but only attack on the new tile"); and one marked `rolled` this turn — a Siege that rolled in on its
+// order, or any piece whose order struck an enemy instead of moving (runOrders): that strike was its shot
+function holdsFire(p){return !!(p&&(p.rolled||p.order));}
+
 // end of a turn (endTurn / finishBlackTurn in game.js)
 function finishTurn(s,color,events){
   const B=s.board;
@@ -1040,7 +1047,7 @@ function finishTurn(s,color,events){
   creditSprings(s,color);
   if(s.mode==='pvp'){
     // the side that acted fires, except the piece that moved or healed; then the other side starts
-    applyAttacks(s,computeActions(s,color).filter(a=>a.attacker!==justMoved&&!(B[a.attacker]&&B[a.attacker].rolled)),color,events);
+    applyAttacks(s,computeActions(s,color).filter(a=>a.attacker!==justMoved&&!holdsFire(B[a.attacker])),color,events);
     if(!s.over){s.turn=other(color);tickScans(s,s.turn);tickFlares(s,s.turn);runMeteors(s,s.turn,events);upkeep(s,s.turn,events);}
   }else if(color==='w'){
     // White fires (except the mover); then Black's turn begins. Black used to fire here too, reactively,
@@ -1049,11 +1056,11 @@ function finishTurn(s,color,events){
     // by giving Black the exact same one-shot-per-own-turn treatment as White, in the branch below,
     // instead of a second, earlier pass of its own.
     s.hitBy=[];
-    applyAttacks(s,computeActions(s,'w').filter(a=>a.attacker!==justMoved&&!(B[a.attacker]&&B[a.attacker].rolled)),'w',events);
+    applyAttacks(s,computeActions(s,'w').filter(a=>a.attacker!==justMoved&&!holdsFire(B[a.attacker])),'w',events);
     if(!s.over){s.turn='b';tickScans(s,'b');tickFlares(s,'b');runMeteors(s,'b',events);upkeep(s,'b',events);}
   }else if(!s.over){
     // Black fires (except the mover), mirroring White's own turn exactly — see the note above
-    const bActs=computeActions(s,'b').filter(a=>a.attacker!==justMoved&&!(B[a.attacker]&&B[a.attacker].rolled));
+    const bActs=computeActions(s,'b').filter(a=>a.attacker!==justMoved&&!holdsFire(B[a.attacker]));
     s.acted=bActs.map(a=>a.attacker);
     applyAttacks(s,bActs,'b',events);
     if(!s.over){s.turn='w';tickScans(s,'w');tickFlares(s,'w');runMeteors(s,'w',events);upkeep(s,'w',events);}
@@ -1118,14 +1125,16 @@ function runOrders(s,own,events){
         else if(t.type==='king'){s.over=true;s.winner=p.color;}
       }
       if(p.type==='siege'&&!s.over)siegeSplash(s,i,to,p.color,events);   // an ordered shell bursts too
+      p.rolled=true;   // the strike was its attack on the new square: no second shot from the old one (holdsFire)
     }else if(!t&&(d.move.has(to)||(p.type==='siege'&&geo(s).adj8[i].includes(to)&&!s.blocked[to]))){
       delete s.targets[p.color][i];
       if(p.type==='pawn')p.firstMove=false;
       B[to]=p;B[i]=null;
       // the order comes due at the head of its own side's turn (upkeep), so the piece has already arrived by
-      // the time that turn's volley goes off, and fires from its new square, not the one it left. Only a Siege
-      // holds its fire: it spent the turn rolling (the user, 2026-10-02 — every arrival holding fire, tried
-      // 2026-09-28, was the wrong reading of "attack only after the move is done")
+      // the time that turn's volley goes off, and fires from its new square, not the one it left — having held
+      // its fire while the order was pending (holdsFire). Only a Siege holds it one turn more: it spent this
+      // one rolling (the user, 2026-10-02 — every arrival holding fire, tried 2026-09-28, was the wrong
+      // reading of "attack only after the move is done")
       if(p.type==='siege')p.rolled=true;
       if(events)events.push({type:'move',from:i,to,piece:p.type});
     }

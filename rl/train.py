@@ -405,9 +405,11 @@ class Trainer:
     def evaluate(self, start):
         args = self.args
         by_color = lambda info: "as White" if info["agent"] == "w" else "as Black"
+        # the scripted AI plays a different strategy each game (rl/scripted.js PROFILES): split by both
+        by_color_and_strategy = lambda info: [by_color(info), info["scenario"]["strategy"]]
         suites = [("easy", env_config("easy", args, 0.0), None, 1.0, lambda info: None),
                   ("hard", env_config("hard", args, 0.0), None, 1.0, lambda info: info["scenario"]["strategy"]),
-                  ("scripted", env_config("scripted", args, 0.0, black=0.5), None, 1.0, by_color)]
+                  ("scripted", env_config("scripted", args, 0.0, black=0.5), None, 1.0, by_color_and_strategy)]
         if self.stage == "league":
             self_play = env_config("self", args, 0.0, black=0.5)
             if self.anchor:
@@ -422,8 +424,10 @@ class Trainer:
             groups = collections.defaultdict(list)
             for info in results:
                 groups["all"].append(info["outcome"])
-                if group(info) is not None:
-                    groups[group(info)].append(info["outcome"])
+                keys = group(info)
+                for key in ([keys] if isinstance(keys, str) else keys or []):
+                    if key is not None:
+                        groups[key].append(info["outcome"])
             for key, outcomes in groups.items():
                 self.eval_log.write({"minutes": (time.time() - start) / 60, "update": self.update, "steps": self.steps,
                                      "stage": self.stage, "suite": name, "group": key, "games": len(outcomes),

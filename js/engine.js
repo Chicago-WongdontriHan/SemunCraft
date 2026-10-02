@@ -1122,7 +1122,11 @@ function runOrders(s,own,events){
       delete s.targets[p.color][i];
       if(p.type==='pawn')p.firstMove=false;
       B[to]=p;B[i]=null;
-      p.rolled=true;   // it spent the turn arriving, same as any other move: the guns stay quiet till next upkeep
+      // the order comes due at the head of its own side's turn (upkeep), so the piece has already arrived by
+      // the time that turn's volley goes off, and fires from its new square, not the one it left. Only a Siege
+      // holds its fire: it spent the turn rolling (the user, 2026-10-02 — every arrival holding fire, tried
+      // 2026-09-28, was the wrong reading of "attack only after the move is done")
+      if(p.type==='siege')p.rolled=true;
       if(events)events.push({type:'move',from:i,to,piece:p.type});
     }
   }
@@ -1301,11 +1305,15 @@ function easyRookRush(s,c,bp,ev){
   bAdvance(s,['rook','pawn','knight'],ev);
 }
 
+// as ai.js has it, quirk and all: a knight, bishop, Rook or Queen counts two squares a turn, and anything else
+// (a pawn, but also a Paladin, Guardian or Mage, which ai.js never lists) one. This port used to count those
+// three as two as well, which made the two built-in AIs pick different pieces to move whenever a Paladin
+// stood exactly two squares from the King (tests/parity.test.js, classic mid-game ocean hard seed 26)
 function turnsToReach(s,bi,wK){
   const p=s.board[bi];if(!p)return 99;
   const d=cheb(s,bi,wK);
   if(p.type==='siege')return 99;
-  return p.type==='pawn'||p.type==='king'?d:Math.ceil(d/2);
+  return p.type==='knight'||p.type==='bishop'||p.type==='rook'||p.type==='queen'?Math.ceil(d/2):d;
 }
 
 // moves one Black piece a step toward a tile; returns {f,t,type} or null

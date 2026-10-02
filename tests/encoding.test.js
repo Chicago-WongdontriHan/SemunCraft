@@ -371,10 +371,11 @@ function emptyBoard(opts){
     const init=await w.call({cmd:'init',grid:11,envs:[
       {seed:1,mode:'classic',opponent:'scripted',agentColor:'b'},
       {seed:2,mode:'pvp',opponent:'scripted',agentColor:'b'},
-      {seed:3,mode:'pvp',opponent:'scripted',agentColor:'w',maxTurns:60},
+      {seed:3,mode:'pvp',opponent:'scripted',agentColor:'w',maxTurns:60,scriptedProfile:'fortress'},   // one strategy only
       {seed:4,mode:'pvp',opponent:'scripted',agentColor:'random',agentBlack:1,maxTurns:60},   // always Black
     ]});
     if(init.envs!==4)fail('init reply '+JSON.stringify(init));
+    const strategies=new Set(require('../rl/scripted.js').PROFILE_NAMES),drawn=new Set();
     let res=(await w.call({cmd:'reset'})).results,games=0;
     for(let n=0;n<400;n++){
       res.forEach((r,k)=>{
@@ -383,6 +384,11 @@ function emptyBoard(opts){
           games++;
           if(r.info.scenario.opponent!=='scripted')fail('the game is not recorded against the scripted opponent');
           if(k===3&&r.info.agent!=='b')fail('agentBlack 1 gave the agent '+r.info.agent);
+          // each game records the strategy the scripted AI played: the one asked for, or one of them
+          const st=r.info.scenario.strategy;
+          if(k===2&&st!=='fortress')fail('scriptedProfile fortress played '+st);
+          if(!strategies.has(st))fail('a game against the scripted AI records no known strategy: '+st);
+          if(k!==2)drawn.add(st);
         }
       });
       res=(await w.call({cmd:'step',actions:res.map(r=>r.legal[Math.floor(pick()*r.legal.length)])})).results;
@@ -393,9 +399,11 @@ function emptyBoard(opts){
     if(!String(bad.error).includes('aiSight'))fail('a non-boolean aiSight accepted: '+JSON.stringify(bad));
     const off=await w.call({cmd:'configure',envs:[0],config:{aiSight:false}});
     if(off.error)fail('aiSight:false rejected: '+JSON.stringify(off));
+    const unknown=await w.call({cmd:'configure',envs:[0],config:{scriptedProfile:'turtle'}});
+    if(!String(unknown.error).includes('scriptedProfile'))fail('an unknown strategy accepted: '+JSON.stringify(unknown));
     await w.call({cmd:'close'});
     if(!games)fail('no game finished');
-    return games+' games finished';
+    return games+' games finished; strategies drawn: '+[...drawn].join(', ');
   });
 
   await section("blackOrders:false keeps delayed orders out of Black's hands, and only Black's",async()=>{

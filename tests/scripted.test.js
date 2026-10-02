@@ -21,13 +21,13 @@ const NOT_USED=new Set(['unsiege','healLock']);
 // the scripted AI as `botColor` against a random player (pvp, either colour) or the old built-in AI
 // (classic, where Black always belongs to it); `onAction` sees every action it takes. Both sides play by
 // normal sight (aiSight), the rule the training worker plays every game by
-function play(seed,mode,botColor,against,onAction){
+function play(seed,mode,botColor,against,onAction,profile){
   const s=E.newGame({seed,mode,theme:THEMES[seed%4],difficulty:seed%2?'easy':'hard',maxTurns:300,aiSight:true});
   const pick=E.makeRandom(seed*7919+3);
   while(!s.over){
     if(s.turn===botColor){
       for(let k=0;k<8&&!s.over&&s.turn===botColor;k++){
-        const a=S.chooseAction(s);
+        const a=S.chooseAction(s,profile?{profile}:undefined);
         if(onAction)onAction(s,a);
         E.step(s,a,{trusted:true});
       }
@@ -46,7 +46,10 @@ section('every action it chooses is legal, unused kinds stay unused, and a posit
       n++;
       if(!E.isLegal(s,a))fail('seed '+seed+': illegal action '+JSON.stringify(a));
       if(NOT_USED.has(a.type))fail('seed '+seed+': used '+a.type);
-      if(a.type==='move'&&s.board[a.from].type==='king')fail('seed '+seed+': moved its King');
+      // the King stays home unless an enemy piece is within two squares of it (then it may step out of reach)
+      if(a.type==='move'&&s.board[a.from].type==='king'
+        &&!s.board.some((p,j)=>p&&p.color!==s.turn&&(p.color==='w'||p.color==='b')&&p.type!=='king'&&E.cheb(s,j,a.from)<=2))
+        fail('seed '+seed+': moved its King with no enemy near it');
       if(a.type==='order'&&!(a.turns===1&&(s.board[a.from].type==='pawn'||s.board[a.from].type==='siege')))fail('seed '+seed+': an order it should not give: '+JSON.stringify(a));
       if(a.type==='scry'&&!s.board.some((p,j)=>p&&p.color!==s.turn&&!E.visible(s,j,s.turn)&&E.cheb(s,j,a.to)<=1))fail('seed '+seed+': a Scry with nothing unseen in it');
       // whatever it fires on at the end of the turn, it can see
@@ -224,6 +227,115 @@ section("it wins economically: the army it has when it wins isn't much bigger th
   if(avg>=30)fail('average army at the moment of victory is '+avg.toFixed(1)+', not meaningfully smaller than before the lead pull');
   if(won<games*.7)fail('won only '+won+' of '+games+' against the old built-in AI');
   return won+' of '+games+' won; army at victory, Gold-equivalent: avg '+avg.toFixed(1)+', max '+Math.max(...worths).toFixed(1);
+});
+
+// A lone Knight hunts White's King: whenever the King is in its L-reach it stays and fires, otherwise it jumps
+// to a square that puts it there (or nearer). The trained network beat every game of the old scripted AI with
+// a rush built on exactly this — and the old one, King never allowed to step, took two hits before it killed
+// the Knight even when it did.
+function knightHunt(kn,pawns){
+  const s=E.newGame({seed:5,mode:'classic',theme:'forest',aiSight:{w:true,b:true}});
+  s.board.fill(null);s.tiles.fill('');s.blocked.fill(false);s.targets={w:{},b:{}};s.springs={};
+  const at=(r,c)=>r*9+c;
+  s.board[at(7,1)]={type:'king',color:'w',hp:5,maxHp:5};
+  s.board[at(1,7)]={type:'king',color:'b',hp:5,maxHp:5};
+  for(const[r,c]of[[6,2],[7,2]].slice(0,pawns))s.board[at(r,c)]={type:'pawn',color:'w',hp:1,maxHp:1,firstMove:true};
+  s.board[at(kn[0],kn[1])]={type:'knight',color:'b',hp:4,maxHp:4};
+  s.turn='w';
+  return s;
+}
+function huntStep(s){
+  const g=E.geo(s),B=s.board,k=B.findIndex(p=>p&&p.type==='knight'&&p.color==='b'),K=B.findIndex(p=>p&&p.type==='king'&&p.color==='w');
+  const moves=k<0||K<0||g.kj[k].includes(K)?[]:E.legalActions(s).filter(a=>a.type==='move'&&a.from===k);
+  if(!moves.length)return E.step(s,{type:'skip'},{trusted:true});
+  moves.sort((a,b)=>(g.kj[b.to].includes(K)?1:0)-(g.kj[a.to].includes(K)?1:0)||E.cheb(s,a.to,K)-E.cheb(s,b.to,K));
+  E.step(s,moves[0],{trusted:true});
+}
+section('when a Knight comes for its King, it defends: the Knight dies and the King takes no hit',()=>{
+  const cases=[['the Knight already on an attacking square, the King alone',[5,2],0],
+               ['the Knight already attacking, two pawns at home',[5,2],2],
+               ['the Knight one jump out, two pawns at home',[3,3],2]];
+  let n=0;
+  for(const name of ['balanced','rush','fortress'])for(const[what,kn,pawns]of cases){
+    const s=knightHunt(kn,pawns);
+    for(let r=0;r<8&&!s.over;r++){S.playTurn(s,{profile:name});if(!s.over)huntStep(s);}
+    const K=s.board.find(p=>p&&p.type==='king'&&p.color==='w');
+    if(!K||K.hp<5)fail(name+', '+what+': the King took '+(5-(K?K.hp:0))+' hit(s)');
+    if(s.board.some(p=>p&&p.type==='knight'&&p.color==='b'))fail(name+', '+what+': the Knight is still alive after 8 rounds');
+    n++;
+  }
+  return n+' hunts, every one fended off';
+});
+
+section('a strategy is drawn per game: the same draw from the same seed, any of them, or the one named',()=>{
+  const a=S.pickProfile(E.makeRandom(5)),b=S.pickProfile(E.makeRandom(5));
+  if(a.name!==b.name||a.onset!==b.onset)fail('the same seed drew '+a.name+'@'+a.onset+' and '+b.name+'@'+b.onset);
+  const seen=new Set(),r=E.makeRandom(1);
+  for(let k=0;k<300;k++)seen.add(S.pickProfile(r).name);
+  if(seen.size!==S.PROFILE_NAMES.length)fail('300 draws only ever gave '+[...seen].join(', '));
+  for(const name of S.PROFILE_NAMES)for(let k=0;k<20;k++){
+    const p=S.pickProfile(E.makeRandom(k),name),[lo,hi]=S.PROFILES[name].onset||[0,0];
+    if(p.name!==name)fail('asked for '+name+', got '+p.name);
+    if(p.onset<lo||p.onset>hi)fail(name+"'s onset "+p.onset+' is outside '+lo+'-'+hi);
+  }
+  // asking for no strategy at all plays the balanced one, so every caller that predates them plays as it did
+  const s=E.newGame({seed:9,mode:'pvp',theme:'forest'}),pick=E.makeRandom(4);
+  for(let k=0;k<25;k++){const acts=E.legalActions(s);E.step(s,acts[Math.floor(pick()*acts.length)],{trusted:true});}
+  if(JSON.stringify(S.chooseAction(s))!==JSON.stringify(S.chooseAction(s,{profile:'balanced'})))fail('no strategy is not the same as balanced');
+  return S.PROFILE_NAMES.length+' strategies: '+S.PROFILE_NAMES.join(', ');
+});
+
+section('each strategy builds only its own top tier, and every move it makes is legal',()=>{
+  const TOP=new Set(['queen','paladin','guardian','mage','siege']);
+  let n=0;
+  for(const name of S.PROFILE_NAMES){
+    const prof=S.pickProfile(E.makeRandom(11),name);
+    play(31,'classic','w','builtin',(s,a)=>{
+      n++;
+      if(!E.isLegal(s,a))fail(name+': illegal action '+JSON.stringify(a));
+      if(a.type==='merge'&&prof.only){
+        const r=E.mergeResultType(s,s.board[a.from],s.board[a.to]);
+        if(TOP.has(r)&&!prof.only.includes(r))fail(name+' merged into a '+r+', not one of its own ('+prof.only.join(', ')+')');
+      }
+    },prof);
+  }
+  return n+' actions checked';
+});
+
+// what the user asked for, measured against the old built-in AI: a Knights game makes Paladins, a Mage game
+// Mages, a Siege game Sieges, and a Fortress holds the tiles and only comes at you long after a Rush would have
+section('the strategies play differently: what they build, the tiles they hold, when they attack',()=>{
+  const games=3,stats={};
+  for(const name of ['rush','knights','arcane','siegeworks','fortress']){
+    const st=stats[name]={made:{},tiles:0,turns:0,strike:[]};
+    for(let g=0;g<games;g++){
+      const s=E.newGame({seed:60+g,mode:'classic',difficulty:'hard',theme:THEMES[g%4],aiSight:{w:true,b:true},maxTurns:300});
+      const prof=S.pickProfile(E.makeRandom(3+g),name),made=new Set();
+      let mine=0,strike=-1;
+      while(!s.over){
+        if(s.turn==='w'){S.playTurn(s,{profile:prof});mine++;}else E.botTurn(s);
+        const eK=s.board.findIndex(p=>p&&p.color==='b'&&p.type==='king');
+        s.board.forEach((p,i)=>{
+          if(!p||p.color!=='w'||p.type==='king')return;
+          made.add(p.type);
+          if(strike<0&&eK>=0&&p.type!=='pawn'&&E.cheb(s,i,eK)<=3)strike=mine;
+        });
+        st.tiles+=E.heldTiles(s,'w','mine').length+E.heldTiles(s,'w','spring').length;st.turns++;
+      }
+      for(const t of made)st.made[t]=(st.made[t]||0)+1;
+      if(strike>=0)st.strike.push(strike);
+    }
+  }
+  const madeIn=(name,t)=>stats[name].made[t]||0;
+  const strike=name=>{const a=stats[name].strike;return a.length?a.reduce((x,y)=>x+y,0)/a.length:Infinity;};
+  const tiles=name=>stats[name].tiles/stats[name].turns;
+  if(madeIn('knights','paladin')<2)fail('Knights & Paladins made a Paladin in only '+madeIn('knights','paladin')+' of '+games+' games');
+  if(madeIn('arcane','mage')<2)fail('Bishops & Mages made a Mage in only '+madeIn('arcane','mage')+' of '+games+' games');
+  if(madeIn('siegeworks','siege')<2)fail('Rooks & Sieges made a Siege in only '+madeIn('siegeworks','siege')+' of '+games+' games');
+  if(!(strike('fortress')>strike('rush')+20))fail('the Fortress struck first at turn '+strike('fortress').toFixed(0)+', hardly later than the Rush ('+strike('rush').toFixed(0)+')');
+  if(!(tiles('fortress')>tiles('rush')+.5))fail('the Fortress held '+tiles('fortress').toFixed(1)+' tiles on average, no more than the Rush ('+tiles('rush').toFixed(1)+')');
+  return 'first strike: rush turn '+strike('rush').toFixed(0)+', fortress turn '+strike('fortress').toFixed(0)
+    +'; tiles held: rush '+tiles('rush').toFixed(1)+', fortress '+tiles('fortress').toFixed(1);
 });
 
 section('speed',()=>{

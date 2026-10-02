@@ -84,6 +84,7 @@ function startGame(mode){
 }
 
 function initGame(){
+  if(typeof netAiResetProfile==='function')netAiResetProfile();   // Master draws a fresh strategy each game
   pieces=new Array(ROWS*COLS).fill(null);
   const wKiPos=idx(7,1), bKiPos=idx(1,7);
   pieces[wKiPos]={type:'king',color:'w',hp:5,maxHp:5};
@@ -207,6 +208,10 @@ function startWhiteTurn(){
       setTimeout(()=>showGameOver(mine?'win':'lose'),600);}
     return;
   }
+  // an order that just landed can also complete the level's objective (a piece arriving on the tile it
+  // has to reach, a strike that clears the last target) — judged now, as the engine's finishTurn does
+  // after its upkeep, not a whole turn later
+  if(campaignCheckpoint()){syncUI();render();return;}
   syncUI(); render();
   setStatus("White's turn");
 }
@@ -289,9 +294,9 @@ function runOrders(own){
       delete tgts[i];
       if(p.type==='pawn')p.firstMove=false;
       pieces[to]=p;pieces[i]=null;
-      // it spent the turn arriving, same as any other move: the guns stay quiet till next upkeep clears
-      // this (heldFire below) — used to be siege-only, but every piece type needs it, not just siege
-      p.rolled=true;
+      // it arrives at the head of its own turn and fires from here at the end of it (runOrders in js/engine.js);
+      // only a Siege, which spent the turn rolling, keeps its guns quiet until turnUpkeep clears this
+      if(p.type==='siege')p.rolled=true;
       flashSq(to,'order-flash');SFX.move();
       addLog(p.type+' moves to '+sqName(to)+' as ordered');
       // and it is seen going: the piece slides across while the board behind it already shows the move

@@ -17,6 +17,11 @@
 // after the opponent passes, so it sees what its move leaves standing in the enemy's reach — including a
 // Siege shell's splash on its own pieces.
 //
+// It plays one of eight strategies a game (STRATEGIES below: a Rush, Knights & Paladins, Bishops & Mages,
+// a Fortress that takes every tile and comes late with everything...), each a different lean on the same
+// yardstick, and it defends its King first (KING SAFETY below) — a trained network once beat every game of
+// it with a single early knight rush.
+//
 // It has the normal sight of a player with Map Cheat off, and no more. It reads the whole board — where
 // the enemy stands is in the state it is handed — but the engine lets a side whose sight is limited
 // (aiSight, which playTurn switches on for the side it plays) attack only what that side can see: within
@@ -35,8 +40,10 @@
 //
 //   chooseAction(state, opts)  the one action it would take now, for state.turn
 //   playTurn(state, opts)      plays until the turn passes, like SemunEngine.botTurn; returns the events
-//   opts.orders === false      gives no delayed orders (training keeps Black's out at first: in the
-//                              classic turn order Black's orders come due before its volley, not after)
+//   opts.orders === false      gives no delayed orders (train.py's --black-orders can still keep Black's out)
+//   opts.profile               the game's strategy (pickProfile, or a name from PROFILES): draw one per game
+//                              and pass the same one every turn; none at all plays `balanced`
+//   pickProfile(rand, name)    a strategy for one game — a random one with rand, or the named one
 (function(root){
 'use strict';
 const E=typeof module!=='undefined'&&module.exports?require('../js/engine.js'):root.SemunEngine;
@@ -58,17 +65,106 @@ const full=p=>p.type==='pawn'&&p.fortified?FORTIFIED:(VALUE[p.type]||0);
 const worth=p=>full(p)*(.3+.7*p.hp/p.maxHp);
 const isSide=p=>!!p&&(p.color==='w'||p.color==='b');   // not the training ground's Scarecrow
 
-// How good `s` is for `me`, in Gold. A finished game is worth ±1e6 (a draw 0).
-function evaluate(s,me){
+// ── STRATEGIES ───────────────────────────────────────────────────────────────
+// One evaluation, but not one personality: each game draws a strategy (pickProfile) that leans the same
+// yardstick a different way, so it doesn't build pawns and Rooks and march every single game. A strategy
+// only ever reweighs what is already being counted:
+//   tech      a multiplier on what its own pieces of a type are worth — the line it climbs (Knights into
+//             Paladins, Bishops into Mages, Rooks into Sieges...): merges toward them gain more, and once
+//             made they're held on to
+//   eco       a multiplier on holding mines and springs; seek on walking a pawn out to one
+//   onset     the turn of its own, drawn from [lo,hi] once a game, before which it builds rather than
+//             attacks: the push toward the enemy King is scaled by `early` until then (or until its army is
+//             worth armyGoal), and by `attack` after — so some games come at you on turn 3 and others sit
+//             tight, take every tile, make the top tier and only then come with everything
+//   only      the top-tier units (Queen, Paladin, Guardian, Mage, Siege) it will merge into at all — leaning
+//             alone wasn't enough: judged one move deep, mid-fight, a merge's own worth is small next to
+//             everything else that move changes, so a Queens game kept turning its bishops into Mages and
+//             its knights into Paladins. The building blocks (knight, bishop, Rook, helmet) stay open to all
+//   guard     before the onset, worth of a piece kept within three squares of its own King
+//   threat    how much it minds enemy pieces at its King (see kingSafety in evaluate) — every strategy
+//             defends; a Fortress more than most
+// `balanced` is the strategy every caller gets when it asks for none: the original single personality.
+// A helmet is a sure +0.8 any turn there's a Gold for it, and the Rook line it leads to costs little Elixir, so
+// a gentle lean toward anything else lost to it every time; a strategy leans hard toward its own line and
+// below 1 on what it isn't (a Knights game doesn't want helmets). Mages and Paladins also need Elixir, so the
+// strategies built on them hold the springs harder.
+const PROFILES={
+  balanced:  {label:'Balanced',threat:1.5},
+  rush:      {label:'Rush',tech:{knight:1.3,fortified:.8},eco:.6,seek:.6,attack:1.6,threat:1.5},   // all forward, so it needs a sharper eye on home
+  knights:   {label:'Knights & Paladins',tech:{knight:1.5,paladin:1.7,fortified:.75,rook:.85,bishop:.9},only:['paladin'],
+              eco:1.8,seek:1.4,onset:[25,50],early:.12,guard:.15,armyGoal:28},
+  arcane:    {label:'Bishops & Mages',tech:{knight:1.3,bishop:2,mage:2,fortified:.75,rook:.85},only:['mage'],
+              eco:2,seek:1.5,onset:[25,55],early:.12,guard:.15,armyGoal:30},
+  royal:     {label:'Queens & Bishops',tech:{knight:1.25,bishop:1.55,queen:2.4,fortified:.75,rook:.75},only:['queen'],
+              eco:1.4,seek:1.2,onset:[20,45],early:.15,guard:.15,armyGoal:28},
+  siegeworks:{label:'Rooks & Sieges',tech:{fortified:1.15,rook:1.3,siege:1.6,knight:.85},only:['siege'],
+              eco:1.4,seek:1.2,onset:[30,55],early:.12,guard:.25,armyGoal:32,threat:1.5},
+  battlemage:{label:'Rooks & Mages',tech:{knight:1.45,bishop:1.75,fortified:.9,rook:1.15,mage:2.2},only:['mage'],
+              eco:2,seek:1.5,onset:[30,55],early:.12,guard:.15,armyGoal:32},
+  fortress:  {label:'Fortress',tech:{fortified:1.1,rook:1.1,guardian:1.6,paladin:1.5,mage:1.5,siege:1.5},
+              only:['guardian','paladin','mage','siege'],
+              eco:2.5,seek:2,onset:[70,110],early:.03,attack:1.5,armyGoal:48,guard:.45,threat:1.6},
+};
+const TOP_TIER=new Set(['queen','paladin','guardian','mage','siege']);
+const PROFILE_DEFAULTS={tech:{},only:null,eco:1,seek:1,onset:[0,0],early:1,attack:1,armyGoal:Infinity,guard:0,threat:1};
+const PROFILE_NAMES=Object.keys(PROFILES);
+// a strategy for one game: a name from PROFILES (or null for any of them, drawn with `rand`), with its
+// onset fixed for the game. Without rand the onset is the middle of its range.
+function pickProfile(rand,name){
+  if(!name)name=PROFILE_NAMES[Math.floor((rand?rand():0)*PROFILE_NAMES.length)];
+  if(!PROFILES[name])throw new Error('unknown strategy '+name);
+  const p=Object.assign({},PROFILE_DEFAULTS,PROFILES[name],{name});
+  const[lo,hi]=p.onset;
+  p.onset=lo+Math.floor((rand?rand():.5)*(hi-lo+1));
+  if(p.onset>hi)p.onset=hi;
+  return p;
+}
+// whatever a caller passed as opts.profile: a picked strategy, a name, or nothing (balanced)
+const BALANCED=pickProfile(null,'balanced');
+function resolveProfile(p){return !p?BALANCED:typeof p==='string'?pickProfile(null,p):p;}
+
+// ── KING SAFETY ──────────────────────────────────────────────────────────────
+// What enemy pieces at my King cost. The search looks one move ahead and then lets the opponent pass, so a
+// piece already firing on the King does show up — but only among the few candidates it looks at twice, and
+// those are picked by their first look, where a move that saves the King (stepping it beside a Knight,
+// which can't hit the squares next to it; putting a pawn where it can hit the attacker) looked like nothing
+// much and never made the cut. A Knight rush walked straight through that. So this is counted at every look:
+//   fire     enemy pieces whose fire would land on my King as they stand — the engine's own computeActions,
+//            real ranges and sight, so a Knight next to the King rightly counts for nothing
+//   close    the other enemy pieces within three squares, by how near and how strong
+//   guards   while either holds, up to three of mine within two squares of the King count back against it,
+//            so defenders come home before the blow lands rather than after
+function kingSafety(s,me,you,myKing,theirs,mine,P){
+  if(myKing<0||!theirs.some(i=>E.cheb(s,i,myKing)<=4))return{fire:0,cost:0};
+  let fire=0,close=0;
+  const shooters=new Set();
+  for(const a of E.computeActions(s,you))if(a.action==='attack'&&a.target===myKing){fire++;shooters.add(a.attacker);}
+  for(const i of theirs){
+    const d=E.cheb(s,i,myKing);
+    if(d<=3&&!shooters.has(i))close+=(d<=2?.5:.25)*Math.sqrt(full(s.board[i]));
+  }
+  let guards=0;
+  for(const i of mine)if(E.cheb(s,i,myKing)<=2&&++guards>=3)break;
+  const danger=fire*2+close;
+  return{fire,cost:P.threat*Math.max(0,fire*KING_HP*.5+close*1.5-guards*Math.min(danger,3)*.4)};
+}
+
+// How good `s` is for `me`, in Gold, as strategy P sees it (resolveProfile). A finished game is worth ±1e6
+// (a draw 0).
+function evaluate(s,me,P){
   if(s.over)return s.winner===me?1e6:s.winner==='draw'?0:-1e6;
+  P=resolveProfile(P);
   const you=me==='w'?'b':'w',B=s.board,g=E.geo(s);
+  // the strategy's own line is worth more to it — only its own pieces, so the enemy's are judged plainly
+  const lean=p=>P.tech[p.type==='pawn'&&p.fortified?'fortified':p.type]||1;
   let score=0,myKing=-1,theirKing=-1;
   const mine=[],theirs=[];
   for(let i=0;i<B.length;i++){
     const p=B[i];if(!isSide(p))continue;
     const own=p.color===me,sign=own?1:-1;
     if(p.type==='king'){score+=sign*KING_HP*p.hp;if(own)myKing=i;else theirKing=i;continue;}
-    score+=sign*worth(p);
+    score+=sign*worth(p)*(own?lean(p):1);
     if(p.mana)score+=sign*MANA*p.mana;
     (own?mine:theirs).push(i);
   }
@@ -84,7 +180,7 @@ function evaluate(s,me){
     const dry=t==='spring'&&s.springs&&s.springs[i]&&s.springs[i].stock<=0;
     const val=t==='mine'?MINE:(dry?SPRING*.25:SPRING),p=B[i];
     const holder=isSide(p)&&p.type==='pawn'&&!p.fortified?p.color:null;
-    if(holder===me){score+=val;held.add(i);}
+    if(holder===me){score+=val*P.eco;held.add(i);}
     else{if(holder===you)score-=val;unheld.push([i,val]);}
   }
   const free=mine.filter(i=>B[i].type==='pawn'&&!B[i].fortified&&!held.has(i));
@@ -94,7 +190,7 @@ function evaluate(s,me){
     let best=-1,bd=99;
     for(let k=0;k<free.length;k++){const d=E.cheb(s,free[k],ti);if(d<bd){bd=d;best=k;}}
     if(best<0)break;
-    score+=.22*(9-Math.min(bd,9));
+    score+=.22*P.seek*(9-Math.min(bd,9));
     seekers.add(free[best]);free.splice(best,1);
   }
   // the rest of the army closes on the enemy King, ever harder as the game wears on and much harder
@@ -108,15 +204,27 @@ function evaluate(s,me){
   // an army under a third the size (16 on average, max 30) — it commits once it's actually ahead, instead
   // of piling up far more force than the win needed
   const LEAD_PUSH=10;
-  const lead=mine.reduce((a,i)=>a+worth(B[i]),0)-theirs.reduce((a,i)=>a+worth(B[i]),0);
-  const push=1+s.turnCount[me]/12+Math.max(0,lead)*LEAD_PUSH;
+  const army=mine.reduce((a,i)=>a+worth(B[i]),0);
+  const lead=army-theirs.reduce((a,i)=>a+worth(B[i]),0);   // plain worth both sides: a lean isn't a lead
+  // the strategy's own clock: building until its onset turn (or until the army it wanted is there), then
+  // everything goes — the guard released and the push turned up to `attack`
+  const attacking=s.turnCount[me]>=P.onset||army>=P.armyGoal;
+  // and while its King is under fire it defends first: a lead (LEAD_PUSH) made the charge look worth more
+  // than the King — a Rush that had just hit the attacking Knight for two felt far enough ahead to keep going
+  // and took the next shot rather than step out of reach
+  const safety=kingSafety(s,me,you,myKing,theirs,mine,P);
+  score-=safety.cost;
+  const push=(1+s.turnCount[me]/12+Math.max(0,lead)*LEAD_PUSH)*(attacking?P.attack:P.early)*(safety.fire?.2:1);
   if(theirKing>=0)for(const i of mine){
     if(seekers.has(i))continue;
     const p=B[i],d=E.cheb(s,i,theirKing);
     score+=push*(p.type==='pawn'?.03*(12-d):.05*Math.sqrt(full(p))*(12-d));
   }
-  // enemy pieces close to my King
-  if(myKing>=0)for(const i of theirs)if(E.cheb(s,i,myKing)<=2)score-=B[i].type==='pawn'?.5:1;
+  if(!attacking&&P.guard&&myKing>=0)for(const i of mine){
+    if(seekers.has(i)||held.has(i))continue;   // the tile-holders and the pawns on their way stay out at the tiles
+    const d=E.cheb(s,i,myKing);
+    if(d<=3)score+=P.guard*Math.sqrt(full(B[i]))*(4-d)/4;
+  }
   // two of mine side by side that could merge into something dearer (Elixir and helmets counted): half of
   // what the merge would gain, so making it is always a step forward. Each piece is in at most one such
   // pair, the dearest first — a block of four Knights has one Paladin's worth of merging to do at a time,
@@ -127,7 +235,9 @@ function evaluate(s,me){
       if(j<=i)continue;
       const b=B[j];if(!b||b.color!==me)continue;
       const r=E.mergeResultType(s,B[i],b);if(!r)continue;
-      const gain=VALUE[r]-full(B[i])-full(b)-(elixirWorth(s.elixir[me])-elixirWorth(s.elixir[me]-E.elixirCost(r)));
+      if(P.only&&TOP_TIER.has(r)&&!P.only.includes(r))continue;   // a merge this strategy never makes
+      const gain=VALUE[r]*(P.tech[r]||1)-full(B[i])*lean(B[i])-full(b)*lean(b)
+        -(elixirWorth(s.elixir[me])-elixirWorth(s.elixir[me]-E.elixirCost(r)));
       if(gain>0)pairs.push([gain,i,j]);
     }
   }
@@ -137,6 +247,25 @@ function evaluate(s,me){
     if(paired.has(i)||paired.has(j))continue;
     paired.add(i);paired.add(j);
     score+=.5*gain;
+  }
+  // and the strategy's own top-tier merge, its two ingredients still apart: drawn together from up to four
+  // squares, more the nearer they are — otherwise a Bishop and a Rook on opposite wings never become a Mage,
+  // since the bonus above only sees pieces already side by side
+  if(P.only){
+    const meet=[];
+    for(const i of mine){
+      if(paired.has(i))continue;
+      for(const j of mine){
+        if(j<=i||paired.has(j))continue;
+        const d=E.cheb(s,i,j);if(d<2||d>4)continue;
+        const r=E.mergeResultType(s,B[i],B[j]);if(!r||!P.only.includes(r))continue;
+        const gain=VALUE[r]*(P.tech[r]||1)-full(B[i])*lean(B[i])-full(B[j])*lean(B[j])
+          -(elixirWorth(s.elixir[me])-elixirWorth(s.elixir[me]-E.elixirCost(r)));
+        if(gain>0)meet.push([gain*(5-d)/4,i,j]);
+      }
+    }
+    meet.sort((x,y)=>y[0]-x[0]);
+    for(const[w,i,j]of meet){if(paired.has(i)||paired.has(j))continue;paired.add(i);paired.add(j);score+=.25*w;}
   }
   // a Meteor still on its way: half of what it will take from whoever stands under it, either side
   for(const m of s.meteors||[])for(const t of m.tiles){
@@ -158,7 +287,9 @@ function noise(s,a){
 }
 
 // what it will consider: no unsieging, no heal-locks, no aimless target locks (only the Paladin, which
-// fires on nothing else), and the King stays home. Two kinds of action are picked over:
+// fires on nothing else), and the King stays home — unless an enemy piece is within two squares of it,
+// when it may step (kingSafety weighs where to: beside a Knight is out of its reach). Two kinds of action
+// are picked over:
 //   Scry   only a 3x3 with an enemy in it that it can't see now — reading where the enemy stands is not
 //          seeing it, and a side of normal sight (aiSight) can attack only what it sees
 //   orders only a pawn's, and the Siege's (its only way to move), for the next turn: a piece the engine
@@ -166,13 +297,21 @@ function noise(s,a){
 //          and so leaves the turn for something else
 function candidates(s,opts){
   const out=[],me=s.turn,you=me==='w'?'b':'w',B=s.board,orders=!(opts&&opts.orders===false);
+  const only=resolveProfile(opts&&opts.profile).only;   // the top tier this game's strategy builds (PROFILES)
   const unseen=[];
   for(let j=0;j<B.length;j++)if(B[j]&&B[j].color===you&&!E.visible(s,j,me))unseen.push(j);
+  const king=B.findIndex(p=>p&&p.color===me&&p.type==='king');
+  const pressed=king>=0&&B.some((p,j)=>p&&p.color===you&&p.type!=='king'&&E.cheb(s,j,king)<=2);
   for(const a of E.legalActions(s)){
     switch(a.type){
       case'unsiege':case'healLock':continue;
       case'target':if(B[a.from].type!=='paladin')continue;break;
-      case'move':if(B[a.from].type==='king')continue;break;
+      case'move':if(B[a.from].type==='king'&&!pressed)continue;break;
+      case'merge':{
+        const r=only&&E.mergeResultType(s,B[a.from],B[a.to]);
+        if(r&&TOP_TIER.has(r)&&!only.includes(r))continue;
+        break;
+      }
       case'scry':if(!unseen.some(j=>E.cheb(s,j,a.to)<=1))continue;break;
       case'order':{
         const p=B[a.from];
@@ -209,13 +348,13 @@ function withSight(s){
 // (the opponent's pass, and for an order the rest of the turn) instead of being played again from the start.
 function chooseAction(s,opts){
   s=withSight(s);
-  const me=s.turn,cand=candidates(s,opts);
+  const me=s.turn,cand=candidates(s,opts),P=resolveProfile(opts&&opts.profile);
   if(cand.length===1)return cand[0];
   const scored=[],orders=[];
   for(const a of cand){
     const c=E.clone(s);
     E.step(c,a,{trusted:true});
-    const v=evaluate(c,me);
+    const v=evaluate(c,me,P);
     if(v>=1e6)return a;                       // wins on the spot
     if(a.type==='order'&&!c.over&&c.turn===me){orders.push({a,c});continue;}   // judged below
     scored.push({a,c,v1:v+noise(s,a)});
@@ -226,18 +365,18 @@ function chooseAction(s,opts){
   let best=null,bv=-Infinity,v0=null;
   for(const t of top){
     if(!t.c.over&&t.c.turn!==me)E.step(t.c,{type:'skip'},{trusted:true});   // and the opponent passes
-    const raw=evaluate(t.c,me),v=raw+.2*t.v1;
+    const raw=evaluate(t.c,me,P),v=raw+.2*t.v1;
     if(t.a.type==='skip')v0=raw;              // passing now, and the opponent passing: what an order is measured against
     if(v>bv){bv=v;best=t.a;}
   }
   // the order that gains most over doing without one goes first, and the rest of the turn follows it
   if(orders.length){
-    if(v0===null)v0=evaluate(afterPass(s,me,null),me);
+    if(v0===null)v0=evaluate(afterPass(s,me,null),me,P);
     let bo=null,bg=ORDER_GAIN;
     for(const{a,c}of orders){
       if(!c.over&&c.turn===me)E.step(c,{type:'skip'},{trusted:true});
       if(!c.over&&c.turn!==me)E.step(c,{type:'skip'},{trusted:true});
-      const g=evaluate(c,me)-v0+noise(s,a);
+      const g=evaluate(c,me,P)-v0+noise(s,a);
       if(g>bg){bg=g;bo=a;}
     }
     if(bo)return bo;
@@ -255,7 +394,7 @@ function playTurn(s,opts){
   return events;
 }
 
-const SemunScripted={chooseAction,playTurn,evaluate};
+const SemunScripted={chooseAction,playTurn,evaluate,pickProfile,PROFILES,PROFILE_NAMES};
 if(typeof module!=='undefined'&&module.exports)module.exports=SemunScripted;
 else root.SemunScripted=SemunScripted;
 })(typeof globalThis!=='undefined'?globalThis:this);

@@ -25,7 +25,7 @@ const DRAW_FLOOR=-0.5;   // drawPenalty's floor: a draw's reward never drops bel
                           // losing always costs a great deal more than even the most wasted draw, not just a little
 const DEFAULTS={
   seed:0,
-  mode:'classic',       // turn order: 'classic' (single-player: White acts and fires, Black fires, Black acts) or 'pvp'
+  mode:'classic',       // turn order: 'classic' (single-player: each side acts, then fires, excluding what it moved) or 'pvp'
   opponent:'auto',      // 'bot' (the built-in AI; classic only, the agent plays White), 'scripted' (rl/scripted.js: plays either
                         // colour in either mode, standard games only), 'random' (chosen here), 'external' (chosen by
                         // Python), or 'auto' (bot in classic, random in pvp)
@@ -38,8 +38,9 @@ const DEFAULTS={
   aiSight:true,         // whoever plays a side here is an AI: its attacks reach only what it sees (normal sight), fog or not,
                         // though it still reads where the enemy stands; standard games only, campaign levels keep their rules
   blackOrders:true,     // false: in the classic order Black gives no delayed orders (the agent and its opponent, scripted or a
-                        // network alike). There Black's orders come due at the start of White's turn, so an arriving piece is
-                        // shot at before Black's volley while White's fires first; training keeps them out until Black can play
+                        // network alike). Black's orders used to come due at the start of White's turn, a trap for Black,
+                        // until the turn order was fixed (2026-09-28); train.py's --black-orders can still hold them back
+  scriptedProfile:'random', // the scripted opponent's strategy (rl/scripted.js PROFILES): 'random' draws one each game
   maxTurns:300,         // both sides' turns together; reaching it is a draw
   shaping:0,            // weight of the potential-based shaping reward (0 = win/loss only)
   gamma:0.99,           // the learner's discount, used by the shaping term
@@ -72,6 +73,7 @@ function withDefaults(base,config){
   if(!(typeof c.drawPenalty==='number'&&isFinite(c.drawPenalty)&&c.drawPenalty>=0))throw new Error('drawPenalty must be a non-negative number');
   if(!(typeof c.turnPenalty==='number'&&isFinite(c.turnPenalty)&&c.turnPenalty>=0))throw new Error('turnPenalty must be a non-negative number');
   if(c.opponent==='scripted'&&c.levels&&c.levels.some(l=>l!==null))throw new Error('the scripted opponent plays standard games, not campaign levels');
+  if(c.scriptedProfile!=='random'&&!Scripted.PROFILES[c.scriptedProfile])throw new Error('unknown scriptedProfile '+c.scriptedProfile);
   return c;
 }
 
@@ -109,9 +111,11 @@ class Env{
     const s=this.s,bot=opponent==='bot';
     this.opponent=opponent;
     this.agent=bot?'w':c.agentColor==='random'?(this.rand()<c.agentBlack?'b':'w'):c.agentColor;
-    this.scenario={mode:c.mode,opponent,level,difficulty:bot&&level===null?s.difficulty:null,
-      strategy:bot&&level===null?s.strategy:null,theme:s.theme,seed};
     this.opponentRand=E.makeRandom(seed^0x5bd1e995);
+    // the scripted opponent keeps one strategy for the whole game, drawn from the game's own seed
+    this.profile=opponent==='scripted'?Scripted.pickProfile(this.opponentRand,c.scriptedProfile==='random'?null:c.scriptedProfile):null;
+    this.scenario={mode:c.mode,opponent,level,difficulty:bot&&level===null?s.difficulty:null,
+      strategy:bot&&level===null?s.strategy:this.profile?this.profile.name:null,theme:s.theme,seed};
     this.length=0;this.return=0;this.phi=null;
     return this.advance();
   }
@@ -130,7 +134,7 @@ class Env{
     const s=this.s,c=this.config;
     while(!s.over&&s.turn!==this.agent){
       if(this.opponent==='bot')E.botTurn(s);
-      else if(this.opponent==='scripted')Scripted.playTurn(s,{orders:this.ordersAllowed()});
+      else if(this.opponent==='scripted')Scripted.playTurn(s,{orders:this.ordersAllowed(),profile:this.profile});
       else if(this.opponent==='random'){
         const acts=E.legalActions(s);
         E.step(s,acts[Math.floor(this.opponentRand()*acts.length)],{trusted:true});

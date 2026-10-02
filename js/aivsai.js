@@ -50,7 +50,10 @@ function aiVsAiNewMatch(){
   aiVsAiMatches++;
   const white=aiVsAiMatches%2?1:2; // the AIs swap colors every match
   const s=SemunEngine.newGame({seed:Math.floor(Math.random()*2147483647),mode:'classic',theme:mapTheme,maxTurns:300,aiSight:true});   // both are AIs: each attacks only what it sees
-  aiVsAi={s,white,black:3-white,timer:null,paused:false,lastFrom:-1,lastTo:-1};
+  // a Master side plays one strategy for the whole match (rl/scripted.js PROFILES), a fresh one each match
+  const profiles={};
+  for(const n of [1,2])if(!NETAI_LEVELS[AIVSAI_LEVELS[n-1]].model)profiles[n]=SemunScripted.pickProfile(Math.random);
+  aiVsAi={s,white,black:3-white,timer:null,paused:false,lastFrom:-1,lastTo:-1,profiles};
   COLS=s.cols;ROWS=s.rows;
   setBodyTheme(s.theme);
   tileData=s.tiles.slice();
@@ -58,6 +61,7 @@ function aiVsAiNewMatch(){
   const cheat=document.getElementById('btn-mapcheat');if(cheat)cheat.innerHTML=uiLabel('map','Map Cheat: ON');
   resetView();
   logLines=[];document.getElementById('log').textContent='';
+  for(const n in profiles)addLog('AI #'+n+' (Master) plays: '+profiles[n].label);
   selectedPieces=new Set();kingSelected=false;targetMode=false;targetSrc=-1;
   over=false;thinking=true;
   const pause=document.getElementById('btn-aivsai-pause');if(pause)pause.textContent='⏸ Pause';
@@ -107,7 +111,7 @@ function aiVsAiStep(){
   if(s.over){aiVsAiFinish();return;}
   const color=s.turn,ai=color==='w'?g.white:g.black;
   const before=s.board.map(p=>p&&Object.assign({},p));
-  const a=netAiChoose(s,AIVSAI_LEVELS[ai-1],{temperature:1});   // "as trained", not that difficulty's tuned value
+  const a=netAiChoose(s,AIVSAI_LEVELS[ai-1],{temperature:1,profile:g.profiles[ai]});   // "as trained", not that difficulty's tuned value
   const events=SemunEngine.step(s,a);
   g.lastFrom=a.from===undefined?-1:a.from;
   g.lastTo=a.to===undefined?-1:a.to;

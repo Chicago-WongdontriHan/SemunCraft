@@ -274,6 +274,37 @@ section('an AI side attacks only what it sees; reading where the enemy stands is
   if(E.legalActions(m.s).filter(a=>a.type==='meteor').length<=meteors.length)fail('without aiSight the Mage should have more Meteor squares');
 });
 
+section('a piece arriving by delayed order fires from its new square at the end of that same turn; a rolling Siege does not',()=>{
+  const board=()=>{
+    const s=E.newGame({seed:3,mode:'classic',theme:'forest',aiSight:{w:false,b:false}});
+    s.board.fill(null);s.tiles.fill('');s.blocked.fill(false);s.targets={w:{},b:{}};s.springs={};
+    s.board[8*9+0]={type:'king',color:'w',hp:5,maxHp:5};s.board[0*9+8]={type:'king',color:'b',hp:5,maxHp:5};
+    s.turn='w';return s;
+  };
+  const at=(r,c)=>r*9+c,skip=s=>E.step(s,{type:'skip'},{trusted:true});
+  // a White pawn ordered one square up, to stand beside a Black Knight it can't reach from where it starts
+  // (and that Knight can't reach it from either square: neither is an L-jump away)
+  const s=board();
+  s.board[at(6,4)]={type:'pawn',color:'w',hp:1,maxHp:1};
+  s.board[at(4,4)]={type:'knight',color:'b',hp:4,maxHp:4};
+  E.step(s,{type:'order',from:at(6,4),to:at(5,4),turns:1},{trusted:true});
+  if(s.turn==='w')skip(s);                       // White's turn ends with the pawn still at home
+  skip(s);                                        // Black's turn ends; White's turn begins, and the order lands
+  if(!(s.board[at(5,4)]&&s.board[at(5,4)].type==='pawn'))fail('the ordered pawn did not arrive at the head of its turn');
+  if(s.board[at(4,4)].hp!==4)fail('the Knight was hit before the pawn had even had its turn');
+  if(s.board[at(5,4)].rolled)fail('a pawn arriving by order was marked as holding its fire');
+  skip(s);                                        // the same turn ends: it fires from the square it arrived on
+  if(!s.board[at(4,4)]||s.board[at(4,4)].hp!==3)fail('the pawn that arrived by order did not fire that same turn (Knight at '+(s.board[at(4,4)]?s.board[at(4,4)].hp:'none')+' HP)');
+  // a Siege's order is a roll to the square beside it, and it spends that turn rolling
+  const t=board();
+  t.board[at(6,6)]={type:'siege',color:'w',hp:6,maxHp:6,sieged:true};
+  E.step(t,{type:'order',from:at(6,6),to:at(6,5),turns:1},{trusted:true});
+  if(t.turn==='w')skip(t);
+  skip(t);
+  if(!(t.board[at(6,5)]&&t.board[at(6,5)].type==='siege'))fail('the ordered Siege did not roll');
+  else if(!t.board[at(6,5)].rolled)fail('a Siege that rolled by order is not holding its fire');
+});
+
 section('speed',()=>{
   const pick=E.makeRandom(1);
   let steps=0,games=0;const t0=Date.now();

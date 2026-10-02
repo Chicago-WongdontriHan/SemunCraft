@@ -11,9 +11,10 @@ const NETAI_VERSION=((document.currentScript&&/[?&]v=([^&]+)/.exec(document.curr
 // variety. `model:null` (Master) has no weights and no temperature: it's rl/scripted.js, always its one best
 // move. Trained is rl/train.py's encoding-2 run v2-turnfix (update 17,702, 2026-10-02), the first trained
 // under the corrected turn order (Black fires after its own move, not before it): in league eval it beat
-// Master 100/100, as White and as Black alike (the old 94%/38% split was the turn-order bug), and the
-// network before it (v2-final) 97%. It wins almost entirely by an early rush — it merges two starting pawns
-// into a knight and goes for the King without spawning — so it's the strongest level, not the most varied.
+// the Master of the day 100/100, as White and as Black alike (the old 94%/38% split was the turn-order bug),
+// and the network before it (v2-final) 97% — almost entirely by one early rush (it merges two starting pawns
+// into a knight and goes for the King without spawning). Master was rebuilt the same day to defend against
+// exactly that, and now beats it in most games with every one of its strategies.
 const NETAI_LEVELS={
   easy:{model:'easy',temperature:1},
   medium:{model:'medium',temperature:1},
@@ -86,12 +87,26 @@ function netAiSnapshot(){
     orderLeft:{w:orderLeft.w,b:orderLeft.b},maxTurns:300});
 }
 
+// Master's strategy for this Single Player game (rl/scripted.js's PROFILES: Rush, Knights & Paladins,
+// Fortress...): drawn on its first move rather than at the start, since the scripted AI's code may still be
+// loading then, and kept for the rest of the game. initGame clears it for the next one.
+let netAiProfile=null;
+function netAiResetProfile(){netAiProfile=null;}
+function netAiMasterProfile(){
+  if(!netAiProfile){
+    netAiProfile=SemunScripted.pickProfile(Math.random);
+    if(typeof addLog==='function')addLog('Master plays: '+netAiProfile.label);
+  }
+  return netAiProfile;
+}
+
 // Black's move at this difficulty (tests/netai.test.js replaces this with random legal moves). `opts`
 // overrides that difficulty's own settings — js/aivsai.js forces temperature 1 for both sides, "as trained",
 // whatever difficulty each is standing in for.
 function netAiChoose(state,level,opts){
   const cfg=Object.assign({},NETAI_LEVELS[level],opts);
-  if(!cfg.model)return SemunScripted.chooseAction(state);   // Master: the scripted AI, no network
+  // Master: the scripted AI, no network — playing one strategy a game (AI vs AI passes its own per side)
+  if(!cfg.model)return SemunScripted.chooseAction(state,{profile:cfg.profile||netAiMasterProfile()});
   const net=netAiNets[cfg.model];
   return SemunNet.choose(net,netAiEncoderFor(net),state,{temperature:cfg.temperature}).action;
 }

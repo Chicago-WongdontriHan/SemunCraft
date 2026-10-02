@@ -143,21 +143,30 @@ function randomModel(version,seed){
   const before=failures;
   if(game.get('NETAI_LEVELS.trained.model')!=='trained'){failures++;console.log('  FAIL NETAI_LEVELS.trained does not point at models/trained.js');}
   if(game.get('NETAI_LEVELS.master.model')!=null){failures++;console.log('  FAIL NETAI_LEVELS.master should have no model (it is the scripted AI)');}
-  let n=0;
+  // it plays one strategy a game (drawn on its first move, cleared by initGame's netAiResetProfile), and
+  // under that strategy chooses exactly what rl/scripted.js would
+  let n=0;const seen=new Set();
   for(let seed=1;seed<=8;seed++){
     const s=E.newGame({seed,mode:'classic',theme:['forest','jungle','desert','ocean'][seed%4],aiSight:{w:false,b:true},maxTurns:120});
     const pick=E.makeRandom(seed);
+    game.run('netAiResetProfile()');
+    let profile=null;
     while(!s.over){
       let a;
       if(s.turn==='b'){
         a=game.ctx.__realChoose(s,'master');n++;
-        const want=S.chooseAction(E.clone(s));
+        const now=game.get('netAiProfile');
+        if(!profile)profile=now;
+        else if(now!==profile){failures++;console.log('  FAIL seed '+seed+': Master changed strategy mid-game');break;}
+        const want=S.chooseAction(E.clone(s),{profile});
         if(JSON.stringify(a)!==JSON.stringify(want)){failures++;console.log('  FAIL Master chose '+q(a)+', the scripted AI itself chose '+q(want));break;}
       }else{const acts=E.legalActions(s);a=acts[Math.floor(pick()*acts.length)];}
       E.step(s,a);
     }
+    if(profile)seen.add(profile.name);
   }
-  console.log((failures===before?'ok  ':'FAIL')+' Master plays exactly what rl/scripted.js chooses ('+n+' moves)');
+  if(seen.size<2){failures++;console.log('  FAIL eight games all drew the same strategy: '+[...seen].join(', '));}
+  console.log((failures===before?'ok  ':'FAIL')+' Master plays exactly what rl/scripted.js chooses ('+n+' moves), one strategy a game ('+[...seen].join(', ')+')');
 }
 console.log('\n'+(checks-failures)+'/'+checks+' checks passed');
 process.exit(failures?1:0);

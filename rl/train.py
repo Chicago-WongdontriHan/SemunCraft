@@ -63,7 +63,8 @@ MIX = {
     "hard": {"easy": 0.25, "hard": 0.75},
 }
 NEXT_STAGE = {"easy": "hard", "hard": "league"}
-LOG_FIELDS = ["minutes", "update", "steps", "steps_per_s", "stage", "black_orders", "shaping", "lr", "entropy_coef", "games",
+LOG_FIELDS = ["minutes", "update", "steps", "steps_per_s", "stage", "black_orders", "shaping", "resource_bonus", "lr",
+              "entropy_coef", "games",
               "win_easy", "win_hard", "win_scripted", "win_self_w", "win_self_b", "draws", "moves_per_game", "entropy",
               "value_loss", "approx_kl", "clip_frac"]
 EVAL_FIELDS = ["minutes", "update", "steps", "stage", "suite", "group", "games", "win", "loss", "draw"]
@@ -85,13 +86,14 @@ def game_kind(info):
     return "self_" + info["agent"]
 
 
-def env_config(kind, args, shaping, black=None):
+def env_config(kind, args, shaping, black=None, resource=0.0):
     """Env config for a kind of opponent; `black` is the agent's share of Black games where the opponent
-    allows either color (default --black-share; evaluations pass 0.5). Whether Black may give orders is
-    args.orders_for_black, which the trainer switches on."""
+    allows either color (default --black-share; evaluations pass 0.5), `resource` the current weight of
+    --resource-bonus. Whether Black may give orders is args.orders_for_black, which the trainer switches on."""
     black = args.black_share if black is None else black
     config = {"mode": "classic", "maxTurns": args.max_turns, "shaping": shaping, "gamma": args.gamma, "aiSight": True,
-              "blackOrders": args.orders_for_black, "drawPenalty": args.draw_penalty, "turnPenalty": args.turn_penalty}
+              "blackOrders": args.orders_for_black, "drawPenalty": args.draw_penalty, "turnPenalty": args.turn_penalty,
+              "resourceBonus": resource}
     if kind == "self":
         config.update(opponent="external", agentColor="random", agentBlack=black)
     elif kind == "scripted":
@@ -218,6 +220,8 @@ class Trainer:
             print("note: checkpoint stage %r is gone; continuing in the league" % self.stage, flush=True)
             self.stage, self.stage_start = "league", self.update
         self.shaping = c.get("shaping", args.shaping)
+        # --resource-bonus starts at full weight with each run (a resumed one too) and fades from there
+        self.resource_bonus, self.resource_start = args.resource_bonus, c.get("update", 0)
         # may Black give orders yet? A checkpoint remembers; one from before this existed (its run let Black
         # give orders from the start) is treated like a new run
         args.orders_for_black = c.get("orders_for_black", args.black_orders == "always")
@@ -226,7 +230,8 @@ class Trainer:
         torch.manual_seed(args.seed + self.update)
         self.rng = np.random.default_rng(args.seed + self.update)
         self.kinds = split(args.envs, MIX[self.stage])
-        self.env = SemunCraftVecEnv(args.envs, [env_config(k, args, self.shaping) for k in self.kinds],
+        self.env = SemunCraftVecEnv(args.envs, [env_config(k, args, self.shaping, resource=self.resource_bonus)
+                                                for k in self.kinds],
                                     num_workers=args.workers, seed=args.seed + self.update, encoding=args.encoding)
         self.layout = {"channels": self.env.channels, "slots": self.env.slots, "on_board": self.env.on_board}
         if self.layout != ENCODINGS[args.encoding]:
@@ -309,6 +314,7 @@ class Trainer:
                 self.advance_stage()
                 self.advance_orders()
                 self.schedule_shaping()
+                self.schedule_resource_bonus()
                 if self.update % args.snapshot_every == 0:
                     self.snapshot()
                 if self.update % args.log_every == 0:
@@ -346,7 +352,8 @@ class Trainer:
         self.stage, self.stage_start = NEXT_STAGE[stage], self.update
         self.kinds[:] = split(args.envs, MIX[self.stage])
         for kind in sorted(set(self.kinds)):
-            self.env.configure(env_config(kind, args, self.shaping), [i for i, k in enumerate(self.kinds) if k == kind])
+            self.env.configure(env_config(kind, args, self.shaping, resource=self.resource_bonus),
+                               [i for i, k in enumerate(self.kinds) if k == kind])
         if self.stage == "league":
             path = os.path.join(args.out, "snapshots", "league_start.pt")
             torch.save(self.net.state_dict(), path)
@@ -362,6 +369,16 @@ class Trainer:
         if abs(target - self.shaping) >= 0.01 or (target == 0.0 and self.shaping != 0.0):
             self.shaping = round(target, 4)
             self.env.configure({"shaping": self.shaping})
+
+    def schedule_resource_bonus(self):
+        """--resource-bonus fades linearly to 0 over --resource-anneal updates from this run's start."""
+        args = self.args
+        if not args.resource_bonus:
+            return
+        target = args.resource_bonus * max(0.0, 1.0 - (self.update - self.resource_start) / max(1, args.resource_anneal))
+        if abs(target - self.resource_bonus) >= 0.02 * args.resource_bonus or (target == 0.0 and self.resource_bonus != 0.0):
+            self.resource_bonus = round(target, 6)
+            self.env.configure({"resourceBonus": self.resource_bonus})
 
     def snapshot(self):
         path = os.path.join(self.args.out, "snapshots", "update_%06d.pt" % self.update)
@@ -386,7 +403,7 @@ class Trainer:
         r = self.recent
         row = {"minutes": (time.time() - start) / 60, "update": self.update, "steps": self.steps,
                "steps_per_s": round(speed), "stage": self.stage, "black_orders": int(self.args.orders_for_black),
-               "shaping": self.shaping,
+               "shaping": self.shaping, "resource_bonus": self.resource_bonus,
                "lr": self.opt.param_groups[0]["lr"], "entropy_coef": self.entropy_coef, "games": self.games,
                "win_easy": rate(r["easy"]), "win_hard": rate(r["hard"]), "win_scripted": rate(r["scripted"]),
                "win_self_w": rate(r["self_w"]), "win_self_b": rate(r["self_b"]),
@@ -396,11 +413,12 @@ class Trainer:
         self.log.write(row)
         show = lambda x: "  - " if x != x else "%.2f" % x
         print("upd %5d | %6.2fM steps | %5d/s | %-8s | lr %.1e | win easy %s hard %s scripted %s self W %s B %s"
-              " | draws %s | moves %5.1f | entropy %.2f kl %.3f"
+              " | draws %s | moves %5.1f | entropy %.2f kl %.3f%s"
               % (self.update, self.steps / 1e6, speed, self.stage, row["lr"], show(row["win_easy"]),
                  show(row["win_hard"]), show(row["win_scripted"]), show(row["win_self_w"]), show(row["win_self_b"]),
                  show(row["draws"]),
-                 row["moves_per_game"], stats["entropy"], stats["approx_kl"]), flush=True)
+                 row["moves_per_game"], stats["entropy"], stats["approx_kl"],
+                 " | resource bonus %.4f" % self.resource_bonus if self.args.resource_bonus else ""), flush=True)
 
     def evaluate(self, start):
         args = self.args
@@ -472,6 +490,11 @@ def parse_args():
                    help="small constant cost of each of the agent's own decisions (worker.js) - winning sooner is "
                         "worth a little more than winning slowly")
     p.add_argument("--shaping-anneal", type=int, default=400, help="league updates over which shaping fades out")
+    p.add_argument("--resource-bonus", type=float, default=0.0,
+                   help="reward each agent turn per mine or spring it holds beyond the opponent's (worker.js "
+                        "resourceBonus), a nudge toward holding the economy; fades to 0 over --resource-anneal "
+                        "updates counted from this run's start, a resumed run's too. 0 = off")
+    p.add_argument("--resource-anneal", type=int, default=2000, help="updates over which --resource-bonus fades out")
     p.add_argument("--window", type=int, default=400, help="recent games per opponent kind for promotion and logs")
     p.add_argument("--promote-easy", type=float, default=0.9, help="win rate against Easy needed to move on")
     p.add_argument("--promote-hard", type=float, default=0.75, help="win rate against Hard needed to move on")

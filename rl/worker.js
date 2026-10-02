@@ -54,6 +54,10 @@ const DEFAULTS={
                         // a small constant cost of taking another move so winning sooner is worth a little more
                         // than winning slowly. Both default to 0 (no effect); see rl/train.py --draw-penalty
                         // and --turn-penalty
+  resourceBonus:0,      // paid once per agent turn, at its first decision: this times the mines and springs the
+                        // agent holds less those its opponent holds (heldTiles), as they stand once the opponent
+                        // has had its turn to contest them. A nudge toward holding the economy long enough to find
+                        // out what it's worth; rl/train.py's --resource-bonus fades it out. 0 = off
 };
 
 function withDefaults(base,config){
@@ -72,12 +76,15 @@ function withDefaults(base,config){
   if(typeof c.aiSight!=='boolean')throw new Error('aiSight must be true or false');
   if(!(typeof c.drawPenalty==='number'&&isFinite(c.drawPenalty)&&c.drawPenalty>=0))throw new Error('drawPenalty must be a non-negative number');
   if(!(typeof c.turnPenalty==='number'&&isFinite(c.turnPenalty)&&c.turnPenalty>=0))throw new Error('turnPenalty must be a non-negative number');
+  if(!(typeof c.resourceBonus==='number'&&isFinite(c.resourceBonus)&&c.resourceBonus>=0))throw new Error('resourceBonus must be a non-negative number');
   if(c.opponent==='scripted'&&c.levels&&c.levels.some(l=>l!==null))throw new Error('the scripted opponent plays standard games, not campaign levels');
   if(c.scriptedProfile!=='random'&&!Scripted.PROFILES[c.scriptedProfile])throw new Error('unknown scriptedProfile '+c.scriptedProfile);
   return c;
 }
 
 let enc=createEncoder({grid:11,version:LATEST});
+// the mines and springs a side holds (resourceBonus)
+const heldResources=(s,color)=>E.heldTiles(s,color,'mine').length+E.heldTiles(s,color,'spring').length;
 const b64=u8=>Buffer.from(u8.buffer,u8.byteOffset,u8.byteLength).toString('base64');
 
 class Env{
@@ -116,7 +123,7 @@ class Env{
     this.profile=opponent==='scripted'?Scripted.pickProfile(this.opponentRand,c.scriptedProfile==='random'?null:c.scriptedProfile):null;
     this.scenario={mode:c.mode,opponent,level,difficulty:bot&&level===null?s.difficulty:null,
       strategy:bot&&level===null?s.strategy:this.profile?this.profile.name:null,theme:s.theme,seed};
-    this.length=0;this.return=0;this.phi=null;
+    this.length=0;this.return=0;this.phi=null;this.paidTurn=0;   // paidTurn: the last agent turn resourceBonus paid for
     return this.advance();
   }
 
@@ -166,6 +173,10 @@ class Env{
         this.phi=phi;
       }
       if(c.turnPenalty)reward-=c.turnPenalty;   // a small, constant cost of taking another decision
+      if(c.resourceBonus&&s.turnCount[this.agent]>this.paidTurn){
+        this.paidTurn=s.turnCount[this.agent];
+        reward+=c.resourceBonus*(heldResources(s,this.agent)-heldResources(s,this.agent==='w'?'b':'w'));
+      }
       this.return+=reward;
     }
     this.legal=enc.legalMap(s);

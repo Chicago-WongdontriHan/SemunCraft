@@ -9,12 +9,11 @@ const NETAI_VERSION=((document.currentScript&&/[?&]v=([^&]+)/.exec(document.curr
 // the network behind each difficulty and its sampling temperature (1 plays as in training, 0 always the most
 // likely move); for Hard, 0.25 scored best of 0, 0.05, 0.25, 0.5 and 1 over 1,000 games each, and keeps some
 // variety. `model:null` (Master) has no weights and no temperature: it's rl/scripted.js, always its one best
-// move. Trained is rl/train.py's encoding-2 run v2-turnfix (update 17,702, 2026-10-02), the first trained
-// under the corrected turn order (Black fires after its own move, not before it): in league eval it beat
-// the Master of the day 100/100, as White and as Black alike (the old 94%/38% split was the turn-order bug),
-// and the network before it (v2-final) 97% — almost entirely by one early rush (it merges two starting pawns
-// into a knight and goes for the King without spawning). Master was rebuilt the same day to defend against
-// exactly that, and now beats it in most games with every one of its strategies.
+// move. Trained is rl/train.py's encoding-2 run v2-vsmaster (update 18,900, 2026-10-02): v2-turnfix's knight
+// rush, retrained against the rebuilt Master (its eight strategies in 30% of games), went from ~20% to ~80%
+// wins against it in 100 minutes. It wins by a march of helmeted pawns moved by delayed orders — two pawns a
+// turn, each still firing the turn it's ordered and again where it lands — and kills the King before
+// Master's high-tier strategies have built anything; it hardly merges and holds no springs.
 const NETAI_LEVELS={
   easy:{model:'easy',temperature:1},
   medium:{model:'medium',temperature:1},

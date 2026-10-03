@@ -58,7 +58,12 @@ const DEFAULTS={
                         // agent holds less those its opponent holds (heldTiles), as they stand once the opponent
                         // has had its turn to contest them. A nudge toward holding the economy long enough to find
                         // out what it's worth; rl/train.py's --resource-bonus fades it out. 0 = off
+  mergeBonus:0,         // paid for each merge the agent makes, times what it makes (MERGE_TIER: a Knight or Rook 1, a
+                        // Bishop 2, the Queen and the top tier 3); unsieging a Siege takes its 3 back, so splitting and
+                        // re-merging it earns nothing. A nudge toward merging at all — a network that never merges
+                        // never has a bishop to strip with; rl/train.py's --merge-bonus fades it out. 0 = off
 };
+const MERGE_TIER={knight:1,rook:1,bishop:2,queen:3,siege:3,guardian:3,paladin:3,mage:3};
 
 function withDefaults(base,config){
   const c=Object.assign({},base,config);
@@ -77,6 +82,7 @@ function withDefaults(base,config){
   if(!(typeof c.drawPenalty==='number'&&isFinite(c.drawPenalty)&&c.drawPenalty>=0))throw new Error('drawPenalty must be a non-negative number');
   if(!(typeof c.turnPenalty==='number'&&isFinite(c.turnPenalty)&&c.turnPenalty>=0))throw new Error('turnPenalty must be a non-negative number');
   if(!(typeof c.resourceBonus==='number'&&isFinite(c.resourceBonus)&&c.resourceBonus>=0))throw new Error('resourceBonus must be a non-negative number');
+  if(!(typeof c.mergeBonus==='number'&&isFinite(c.mergeBonus)&&c.mergeBonus>=0))throw new Error('mergeBonus must be a non-negative number');
   if(c.opponent==='scripted'&&c.levels&&c.levels.some(l=>l!==null))throw new Error('the scripted opponent plays standard games, not campaign levels');
   if(c.scriptedProfile!=='random'&&!Scripted.PROFILES[c.scriptedProfile])throw new Error('unknown scriptedProfile '+c.scriptedProfile);
   return c;
@@ -124,6 +130,7 @@ class Env{
     this.scenario={mode:c.mode,opponent,level,difficulty:bot&&level===null?s.difficulty:null,
       strategy:bot&&level===null?s.strategy:this.profile?this.profile.name:null,theme:s.theme,seed};
     this.length=0;this.return=0;this.phi=null;this.paidTurn=0;   // paidTurn: the last agent turn resourceBonus paid for
+    this.merged=0;   // mergeBonus earned by the agent's last action, paid with its next reward
     return this.advance();
   }
 
@@ -131,8 +138,14 @@ class Env{
     const a=this.legal&&this.legal.get(index);
     if(!a)throw new Error('env '+this.index+': action '+index+' is not legal');
     const side=this.s.turn;
-    E.step(this.s,a,{trusted:true});
-    if(side===this.agent)this.length++;
+    const events=E.step(this.s,a,{trusted:true});
+    if(side===this.agent){
+      this.length++;
+      if(this.config.mergeBonus){
+        for(const e of events)if(e.type==='merge'&&MERGE_TIER[e.piece])this.merged+=this.config.mergeBonus*MERGE_TIER[e.piece];
+        if(a.type==='unsiege')this.merged-=this.config.mergeBonus*MERGE_TIER.siege;
+      }
+    }
     return this.advance();
   }
 
@@ -150,7 +163,8 @@ class Env{
     if(s.over){
       const outcome=s.winner==='draw'?0:s.winner===this.agent?1:-1;
       // the potential of a finished game is 0
-      let reward=outcome-(c.shaping&&this.phi!==null?c.shaping*this.phi:0);
+      let reward=outcome-(c.shaping&&this.phi!==null?c.shaping*this.phi:0)+this.merged;
+      this.merged=0;
       // a draw that ends with the agent still ahead on material costs more than a draw that was
       // always going to be level — turtling on a lead instead of finishing it stops paying off. Capped
       // at DRAW_FLOOR, well clear of a loss's -1: losing must always cost far more than any draw, or a
@@ -173,6 +187,7 @@ class Env{
         this.phi=phi;
       }
       if(c.turnPenalty)reward-=c.turnPenalty;   // a small, constant cost of taking another decision
+      reward+=this.merged;this.merged=0;         // mergeBonus earned by its last action
       if(c.resourceBonus&&s.turnCount[this.agent]>this.paidTurn){
         this.paidTurn=s.turnCount[this.agent];
         reward+=c.resourceBonus*(heldResources(s,this.agent)-heldResources(s,this.agent==='w'?'b':'w'));

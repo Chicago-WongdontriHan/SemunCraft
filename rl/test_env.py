@@ -171,7 +171,8 @@ def configure_switches_mode():
 def bad_config_rejected():
     for config, word in (({"mode": "pvp", "opponent": "bot"}, "classic"), ({"agentBlack": 1.5}, "agentBlack"),
                          ({"blackOrders": "no"}, "blackOrders"), ({"drawPenalty": -1}, "drawPenalty"),
-                         ({"turnPenalty": -1}, "turnPenalty"), ({"resourceBonus": -1}, "resourceBonus")):
+                         ({"turnPenalty": -1}, "turnPenalty"), ({"resourceBonus": -1}, "resourceBonus"),
+                         ({"mergeBonus": -1}, "mergeBonus")):
         try:
             SemunCraftVecEnv(1, config, num_workers=1).close()
             check(False, "accepted %s" % config)
@@ -229,6 +230,19 @@ def draw_and_turn_penalty():
         check(np.all(np.abs(tiles) <= 12), "more tiles held than a map has: %s" % sorted(set(tiles.tolist())))
         check((tiles > 0).any() and (tiles < 0).any(), "random play never held more, or fewer, tiles than its opponent: %s"
               % collections.Counter(tiles.tolist()))
+
+    # mergeBonus: what a merge makes, times the bonus (a Knight 1 ... the top tier 3), paid with the agent's next
+    # reward; random play merges now and then
+    with SemunCraftVecEnv(16, {"mode": "pvp", "opponent": "random", "maxTurns": 200, "mergeBonus": 0.01},
+                          num_workers=2, seed=9) as env:
+        env.reset()
+        paid = []
+        for _ in range(400):
+            _, rewards, dones, _ = env.step(sample_legal(env.action_masks(), rng))
+            paid += list(rewards[~dones])
+        units = np.round(np.array(paid) / 0.01)
+        check(np.allclose(units * 0.01, paid), "mergeBonus rewards should be whole tiers times 0.01: %s" % paid[:10])
+        check((units > 0).sum() > 0, "random play never merged: %s" % collections.Counter(units.tolist()))
 
     # neither penalty is required: the default config is unaffected
     with SemunCraftVecEnv(4, {"mode": "classic", "maxTurns": 40}, num_workers=1, seed=5) as env:

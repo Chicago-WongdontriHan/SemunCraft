@@ -30,14 +30,15 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WORKER = os.path.join(ROOT, "rl", "worker.js")
 
 # the rl/encoding.js versions: observation channels, action slots per board cell, and the channel that
-# marks real board cells (the last channel, in both, is "moves first each round"). A network plays only
+# marks real board cells (the last channel of versions 1 and 2 is "moves first each round"). A network plays only
 # in the version it was trained on. tests/encoding.test.js and rl/test_env.py check these against
 # rl/encoding.js.
 ENCODINGS = {
     1: {"channels": 32, "slots": 82, "on_board": 19},   # the networks trained through 2026-09-14
-    2: {"channels": 54, "slots": 159, "on_board": 42},  # the current rules
+    2: {"channels": 54, "slots": 159, "on_board": 42},  # through 2026-10-02
+    3: {"channels": 55, "slots": 160, "on_board": 42},  # the current rules: 2 plus the bishop's Strip
 }
-LATEST_ENCODING = 2
+LATEST_ENCODING = 3
 
 
 def find_node():

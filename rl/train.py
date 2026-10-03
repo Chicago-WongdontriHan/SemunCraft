@@ -54,7 +54,8 @@ import numpy as np
 import torch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ppo import ENCODINGS, LATEST_ENCODING, SLOT_BIAS, PolicyValueNet, Rollout, Runner, autocast, ppo_update  # noqa: E402
+from ppo import (ENCODINGS, LATEST_ENCODING, SLOT_BIAS, PolicyValueNet, Rollout, Runner, autocast, encoding_of,  # noqa: E402
+                 ppo_update, upgrade_state)
 from semuncraft_env import SemunCraftVecEnv  # noqa: E402
 
 # share of training games against each kind of opponent, per stage (main() adds the league mix)
@@ -154,7 +155,11 @@ class League:
 
     def load(self, path):
         net = make_net(self.args, self.layout, self.device)
-        net.load_state_dict(torch.load(path, map_location=self.device, weights_only=True))
+        state = torch.load(path, map_location=self.device, weights_only=True)
+        # a snapshot from before --to-encoding grows into this run's encoding (upgrade_state in rl/ppo.py)
+        if encoding_of(state) != self.args.encoding:
+            state = upgrade_state(state, self.args.encoding)
+        net.load_state_dict(state)
         return net.eval()
 
     def add_recent(self, path):
@@ -245,7 +250,8 @@ class Trainer:
         self.run_start = None  # network when this run started
         if checkpoint:
             self.net.load_state_dict(c["net"])
-            self.opt.load_state_dict(c["opt"])
+            if c.get("opt"):   # (none after --to-encoding: the network's shape changed, Adam starts over)
+                self.opt.load_state_dict(c["opt"])
             for path in c.get("league", []):
                 if os.path.exists(path):
                     self.league.add_recent(path)
@@ -527,6 +533,10 @@ def parse_args():
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--encoding", type=int, default=LATEST_ENCODING, choices=sorted(ENCODINGS),
                    help="rl/encoding.js version for a new run (a resumed run keeps its own)")
+    p.add_argument("--to-encoding", type=int, choices=sorted(ENCODINGS),
+                   help="with --resume: grow the checkpoint's network into this newer encoding first (upgrade_state "
+                        "in rl/ppo.py: the new channels and slots start at nought, the optimizer starts over, and the "
+                        "league's older snapshots are grown the same way as they load)")
     return p.parse_args()
 
 
@@ -549,6 +559,11 @@ def main():
         # runs before encoding 2 saved none)
         args.width, args.blocks = checkpoint["args"]["width"], checkpoint["args"]["blocks"]
         args.encoding = checkpoint.get("encoding", 1)
+        if args.to_encoding and args.to_encoding != args.encoding:
+            checkpoint["net"] = upgrade_state(checkpoint["net"], args.to_encoding)
+            checkpoint["opt"] = None
+            print("grew the network from encoding %d into %d" % (args.encoding, args.to_encoding), flush=True)
+            args.encoding = checkpoint["encoding"] = args.to_encoding
         if args.encoding != LATEST_ENCODING:
             print("note: this checkpoint plays encoding %d; the latest is %d, and only a new run trains on it"
                   % (args.encoding, LATEST_ENCODING), flush=True)

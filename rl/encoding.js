@@ -5,19 +5,23 @@
 // both colors. Loads as a classic <script> after js/engine.js (global
 // SemunEncoding) or in Node, so training and the browser share one encoding.
 //
-// Two versions live here, and a network must be played with the one it was trained on (the `encoding`
+// Three versions live here, and a network must be played with the one it was trained on (the `encoding`
 // in its exported meta; js/netai.js reads it):
 //   1  the networks trained through 2026-09-14 (models/*.js): 32 channels, 82 action slots per cell. It
 //      predates Scry, orders, helmets, the Meteor, Elixir and the new units: those actions are left out
 //      of its map, and a Mage, Paladin or Guardian shows on the queen's, knight's or rook's channel.
-//   2  the current rules (LATEST): 54 channels and 159 slots per cell — every unit on its own channel,
-//      helmets, Gold and Elixir, the mines and springs, orders and Meteors on their way, the side's real
-//      sight, and every action the engine offers, Scry, orders, helmets and the Meteor included.
+//   2  54 channels and 159 slots per cell — every unit on its own channel, helmets, Gold and Elixir, the
+//      mines and springs, orders and Meteors on their way, the side's real sight, and every action the
+//      engine offered until 2026-10-03, Scry, orders, helmets and the Meteor included.
+//   3  the current rules (LATEST): version 2 plus the bishop's Strip (2026-10-03) — a 55th channel for a
+//      pawn whose helmet was stripped (it can never be fortified again), and a 160th slot per cell, "strip
+//      the helmet on this square". A version-2 network grows into it (upgrade_state in rl/ppo.py): the
+//      new channel's weights start at nought, so it plays as before until it learns to read it.
 (function(root){
 'use strict';
 const E=typeof module!=='undefined'&&module.exports?require('../js/engine.js'):root.SemunEngine;
 
-const LATEST=2;
+const LATEST=3;
 // actions on a square up to 4 rows and 4 columns away (a siege tower's reach): 9x9 offsets per cell
 const WINDOW=4,SIDE=2*WINDOW+1,OFFSETS=SIDE*SIDE,CENTRE=WINDOW*SIDE+WINDOW;
 
@@ -82,9 +86,20 @@ const ORDER_WINDOW=2,ORDER_SIDE=2*ORDER_WINDOW+1,ORDER_OFFSETS=ORDER_SIDE*ORDER_
 const V2_SPAWN=OFFSETS,V2_SCRY=OFFSETS+1,V2_METEOR=OFFSETS+2,V2_ORDER=OFFSETS+3;
 const V2_SLOTS=V2_ORDER+ORDER_OFFSETS*ORDER_DELAYS;   // 159
 
+// ── VERSION 3 ────────────────────────────────────────────────────────────────
+// version 2 with one channel and one slot more, both at the end, so a version-2 network's weights keep
+// their places: a pawn whose helmet a bishop stripped (own or enemy, where the side sees it), and per cell
+// "strip the helmet on this square" — named, like a Scry, by the square it acts on, the bishop chosen
+// as legalMap chooses a caster
+const V3_NAMES=[...V2_NAMES,'pawn whose helmet was stripped (never fortified again)'];
+const V3_STRIPPED=V2_NAMES.length;   // 54
+const V3_STRIP=V2_SLOTS;             // 159
+const V3_SLOTS=V2_SLOTS+1;           // 160
+
 const LAYOUTS={
   1:{version:1,names:V1_NAMES,channels:V1_NAMES.length,slots:V1_SLOTS,onBoard:V1_CH.onBoard},
   2:{version:2,names:V2_NAMES,channels:V2_NAMES.length,slots:V2_SLOTS,onBoard:V2_CH.onBoard},
+  3:{version:3,names:V3_NAMES,channels:V3_NAMES.length,slots:V3_SLOTS,onBoard:V2_CH.onBoard},
 };
 
 // createEncoder({grid: 11, version: LATEST, sightPlane: true}) handles boards up to grid×grid, placed in
@@ -189,6 +204,7 @@ function createEncoder(opts){
       set(CH.hp5,g,p.hp/5);
       if(p.type==='bishop'||p.type==='mage')set(CH.mana,g,(p.mana||0)/2);
       if(p.type==='pawn'&&p.firstMove)set(CH.firstMove,g,1);
+      if(version>=3&&p.type==='pawn'&&p.stripped)set(V3_STRIPPED,g,1);
       if(p.rolled)set(CH.rolled,g,1);
       if(own&&E.inCover(s,i,enemy))set(CH.hidden,g,1);
       if(p.order){
@@ -232,9 +248,9 @@ function createEncoder(opts){
   function actionIndex(s,a){
     const side=s.turn;
     if(a.type==='skip')return SKIP;
-    // a bishop's Strip has no slot of its own yet — it would share the target lock's (from, to) — so a network
-    // doesn't strip; Master (rl/scripted.js) does, and the networks play against it
-    if(a.type==='strip')return -1;
+    // a bishop's Strip: version 3 names it by the helmet's square; the versions before it have no slot
+    // for it (it would share the target lock's), so their networks never strip
+    if(a.type==='strip')return version>=3?cell(s,a.to,side)*SLOTS+V3_STRIP:-1;
     if(version===1){
       if(a.type==='scry'||a.type==='fortify'||a.type==='order'||a.type==='meteor')return -1;
       if(a.type==='spawn')return cell(s,a.to,side)*SLOTS+V1_SPAWN;
@@ -260,9 +276,9 @@ function createEncoder(opts){
   // share an index, and the map keeps one of them:
   //   - a bishop on a wounded adjacent knight can merge or lock a heal: the index means the heal; the
   //     Queen is still reachable by merging the knight onto the bishop
-  //   - (version 2) a Scry or a Meteor names only the square it lands on: when two casters could cast
-  //     it, the one that has nothing to shoot at this turn casts it, then the nearer, then the one
-  //     first on the board as the side sees it
+  //   - (version 2) a Scry or a Meteor names only the square it lands on, (version 3) a Strip only the
+  //     helmet it takes: when two casters could cast it, the one that has nothing to shoot at this turn
+  //     casts it, then the nearer, then the one first on the board as the side sees it
   function legalMap(s){
     fits(s);
     const map=new Map(),side=s.turn,shoots=new Map();
@@ -276,7 +292,7 @@ function createEncoder(opts){
       const prev=map.get(k);
       if(prev){
         if(prev.type==='merge'&&a.type==='healLock'){map.set(k,a);continue;}
-        if(version>1&&(a.type==='scry'||a.type==='meteor')&&prev.type===a.type&&prev.to===a.to){
+        if(version>1&&(a.type==='scry'||a.type==='meteor'||a.type==='strip')&&prev.type===a.type&&prev.to===a.to){
           if(casterKey(a)<casterKey(prev))map.set(k,a);
           continue;
         }
@@ -310,7 +326,8 @@ const latest=LAYOUTS[LATEST];
 const SemunEncoding={createEncoder,potential,LATEST,LAYOUTS,
   CHANNEL_NAMES:latest.names,CHANNELS:latest.channels,SLOTS:latest.slots,
   PIECE_VALUE,WINDOW,ORDER_WINDOW,ORDER_DELAYS,V2_CHANNEL_INDEX:V2_CH,
-  V2_SLOT:{spawn:V2_SPAWN,scry:V2_SCRY,meteor:V2_METEOR,order:V2_ORDER,centre:CENTRE}};
+  V2_SLOT:{spawn:V2_SPAWN,scry:V2_SCRY,meteor:V2_METEOR,order:V2_ORDER,centre:CENTRE},
+  V3_CHANNEL:{stripped:V3_STRIPPED},V3_SLOT:{strip:V3_STRIP}};
 if(typeof module!=='undefined'&&module.exports)module.exports=SemunEncoding;
 else root.SemunEncoding=SemunEncoding;
 })(typeof globalThis!=='undefined'?globalThis:this);

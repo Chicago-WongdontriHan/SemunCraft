@@ -74,7 +74,8 @@ def fresh_policy_is_even_over_kinds():
     slots = ENCODINGS[2]["slots"]
     kind = lambda i: "skip" if i == 11 * 11 * slots else ("order" if i % slots >= 84 else "scry" if i % slots == 82 else "other")
     out = []
-    with SemunCraftVecEnv(16, {"mode": "classic", "opponent": "random", "agentColor": "random"}, num_workers=2, seed=8) as env:
+    with SemunCraftVecEnv(16, {"mode": "classic", "opponent": "random", "agentColor": "random"}, num_workers=2, seed=8,
+                          encoding=2) as env:
         check(env.encoding == 2, "this test is about encoding 2")
         frames = [env.reset()]
         for _ in range(12):

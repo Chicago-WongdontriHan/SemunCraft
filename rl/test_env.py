@@ -11,7 +11,9 @@ from semuncraft_env import ENCODINGS, LATEST_ENCODING, SemunCraftVecEnv, sample_
 
 LAYOUT = ENCODINGS[LATEST_ENCODING]
 CHANNELS = LAYOUT["channels"]
-FIRST = CHANNELS - 1  # observation channel: moves first each round (White in the classic turn order)
+# observation channel: moves first each round (White in the classic turn order) — the last of version 2's, which
+# version 3 keeps in its place (its own channel, a stripped pawn, comes after it)
+FIRST = ENCODINGS[2]["channels"] - 1
 failures = 0
 
 

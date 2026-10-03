@@ -5,12 +5,13 @@
 'use strict';
 const path=require('path'),{spawn}=require('child_process');
 const E=require('../js/engine.js');
-const {createEncoder,potential,LATEST,LAYOUTS,CHANNELS,V2_CHANNEL_INDEX:CH2,V2_SLOT}=require('../rl/encoding.js');
+const {createEncoder,potential,LATEST,LAYOUTS,CHANNELS,V2_CHANNEL_INDEX:CH2,V2_SLOT,V3_SLOT,V3_CHANNEL}=require('../rl/encoding.js');
 const LEVELS=require('../rl/levels.js')();
 
-const enc=createEncoder({grid:11});                 // the latest, version 2
-const enc1=createEncoder({grid:11,version:1});      // the networks in models/ today
-const ENCODERS=[enc1,enc];
+const enc=createEncoder({grid:11});                 // the latest, version 3 (version 2 and the bishop's Strip)
+const enc2=createEncoder({grid:11,version:2});      // the networks trained 2026-09-15 to 2026-10-03
+const enc1=createEncoder({grid:11,version:1});      // the networks in models/ trained before that
+const ENCODERS=[enc1,enc2,enc];
 const P=enc.grid*enc.grid;
 const V1_FIRST=31;      // version 1's moves-first channel (White in the classic turn order)
 const V1_ONLY=new Set(['scry','fortify','order','meteor']);   // actions version 1 has no slot for
@@ -117,16 +118,40 @@ function emptyBoard(opts){
 
 (async()=>{
   await section('the layouts: channel and slot counts, and each version\'s own actions',()=>{
-    if(LATEST!==2||enc.version!==2||enc1.version!==1)fail('versions '+LATEST+' '+enc.version+' '+enc1.version);
+    if(LATEST!==3||enc.version!==3||enc2.version!==2||enc1.version!==1)fail('versions '+LATEST+' '+enc.version+' '+enc2.version+' '+enc1.version);
     if(enc1.channels!==32||enc1.slots!==82||enc1.onBoard!==19||enc1.numActions!==11*11*82+1)fail('version 1 changed: '+JSON.stringify(LAYOUTS[1]));
-    if(enc.channels!==54||enc.slots!==159||enc.onBoard!==42||enc.numActions!==11*11*159+1||CHANNELS!==54)fail('version 2: '+JSON.stringify(LAYOUTS[2]));
-    if(CH2.onBoard!==enc.onBoard||enc.channelNames.length!==enc.channels)fail('version 2 channel names');
+    if(enc2.channels!==54||enc2.slots!==159||enc2.onBoard!==42||enc2.numActions!==11*11*159+1)fail('version 2 changed: '+JSON.stringify(LAYOUTS[2]));
+    if(enc.channels!==55||enc.slots!==160||enc.onBoard!==42||enc.numActions!==11*11*160+1||CHANNELS!==55)fail('version 3: '+JSON.stringify(LAYOUTS[3]));
+    if(V3_CHANNEL.stripped!==54||V3_SLOT.strip!==159)fail('version 3 adds its channel and slot at the end: '+JSON.stringify([V3_CHANNEL,V3_SLOT]));
+    for(const e of [enc2,enc])if(CH2.onBoard!==e.onBoard||e.channelNames.length!==e.channels)fail('version '+e.version+' channel names');
+    // version 3 is version 2 with a channel more: the first 54 planes are the same
+    {const s=emptyBoard().s;s.board[40]={type:'bishop',color:'w',hp:2,maxHp:2,mana:1};
+      const o2=enc2.observe(s,'w'),o3=enc.observe(s,'w');
+      for(let k=0;k<54*P;k++)if(o2[k]!==o3[k]){fail('version 3 differs from version 2 in plane '+Math.floor(k/P));break;}}
     // every unit the engine knows has a channel of its own in version 2
     for(const type of Object.keys(E.STATS)){
       const s=emptyBoard().s;s.board[40]={type,color:'w',hp:1,maxHp:1};
       const o=enc.observe(s,'w');
       let on=0;for(let ch=0;ch<11;ch++)if(o[ch*P+enc.cell(s,40,'w')])on++;
       if(on!==1)fail('version 2 has no channel for a '+type);
+    }
+  });
+
+  await section('version 3: a Strip is named by the helmet\'s square, and a stripped pawn shows on its own channel',()=>{
+    for(const side of ['w','b']){
+      const{s,at,put}=emptyBoard();s.turn=side;
+      const other=side==='w'?'b':'w';
+      const bishop=put(4,4,'bishop',side,{mana:2});
+      const helmet=put(3,3,'pawn',other,{fortified:true,hp:3,maxHp:3});
+      const bare=put(5,5,'pawn',other,{stripped:true});
+      const strip={type:'strip',from:bishop,to:helmet},k=enc.actionIndex(s,strip);
+      if(k%enc.slots!==V3_SLOT.strip||Math.floor(k/enc.slots)!==enc.cell(s,helmet,side))fail(side+': a strip is not named by the helmet\'s square');
+      const back=enc.legalMap(s).get(k);
+      if(!back||back.type!=='strip'||back.from!==bishop||back.to!==helmet)fail(side+': the strip slot decodes to '+JSON.stringify(back));
+      if(enc2.actionIndex(s,strip)!==-1)fail(side+': version 2 gave a strip an index');
+      const o=enc.observe(s,side),ch=V3_CHANNEL.stripped;
+      if(o[ch*P+enc.cell(s,bare,side)]!==255)fail(side+': the stripped pawn is not on its channel');
+      if(o[ch*P+enc.cell(s,helmet,side)])fail(side+': a helmeted pawn shows as stripped');
     }
   });
 
@@ -146,8 +171,8 @@ function emptyBoard(opts){
           actions++;
           const k=e.actionIndex(s,a),b=map.get(k);
           if(e.version===1&&V1_ONLY.has(a.type)){if(k>=0)fail('version 1 gives '+a.type+' an index');continue;}
-          // a bishop's Strip has no slot yet in either version (actionIndex): no network strips
-          if(a.type==='strip'){if(k>=0)fail('version '+e.version+' gives a strip an index');strips++;continue;}
+          // a bishop's Strip has a slot from version 3 on (actionIndex); a network of an older one never strips
+          if(a.type==='strip'&&e.version<3){if(k>=0)fail('version '+e.version+' gives a strip an index');strips++;continue;}
           if(k<0){
             // only a lock on a target more than 4 squares away is out of reach of the slots
             if(a.type!=='target')fail('version '+e.version+': no index for '+JSON.stringify(a));
@@ -158,13 +183,13 @@ function emptyBoard(opts){
           if(b.type===a.type&&b.from===a.from&&b.to===a.to&&b.turns===a.turns)continue;
           if(a.type==='merge'&&b.type==='healLock'&&b.from===a.from&&b.to===a.to){shadowed++;continue;}
           // two casters that could both Scry or call a Meteor there: one of them is chosen
-          if(e.version>1&&(a.type==='scry'||a.type==='meteor')&&b.type===a.type&&b.to===a.to){casters++;continue;}
+          if(e.version>1&&(a.type==='scry'||a.type==='meteor'||a.type==='strip')&&b.type===a.type&&b.to===a.to){casters++;continue;}
           fail('version '+e.version+': index '+k+' of '+JSON.stringify(a)+' decodes to '+JSON.stringify(b));
         }
       }
       info.push('v'+e.version+': '+states+' positions, '+actions+' actions ('+shadowed+' bishop merges shown as heals'
         +(e.version>1?', '+casters+' spells cast by the other caster, '+['order','scry','meteor','fortify'].map(t=>(kinds[t]||0)+' '+t).join(' '):'')
-        +', '+far+' distant locks, '+strips+' strips left to Master)');
+        +', '+far+' distant locks'+(e.version<3?', '+strips+' strips left out':', '+(kinds.strip||0)+' strips')+')');
       // (a heal-lock is rare at random: the section after this one builds it by hand)
       if(e.version>1)for(const t of ['order','scry','meteor','fortify','unsiege','heal','target'])if(!kinds[t])fail('no '+t+' among the positions');
     }
@@ -262,8 +287,8 @@ function emptyBoard(opts){
         if(k>=0&&o[5*P+enc1.cell(s,k,s.turn)]!==255)fail('v1: own King is not on its cell');
         if(count(o,V1_FIRST)!==(first?P:0))fail('v1 moves-first channel');
       }
-      // version 2
-      const o=enc.observe(s);
+      // version 2 (version 3 is the same with one plane more, checked in the layouts section)
+      const o=enc2.observe(s);
       if(o.length!==54*P)fail('v2 observation length '+o.length);
       if(count(o,CH2.onBoard)!==s.rows*s.cols)fail('v2 on-board cells');
       let own=0,enemy=0;
@@ -409,7 +434,8 @@ function emptyBoard(opts){
   });
 
   await section("blackOrders:false keeps delayed orders out of Black's hands, and only Black's",async()=>{
-    const w=startWorker(),pick=E.makeRandom(11),slots=enc.slots,orderSlot=k=>k<enc.numActions-1&&k%slots>=V2_SLOT.order;
+    const w=startWorker(),pick=E.makeRandom(11),slots=enc.slots;
+    const orderSlot=k=>k<enc.numActions-1&&k%slots>=V2_SLOT.order&&k%slots!==V3_SLOT.strip;   // (the Strip slot comes after the orders)
     // A: the scripted opponent (White) may order, the agent (Black) may not; B: a network opponent as Black may not,
     // the agent (White) may; C: the default lets Black order; D: pvp is symmetric, whatever the flag says
     const init=await w.call({cmd:'init',grid:11,envs:[

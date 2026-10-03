@@ -27,7 +27,8 @@ from semuncraft_env import ENCODINGS, LATEST_ENCODING, SemunCraftVecEnv  # noqa:
 # network that starts even over slots gives orders most of the time and hardly explores anything else (the
 # first version-2 run gave orders in 70-93% of its moves and never built an army). These start the untrained
 # policy roughly even over kinds of action instead. The slot numbers are V2_SLOT in rl/encoding.js.
-SLOT_BIAS = {2: [(82, 83, -3.0), (83, 84, -2.0), (84, 159, -2.0)]}   # Scry, Meteor, orders
+SLOT_BIAS = {2: [(82, 83, -3.0), (83, 84, -2.0), (84, 159, -2.0)],    # Scry, Meteor, orders
+             3: [(82, 83, -3.0), (83, 84, -2.0), (84, 159, -2.0)]}    # the same; the Strip slot (159) starts at 0
 
 
 def encoding_of(state):
@@ -37,6 +38,29 @@ def encoding_of(state):
         if (e["channels"], e["slots"]) == shape:
             return version
     raise ValueError("no encoding has %d channels and %d slots" % shape)
+
+
+def upgrade_state(state, to, strip_bias=None):
+    """A network's weights grown into a newer encoding (2 -> 3 so far). What the newer version adds comes at
+    the end, so the old weights keep their places: a new input channel (3: a stripped pawn) starts with
+    nought weights, so the network plays exactly as it did until it learns to read it; a new action slot
+    (3: the bishop's Strip) starts with nought weights and `strip_bias` — by default the average bias of
+    the 81 offset slots, an ordinary action's odds — so the network tries it wherever it's legal."""
+    frm = encoding_of(state)
+    if frm == to:
+        return state
+    if (frm, to) != (2, 3):
+        raise ValueError("no upgrade from encoding %d to %d" % (frm, to))
+    old, new = ENCODINGS[frm], ENCODINGS[to]
+    state = dict(state)
+    w = state["stem.weight"]
+    state["stem.weight"] = torch.cat([w, w.new_zeros(w.shape[0], new["channels"] - old["channels"], *w.shape[2:])], 1)
+    lw, lb = state["cell_logits.weight"], state["cell_logits.bias"]
+    extra = new["slots"] - old["slots"]
+    bias = lb[:81].mean() if strip_bias is None else lb.new_tensor(strip_bias)
+    state["cell_logits.weight"] = torch.cat([lw, lw.new_zeros(extra, *lw.shape[1:])], 0)
+    state["cell_logits.bias"] = torch.cat([lb, bias.expand(extra).clone()], 0)
+    return state
 
 
 class ResBlock(nn.Module):

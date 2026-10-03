@@ -9,12 +9,13 @@ const NETAI_VERSION=((document.currentScript&&/[?&]v=([^&]+)/.exec(document.curr
 // the network behind each difficulty and its sampling temperature (1 plays as in training, 0 always the most
 // likely move); for Hard, 0.25 scored best of 0, 0.05, 0.25, 0.5 and 1 over 1,000 games each, and keeps some
 // variety. `model:null` (Master) has no weights and no temperature: it's rl/scripted.js, always its one best
-// move. Trained is rl/train.py's encoding-2 run v2-vsmaster (update 18,900, 2026-10-02): v2-turnfix's knight
-// rush, retrained against the rebuilt Master (its eight strategies in 30% of games), went from ~20% to ~80%
-// wins against it in 100 minutes. It wins by a march of helmeted pawns moved by delayed orders — two pawns a
-// turn, each still firing the turn it was ordered (a rule since changed: a piece now holds its fire on its
-// old square on its moving turn, see heldFire in js/game.js) — and kills the King before Master's high-tier
-// strategies have built anything; it hardly merges and holds no springs.
+// move. Trained is rl/train.py's encoding-2 run v2-resource (update 23,847, 2026-10-02), the first trained
+// under the moving-turn rule (a piece holds its fire on its old square the turn its order goes off, heldFire
+// in js/game.js), mostly by self-play with Master in 15% of games. In league eval it beat Master 77% (74% as
+// White, 81% as Black, every strategy 56% or better), Hard 97%, Easy 100%. It still wins by a march of
+// helmeted pawns moved by delayed orders, ending games around its 43rd turn; it holds almost no mines or
+// springs and builds nothing high-tier — a fading bonus for holding them (--resource-bonus 0.003) changed
+// nothing measurable.
 const NETAI_LEVELS={
   easy:{model:'easy',temperature:1},
   medium:{model:'medium',temperature:1},

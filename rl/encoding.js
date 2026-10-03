@@ -26,9 +26,9 @@ const LATEST=3;
 const WINDOW=4,SIDE=2*WINDOW+1,OFFSETS=SIDE*SIDE,CENTRE=WINDOW*SIDE+WINDOW;
 
 // piece values for reward shaping, in Gold (an Elixir counted as one): about what each costs to make now
-// — a helmet 2 (1 until 2026-10-03), a Rook a helmeted pawn and a pawn, the top tier its two parts and its Elixir
-const PIECE_VALUE={pawn:1,knight:2,bishop:3,rook:4,queen:5,siege:9,king:0,mage:9,paladin:7,guardian:7,scarecrow:0};
-const FORTIFIED_VALUE=3;
+// — a helmet 1, a Rook a helmeted pawn and a pawn, the top tier its two parts and its Elixir
+const PIECE_VALUE={pawn:1,knight:2,bishop:3,rook:3,queen:5,siege:7,king:0,mage:8,paladin:7,guardian:6,scarecrow:0};
+const FORTIFIED_VALUE=2;
 const ELIXIR_CAP=6;   // the Elixir-in-hand planes show up to this much (the dearest unit costs 3)
 
 // ── VERSION 1 ────────────────────────────────────────────────────────────────

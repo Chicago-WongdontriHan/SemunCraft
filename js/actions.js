@@ -411,13 +411,13 @@ function handleClick(i,additive,pt){
 }
 
 // ── PAWN: FORTIFYING ──────────────── ────────────────────────────────────────
-// FORTIFY_COST Gold (2) turns a pawn into a fortified pawn: the same pawn in a helmet, with three life. It takes
+// One Gold turns a pawn into a fortified pawn: the same pawn in a helmet, with three life. It takes
 // the pawn's turn, as spawning takes the King's. ('fortify' in engine.js)
 function fortifyAt(i){
   const p=pieces[i];
-  if(!p||p.type!=='pawn'||p.fortified||p.stripped||!goldAllowed()||spawnRemaining()<FORTIFY_COST)return;
+  if(!p||p.type!=='pawn'||p.fortified||p.stripped||!goldAllowed()||spawnRemaining()<1)return;
   p.fortified=true;p.hp=FORTIFIED_HP;p.maxHp=FORTIFIED_HP;
-  goldSpent[p.color]+=FORTIFY_COST;
+  goldSpent[p.color]++;
   movedThisTurn=i;
   addLog('Pawn fortified at '+sqName(i)+' ('+goldText(spawnRemaining())+' Gold left)');
   SFX.fortify();flashSq(i,'heal-flash');
@@ -430,7 +430,7 @@ function doFortify(){
   if(!p||p.color!==myColor()||p.type!=='pawn'){setStatus('Select one of your pawns to fortify it');return;}
   if(p.fortified){setStatus('That pawn is already fortified');return;}
   if(p.stripped){setStatus("A bishop stripped that pawn's helmet — it can't be fortified again");return;}
-  if(!goldAllowed()||spawnRemaining()<FORTIFY_COST){setStatus('Not enough Gold to fortify ('+FORTIFY_COST+' Gold)');return;}
+  if(!goldAllowed()||spawnRemaining()<1){setStatus('Not enough Gold to fortify (1 Gold)');return;}
   fortifyAt(i);
 }
 // the special-action button: whatever the one selected piece can do where it stands
@@ -492,16 +492,27 @@ function castScry(from,to){
 }
 
 // ── BISHOP: STRIPPING A HELMET ───────────────────────────────────────────────
-// For STRIP_MANA a bishop takes the helmet off an enemy fortified pawn it could shoot at — its diagonal
-// reach, up to 2 squares, the first piece on each line — and the pawn is a plain 1-HP pawn again, for good:
+// For STRIP_MANA a bishop takes the helmet off an enemy fortified pawn within 2 squares of it, in any
+// direction (the 5x5 around it, over pieces and obstacles; widened from its diagonal on 2026-10-03), that it
+// can see — and the pawn is a plain 1-HP pawn again, for good:
 // it can never be fortified again, and is marked with a cracked helmet. It costs the bishop's turn, like a
 // heal, so it doesn't shoot as well. The answer to a march of helmeted pawns. ('strip' in engine.js)
 let stripMode=false, stripSrc=-1;
-// the helmets this bishop can strip from where it stands
+// the helmets this bishop can strip from where it stands: within 2 squares, seen as getDragDests sees an
+// attack's target — through the fog for your own pieces, by normal sight for an AI's, never into cover
+// (stripReach in js/engine.js)
 function stripTargets(i){
   const out=new Set(),p=pieces[i];
   if(!p||p.type!=='bishop'||(p.mana||0)<STRIP_MANA)return out;
-  getDragDests(i).attack.forEach(j=>{const t=pieces[j];if(t&&t.color!==p.color&&t.type==='pawn'&&t.fortified)out.add(j);});
+  const fogged=p.color===myColor()&&!mapCheat,limited=!fogged&&aiSightLimited(p.color);
+  for(let j=0;j<ROWS*COLS;j++){
+    const t=pieces[j];
+    if(j===i||cheb(i,j)>2||!t||t.color===p.color||t.type!=='pawn'||!t.fortified)continue;
+    if(fogged&&!isTileVisible(j))continue;
+    if(limited&&!visibleTo(j,p.color))continue;
+    if(isConcealedFrom(j,p.color))continue;
+    out.add(j);
+  }
   return out;
 }
 function startStrip(){
@@ -694,7 +705,7 @@ function showDropChoice(at,choices){
 
 // ── THE PIECE CHOOSER: PAWNS AND BISHOPS ────────────────────────────────────
 // A selected pawn or bishop of yours gets the same kind of on-board chooser as the King. A pawn: Fortify
-// (2 Gold) while it is a plain pawn. A bishop: Scry, lit once it holds both its mana. The chooser sits
+// (1 Gold) while it is a plain pawn. A bishop: Scry, lit once it holds both its mana. The chooser sits
 // past the piece's reach (the pawn's 3x3, the bishop's 5x5) on its own side of the board, so it never
 // covers a square it can act on.
 let pieceChooser=null;
@@ -704,7 +715,7 @@ function pieceChoices(i){
   if(!p)return out;
   if(p.type==='pawn'){
     if(p.stripped)out.push(['strip','Helmet stripped',false,()=>{}]);   // says why there's no Fortify
-    else if(!p.fortified&&goldAllowed())out.push(['fortify','Fortify ('+FORTIFY_COST+' Gold)',spawnRemaining()>=FORTIFY_COST,()=>fortifyAt(i)]);
+    else if(!p.fortified&&goldAllowed())out.push(['fortify','Fortify (1 Gold)',spawnRemaining()>=1,()=>fortifyAt(i)]);
   }else if(p.type==='bishop'){
     const ready=(p.mana||0)>=2;
     out.push(['scry',ready?'Scry (2 mana)':'Scry (needs 2 mana)',ready,()=>{selectedPieces=new Set([i]);startScry();}]);

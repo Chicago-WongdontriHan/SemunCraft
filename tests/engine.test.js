@@ -359,7 +359,7 @@ section('a piece holds its fire on its old square on its moving turn only; an or
   if(hp(t,at(5,4))!==2)fail('the pawn should fire as usual the turn after its order struck');
 });
 
-section('a bishop strips the helmet off an enemy fortified pawn in its diagonal reach, for good',()=>{
+section('a bishop strips the helmet off an enemy fortified pawn within 2 squares, for good',()=>{
   const s=E.newGame({seed:3,mode:'classic',theme:'forest',aiSight:{w:false,b:false}});
   s.board.fill(null);s.tiles.fill('');s.blocked.fill(false);s.targets={w:{},b:{}};s.springs={};
   const at=(r,c)=>r*9+c,skip=t=>E.step(t,{type:'skip'},{trusted:true}),bishop=at(6,4);
@@ -367,14 +367,18 @@ section('a bishop strips the helmet off an enemy fortified pawn in its diagonal 
   s.board[bishop]={type:'bishop',color:'w',hp:10,maxHp:10,mana:2};   // sturdy: Black's pawns shoot at it on their turn
   const helmet=()=>({type:'pawn',color:'b',hp:3,maxHp:3,fortified:true});
   s.board[at(5,5)]=helmet();   // one diagonal step: in reach
-  s.board[at(4,6)]=helmet();   // two steps on, behind the first: the line stops at the first piece
-  s.board[at(4,2)]=helmet();   // two diagonal steps the other way, the square between empty: in reach
-  s.board[at(5,4)]=helmet();   // straight ahead: not a diagonal
-  s.board[at(3,7)]=helmet();   // three diagonal steps: too far
-  s.board[at(7,5)]={type:'pawn',color:'b',hp:1,maxHp:1};   // on its diagonal, but no helmet to strip
+  s.board[at(4,6)]=helmet();   // two diagonal steps, behind the first: in reach, over it
+  s.board[at(4,2)]=helmet();   // two diagonal steps the other way: in reach
+  s.board[at(5,4)]=helmet();   // straight ahead: in reach (any direction)
+  s.board[at(4,3)]=helmet();   // a knight's jump away: in reach (within 2)
+  s.board[at(3,7)]=helmet();   // three steps: too far
+  s.board[at(6,1)]=helmet();   // three along the row: too far
+  s.blocked[at(5,3)]=true;     // an obstacle in between stops nothing
+  s.board[at(7,5)]={type:'pawn',color:'b',hp:1,maxHp:1};   // in reach, but no helmet to strip
   s.turn='w';
   const strips=t=>E.legalActions(t).filter(a=>a.type==='strip').map(a=>a.to).sort((a,b)=>a-b);
-  if(JSON.stringify(strips(s))!==JSON.stringify([at(4,2),at(5,5)]))fail('strip reaches '+strips(s)+', expected '+[at(4,2),at(5,5)]);
+  const reach=[at(4,2),at(4,3),at(4,6),at(5,4),at(5,5)].sort((a,b)=>a-b);
+  if(JSON.stringify(strips(s))!==JSON.stringify(reach))fail('strip reaches '+strips(s)+', expected '+reach);
   if(!E.isLegal(s,{type:'strip',from:bishop,to:at(5,5)}))fail('a strip in reach should be legal');
   E.step(s,{type:'strip',from:bishop,to:at(5,5)});
   const t=s.board[at(5,5)];
@@ -392,23 +396,8 @@ section('a bishop strips the helmet off an enemy fortified pawn in its diagonal 
   s.board[bishop].mana=0;
   if(strips(s).length)fail('a bishop without mana could strip');
   s.board[bishop].mana=1;
-  if(JSON.stringify(strips(s))!==JSON.stringify([at(4,2)]))fail('with 1 mana the other helmet should be strippable: '+strips(s));
-});
-
-section('a helmet costs 2 Gold',()=>{
-  if(E.FORTIFY_COST!==2)fail('FORTIFY_COST is '+E.FORTIFY_COST);
-  const s=E.newGame({seed:3,mode:'pvp',theme:'forest'});
-  s.board.fill(null);s.tiles.fill('');s.blocked.fill(false);s.targets={w:{},b:{}};s.springs={};
-  s.board[8*9]={type:'king',color:'w',hp:5,maxHp:5};s.board[8]={type:'king',color:'b',hp:5,maxHp:5};
-  const pawn=6*9+4;s.board[pawn]={type:'pawn',color:'w',hp:1,maxHp:1};s.turn='w';
-  const canFortify=()=>E.legalActions(s).some(a=>a.type==='fortify'&&a.from===pawn);
-  s.spawns.w=Math.floor(E.spawnRemaining(s,'w'))-1;   // 1 Gold and a fraction left: not enough
-  if(E.spawnRemaining(s,'w')>=2||canFortify())fail('a helmet was offered on '+E.spawnRemaining(s,'w')+' Gold');
-  s.spawns.w--;                                       // a Gold more: enough
-  if(!canFortify())fail('no helmet on '+E.spawnRemaining(s,'w')+' Gold');
-  const spent=s.goldSpent.w;
-  E.step(s,{type:'fortify',from:pawn,to:pawn});   // (the turn it ends earns its own sixth of a Gold as well)
-  if(s.goldSpent.w-spent!==2)fail('a helmet cost '+(s.goldSpent.w-spent)+' Gold');
+  const left=reach.filter(j=>j!==at(5,5));
+  if(JSON.stringify(strips(s))!==JSON.stringify(left))fail('with 1 mana the other helmets should be strippable: '+strips(s));
 });
 
 section('speed',()=>{

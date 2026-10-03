@@ -36,7 +36,6 @@ let goldSpent={w:0,b:0};  // Gold spent on anything but spawning: fortified pawn
 let springs={};
 const SPRING_CAP=3, SPRING_REFILL=5;
 const FORTIFIED_HP=3;     // a fortified pawn is a pawn in a helmet, with three life
-const FORTIFY_COST=2;     // and the helmet costs 2 Gold (1 until 2026-10-03: the cheapest HP in the game)
 // Elixir is the top tier's currency, paid at the moment of merging; short of it the two pieces simply
 // don't combine (mergeResultType in js/actions.js and js/engine.js). The Paladin's lance ends games,
 // so it costs the most.
@@ -121,7 +120,7 @@ function creditResources(color){
 }
 function goldAllowed(){ return !campaignLevel||campaignLevel.allowSpawn!==false; }
 // (a pawn whose helmet a bishop stripped stays bare for good: castStrip in js/actions.js)
-function canFortify(i){ const p=pieces[i]; return !!p&&p.type==='pawn'&&!p.fortified&&!p.stripped&&goldAllowed()&&spawnRemaining()>=FORTIFY_COST; }
+function canFortify(i){ const p=pieces[i]; return !!p&&p.type==='pawn'&&!p.fortified&&!p.stripped&&goldAllowed()&&spawnRemaining()>=1; }
 function oppColor(){ return myColor()==='w'?'b':'w'; }
 // The clock a side's Gold grows on is its own turns. This seat takes one side's turns in a game (so
 // whiteTurnCount is that side's count, whichever colour it is playing), but the training ground plays
@@ -328,7 +327,7 @@ let lastPf=12;
 // ── PIECE CARD DATA ──────────────────────────────────────────────────────────
 const PC_DATA=[
   {gw:'♙',gb:'♟',name:'Pawn',   stats:'1HP · any dir · atk adj · mines'},
-  {gw:'♙',gb:'♟',name:'Fortified',stats:'3HP · mends 1HP/5 turns · 2 Gold'},
+  {gw:'♙',gb:'♟',name:'Fortified',stats:'3HP · mends 1HP/5 turns · 1 Gold'},
   {gw:'♘',gb:'♞',name:'Knight', stats:'4HP · L-jump · atk L-dist'},
   {gw:'♘',gb:'♞',name:'Paladin',stats:'3HP · L-jump · lance always kills, then leaps in'},
   {gw:'♗',gb:'♝',name:'Bishop', stats:'2HP · diagonal 2 · heals, strips helmets (mana)'},

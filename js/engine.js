@@ -417,6 +417,23 @@ function mageRange(s,i){
 function sangLineFor(s,i,target){
   return sangTrajectories(s,i).find(line=>line.includes(target))||null;
 }
+// the squares a bishop can strip a helmet on: any within 2 of it, in any direction (the 5x5 around it), over
+// pieces and obstacles alike — but only one its side can see, and not into undergrowth cover (stripTargets
+// in js/actions.js). The user widened it from the bishop's own diagonal reach on 2026-10-03.
+function stripReach(s,i){
+  const p=s.board[i],out=[];
+  if(!p)return out;
+  const g=geo(s),r=rowOf(s,i),c=colOf(s,i),limited=sightLimited(s,p.color);
+  for(let dr=-2;dr<=2;dr++)for(let dc=-2;dc<=2;dc++){
+    if(!dr&&!dc)continue;
+    const nr=r+dr,nc=c+dc;if(!g.inB(nr,nc))continue;
+    const j=nr*s.cols+nc;
+    if(limited&&!visible(s,j,p.color))continue;
+    if(concealed(s,j,p.color))continue;
+    out.push(j);
+  }
+  return out;
+}
 function bishopRange(s,i){
   const g=geo(s),r=rowOf(s,i),c=colOf(s,i),res=[];
   for(const[dr,dc]of DIAG)for(let k=1;k<=2;k++){
@@ -667,9 +684,6 @@ function creditSprings(s,color){
   }
   return paid;
 }
-// a helmet's price in Gold: 2 since 2026-10-03, when the cheapest HP in the game had made a march of
-// helmeted pawns every network's whole plan (FORTIFY_COST in js/state.js)
-const FORTIFY_COST=2;
 const FORTIFIED_MEND=5;   // a fortified pawn mends 1 HP five turns after its last hit (state.js)
 // delayed orders (MAX_DELAY, ORDER_COST in js/state.js): giving one spends part of the turn's order
 // budget instead of the turn itself, and a pawn's takes half of it
@@ -691,12 +705,12 @@ function maxDelay(type){return type==='pawn'?MAX_DELAY:1;}
 //             (by default only enemies already in range; {anyTarget:true} allows any enemy,
 //             as dropping a piece on a distant enemy does)
 //   heal      bishop heals a wounded ally on its diagonal now
-//   strip     bishop takes the helmet off an enemy fortified pawn in its reach, for good (1 mana): the pawn
+//   strip     bishop takes the helmet off an enemy fortified pawn within 2 squares, for good (1 mana): the pawn
 //             is a plain 1-HP pawn again and can never be fortified again
 //   healLock  bishop dropped on a wounded adjacent knight, choosing "Heal": locks the knight
 //             as its heal target, and the heal fires with the end-of-turn attacks
 //   spawn     king places a pawn on an adjacent empty tile
-//   fortify   a pawn becomes a fortified pawn, 3 HP, for FORTIFY_COST Gold (2; from === to)
+//   fortify   a pawn becomes a fortified pawn, 3 HP, for 1 Gold (from === to)
 //   scry      a bishop with both its mana lights a 3x3 it cannot see
 //   unsiege   siege tower splits back into rooks (from === to)
 //   skip      pass the turn
@@ -720,13 +734,13 @@ function legalActions(s,opts){
       if(p.type==='bishop'&&(p.mana||0)>0&&B[j].hp<B[j].maxHp)out.push({type:'healLock',from:i,to:j});
     });
     d.heal.forEach(j=>{if(!d.merge.has(j))out.push({type:'heal',from:i,to:j});});
-    // a bishop with the mana can strip the helmet off any enemy fortified pawn it could shoot at: its own
-    // diagonal reach, the first piece on each line, and only one its side can see
+    // a bishop with the mana can strip the helmet off any enemy fortified pawn within 2 squares of it, in any
+    // direction (stripReach)
     if(p.type==='bishop'&&(p.mana||0)>=STRIP_MANA)
-      d.attack.forEach(j=>{const t=B[j];if(t.type==='pawn'&&t.fortified)out.push({type:'strip',from:i,to:j});});
-    // any plain pawn can be fortified for FORTIFY_COST Gold
+      for(const j of stripReach(s,i)){const t=B[j];if(t&&t.color!==color&&t.type==='pawn'&&t.fortified)out.push({type:'strip',from:i,to:j});}
+    // any plain pawn can be fortified for 1 Gold
     // (not one whose helmet a bishop has stripped: that one stays bare for good)
-    if(p.type==='pawn'&&!p.fortified&&!p.stripped&&goldAllowed&&spawnRemaining(s,color)>=FORTIFY_COST)out.push({type:'fortify',from:i,to:i});
+    if(p.type==='pawn'&&!p.fortified&&!p.stripped&&goldAllowed&&spawnRemaining(s,color)>=1)out.push({type:'fortify',from:i,to:i});
     // a bishop with both its mana can light any 3x3 on the board, seen or not
     if(p.type==='bishop'&&(p.mana||0)>=2)
       for(let j=0;j<B.length;j++)out.push({type:'scry',from:i,to:j});
@@ -1009,7 +1023,7 @@ function applyAction(s,a,events){
     }
     case'fortify':
       p.fortified=true;p.hp=FORTIFIED_HP;p.maxHp=FORTIFIED_HP;
-      s.goldSpent[color]+=FORTIFY_COST;
+      s.goldSpent[color]++;
       s.moved=a.from;
       events.push({type:'fortify',at:a.from});
       return false;
@@ -1638,8 +1652,8 @@ const SemunEngine={
   // playing
   newGame,legalActions,step,botTurn,clone,isLegal,fromSnapshot,act,
   // rule queries
-  getDests,computeActions,holdsFire,applyAttacks,upkeep,spawnRemaining,heldTiles,visible,fogFor,sightLimited,inCover,concealed,campaignResult,sangTrajectories,sangLineFor,mageRange,
-  mergeResultType,elixirCost,freshSprings,SPRING_CAP,SPRING_REFILL,STRIP_MANA,FORTIFY_COST,
+  getDests,computeActions,holdsFire,stripReach,applyAttacks,upkeep,spawnRemaining,heldTiles,visible,fogFor,sightLimited,inCover,concealed,campaignResult,sangTrajectories,sangLineFor,mageRange,
+  mergeResultType,elixirCost,freshSprings,SPRING_CAP,SPRING_REFILL,STRIP_MANA,
   // helpers and data
   generateMap,makeRandom,nextRandom,sqName,cheb,geo,STATS,STRATEGIES,THEME_TILES,
 };

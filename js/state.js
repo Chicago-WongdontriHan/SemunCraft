@@ -268,7 +268,7 @@ function visibleTo(i,color){
 const AI_SIGHT=true;
 function aiSightLimited(color){
   return AI_SIGHT&&color==='b'&&!campaignLevel&&!pvpActive&&!trainingMode
-    &&(gameMode==='easy'||gameMode==='medium'||gameMode==='hard'||gameMode==='trained'||gameMode==='master');
+    &&(gameMode==='easy'||gameMode==='medium'||gameMode==='hard'||gameMode==='trained'||gameMode==='rush'||gameMode==='master');
 }
 
 function isTileVisible(i){

@@ -72,7 +72,7 @@ function applyOriginal(a,s){
 
 const stats={},t0=Date.now();
 for(let n=0;n<GAMES;n++){
-  const seed=n+1,theme=['forest','jungle','desert','ocean'][n%4],difficulty=['easy','medium','hard','trained','master'][n%5],fog=n%4===0;
+  const seed=n+1,theme=['forest','jungle','desert','ocean'][n%4],difficulty=['easy','medium','hard','trained','rush','master'][n%6],fog=n%4===0;
   game.created.length=0;
   game.setRandom(E.makeRandom(seed));
   const pickBlack=E.makeRandom(seed*104729+7);
@@ -143,6 +143,7 @@ function randomModel(version,seed){
   // Master (rl/scripted.js): no model to load, and the same move the Node-side bot would choose
   const before=failures;
   if(game.get('NETAI_LEVELS.trained.model')!=='trained'){failures++;console.log('  FAIL NETAI_LEVELS.trained does not point at models/trained.js');}
+  if(game.get('NETAI_LEVELS.rush.model')!=='rush'){failures++;console.log('  FAIL NETAI_LEVELS.rush does not point at models/rush.js');}
   if(game.get('NETAI_LEVELS.master.model')!=null){failures++;console.log('  FAIL NETAI_LEVELS.master should have no model (it is the scripted AI)');}
   // it plays one strategy a game (drawn on its first move, cleared by initGame's netAiResetProfile), and
   // under that strategy chooses exactly what rl/scripted.js would

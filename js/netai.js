@@ -9,18 +9,18 @@ const NETAI_VERSION=((document.currentScript&&/[?&]v=([^&]+)/.exec(document.curr
 // the network behind each difficulty and its sampling temperature (1 plays as in training, 0 always the most
 // likely move); for Hard, 0.25 scored best of 0, 0.05, 0.25, 0.5 and 1 over 1,000 games each, and keeps some
 // variety. `model:null` (Master) has no weights and no temperature: it's rl/scripted.js, always its one best
-// move. Trained is rl/train.py's run v3-merge (update 28,600, 2026-10-03), the first network on encoding 3
-// (rl/encoding.js: the bishop's Strip and stripped pawns), grown from v2-resource15 and trained mostly by
-// self-play with Master in 15% of games, under a fading bonus for merging (--merge-bonus). In league eval it
-// beat Master 84% (as White and as Black alike), Hard 99%, Easy 98%; in 24 replays against Master it won 22.
-// It still wins by a march of helmeted pawns moved by delayed orders, now with a Knight made from its two
-// starting pawns, and it holds the mines about as much as Master does — but it makes no Bishop, so it never
-// strips, and it collects no Elixir.
+// move. Trained is rl/train.py's run v3-strip2 at update 32,000 (2026-10-03), on encoding 3 and the rules
+// of that day (a bishop's Strip reaches any square within 2), trained mostly by self-play with Master in 15%
+// of games under fading bonuses for merging and for Bishops: it builds an army of Queens (Knight + Bishop) and
+// holds the gold mines, and stopped buying helmets; at update 31,000 it beat Master 60%, Hard 99%. Rush is
+// the Trained network before it (v3-merge update 28,600): a march of helmeted pawns by delayed orders, a
+// Knight from its two starting pawns, beating Master 84% — kept on the user's word as a difficulty of its own.
 const NETAI_LEVELS={
   easy:{model:'easy',temperature:1},
   medium:{model:'medium',temperature:1},
   hard:{model:'ai-1',temperature:0.25},
   trained:{model:'trained',temperature:0.5},
+  rush:{model:'rush',temperature:0.5},
   master:{model:null},
 };
 const NETAI_CODE=[

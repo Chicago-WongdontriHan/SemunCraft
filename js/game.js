@@ -61,7 +61,7 @@ function selectSpMap(mapId){
 }
 function selectSpDifficulty(d){
   spDifficulty=d;
-  ['easy','medium','hard','trained','master'].forEach(x=>{
+  ['easy','medium','hard','trained','rush','master'].forEach(x=>{
     const b=document.getElementById('spd-'+x);if(b)b.classList.toggle('sel-map',x===d);
   });
 }
@@ -69,7 +69,7 @@ function confirmStartSp(){hideSpSetup();startGame(spDifficulty);}
 
 function startGame(mode){
   gameMode=mode;
-  difficulty=['easy','medium','hard','trained','master'].includes(mode)?mode:mode==='pvp'?'pvp':'easy';
+  difficulty=['easy','medium','hard','trained','rush','master'].includes(mode)?mode:mode==='pvp'?'pvp':'easy';
   // start loading this difficulty's trained network (js/netai.js)
   if(mode!=='pvp'&&typeof netAiPreload==='function')netAiPreload();
   // reset board size and campaign state for non-campaign modes

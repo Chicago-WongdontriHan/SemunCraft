@@ -88,7 +88,7 @@ function selectMap(theme){
 }
 
 // the body carries the map theme; the training ground's own class has to survive a theme change
-function setBodyTheme(theme){document.body.className='theme-'+theme+(trainingMode?' training':'');}
+function setBodyTheme(theme){document.body.className='theme-'+theme+(trainingMode?' training':'')+(gameMode==='aivsai'?' aivsai':'');}
 function generateMap(){
   tileData=new Array(ROWS*COLS).fill('');
   neutralPieces={};

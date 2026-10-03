@@ -279,7 +279,8 @@ function goIntro(){
   campaignLevel=null; campaignLevelId=-1;
   COLS=9; ROWS=9;
   document.getElementById('intro').classList.remove('hidden');
-  document.getElementById('diff-row').style.display='none';
+  // (the difficulty row that used to be hidden here moved into the Single Player overlay, #sp-setup; the
+  // leftover line threw on every Menu press from 2026-09-28 on, so none of the reset below ever ran)
   over=true; thinking=false;
   stopAnimalLoop();
   document.querySelectorAll('.animal-el').forEach(el=>el.remove());

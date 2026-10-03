@@ -1,24 +1,54 @@
 // ── AI VS AI ─────────────────────────────────────────────────────────────────
-// Watch two of Single Player's difficulties play each other — by default Trained (the current network)
-// against Master (the scripted AI), the two strongest and newest. AIVSAI_LEVELS names which two
-// NETAI_LEVELS entries (js/netai.js) face off; change it here to try a different pairing, network or
-// scripted. Matches run in the headless engine (js/engine.js: the game's rules, checked against this game
+// Watch two of Single Player's difficulties play each other: White and Black each pick theirs, Trained (the
+// current network) or Master (the scripted AI) — the same one on both sides too — on the buttons right under
+// the resources (#aivsai-pick). Each pick is a NETAI_LEVELS entry (js/netai.js); AIVSAI_CHOICES lists the
+// ones offered. Matches run in the headless engine (js/engine.js: the game's rules, checked against this game
 // by tests/parity.test.js) and are drawn on the normal board. Both sides play at temperature 1 ("as
 // trained"), not each difficulty's own tuned value. Code and weights load through js/netai.js the first time.
-const AIVSAI_LEVELS=['trained','master'];
+const AIVSAI_CHOICES=['trained','master'];
 const AIVSAI_SPEEDS=[1,2,4,8];
 const AIVSAI_DELAY=700; // ms between moves at 1× speed
+const AIVSAI_STORE='semuncraft-aivsai-picks';
 let aiVsAi=null;        // the match being watched
 let aiVsAiLoaded=false;
-let aiVsAiSpeed=1,aiVsAiMatches=0,aiVsAiScore={1:0,2:0,draw:0};
+let aiVsAiSpeed=1,aiVsAiMatches=0,aiVsAiScore={w:0,b:0,draw:0};
+// each colour's AI, remembered between visits (a convenience: a blocked storage just means the defaults)
+let aiVsAiLevels={w:'trained',b:'master'};
+try{const saved=JSON.parse(localStorage.getItem(AIVSAI_STORE)||'null');
+  if(saved&&AIVSAI_CHOICES.includes(saved.w)&&AIVSAI_CHOICES.includes(saved.b))aiVsAiLevels={w:saved.w,b:saved.b};}catch(e){}
 
 async function aiVsAiLoad(){
-  if(aiVsAiLoaded)return;
-  await Promise.all(AIVSAI_LEVELS.map(level=>{
-    const cfg=NETAI_LEVELS[level];
+  await Promise.all(['w','b'].map(color=>{
+    const cfg=NETAI_LEVELS[aiVsAiLevels[color]];
     return cfg.model?netAiLoadModel(cfg.model):netAiLoadCode();
   }));
   aiVsAiLoaded=true;
+}
+
+// a pick on White's or Black's buttons starts a fresh match with the new pairing, and the score over — a
+// match, or a score, half played by another AI wouldn't mean much
+async function aiVsAiPick(color,level){
+  if(!AIVSAI_CHOICES.includes(level)||aiVsAiLevels[color]===level)return;
+  aiVsAiLevels[color]=level;
+  try{localStorage.setItem(AIVSAI_STORE,JSON.stringify(aiVsAiLevels));}catch(e){}
+  aiVsAiPickSync();
+  if(gameMode!=='aivsai')return;
+  if(aiVsAi)clearTimeout(aiVsAi.timer);
+  aiVsAiLoaded=false;
+  setStatus('Loading the AIs…');
+  try{await aiVsAiLoad();}
+  catch(err){setStatus('Could not load the AIs: '+err.message);return;}
+  if(gameMode!=='aivsai')return;
+  aiVsAiMatches=0;aiVsAiScore={w:0,b:0,draw:0};
+  aiVsAiNewMatch();
+}
+
+// the picked button of each side lit
+function aiVsAiPickSync(){
+  for(const color of ['w','b'])for(const level of AIVSAI_CHOICES){
+    const b=document.getElementById('avp-'+color+'-'+level);
+    if(b)b.classList.toggle('sel',aiVsAiLevels[color]===level);
+  }
 }
 
 async function startAiVsAi(){
@@ -29,6 +59,8 @@ async function startAiVsAi(){
   stopAnimalLoop();animals=[];animalDivs.forEach(el=>el.remove());animalDivs.clear();
   over=false;thinking=true; // the board takes no player input while the AIs play
   aiVsAiControls(true);
+  document.body.classList.add('aivsai');   // shows each side's AI picker under the resources
+  aiVsAiPickSync();
   syncUI();resizeBoard();
   document.getElementById('thinking-dot').classList.add('on');
   setStatus('Loading the AIs…');
@@ -39,7 +71,7 @@ async function startAiVsAi(){
     return;
   }
   if(gameMode!=='aivsai')return; // went back to the menu while loading
-  aiVsAiMatches=0;aiVsAiScore={1:0,2:0,draw:0};
+  aiVsAiMatches=0;aiVsAiScore={w:0,b:0,draw:0};
   aiVsAiNewMatch();
 }
 
@@ -48,12 +80,12 @@ function aiVsAiNewMatch(){
   if(aiVsAi)clearTimeout(aiVsAi.timer);
   hideGameOver();
   aiVsAiMatches++;
-  const white=aiVsAiMatches%2?1:2; // the AIs swap colors every match
   const s=SemunEngine.newGame({seed:Math.floor(Math.random()*2147483647),mode:'classic',theme:mapTheme,maxTurns:300,aiSight:true});   // both are AIs: each attacks only what it sees
-  // a Master side plays one strategy for the whole match (rl/scripted.js PROFILES), a fresh one each match
-  const profiles={};
-  for(const n of [1,2])if(!NETAI_LEVELS[AIVSAI_LEVELS[n-1]].model)profiles[n]=SemunScripted.pickProfile(Math.random);
-  aiVsAi={s,white,black:3-white,timer:null,paused:false,lastFrom:-1,lastTo:-1,profiles};
+  // each side keeps its AI for the whole match (a pick mid-match starts a new one, aiVsAiPick); a Master
+  // side plays one strategy for the whole match (rl/scripted.js PROFILES), a fresh one each match
+  const levels={w:aiVsAiLevels.w,b:aiVsAiLevels.b},profiles={};
+  for(const color of ['w','b'])if(!NETAI_LEVELS[levels[color]].model)profiles[color]=SemunScripted.pickProfile(Math.random);
+  aiVsAi={s,levels,timer:null,paused:false,lastFrom:-1,lastTo:-1,profiles};
   COLS=s.cols;ROWS=s.rows;
   setBodyTheme(s.theme);
   tileData=s.tiles.slice();
@@ -61,7 +93,7 @@ function aiVsAiNewMatch(){
   const cheat=document.getElementById('btn-mapcheat');if(cheat)cheat.innerHTML=uiLabel('map','Map Cheat: ON');
   resetView();
   logLines=[];document.getElementById('log').textContent='';
-  for(const n in profiles)addLog('AI #'+n+' (Master) plays: '+profiles[n].label);
+  for(const color in profiles)addLog((color==='w'?'White':'Black')+' (Master) plays: '+profiles[color].label);
   selectedPieces=new Set();kingSelected=false;targetMode=false;targetSrc=-1;
   over=false;thinking=true;
   const pause=document.getElementById('btn-aivsai-pause');if(pause)pause.textContent='⏸ Pause';
@@ -85,16 +117,19 @@ function aiVsAiSync(){
   renderResources();
 }
 
-function aiVsAiLabel(n){
-  const level=AIVSAI_LEVELS[n-1],cfg=NETAI_LEVELS[level],name=level[0].toUpperCase()+level.slice(1);
-  if(!cfg.model)return 'AI #'+n+' · '+name+' (scripted)';
+const aiVsAiName=level=>level[0].toUpperCase()+level.slice(1);
+
+// a side's AI as the status line names it: a network with its training update, Master with this match's strategy
+function aiVsAiLabel(color){
+  const g=aiVsAi,level=g.levels[color],cfg=NETAI_LEVELS[level];
+  if(!cfg.model)return aiVsAiName(level)+(g.profiles[color]?' · '+g.profiles[color].label:'');
   const meta=(SemunModels[cfg.model]&&SemunModels[cfg.model].meta)||{};
-  return 'AI #'+n+' · '+name+(meta.update!==undefined?' (update '+meta.update+')':'');
+  return aiVsAiName(level)+(meta.update!==undefined?' (update '+meta.update+')':'');
 }
 
 function aiVsAiStatus(){
   const g=aiVsAi;
-  if(g)setStatus('White: '+aiVsAiLabel(g.white)+' vs Black: '+aiVsAiLabel(g.black)+(g.paused?' · paused':''));
+  if(g)setStatus('White: '+aiVsAiLabel('w')+' vs Black: '+aiVsAiLabel('b')+(g.paused?' · paused':''));
 }
 
 function aiVsAiSchedule(ms){
@@ -109,13 +144,13 @@ function aiVsAiStep(){
   if(!g||gameMode!=='aivsai'||g.paused)return;
   const s=g.s;
   if(s.over){aiVsAiFinish();return;}
-  const color=s.turn,ai=color==='w'?g.white:g.black;
+  const color=s.turn;
   const before=s.board.map(p=>p&&Object.assign({},p));
-  const a=netAiChoose(s,AIVSAI_LEVELS[ai-1],{temperature:1,profile:g.profiles[ai]});   // "as trained", not that difficulty's tuned value
+  const a=netAiChoose(s,g.levels[color],{temperature:1,profile:g.profiles[color]});   // "as trained", not that difficulty's tuned value
   const events=SemunEngine.step(s,a);
   g.lastFrom=a.from===undefined?-1:a.from;
   g.lastTo=a.to===undefined?-1:a.to;
-  addLog(aiVsAiDescribe(color,ai,a,events,before));
+  addLog(aiVsAiDescribe(color,a,events,before));
   const effects=aiVsAiSpeed<=2;
   const show=()=>{
     if(aiVsAi!==g)return; // a new match or the menu took over during the animation
@@ -150,7 +185,7 @@ function aiVsAiSound(a,events,before){
   kills.forEach(e=>{if(before[e.to])SFX.fall(before[e.to].type);});
 }
 
-function aiVsAiDescribe(color,ai,a,events,before){
+function aiVsAiDescribe(color,a,events,before){
   const sq=i=>SemunEngine.sqName(aiVsAi.s,i),p=a.from===undefined?null:before[a.from];
   let text;
   switch(a.type){
@@ -168,23 +203,23 @@ function aiVsAiDescribe(color,ai,a,events,before){
   }
   const hits=events.filter(e=>e.type==='attack'),kills=hits.filter(e=>e.killed).length;
   if(hits.length)text+=' · '+hits.length+' hit'+(hits.length>1?'s':'')+(kills?', '+kills+' ✕':'');
-  return (color==='w'?'W':'B')+' AI#'+ai+': '+text;
+  return (color==='w'?'W':'B')+' '+aiVsAiName(aiVsAi.levels[color])+': '+text;
 }
 
 function aiVsAiFinish(){
   const g=aiVsAi,s=g.s;
   over=true;
   document.getElementById('thinking-dot').classList.remove('on');
-  const winner=s.winner==='draw'?0:s.winner==='w'?g.white:g.black;
+  const winner=s.winner==='draw'?null:s.winner;
   if(winner)aiVsAiScore[winner]++;else aiVsAiScore.draw++;
-  // the headline names the side; which AI played it goes underneath
-  const result=winner?(s.winner==='w'?'White':'Black')+' wins':'Draw';
+  // the headline names the side; which AI played it, and the running score, go underneath
+  const result=winner?(winner==='w'?'White':'Black')+' wins':'Draw';
   const title=document.getElementById('go-title'),sub=document.getElementById('go-sub'),btns=document.getElementById('go-buttons');
   title.className=winner?'win':'draw';
   title.textContent=result;
   const draws=aiVsAiScore.draw?' ('+aiVsAiScore.draw+(aiVsAiScore.draw>1?' draws)':' draw)'):'';
-  sub.textContent=(winner?'AI #'+winner+' wins':'turn limit')+' after '+(s.turnCount.w+s.turnCount.b)
-    +' turns · score AI #1 '+aiVsAiScore[1]+' – '+aiVsAiScore[2]+' AI #2'+draws;
+  sub.textContent=(winner?aiVsAiLabel(winner)+' wins':'turn limit')+' after '+(s.turnCount.w+s.turnCount.b)
+    +' turns · score White ('+aiVsAiName(g.levels.w)+') '+aiVsAiScore.w+' – '+aiVsAiScore.b+' Black ('+aiVsAiName(g.levels.b)+')'+draws;
   btns.innerHTML='';
   const next=document.createElement('button');
   next.className='go-btn primary';next.textContent='▶ Next Match';next.onclick=aiVsAiNewMatch;
@@ -233,6 +268,7 @@ function stopAiVsAi(){
   if(aiVsAi)clearTimeout(aiVsAi.timer);
   aiVsAi=null;
   aiVsAiControls(false);
+  document.body.classList.remove('aivsai');
   if(gameMode==='aivsai'){gameMode='single';difficulty='easy';thinking=false;}
   document.getElementById('thinking-dot').classList.remove('on');
 }

@@ -190,8 +190,12 @@ function emptyBoard(opts){
       info.push('v'+e.version+': '+states+' positions, '+actions+' actions ('+shadowed+' bishop merges shown as heals'
         +(e.version>1?', '+casters+' spells cast by the other caster, '+['order','scry','meteor','fortify'].map(t=>(kinds[t]||0)+' '+t).join(' '):'')
         +', '+far+' distant locks'+(e.version<3?', '+strips+' strips left out':', '+(kinds.strip||0)+' strips')+')');
-      // (a heal-lock is rare at random: the section after this one builds it by hand)
-      if(e.version>1)for(const t of ['order','scry','meteor','fortify','unsiege','heal','target'])if(!kinds[t])fail('no '+t+' among the positions');
+      // (a heal and a heal-lock are rare at random: a heal is built by hand below, a heal-lock in the next section)
+      if(e.version>1)for(const t of ['order','scry','meteor','fortify','unsiege','target'])if(!kinds[t])fail('no '+t+' among the positions');
+      {const{s,put}=emptyBoard();
+        const bishop=put(4,4,'bishop','w',{mana:2}),knight=put(2,2,'knight','w',{hp:1});   // (two squares off: out of merging reach)
+        const heal={type:'heal',from:bishop,to:knight},back=e.legalMap(s).get(e.actionIndex(s,heal));
+        if(!back||back.type!=='heal'||back.from!==bishop||back.to!==knight)fail('version '+e.version+': a heal decodes to '+JSON.stringify(back));}
     }
     return info.join('; ');
   });
@@ -331,15 +335,15 @@ function emptyBoard(opts){
 
   await section('the shaping potential is zero-sum, and building the army raises it',()=>{
     for(const s of positions(500))if(Math.abs(potential(s,'w')+potential(s,'b'))>1e-9)fail('potential is not zero-sum');
-    // Gold and Elixir in hand count for nothing: a spawned pawn is worth a tenth, a helmet a tenth more
+    // Gold and Elixir in hand count for nothing: a spawned pawn is worth a tenth, its helmet two tenths more (2 Gold)
     const s=E.newGame({seed:3,mode:'pvp'});
     const v0=potential(s,'w'),spawn=E.legalActions(s).find(a=>a.type==='spawn');
     const c=E.clone(s);c.board[spawn.to]={type:'pawn',color:'w',hp:1,maxHp:1};c.spawns.w++;
     if(Math.abs(potential(c,'w')-v0-.1)>1e-9)fail('spawning changed the potential by '+(potential(c,'w')-v0));
-    c.board[spawn.to]=Object.assign(c.board[spawn.to],{fortified:true,hp:3,maxHp:3});c.goldSpent.w++;
-    if(Math.abs(potential(c,'w')-v0-.2)>1e-9)fail('a helmet changed the potential by '+(potential(c,'w')-v0-.1));
+    c.board[spawn.to]=Object.assign(c.board[spawn.to],{fortified:true,hp:3,maxHp:3});c.goldSpent.w+=E.FORTIFY_COST;
+    if(Math.abs(potential(c,'w')-v0-.3)>1e-9)fail('a helmet changed the potential by '+(potential(c,'w')-v0-.1));
     c.elixir.w+=3;
-    if(Math.abs(potential(c,'w')-v0-.2)>1e-9)fail('Elixir in hand changed the potential');
+    if(Math.abs(potential(c,'w')-v0-.3)>1e-9)fail('Elixir in hand changed the potential');
   });
 
   await section('worker protocol',async()=>{

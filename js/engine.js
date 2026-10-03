@@ -667,6 +667,9 @@ function creditSprings(s,color){
   }
   return paid;
 }
+// a helmet's price in Gold: 2 since 2026-10-03, when the cheapest HP in the game had made a march of
+// helmeted pawns every network's whole plan (FORTIFY_COST in js/state.js)
+const FORTIFY_COST=2;
 const FORTIFIED_MEND=5;   // a fortified pawn mends 1 HP five turns after its last hit (state.js)
 // delayed orders (MAX_DELAY, ORDER_COST in js/state.js): giving one spends part of the turn's order
 // budget instead of the turn itself, and a pawn's takes half of it
@@ -693,7 +696,7 @@ function maxDelay(type){return type==='pawn'?MAX_DELAY:1;}
 //   healLock  bishop dropped on a wounded adjacent knight, choosing "Heal": locks the knight
 //             as its heal target, and the heal fires with the end-of-turn attacks
 //   spawn     king places a pawn on an adjacent empty tile
-//   fortify   a pawn becomes a fortified pawn, 3 HP, for 1 Gold (from === to)
+//   fortify   a pawn becomes a fortified pawn, 3 HP, for FORTIFY_COST Gold (2; from === to)
 //   scry      a bishop with both its mana lights a 3x3 it cannot see
 //   unsiege   siege tower splits back into rooks (from === to)
 //   skip      pass the turn
@@ -721,9 +724,9 @@ function legalActions(s,opts){
     // diagonal reach, the first piece on each line, and only one its side can see
     if(p.type==='bishop'&&(p.mana||0)>=STRIP_MANA)
       d.attack.forEach(j=>{const t=B[j];if(t.type==='pawn'&&t.fortified)out.push({type:'strip',from:i,to:j});});
-    // any plain pawn can be fortified for 1 Gold
+    // any plain pawn can be fortified for FORTIFY_COST Gold
     // (not one whose helmet a bishop has stripped: that one stays bare for good)
-    if(p.type==='pawn'&&!p.fortified&&!p.stripped&&goldAllowed&&spawnRemaining(s,color)>=1)out.push({type:'fortify',from:i,to:i});
+    if(p.type==='pawn'&&!p.fortified&&!p.stripped&&goldAllowed&&spawnRemaining(s,color)>=FORTIFY_COST)out.push({type:'fortify',from:i,to:i});
     // a bishop with both its mana can light any 3x3 on the board, seen or not
     if(p.type==='bishop'&&(p.mana||0)>=2)
       for(let j=0;j<B.length;j++)out.push({type:'scry',from:i,to:j});
@@ -1006,7 +1009,7 @@ function applyAction(s,a,events){
     }
     case'fortify':
       p.fortified=true;p.hp=FORTIFIED_HP;p.maxHp=FORTIFIED_HP;
-      s.goldSpent[color]++;
+      s.goldSpent[color]+=FORTIFY_COST;
       s.moved=a.from;
       events.push({type:'fortify',at:a.from});
       return false;
@@ -1636,7 +1639,7 @@ const SemunEngine={
   newGame,legalActions,step,botTurn,clone,isLegal,fromSnapshot,act,
   // rule queries
   getDests,computeActions,holdsFire,applyAttacks,upkeep,spawnRemaining,heldTiles,visible,fogFor,sightLimited,inCover,concealed,campaignResult,sangTrajectories,sangLineFor,mageRange,
-  mergeResultType,elixirCost,freshSprings,SPRING_CAP,SPRING_REFILL,STRIP_MANA,
+  mergeResultType,elixirCost,freshSprings,SPRING_CAP,SPRING_REFILL,STRIP_MANA,FORTIFY_COST,
   // helpers and data
   generateMap,makeRandom,nextRandom,sqName,cheb,geo,STATS,STRATEGIES,THEME_TILES,
 };

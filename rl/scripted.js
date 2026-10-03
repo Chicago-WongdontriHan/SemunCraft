@@ -49,11 +49,14 @@
 const E=typeof module!=='undefined'&&module.exports?require('../js/engine.js'):root.SemunEngine;
 
 // What a full-health piece is worth, in Gold: about what it costs to make (Elixir counted as a Gold),
-// nudged up so each merge is a small step forward. A helmet (1 Gold) makes a pawn worth 2.6 — three Health
-// to a pawn's one, and half of a Rook — and a Rook a little more than its two parts, which is what gets
-// the Rooks, and the Siege, Guardian and Mage made of them, built at all.
-const VALUE={pawn:1,knight:2.6,bishop:3.9,rook:4.2,queen:7,siege:9.6,guardian:8.2,paladin:8.6,mage:10.4};
-const FORTIFIED=2.6;       // a pawn in a helmet
+// nudged up so each merge is a small step forward. A helmet makes a pawn worth 3.4 — three Health to a
+// pawn's one — and a Rook a little more than its two parts, which is what gets the Rooks, and the Siege,
+// Guardian and Mage made of them, built at all. The helmet's price went from 1 Gold to 2 on 2026-10-03
+// (FORTIFY_COST): the helmeted pawn, and the Rook and everything made of Rooks, each went up by just what
+// keeps every step worth what it was (a helmet +0.8 over its Gold, a Rook +0.6 over its parts...), so
+// Master still builds them — at 2.6 a helmet came out even, and the Rooks, and Bishops & Mages' Mage, stopped.
+const VALUE={pawn:1,knight:2.6,bishop:3.9,rook:5,queen:7,siege:11.2,guardian:9,paladin:8.6,mage:11.2};
+const FORTIFIED=3.4;       // a pawn in a helmet
 const KING_HP=14;          // each point of a King's health
 const GOLD=.8, ELIXIR=1, MANA=.4;
 const ELIXIR_USE=3, ELIXIR_EXTRA=.1;   // Elixir is worth its price up to the dearest thing it buys (a Paladin's 3); a bank beyond that is mostly idle

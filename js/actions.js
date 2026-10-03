@@ -411,13 +411,13 @@ function handleClick(i,additive,pt){
 }
 
 // ── PAWN: FORTIFYING ──────────────── ────────────────────────────────────────
-// One Gold turns a pawn into a fortified pawn: the same pawn in a helmet, with three life. It takes
+// FORTIFY_COST Gold (2) turns a pawn into a fortified pawn: the same pawn in a helmet, with three life. It takes
 // the pawn's turn, as spawning takes the King's. ('fortify' in engine.js)
 function fortifyAt(i){
   const p=pieces[i];
-  if(!p||p.type!=='pawn'||p.fortified||p.stripped||!goldAllowed()||spawnRemaining()<1)return;
+  if(!p||p.type!=='pawn'||p.fortified||p.stripped||!goldAllowed()||spawnRemaining()<FORTIFY_COST)return;
   p.fortified=true;p.hp=FORTIFIED_HP;p.maxHp=FORTIFIED_HP;
-  goldSpent[p.color]++;
+  goldSpent[p.color]+=FORTIFY_COST;
   movedThisTurn=i;
   addLog('Pawn fortified at '+sqName(i)+' ('+goldText(spawnRemaining())+' Gold left)');
   SFX.fortify();flashSq(i,'heal-flash');
@@ -430,7 +430,7 @@ function doFortify(){
   if(!p||p.color!==myColor()||p.type!=='pawn'){setStatus('Select one of your pawns to fortify it');return;}
   if(p.fortified){setStatus('That pawn is already fortified');return;}
   if(p.stripped){setStatus("A bishop stripped that pawn's helmet — it can't be fortified again");return;}
-  if(!goldAllowed()||spawnRemaining()<1){setStatus('Not enough Gold to fortify (1 Gold)');return;}
+  if(!goldAllowed()||spawnRemaining()<FORTIFY_COST){setStatus('Not enough Gold to fortify ('+FORTIFY_COST+' Gold)');return;}
   fortifyAt(i);
 }
 // the special-action button: whatever the one selected piece can do where it stands
@@ -694,7 +694,7 @@ function showDropChoice(at,choices){
 
 // ── THE PIECE CHOOSER: PAWNS AND BISHOPS ────────────────────────────────────
 // A selected pawn or bishop of yours gets the same kind of on-board chooser as the King. A pawn: Fortify
-// (1 Gold) while it is a plain pawn. A bishop: Scry, lit once it holds both its mana. The chooser sits
+// (2 Gold) while it is a plain pawn. A bishop: Scry, lit once it holds both its mana. The chooser sits
 // past the piece's reach (the pawn's 3x3, the bishop's 5x5) on its own side of the board, so it never
 // covers a square it can act on.
 let pieceChooser=null;
@@ -704,7 +704,7 @@ function pieceChoices(i){
   if(!p)return out;
   if(p.type==='pawn'){
     if(p.stripped)out.push(['strip','Helmet stripped',false,()=>{}]);   // says why there's no Fortify
-    else if(!p.fortified&&goldAllowed())out.push(['fortify','Fortify (1 Gold)',spawnRemaining()>=1,()=>fortifyAt(i)]);
+    else if(!p.fortified&&goldAllowed())out.push(['fortify','Fortify ('+FORTIFY_COST+' Gold)',spawnRemaining()>=FORTIFY_COST,()=>fortifyAt(i)]);
   }else if(p.type==='bishop'){
     const ready=(p.mana||0)>=2;
     out.push(['scry',ready?'Scry (2 mana)':'Scry (needs 2 mana)',ready,()=>{selectedPieces=new Set([i]);startScry();}]);

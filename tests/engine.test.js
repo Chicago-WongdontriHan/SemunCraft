@@ -395,6 +395,22 @@ section('a bishop strips the helmet off an enemy fortified pawn in its diagonal 
   if(JSON.stringify(strips(s))!==JSON.stringify([at(4,2)]))fail('with 1 mana the other helmet should be strippable: '+strips(s));
 });
 
+section('a helmet costs 2 Gold',()=>{
+  if(E.FORTIFY_COST!==2)fail('FORTIFY_COST is '+E.FORTIFY_COST);
+  const s=E.newGame({seed:3,mode:'pvp',theme:'forest'});
+  s.board.fill(null);s.tiles.fill('');s.blocked.fill(false);s.targets={w:{},b:{}};s.springs={};
+  s.board[8*9]={type:'king',color:'w',hp:5,maxHp:5};s.board[8]={type:'king',color:'b',hp:5,maxHp:5};
+  const pawn=6*9+4;s.board[pawn]={type:'pawn',color:'w',hp:1,maxHp:1};s.turn='w';
+  const canFortify=()=>E.legalActions(s).some(a=>a.type==='fortify'&&a.from===pawn);
+  s.spawns.w=Math.floor(E.spawnRemaining(s,'w'))-1;   // 1 Gold and a fraction left: not enough
+  if(E.spawnRemaining(s,'w')>=2||canFortify())fail('a helmet was offered on '+E.spawnRemaining(s,'w')+' Gold');
+  s.spawns.w--;                                       // a Gold more: enough
+  if(!canFortify())fail('no helmet on '+E.spawnRemaining(s,'w')+' Gold');
+  const spent=s.goldSpent.w;
+  E.step(s,{type:'fortify',from:pawn,to:pawn});   // (the turn it ends earns its own sixth of a Gold as well)
+  if(s.goldSpent.w-spent!==2)fail('a helmet cost '+(s.goldSpent.w-spent)+' Gold');
+});
+
 section('speed',()=>{
   const pick=E.makeRandom(1);
   let steps=0,games=0;const t0=Date.now();

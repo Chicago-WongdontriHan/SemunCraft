@@ -671,6 +671,9 @@ const FORTIFIED_MEND=5;   // a fortified pawn mends 1 HP five turns after its la
 // delayed orders (MAX_DELAY, ORDER_COST in js/state.js): giving one spends part of the turn's order
 // budget instead of the turn itself, and a pawn's takes half of it
 const MAX_DELAY=3, ORDER_BUDGET=1, ORDER_COST={pawn:.5};
+// a bishop takes the helmet off an enemy fortified pawn for this much of its mana ('strip'; STRIP_MANA in
+// js/constants.js)
+const STRIP_MANA=1;
 const NO_ORDER_TYPES=new Set(['paladin','guardian','mage','king']);   // canOrder in js/state.js
 const ORDER_MIN=ORDER_COST.pawn;   // the cheapest order there is: below this the turn has nothing left to give
 function orderCost(type){return ORDER_COST[type]||1;}
@@ -685,6 +688,8 @@ function maxDelay(type){return type==='pawn'?MAX_DELAY:1;}
 //             (by default only enemies already in range; {anyTarget:true} allows any enemy,
 //             as dropping a piece on a distant enemy does)
 //   heal      bishop heals a wounded ally on its diagonal now
+//   strip     bishop takes the helmet off an enemy fortified pawn in its reach, for good (1 mana): the pawn
+//             is a plain 1-HP pawn again and can never be fortified again
 //   healLock  bishop dropped on a wounded adjacent knight, choosing "Heal": locks the knight
 //             as its heal target, and the heal fires with the end-of-turn attacks
 //   spawn     king places a pawn on an adjacent empty tile
@@ -712,8 +717,13 @@ function legalActions(s,opts){
       if(p.type==='bishop'&&(p.mana||0)>0&&B[j].hp<B[j].maxHp)out.push({type:'healLock',from:i,to:j});
     });
     d.heal.forEach(j=>{if(!d.merge.has(j))out.push({type:'heal',from:i,to:j});});
+    // a bishop with the mana can strip the helmet off any enemy fortified pawn it could shoot at: its own
+    // diagonal reach, the first piece on each line, and only one its side can see
+    if(p.type==='bishop'&&(p.mana||0)>=STRIP_MANA)
+      d.attack.forEach(j=>{const t=B[j];if(t.type==='pawn'&&t.fortified)out.push({type:'strip',from:i,to:j});});
     // any plain pawn can be fortified for 1 Gold
-    if(p.type==='pawn'&&!p.fortified&&goldAllowed&&spawnRemaining(s,color)>=1)out.push({type:'fortify',from:i,to:i});
+    // (not one whose helmet a bishop has stripped: that one stays bare for good)
+    if(p.type==='pawn'&&!p.fortified&&!p.stripped&&goldAllowed&&spawnRemaining(s,color)>=1)out.push({type:'fortify',from:i,to:i});
     // a bishop with both its mana can light any 3x3 on the board, seen or not
     if(p.type==='bishop'&&(p.mana||0)>=2)
       for(let j=0;j<B.length;j++)out.push({type:'scry',from:i,to:j});
@@ -982,6 +992,18 @@ function applyAction(s,a,events){
       events.push({type:'order',from:a.from,to:a.to,turns:a.turns});
       // the budget is the turn: while half of it is left (a second pawn), the turn goes on
       return s.orderLeft[color]>=ORDER_MIN;
+    case'strip':{
+      // the pawn is a plain pawn again, for good; the bishop spends its mana and its turn, as a heal does
+      // (castStrip in js/actions.js)
+      const t=B[a.to];
+      t.fortified=false;t.stripped=true;t.hp=STATS.pawn.hp;t.maxHp=STATS.pawn.maxHp;delete t.lastHitTurn;
+      p.mana=Math.max(0,(p.mana||0)-STRIP_MANA);
+      p.lastHealTurn=clock(s,color);       // the same refill clock a heal or a scry resets
+      p.exposedAt=a.from;                  // it struck from where it stands, out of any cover there
+      s.moved=a.from;                      // and it doesn't shoot as well
+      events.push({type:'strip',from:a.from,to:a.to});
+      return false;
+    }
     case'fortify':
       p.fortified=true;p.hp=FORTIFIED_HP;p.maxHp=FORTIFIED_HP;
       s.goldSpent[color]++;
@@ -1614,7 +1636,7 @@ const SemunEngine={
   newGame,legalActions,step,botTurn,clone,isLegal,fromSnapshot,act,
   // rule queries
   getDests,computeActions,holdsFire,applyAttacks,upkeep,spawnRemaining,heldTiles,visible,fogFor,sightLimited,inCover,concealed,campaignResult,sangTrajectories,sangLineFor,mageRange,
-  mergeResultType,elixirCost,freshSprings,SPRING_CAP,SPRING_REFILL,
+  mergeResultType,elixirCost,freshSprings,SPRING_CAP,SPRING_REFILL,STRIP_MANA,
   // helpers and data
   generateMap,makeRandom,nextRandom,sqName,cheb,geo,STATS,STRATEGIES,THEME_TILES,
 };

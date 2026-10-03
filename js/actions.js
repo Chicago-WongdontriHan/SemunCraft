@@ -336,6 +336,11 @@ function handleClick(i,additive,pt){
     if(meteorSrc>=0&&meteorReach(meteorSrc,a))castMeteor(meteorSrc,a);else cancelMeteor();
     return;
   }
+  if(stripMode){
+    // a lit helmet strips it; anywhere else puts the strip away
+    if(stripSrc>=0&&stripTargets(stripSrc).has(i))castStrip(stripSrc,i);else cancelStrip();
+    return;
+  }
   const ki=pieces.findIndex(q=>q&&q.color===mc&&q.type==='king');
   // click-to-move: if exactly one friendly piece is selected and the clicked tile is
   // a valid move/attack/merge destination for it, execute the action
@@ -410,7 +415,7 @@ function handleClick(i,additive,pt){
 // the pawn's turn, as spawning takes the King's. ('fortify' in engine.js)
 function fortifyAt(i){
   const p=pieces[i];
-  if(!p||p.type!=='pawn'||p.fortified||!goldAllowed()||spawnRemaining()<1)return;
+  if(!p||p.type!=='pawn'||p.fortified||p.stripped||!goldAllowed()||spawnRemaining()<1)return;
   p.fortified=true;p.hp=FORTIFIED_HP;p.maxHp=FORTIFIED_HP;
   goldSpent[p.color]++;
   movedThisTurn=i;
@@ -424,6 +429,7 @@ function doFortify(){
   const p=i<0?null:pieces[i];
   if(!p||p.color!==myColor()||p.type!=='pawn'){setStatus('Select one of your pawns to fortify it');return;}
   if(p.fortified){setStatus('That pawn is already fortified');return;}
+  if(p.stripped){setStatus("A bishop stripped that pawn's helmet — it can't be fortified again");return;}
   if(!goldAllowed()||spawnRemaining()<1){setStatus('Not enough Gold to fortify (1 Gold)');return;}
   fortifyAt(i);
 }
@@ -444,7 +450,7 @@ function startScry(){
   const i=[...selectedPieces][0];
   const p=i===undefined?null:pieces[i];
   if(!p||p.color!==myColor()||p.type!=='bishop'||(p.mana||0)<2){setStatus('Select a bishop with full mana');return;}
-  scryMode=true;scrySrc=i;targetMode=false;meteorMode=false;
+  scryMode=true;scrySrc=i;targetMode=false;meteorMode=false;stripMode=false;
   render();syncUI();
   setStatus('Tap any square: the bishop lights the 3x3 around it (2 mana)');
 }
@@ -485,6 +491,43 @@ function castScry(from,to){
   render();endTurn();
 }
 
+// ── BISHOP: STRIPPING A HELMET ───────────────────────────────────────────────
+// For STRIP_MANA a bishop takes the helmet off an enemy fortified pawn it could shoot at — its diagonal
+// reach, up to 2 squares, the first piece on each line — and the pawn is a plain 1-HP pawn again, for good:
+// it can never be fortified again, and is marked with a cracked helmet. It costs the bishop's turn, like a
+// heal, so it doesn't shoot as well. The answer to a march of helmeted pawns. ('strip' in engine.js)
+let stripMode=false, stripSrc=-1;
+// the helmets this bishop can strip from where it stands
+function stripTargets(i){
+  const out=new Set(),p=pieces[i];
+  if(!p||p.type!=='bishop'||(p.mana||0)<STRIP_MANA)return out;
+  getDragDests(i).attack.forEach(j=>{const t=pieces[j];if(t&&t.color!==p.color&&t.type==='pawn'&&t.fortified)out.add(j);});
+  return out;
+}
+function startStrip(){
+  const i=[...selectedPieces][0];
+  const p=i===undefined?null:pieces[i];
+  if(!p||p.color!==myColor()||p.type!=='bishop'||(p.mana||0)<STRIP_MANA){setStatus('Select a bishop with mana');return;}
+  if(!stripTargets(i).size){setStatus('No enemy helmet within the bishop\'s reach');return;}
+  stripMode=true;stripSrc=i;targetMode=false;scryMode=false;meteorMode=false;
+  render();syncUI();
+  setStatus('Tap a lit helmet: the bishop strips it off for good ('+STRIP_MANA+' mana)');
+}
+function cancelStrip(){stripMode=false;stripSrc=-1;render();syncUI();}
+function castStrip(from,to){
+  const p=pieces[from],t=pieces[to];
+  if(!p||p.type!=='bishop'||(p.mana||0)<STRIP_MANA||!t||t.color===p.color||t.type!=='pawn'||!t.fortified)return;
+  t.fortified=false;t.stripped=true;t.hp=STATS.pawn.hp;t.maxHp=STATS.pawn.maxHp;delete t.lastHitTurn;
+  p.mana=Math.max(0,(p.mana||0)-STRIP_MANA);
+  p.lastHealTurn=whiteTurnCount;   // the same refill clock a heal or a scry resets
+  p.exposedAt=from;                // it struck from where it stands, out of any cover there
+  stripMode=false;stripSrc=-1;
+  movedThisTurn=from;
+  addLog('Bishop strips the helmet off the pawn@'+sqName(to));
+  SFX.attack();flashSq(to,'hit-flash');
+  render();endTurn();
+}
+
 // ── THE MAGE'S METEOR ────────────────────────────────────────────────────────
 // Cast for METEOR_MANA on a 2x2 aimed by its middle — the corner its four squares share — within 2
 // squares of the Mage, so the whole 2x2 is within 3 of it (meteorReach in js/state.js). It doesn't
@@ -496,7 +539,7 @@ function startMeteor(){
   const i=[...selectedPieces][0];
   const p=i===undefined?null:pieces[i];
   if(!p||p.color!==myColor()||p.type!=='mage'||(p.mana||0)<METEOR_MANA){setStatus('Select a Mage with full mana');return;}
-  meteorMode=true;meteorSrc=i;targetMode=false;scryMode=false;
+  meteorMode=true;meteorSrc=i;targetMode=false;scryMode=false;stripMode=false;
   render();syncUI();
   setStatus('Tap the corner where four squares meet: the meteor lands on those four in '+METEOR_TURNS+' turns ('+METEOR_MANA+' mana) \u2014 any 2x2 inside the lit squares');
 }
@@ -660,10 +703,15 @@ function pieceChoices(i){
   const p=pieces[i],out=[];
   if(!p)return out;
   if(p.type==='pawn'){
-    if(!p.fortified&&goldAllowed())out.push(['fortify','Fortify (1 Gold)',spawnRemaining()>=1,()=>fortifyAt(i)]);
+    if(p.stripped)out.push(['strip','Helmet stripped',false,()=>{}]);   // says why there's no Fortify
+    else if(!p.fortified&&goldAllowed())out.push(['fortify','Fortify (1 Gold)',spawnRemaining()>=1,()=>fortifyAt(i)]);
   }else if(p.type==='bishop'){
     const ready=(p.mana||0)>=2;
     out.push(['scry',ready?'Scry (2 mana)':'Scry (needs 2 mana)',ready,()=>{selectedPieces=new Set([i]);startScry();}]);
+    // Strip, lit while it has the mana and an enemy helmet in reach (stripTargets)
+    const mana=(p.mana||0)>=STRIP_MANA,helmets=stripTargets(i).size>0;
+    out.push(['strip',!mana?'Strip (needs '+STRIP_MANA+' mana)':helmets?'Strip ('+STRIP_MANA+' mana)':'Strip (no helmet in reach)',
+      mana&&helmets,()=>{selectedPieces=new Set([i]);startStrip();}]);
   }else if(p.type==='mage'){
     const ready=(p.mana||0)>=METEOR_MANA;
     out.push(['meteor',ready?'Meteor ('+METEOR_MANA+' mana)':'Meteor (needs '+METEOR_MANA+' mana)',ready,()=>{selectedPieces=new Set([i]);startMeteor();}]);
@@ -678,7 +726,7 @@ function pieceChoices(i){
 function syncPieceChooser(){
   const i=selectedPieces.size===1&&!kingSelected?[...selectedPieces][0]:-1,p=i>=0?pieces[i]:null;
   const up=!!p&&p.color===myColor()&&!dragging&&!over&&!thinking&&isMyTurn()
-    &&!scryMode&&!meteorMode&&!targetMode&&!isTutorialActive();
+    &&!scryMode&&!meteorMode&&!stripMode&&!targetMode&&!isTutorialActive();
   const choices=up?pieceChoices(i):[];
   if(!choices.length){closePieceChooser();return;}
   // rebuilt only when the piece or what it offers changes, so a tap in progress survives a re-render

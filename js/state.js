@@ -119,7 +119,8 @@ function creditResources(color){
   return paid;
 }
 function goldAllowed(){ return !campaignLevel||campaignLevel.allowSpawn!==false; }
-function canFortify(i){ const p=pieces[i]; return !!p&&p.type==='pawn'&&!p.fortified&&goldAllowed()&&spawnRemaining()>=1; }
+// (a pawn whose helmet a bishop stripped stays bare for good: castStrip in js/actions.js)
+function canFortify(i){ const p=pieces[i]; return !!p&&p.type==='pawn'&&!p.fortified&&!p.stripped&&goldAllowed()&&spawnRemaining()>=1; }
 function oppColor(){ return myColor()==='w'?'b':'w'; }
 // The clock a side's Gold grows on is its own turns. This seat takes one side's turns in a game (so
 // whiteTurnCount is that side's count, whichever colour it is playing), but the training ground plays
@@ -329,7 +330,7 @@ const PC_DATA=[
   {gw:'♙',gb:'♟',name:'Fortified',stats:'3HP · mends 1HP/5 turns · 1 Gold'},
   {gw:'♘',gb:'♞',name:'Knight', stats:'4HP · L-jump · atk L-dist'},
   {gw:'♘',gb:'♞',name:'Paladin',stats:'3HP · L-jump · lance always kills, then leaps in'},
-  {gw:'♗',gb:'♝',name:'Bishop', stats:'2HP · diagonal 2 · heals (mana)'},
+  {gw:'♗',gb:'♝',name:'Bishop', stats:'2HP · diagonal 2 · heals, strips helmets (mana)'},
   {gw:'♖',gb:'♜',name:'Rook',   stats:'4HP · card2 · pierce rng3 · Fortified + Pawn'},
   {gw:'♖',gb:'♜',name:'Guardian',stats:'5HP · card2 · rook+knight range, hits the line'},
   {gw:'♛',gb:'♛',name:'Queen',  stats:'5HP · all dir rng2'},

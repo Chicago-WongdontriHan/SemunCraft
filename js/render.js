@@ -1,4 +1,9 @@
 // ── RENDER ───────────────────────────────────────────────────────────────────
+// the cracked helmet a stripped pawn wears (castStrip in js/actions.js): the Fortify helmet, split by a red crack
+const STRIP_BADGE_SVG='<svg viewBox="0 0 24 24" width="100%" height="100%">'
+  +'<path d="M4.5 15 C4.5 8.6 7.8 4.8 12 4.8 C16.2 4.8 19.5 8.6 19.5 15 Z" fill="#dcd6c4" stroke="#241c10" stroke-width="1.8"/>'
+  +'<path d="M2.8 15 H21.2" stroke="#241c10" stroke-width="2.2" stroke-linecap="round"/>'
+  +'<path d="M12.6 4.9 L10.6 8.6 L13.4 10.6 L11.2 15" fill="none" stroke="#e0402e" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/></svg>';
 function render(){
   clampViewport();
   updateExploredTiles();
@@ -30,6 +35,9 @@ function render(){
   // scrying: every square out of sight the bishop can light, drawn over the fog (scryArea in actions.js)
   const scryZone=typeof scryMode!=='undefined'&&scryMode&&scrySrc>=0?scryArea(scrySrc):null;
   const scryMark=(sq,i)=>{if(scryZone&&scryZone.has(i)){sq.classList.add('scry-zone');const m=document.createElement('span');m.className='scry-mark';sq.appendChild(m);}};
+  // stripping: the enemy helmets the bishop can reach glow (stripTargets in actions.js)
+  const stripZone=typeof stripMode!=='undefined'&&stripMode&&stripSrc>=0?stripTargets(stripSrc):null;
+  const stripMark=(sq,i)=>{if(stripZone&&stripZone.has(i)){sq.classList.add('strip-zone');const m=document.createElement('span');m.className='strip-mark';sq.appendChild(m);}};
   // aiming a meteor: the 7x7 around the Mage, which any 2x2 it lands on has to lie inside (meteorArea)
   const meteorZone=typeof meteorMode!=='undefined'&&meteorMode&&meteorSrc>=0?meteorArea(meteorSrc):null;
   const meteorZoneMark=(sq,i)=>{if(meteorZone&&meteorZone.has(i)){sq.classList.add('meteor-zone');const m=document.createElement('span');m.className='meteor-zone-mark';sq.appendChild(m);}};
@@ -70,7 +78,7 @@ function render(){
         // unexplored — thick cloud hides everything
         sq.classList.add('fog','fog-unknown');
         sq.appendChild(fogCover(i,'unknown'));
-        scryMark(sq,i);meteorMark(sq,i);flareMark(sq,i);meteorZoneMark(sq,i);
+        scryMark(sq,i);stripMark(sq,i);meteorMark(sq,i);flareMark(sq,i);meteorZoneMark(sq,i);
         if(res){sq.title=tileData[i]==='spring'?springTip(i):RESOURCE_TIPS[tileData[i]];sq.appendChild(pawnNeededBadge(tileData[i],true));if(tileData[i]==='spring')sq.appendChild(springStockBadge(i));}
         if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
         if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
@@ -90,7 +98,7 @@ function render(){
         }
         sq.classList.add('fog','fog-explored');
         sq.appendChild(fogCover(i,'explored'));
-        scryMark(sq,i);meteorMark(sq,i);flareMark(sq,i);meteorZoneMark(sq,i);
+        scryMark(sq,i);stripMark(sq,i);meteorMark(sq,i);flareMark(sq,i);meteorZoneMark(sq,i);
         if(res){sq.title=tileData[i]==='spring'?springTip(i):RESOURCE_TIPS[tileData[i]];sq.appendChild(pawnNeededBadge(tileData[i],true));if(tileData[i]==='spring')sq.appendChild(springStockBadge(i));}
         if(c===0){const l=document.createElement('span');l.className='coord coord-rank';l.textContent=ROWS-r;sq.appendChild(l);}
         if(r===ROWS-1){const l=document.createElement('span');l.className='coord coord-file';l.textContent=FILES[c];sq.appendChild(l);}
@@ -137,7 +145,7 @@ function render(){
         sq.appendChild(n);
       }
       // scrying: the squares this bishop may light, and the ones already burning
-      scryMark(sq,i);meteorMark(sq,i);flareMark(sq,i);meteorZoneMark(sq,i);
+      scryMark(sq,i);stripMark(sq,i);meteorMark(sq,i);flareMark(sq,i);meteorZoneMark(sq,i);
       const lit=typeof scryLit==='function'&&scryLit(i,mc);
       if(lit)sq.classList.add('scry-lit');
       // a campaign level's goal squares: the gate to reach, the floor to hold
@@ -191,6 +199,12 @@ function render(){
 
         for(let h=0;h<p.maxHp;h++){const pip=document.createElement('div');pip.className='hp-pip '+(h<p.hp?'full-':'empty-')+p.color;pip.style.width=pipW;pip.style.height=pipH;bar.appendChild(pip);}
         div.appendChild(bar);
+        // a pawn whose helmet a bishop stripped wears a cracked one, top right: it can never be fortified again
+        if(p.type==='pawn'&&p.stripped){
+          const b=document.createElement('div');b.className='strip-badge';b.innerHTML=STRIP_BADGE_SVG;
+          const bs=Math.max(12,Math.floor(sqPx*.32))+'px';b.style.width=bs;b.style.height=bs;
+          div.appendChild(b);
+        }
         // mana pips for bishops
         if(p.type==='bishop'){
           const manaMax=2,mana=p.mana||0;

@@ -91,6 +91,7 @@ function applyOriginal(a,s){
   if(a.type==='order')game.run('placeOrder('+a.from+','+a.to+','+a.turns+')');
   else if(a.type==='fortify')game.run('fortifyAt('+a.from+')');
   else if(a.type==='scry')game.run('castScry('+a.from+','+a.to+')');
+  else if(a.type==='strip')game.run('castStrip('+a.from+','+a.to+')');
   else if(a.type==='meteor')game.run('castMeteor('+a.from+','+a.to+')');
   else if(a.type==='spawn')game.run('kingSelected=true;handleClick('+a.to+')');
   else if(a.type==='unsiege')game.run('unsiegePiece('+a.from+')');
@@ -154,12 +155,15 @@ function playClassic(opts,label,stats){
   // a fresh page starts with these empty; initGame doesn't clear them between games
   game.run('blackActed=new Set();blackHitBy=[];');
   if(opts.scatter)scatter(s,opts.seed);
+  if(opts.plant)opts.plant(s);
   const pick=E.makeRandom(opts.seed*7919+13);
   for(let n=0;n<MAX_ACTIONS&&!s.over;n++){
     for(let i=0;i<s.board.length;i++)
       if(s.board[i]&&!check(label+': moves of '+E.sqName(s,i)+' before action '+n,game.ctx.__dests(i),sortedDests(E.getDests(s,i))))return;
     if(!check(label+': spawns left before action '+n,game.run('spawnRemaining()'),E.spawnRemaining(s,'w')))return;
-    const a=choose(E.legalActions(s),pick);
+    // opts.prefer: always that kind of action when there is one (a rare one, like a bishop's Strip, would hardly
+    // ever come up at random)
+    const acts=E.legalActions(s),a=(opts.prefer&&acts.find(x=>x.type===opts.prefer))||choose(acts,pick);
     stats[a.type]=(stats[a.type]||0)+1;
     applyOriginal(a,s);
     E.step(s,a);
@@ -227,6 +231,25 @@ section('classic games vs the built-in AI',stats=>{
 section('classic games from mid-game positions',stats=>{
   for(const theme of THEMES)for(const difficulty of ['easy','hard'])for(let seed=1;seed<=SEEDS;seed++)
     playClassic({seed,theme,difficulty,fog:seed%3===0,scatter:true},'classic mid-game '+theme+' '+difficulty+' seed '+seed,stats);
+});
+// a White bishop with full mana and two Black helmets on its diagonals, in both games (a Strip hardly ever
+// comes up in a random position)
+function plantStrip(s){
+  const g=E.geo(s),B=s.board,free=j=>!B[j]&&!s.blocked[j];
+  for(let i=0;i<B.length;i++){
+    const r=Math.floor(i/s.cols),c=i%s.cols;
+    const diag=[[-1,-1],[-1,1],[1,-1],[1,1]].filter(([dr,dc])=>g.inB(r+dr,c+dc)).map(([dr,dc])=>(r+dr)*s.cols+c+dc).filter(free);
+    if(!free(i)||diag.length<2)continue;
+    B[i]={type:'bishop',color:'w',hp:2,maxHp:2,mana:2};
+    for(const j of diag.slice(0,2))B[j]={type:'pawn',color:'b',hp:3,maxHp:3,fortified:true};
+    game.set('pieces',B.map(p=>p&&Object.assign({},p)));
+    return;
+  }
+}
+section('a bishop stripping helmets, from mid-game positions',stats=>{
+  for(const theme of THEMES)for(let seed=1;seed<=SEEDS;seed++)
+    playClassic({seed,theme,difficulty:'easy',fog:false,scatter:true,plant:plantStrip,prefer:'strip'},'strips '+theme+' seed '+seed,stats);
+  if(!stats.strip){console.log('     no strip was played');failures++;}
 });
 section('campaign levels vs the campaign AI',stats=>{
   for(let level=0;level<LEVELS.length;level++)for(let seed=1;seed<=SEEDS;seed++)

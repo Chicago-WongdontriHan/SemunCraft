@@ -484,6 +484,7 @@ function trainAiPlay(a){
     if(a.type==='fortify'&&canFortify(from)){fortifyAt(from);return;}
     if(a.type==='unsiege'&&p.type==='siege'){unsiegePiece(from);return;}
     if(a.type==='scry'&&p.type==='bishop'&&(p.mana||0)>=2){castScry(from,a.to);return;}
+    if(a.type==='strip'&&stripTargets(from).has(a.to)){castStrip(from,a.to);return;}
     if(a.type==='order'&&canOrder(from)&&orderTargets(from).has(a.to)){placeOrder(from,a.to,a.turns||1);return;}
   }
   if(a&&a.type==='spawn'&&a.to!==undefined&&!pieces[a.to]){

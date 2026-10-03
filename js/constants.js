@@ -30,6 +30,9 @@ const siegeRange = i=>{ const r=ROW(i),c=COL(i),res=[];
 // Bishop attack range: diagonal sliding up to 2 squares (blocked by obstacles, pierces friendly/enemy)
 // scrying: a bishop spends both its mana to light a 3x3 it cannot see, anywhere on the board
 const SCRY_TURNS=2;
+// stripping: a bishop spends this much mana to take the helmet off an enemy fortified pawn in its reach, for
+// good (castStrip in js/actions.js, 'strip' in js/engine.js)
+const STRIP_MANA=1;
 // how long a merge's own flash (mergeFlash in js/render.js) takes to finish playing, so the turn
 // doesn't hand over — and the view with it, in an AI vs AI training match — until it's done
 const MERGE_ANIM_MS=700;

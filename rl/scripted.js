@@ -281,7 +281,7 @@ function evaluate(s,me,P){
 }
 
 // the same choice every time for the same position, without touching the game's random stream
-const TYPE_CODE={move:1,merge:2,target:3,heal:4,spawn:5,fortify:6,meteor:7,skip:8,order:9,scry:10};
+const TYPE_CODE={move:1,merge:2,target:3,heal:4,spawn:5,fortify:6,meteor:7,skip:8,order:9,scry:10,strip:11};
 function noise(s,a){
   let h=((a.from|0)*73856093)^((a.to|0)*19349663)^(s.turnCount.w*83492791)^(s.turnCount.b*2654435)^((TYPE_CODE[a.type]||0)*40503)^((a.turns|0)*97);
   h=Math.imul(h^(h>>>13),1274126177);

@@ -133,7 +133,7 @@ function emptyBoard(opts){
   await section('every legal action has an index that decodes back to it',()=>{
     const info=[];
     for(const e of ENCODERS){
-      let states=0,actions=0,shadowed=0,casters=0,far=0;const kinds={};
+      let states=0,actions=0,shadowed=0,casters=0,far=0,strips=0;const kinds={};
       for(const s of positions(e.version===1?2000:4000)){
         states++;
         const map=e.legalMap(s);
@@ -146,6 +146,8 @@ function emptyBoard(opts){
           actions++;
           const k=e.actionIndex(s,a),b=map.get(k);
           if(e.version===1&&V1_ONLY.has(a.type)){if(k>=0)fail('version 1 gives '+a.type+' an index');continue;}
+          // a bishop's Strip has no slot yet in either version (actionIndex): no network strips
+          if(a.type==='strip'){if(k>=0)fail('version '+e.version+' gives a strip an index');strips++;continue;}
           if(k<0){
             // only a lock on a target more than 4 squares away is out of reach of the slots
             if(a.type!=='target')fail('version '+e.version+': no index for '+JSON.stringify(a));
@@ -162,7 +164,7 @@ function emptyBoard(opts){
       }
       info.push('v'+e.version+': '+states+' positions, '+actions+' actions ('+shadowed+' bishop merges shown as heals'
         +(e.version>1?', '+casters+' spells cast by the other caster, '+['order','scry','meteor','fortify'].map(t=>(kinds[t]||0)+' '+t).join(' '):'')
-        +', '+far+' distant locks)');
+        +', '+far+' distant locks, '+strips+' strips left to Master)');
       // (a heal-lock is rare at random: the section after this one builds it by hand)
       if(e.version>1)for(const t of ['order','scry','meteor','fortify','unsiege','heal','target'])if(!kinds[t])fail('no '+t+' among the positions');
     }

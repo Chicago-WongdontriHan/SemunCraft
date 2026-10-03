@@ -16,7 +16,7 @@
 <meta name="apple-mobile-web-app-title" content="SemunCraft">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <!-- fetch the UI font with the page, so the title does not flash in a fallback face -->
-<link rel="preload" href="fonts/LilitaOne.woff2?v=20261003g" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/LilitaOne.woff2?v=20261003j" as="font" type="font/woff2" crossorigin>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 /* a double tap must not zoom the page: the board has its own pinch and zoom (js/drag.js) */
@@ -72,13 +72,13 @@ html,body{width:100%;height:100%;overflow:hidden;}
 body{font-family:var(--ui-font);background:#0c1a08;color:#c8d4a0;display:flex;flex-direction:column;align-items:center;height:100vh;height:100dvh;padding:6px 10px 4px;gap:5px;background-image:radial-gradient(ellipse at 20% 10%,rgba(30,60,10,.6) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(10,40,5,.7) 0%,transparent 50%);}
 
 /* ── INTRO ── */
-@font-face{font-family:'Lilita One';src:url(fonts/LilitaOne.woff2?v=20261003g) format('woff2');font-display:swap;}
+@font-face{font-family:'Lilita One';src:url(fonts/LilitaOne.woff2?v=20261003j) format('woff2');font-display:swap;}
 /* the title screen: a war scene behind (Battle Lines on wide screens, The Clash on tall ones, from
    img/make-title-wallpapers.js), the SemunCraft title, and the menu on a translucent card. Every
    size follows --tw, the title's width, so the whole menu scales with the screen and still fits. */
 #intro{--tw:min(92vw,640px,60vh);position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;gap:calc(var(--tw)*.02);padding:12px 8px;overflow-y:auto;
-  background:#8ED6F2 url(img/title-wide.svg?v=20261003g) center bottom/cover no-repeat;}
-@media (orientation:portrait){#intro{background-image:url(img/title-tall.svg?v=20261003g);}}
+  background:#8ED6F2 url(img/title-wide.svg?v=20261003j) center bottom/cover no-repeat;}
+@media (orientation:portrait){#intro{background-image:url(img/title-tall.svg?v=20261003j);}}
 #intro-title{width:var(--tw);height:auto;display:block;flex-shrink:0;overflow:visible;}
 #intro-title text{font-family:'Lilita One',Georgia,serif;font-size:120px;text-anchor:middle;stroke-linejoin:round;}
 #intro-title .title-shadow{fill:#2A1706;stroke:#2A1706;stroke-width:20px;}
@@ -269,7 +269,10 @@ body.aivsai #aivsai-pick{display:flex;}
 @keyframes flarePulse{0%,100%{box-shadow:inset 0 0 10px rgba(255,122,46,.35);}50%{box-shadow:inset 0 0 20px rgba(255,140,50,.6);}}
 
 /* the selected king's Spawn / Move chooser (actions.js) */
-#king-choice,#piece-choice,#bishop-choice{position:fixed;z-index:800;display:flex;gap:6px;padding:5px;background:linear-gradient(var(--leather-a),var(--leather-b));border:2px solid var(--gold);border-radius:var(--ui-r);box-shadow:0 6px 18px rgba(0,0,0,.7);}
+#king-choice,#piece-choice,#bishop-choice{position:fixed;z-index:800;display:flex;gap:6px;padding:5px;background:linear-gradient(var(--leather-a),var(--leather-b));border:2px solid var(--gold);border-radius:var(--ui-r);box-shadow:0 6px 18px rgba(0,0,0,.7);
+  /* a chooser too wide for a phone (a bishop's Scry, Strip and Delay) wraps onto a second line rather than
+     running off the screen */
+  flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 12px);box-sizing:border-box;}
 .king-choice-btn{padding:7px 14px;font-size:14px;touch-action:manipulation;white-space:nowrap;}
 .king-choice-btn svg{width:1.15em;height:1.15em;display:block;flex-shrink:0;}
 
@@ -311,6 +314,9 @@ body.aivsai #aivsai-pick{display:flex;}
 .hp-pip.full-n{background:#E8C45A;}   /* the Scarecrow, on neither side: straw */
 .hp-pip.empty-n{background:rgba(0,0,0,.35);}
 .mana-bar{position:absolute;top:2px;left:0;right:0;display:flex;gap:1px;justify-content:center;z-index:5;}
+/* a pawn a bishop stripped: a cracked helmet in the top right corner (STRIP_BADGE_SVG in js/render.js) */
+.strip-badge{position:absolute;right:3%;top:3%;z-index:6;pointer-events:none;border-radius:50%;padding:1px;
+  background:rgba(20,14,6,.72);box-shadow:0 0 0 1px rgba(210,58,42,.85);display:flex;}
 .mana-pip{border-radius:50%;flex-shrink:0;background:#4090e8;}
 .mana-pip.empty{background:rgba(40,80,200,.2);}
 .hp-pip.empty-b{background:rgba(255,255,255,.12);}
@@ -596,6 +602,10 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 /* every square out of sight the bishop can light glows through the fog; the 3x3 a click would light
    (under a mouse pointer) glows brighter */
 .sq.scry-zone{cursor:crosshair;}
+/* the enemy helmets a bishop can strip, while it picks one (stripTargets in js/actions.js) */
+.sq.strip-zone{cursor:crosshair;}
+.strip-mark{position:absolute;inset:0;z-index:10;pointer-events:none;border-radius:inherit;background:rgba(255,120,50,.2);
+  box-shadow:inset 0 0 0 calc(var(--tile-ring,1.5px) + 2px) rgba(255,140,60,.95),inset 0 0 14px rgba(255,120,50,.45);}
 .scry-mark{position:absolute;inset:0;z-index:10;pointer-events:none;border-radius:inherit;background:rgba(127,200,255,.16);
   box-shadow:inset 0 0 0 calc(var(--tile-ring,1.5px) + 1.5px) rgba(127,200,255,.9);}
 .sq.scry-preview>.scry-mark{background:rgba(127,200,255,.45);box-shadow:inset 0 0 0 calc(var(--tile-ring,1.5px) + 2.5px) #CFEAFF;}
@@ -1024,36 +1034,36 @@ body.theme-ocean{--tile-frame:#1e3c74;}
 <!-- ?v= is the release version: bump it on every release so browsers (GitHub Pages lets them
      cache files for 10 minutes) never mix old cached scripts with new ones -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-<script src="js/constants.js?v=20261003g"></script>
-<script src="js/state.js?v=20261003g"></script>
-<script src="js/audio.js?v=20261003g"></script>
-<script src="js/music.js?v=20261003g"></script>
-<script src="pieces/pieces.js?v=20261003g"></script>
-<script src="pieces/forest.js?v=20261003g"></script>
-<script src="pieces/jungle.js?v=20261003g"></script>
-<script src="pieces/desert.js?v=20261003g"></script>
-<script src="pieces/ocean.js?v=20261003g"></script>
-<script src="pieces/units-art.js?v=20261003g"></script>
-<script src="js/movement.js?v=20261003g"></script>
-<script src="js/themes.js?v=20261003g"></script>
-<script src="js/maps.js?v=20261003g"></script>
-<script src="js/scenery.js?v=20261003g"></script>
-<script src="js/render.js?v=20261003g"></script>
-<script src="js/combat.js?v=20261003g"></script>
-<script src="js/animals.js?v=20261003g"></script>
-<script src="js/actions.js?v=20261003g"></script>
-<script src="js/ui.js?v=20261003g"></script>
-<script src="js/tutorial.js?v=20261003g"></script>
-<script src="js/campaign.js?v=20261003g"></script>
-<script src="js/training.js?v=20261003g"></script>
-<script src="js/pvp.js?v=20261003g"></script>
-<script src="js/ai.js?v=20261003g"></script>
-<script src="js/game.js?v=20261003g"></script>
-<script src="js/drag.js?v=20261003g"></script>
-<script src="js/resize.js?v=20261003g"></script>
+<script src="js/constants.js?v=20261003j"></script>
+<script src="js/state.js?v=20261003j"></script>
+<script src="js/audio.js?v=20261003j"></script>
+<script src="js/music.js?v=20261003j"></script>
+<script src="pieces/pieces.js?v=20261003j"></script>
+<script src="pieces/forest.js?v=20261003j"></script>
+<script src="pieces/jungle.js?v=20261003j"></script>
+<script src="pieces/desert.js?v=20261003j"></script>
+<script src="pieces/ocean.js?v=20261003j"></script>
+<script src="pieces/units-art.js?v=20261003j"></script>
+<script src="js/movement.js?v=20261003j"></script>
+<script src="js/themes.js?v=20261003j"></script>
+<script src="js/maps.js?v=20261003j"></script>
+<script src="js/scenery.js?v=20261003j"></script>
+<script src="js/render.js?v=20261003j"></script>
+<script src="js/combat.js?v=20261003j"></script>
+<script src="js/animals.js?v=20261003j"></script>
+<script src="js/actions.js?v=20261003j"></script>
+<script src="js/ui.js?v=20261003j"></script>
+<script src="js/tutorial.js?v=20261003j"></script>
+<script src="js/campaign.js?v=20261003j"></script>
+<script src="js/training.js?v=20261003j"></script>
+<script src="js/pvp.js?v=20261003j"></script>
+<script src="js/ai.js?v=20261003j"></script>
+<script src="js/game.js?v=20261003j"></script>
+<script src="js/drag.js?v=20261003j"></script>
+<script src="js/resize.js?v=20261003j"></script>
 <!-- trained AI (Single Player difficulties, AI vs AI); the engine, network and weights load only when needed -->
-<script src="js/netai.js?v=20261003g"></script>
-<script src="js/aivsai.js?v=20261003g"></script>
-<script src="js/update.js?v=20261003g"></script>
+<script src="js/netai.js?v=20261003j"></script>
+<script src="js/aivsai.js?v=20261003j"></script>
+<script src="js/update.js?v=20261003j"></script>
 </body>
 </html>

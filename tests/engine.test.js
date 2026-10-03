@@ -359,6 +359,42 @@ section('a piece holds its fire on its old square on its moving turn only; an or
   if(hp(t,at(5,4))!==2)fail('the pawn should fire as usual the turn after its order struck');
 });
 
+section('a bishop strips the helmet off an enemy fortified pawn in its diagonal reach, for good',()=>{
+  const s=E.newGame({seed:3,mode:'classic',theme:'forest',aiSight:{w:false,b:false}});
+  s.board.fill(null);s.tiles.fill('');s.blocked.fill(false);s.targets={w:{},b:{}};s.springs={};
+  const at=(r,c)=>r*9+c,skip=t=>E.step(t,{type:'skip'},{trusted:true}),bishop=at(6,4);
+  s.board[at(8,0)]={type:'king',color:'w',hp:5,maxHp:5};s.board[at(0,8)]={type:'king',color:'b',hp:5,maxHp:5};
+  s.board[bishop]={type:'bishop',color:'w',hp:10,maxHp:10,mana:2};   // sturdy: Black's pawns shoot at it on their turn
+  const helmet=()=>({type:'pawn',color:'b',hp:3,maxHp:3,fortified:true});
+  s.board[at(5,5)]=helmet();   // one diagonal step: in reach
+  s.board[at(4,6)]=helmet();   // two steps on, behind the first: the line stops at the first piece
+  s.board[at(4,2)]=helmet();   // two diagonal steps the other way, the square between empty: in reach
+  s.board[at(5,4)]=helmet();   // straight ahead: not a diagonal
+  s.board[at(3,7)]=helmet();   // three diagonal steps: too far
+  s.board[at(7,5)]={type:'pawn',color:'b',hp:1,maxHp:1};   // on its diagonal, but no helmet to strip
+  s.turn='w';
+  const strips=t=>E.legalActions(t).filter(a=>a.type==='strip').map(a=>a.to).sort((a,b)=>a-b);
+  if(JSON.stringify(strips(s))!==JSON.stringify([at(4,2),at(5,5)]))fail('strip reaches '+strips(s)+', expected '+[at(4,2),at(5,5)]);
+  if(!E.isLegal(s,{type:'strip',from:bishop,to:at(5,5)}))fail('a strip in reach should be legal');
+  E.step(s,{type:'strip',from:bishop,to:at(5,5)});
+  const t=s.board[at(5,5)];
+  if(!t||t.fortified||!t.stripped||t.hp!==1||t.maxHp!==1)fail('the stripped pawn should be a plain 1-HP pawn, marked stripped: '+JSON.stringify(t));
+  if(s.board[bishop].mana!==1)fail('a strip should cost the bishop 1 mana, it has '+s.board[bishop].mana);
+  if(s.turn!=='b')fail('a strip should take the turn');
+  if(!s.board[at(5,5)])fail('the bishop shot the pawn it had just stripped — a strip is its turn, as a heal is');
+  if(!E.clone(s).board[at(5,5)].stripped)fail('clone lost the stripped mark');
+  // Black's turn: the stripped pawn can't be fortified again; its plain neighbour still can
+  const fortifies=E.legalActions(s).filter(a=>a.type==='fortify').map(a=>a.from);
+  if(fortifies.includes(at(5,5)))fail('a stripped pawn was offered Fortify');
+  if(!fortifies.includes(at(7,5)))fail('setup: the plain pawn should be able to fortify');
+  skip(s);
+  // White again: no mana, no strip
+  s.board[bishop].mana=0;
+  if(strips(s).length)fail('a bishop without mana could strip');
+  s.board[bishop].mana=1;
+  if(JSON.stringify(strips(s))!==JSON.stringify([at(4,2)]))fail('with 1 mana the other helmet should be strippable: '+strips(s));
+});
+
 section('speed',()=>{
   const pick=E.makeRandom(1);
   let steps=0,games=0;const t0=Date.now();

@@ -168,6 +168,7 @@ function netAiMove(level,chain){
     const m=events.find(e=>e.type==='merge');SFX.arrive(a.type==='unsiege'?'rook':m&&m.piece);
   }
   else if(a.type==='heal'){flashSq(a.to,'heal-flash');SFX.heal();}
+  else if(a.type==='strip'){flashSq(a.to,'hit-flash');SFX.attack();}
   // after a knight's L-jump merge Black moves again
   const board=pieces;
   if(continues&&chain<20){setTimeout(()=>{if(!over&&pieces===board)netAiMove(level,chain+1);},350);return;}
@@ -182,6 +183,7 @@ function netAiDescribe(a,p,events){
     case'spawn':return 'spawns@'+sqName(a.to);
     case'target':return p.type+' targets '+sqName(a.to);
     case'heal':case'healLock':return 'bishop heals '+sqName(a.to);
+    case'strip':return 'bishop strips the helmet off the pawn@'+sqName(a.to);
     case'unsiege':return 'unsieges@'+sqName(a.from);
     case'fortify':return 'puts a helmet on the pawn@'+sqName(a.from);
     case'order':return 'orders its '+p.type+' '+(isConcealedFrom(a.from,'w')?'':sqName(a.from))+'→'+sqName(a.to)+' in '+a.turns+' turn'+(a.turns>1?'s':'');

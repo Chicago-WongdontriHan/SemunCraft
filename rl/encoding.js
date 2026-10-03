@@ -232,6 +232,9 @@ function createEncoder(opts){
   function actionIndex(s,a){
     const side=s.turn;
     if(a.type==='skip')return SKIP;
+    // a bishop's Strip has no slot of its own yet — it would share the target lock's (from, to) — so a network
+    // doesn't strip; Master (rl/scripted.js) does, and the networks play against it
+    if(a.type==='strip')return -1;
     if(version===1){
       if(a.type==='scry'||a.type==='fortify'||a.type==='order'||a.type==='meteor')return -1;
       if(a.type==='spawn')return cell(s,a.to,side)*SLOTS+V1_SPAWN;

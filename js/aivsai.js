@@ -162,6 +162,7 @@ function aiVsAiStep(){
           flashSq(e.to,'hit-flash');
           if(e.killed&&before[e.to])showDeath(e.to,before[e.to].color,before[e.to].type);
         }else if(e.type==='heal')flashSq(e.to,'heal-flash');
+        else if(e.type==='strip')flashSq(e.to,'hit-flash');
         else if(e.type==='spawn')spawnFlash(e.to);
         else if(e.type==='merge'||e.type==='unsiege')mergeFlash(e.type==='merge'?e.to:e.from);
       }
@@ -181,6 +182,7 @@ function aiVsAiSound(a,events,before){
   else if(a.type==='unsiege')SFX.arrive('rook');
   else if(a.type==='spawn')SFX.arrive('pawn');
   else if(a.type==='heal'||events.some(e=>e.type==='heal'))SFX.heal();
+  else if(a.type==='strip')SFX.attack();
   else if(!kills.length&&events.some(e=>e.type==='attack'))SFX.attack();
   else if(!kills.length)SFX.move();
   kills.forEach(e=>{if(before[e.to])SFX.fall(before[e.to].type);});
@@ -195,6 +197,7 @@ function aiVsAiDescribe(color,a,events,before){
     case'spawn':text='spawn '+sq(a.to);break;
     case'target':text=p.type+' '+sq(a.from)+' targets '+sq(a.to);break;
     case'heal':case'healLock':text='bishop '+sq(a.from)+' heals '+sq(a.to);break;
+    case'strip':text='bishop '+sq(a.from)+' strips the helmet off '+sq(a.to);break;
     case'unsiege':text='unsiege '+sq(a.from);break;
     case'fortify':text='helmet on '+sq(a.from);break;
     case'order':text=p.type+' '+sq(a.from)+'→'+sq(a.to)+' in '+a.turns;break;

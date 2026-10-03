@@ -110,6 +110,15 @@ function resizeBoard(){
   const dg=document.getElementById('dir-grid');if(dg){dg.style.gridTemplateColumns='repeat(3,'+btnPx+')';dg.style.gap=btnPad+'px';}
   rp.querySelectorAll('.panel-label').forEach(el=>el.style.fontSize=Math.max(9,Math.floor(pf*1.0))+'px');
   rp.querySelectorAll('.act-btn').forEach(el=>el.style.fontSize=Math.max(9,Math.floor(pf*1.0))+'px');
+  // AI vs AI's picker, in the left panel, matches those buttons (a phone's CSS sizes both); its icons go
+  // only when the words alone would otherwise not fit
+  const pick=document.getElementById('aivsai-pick');
+  if(pick){
+    pick.classList.remove('avp-noicon');
+    pick.querySelectorAll('.act-btn').forEach(el=>el.style.fontSize=isPortrait?'':Math.max(9,Math.floor(pf*1.0))+'px');
+    pick.querySelectorAll('.avp-team').forEach(el=>el.style.fontSize=isPortrait?'':Math.max(9,Math.floor(pf*.8))+'px');
+    if([...pick.querySelectorAll('.avp-btn')].some(b=>b.scrollWidth>b.clientWidth+1))pick.classList.add('avp-noicon');
+  }
   rp.querySelectorAll('.pvp-id-box:not(#room-id-display)').forEach(el=>el.style.fontSize=Math.max(6,Math.floor(pf*.8))+'px');
   rp.querySelectorAll('.room-entry').forEach(el=>el.style.fontSize=Math.max(7,Math.floor(pf*.9))+'px');
   const rid=document.getElementById('room-id-display');if(rid)rid.style.fontSize=Math.max(7,Math.floor(pf*.9))+'px';

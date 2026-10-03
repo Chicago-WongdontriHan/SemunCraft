@@ -43,11 +43,12 @@ async function aiVsAiPick(color,level){
   aiVsAiNewMatch();
 }
 
-// the picked button of each side lit
+// the picked button of each side in solid gold, as a panel's main button is (the buttons are .act-btn
+// plaques; resize.js sizes them like the right panel's)
 function aiVsAiPickSync(){
   for(const color of ['w','b'])for(const level of AIVSAI_CHOICES){
     const b=document.getElementById('avp-'+color+'-'+level);
-    if(b)b.classList.toggle('sel',aiVsAiLevels[color]===level);
+    if(b)b.classList.toggle('gold',aiVsAiLevels[color]===level);
   }
 }
 

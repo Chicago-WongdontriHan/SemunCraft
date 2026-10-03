@@ -62,6 +62,9 @@ const DEFAULTS={
                         // Bishop 2, the Queen and the top tier 3); unsieging a Siege takes its 3 back, so splitting and
                         // re-merging it earns nothing. A nudge toward merging at all — a network that never merges
                         // never has a bishop to strip with; rl/train.py's --merge-bonus fades it out. 0 = off
+  bishopBonus:0,        // what a merge that makes a Bishop pays instead, when this is set: the networks took mergeBonus's
+                        // Knight (two starting pawns, one merge) and stopped there, never making the Bishop that strips
+                        // helmets; rl/train.py's --bishop-bonus fades it out with --merge-bonus. 0 = off
 };
 const MERGE_TIER={knight:1,rook:1,bishop:2,queen:3,siege:3,guardian:3,paladin:3,mage:3};
 
@@ -83,6 +86,7 @@ function withDefaults(base,config){
   if(!(typeof c.turnPenalty==='number'&&isFinite(c.turnPenalty)&&c.turnPenalty>=0))throw new Error('turnPenalty must be a non-negative number');
   if(!(typeof c.resourceBonus==='number'&&isFinite(c.resourceBonus)&&c.resourceBonus>=0))throw new Error('resourceBonus must be a non-negative number');
   if(!(typeof c.mergeBonus==='number'&&isFinite(c.mergeBonus)&&c.mergeBonus>=0))throw new Error('mergeBonus must be a non-negative number');
+  if(!(typeof c.bishopBonus==='number'&&isFinite(c.bishopBonus)&&c.bishopBonus>=0))throw new Error('bishopBonus must be a non-negative number');
   if(c.opponent==='scripted'&&c.levels&&c.levels.some(l=>l!==null))throw new Error('the scripted opponent plays standard games, not campaign levels');
   if(c.scriptedProfile!=='random'&&!Scripted.PROFILES[c.scriptedProfile])throw new Error('unknown scriptedProfile '+c.scriptedProfile);
   return c;
@@ -141,9 +145,13 @@ class Env{
     const events=E.step(this.s,a,{trusted:true});
     if(side===this.agent){
       this.length++;
-      if(this.config.mergeBonus){
-        for(const e of events)if(e.type==='merge'&&MERGE_TIER[e.piece])this.merged+=this.config.mergeBonus*MERGE_TIER[e.piece];
-        if(a.type==='unsiege')this.merged-=this.config.mergeBonus*MERGE_TIER.siege;
+      const mb=this.config.mergeBonus,bb=this.config.bishopBonus;
+      if(mb||bb){
+        for(const e of events){
+          if(e.type!=='merge'||!MERGE_TIER[e.piece])continue;
+          this.merged+=e.piece==='bishop'&&bb?bb:mb*MERGE_TIER[e.piece];
+        }
+        if(a.type==='unsiege')this.merged-=mb*MERGE_TIER.siege;
       }
     }
     return this.advance();

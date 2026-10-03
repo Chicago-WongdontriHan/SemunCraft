@@ -172,7 +172,7 @@ def bad_config_rejected():
     for config, word in (({"mode": "pvp", "opponent": "bot"}, "classic"), ({"agentBlack": 1.5}, "agentBlack"),
                          ({"blackOrders": "no"}, "blackOrders"), ({"drawPenalty": -1}, "drawPenalty"),
                          ({"turnPenalty": -1}, "turnPenalty"), ({"resourceBonus": -1}, "resourceBonus"),
-                         ({"mergeBonus": -1}, "mergeBonus")):
+                         ({"mergeBonus": -1}, "mergeBonus"), ({"bishopBonus": -1}, "bishopBonus")):
         try:
             SemunCraftVecEnv(1, config, num_workers=1).close()
             check(False, "accepted %s" % config)

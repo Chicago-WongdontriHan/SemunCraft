@@ -9,13 +9,13 @@ const NETAI_VERSION=((document.currentScript&&/[?&]v=([^&]+)/.exec(document.curr
 // the network behind each difficulty and its sampling temperature (1 plays as in training, 0 always the most
 // likely move); for Hard, 0.25 scored best of 0, 0.05, 0.25, 0.5 and 1 over 1,000 games each, and keeps some
 // variety. `model:null` (Master) has no weights and no temperature: it's rl/scripted.js, always its one best
-// move. Trained is rl/train.py's encoding-2 run v2-resource15 (update 27,330, 2026-10-03), under the
-// moving-turn rule (a piece holds its fire on its old square the turn its order goes off, heldFire in
-// js/game.js), mostly by self-play with Master in 15% of games, and a bonus for holding mines and springs
-// (--resource-bonus 0.015) that faded out over its first 1,500 updates. In league eval it beat Master 83% (as
-// White and as Black alike), Hard 94%, Easy 96%. It wins by a march of helmeted pawns moved by delayed orders,
-// ending games around its 37th turn; since the bonus it holds mines (Gold for more pawns and helmets) even
-// with the bonus gone, but still no springs, no Elixir and nothing high-tier.
+// move. Trained is rl/train.py's run v3-merge (update 28,600, 2026-10-03), the first network on encoding 3
+// (rl/encoding.js: the bishop's Strip and stripped pawns), grown from v2-resource15 and trained mostly by
+// self-play with Master in 15% of games, under a fading bonus for merging (--merge-bonus). In league eval it
+// beat Master 84% (as White and as Black alike), Hard 99%, Easy 98%; in 24 replays against Master it won 22.
+// It still wins by a march of helmeted pawns moved by delayed orders, now with a Knight made from its two
+// starting pawns, and it holds the mines about as much as Master does — but it makes no Bishop, so it never
+// strips, and it collects no Elixir.
 const NETAI_LEVELS={
   easy:{model:'easy',temperature:1},
   medium:{model:'medium',temperature:1},

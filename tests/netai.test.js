@@ -116,9 +116,9 @@ function randomModel(version,seed){
   return{meta,dtype:'float32',tensors:shapes,data:Buffer.from(data.buffer).toString('base64')};
 }
 {
-  const before=failures,kinds={1:{},2:{}};
+  const before=failures,kinds={1:{},2:{},3:{}};
   game.ctx.atob=atob;   // the page's own base64 decoder, which js/nn.js uses in a browser
-  for(const version of [1,2]){
+  for(const version of [1,2,3]){
     game.ctx.__model=randomModel(version,version*31);
     game.run('netAiNets.test'+version+'=SemunNet.load(__model);NETAI_LEVELS.test'+version+'={model:"test'+version+'",temperature:1};');
     const choose=(s)=>game.ctx.__realChoose(s,'test'+version);
@@ -135,7 +135,8 @@ function randomModel(version,seed){
   }
   for(const t of ['order','scry','fortify','meteor'])if(kinds[1][t]){failures++;console.log('  FAIL an encoding 1 network played '+t);}
   if(!kinds[2].order){failures++;console.log('  FAIL an encoding 2 network never gave an order');}
-  console.log((failures===before?'ok  ':'FAIL')+' the real netAiChoose plays each network in its own encoding: v1 '+q(kinds[1])+', v2 '+q(kinds[2]));
+  if(!kinds[3].order){failures++;console.log('  FAIL an encoding 3 network never gave an order');}
+  console.log((failures===before?'ok  ':'FAIL')+' the real netAiChoose plays each network in its own encoding: v1 '+q(kinds[1])+', v2 '+q(kinds[2])+', v3 '+q(kinds[3]));
 }
 
 {

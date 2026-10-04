@@ -113,6 +113,9 @@ function aiVsAiSync(){
   pieces=s.board.map(p=>p&&Object.assign({},p));
   whiteTargets=Object.assign({},s.targets.w);blackTargets=Object.assign({},s.targets.b);
   scans=s.scans.slice();meteors=s.meteors.slice();flareTiles=(s.flares||[]).slice();   // a Scry, a Meteor, the fire's afterglow
+  // what each spring has left: the board's badge and tooltip and the panel's Elixir income read it (without
+  // this they showed every spring full all match, though the engine was draining them)
+  springs={};for(const i in s.springs)springs[i]={stock:s.springs[i].stock,cooldown:s.springs[i].cooldown};
   blackLastFrom=g.lastFrom;blackLastTo=g.lastTo;
   turn=s.turn;
   const tc=document.getElementById('turn-counter');if(tc)tc.textContent='Turn '+(s.turnCount.w+s.turnCount.b);

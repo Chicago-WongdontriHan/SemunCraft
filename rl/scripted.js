@@ -84,6 +84,8 @@ const isSide=p=>!!p&&(p.color==='w'||p.color==='b');   // not the training groun
 //   guard     before the onset, worth of a piece kept within three squares of its own King
 //   threat    how much it minds enemy pieces at its King (see kingSafety in evaluate) — every strategy
 //             defends; a Fortress more than most
+//   stripHunt what it is worth to it to have a bishop with the mana within reach of an enemy helmet, the
+//             nearer the better (a strip itself already pays: a helmeted pawn goes from 2.6 to 1)
 // `balanced` is the strategy every caller gets when it asks for none: the original single personality.
 // A helmet is a sure +0.8 any turn there's a Gold for it, and the Rook line it leads to costs little Elixir, so
 // a gentle lean toward anything else lost to it every time; a strategy leans hard toward its own line and
@@ -105,9 +107,14 @@ const PROFILES={
   fortress:  {label:'Fortress',tech:{fortified:1.1,rook:1.1,guardian:1.6,paladin:1.5,mage:1.5,siege:1.5},
               only:['guardian','paladin','mage','siege'],
               eco:2.5,seek:2,onset:[70,110],early:.03,attack:1.5,armyGoal:48,guard:.45,threat:1.6},
+  // the answer to a march of helmeted pawns (the user's idea, 2026-10-03): bishops early, kept as bishops (no
+  // top tier at all, so none becomes a Queen), held between its King and the enemy, and drawn to the
+  // helmets that come at it, to strip them
+  bishopguard:{label:'Bishop Guard',tech:{knight:1.3,bishop:2.4,fortified:.8,rook:.85},only:[],
+              eco:1.4,seek:1.2,onset:[40,70],early:.15,guard:.35,armyGoal:30,threat:1.6,stripHunt:.4},
 };
 const TOP_TIER=new Set(['queen','paladin','guardian','mage','siege']);
-const PROFILE_DEFAULTS={tech:{},only:null,eco:1,seek:1,onset:[0,0],early:1,attack:1,armyGoal:Infinity,guard:0,threat:1};
+const PROFILE_DEFAULTS={tech:{},only:null,eco:1,seek:1,onset:[0,0],early:1,attack:1,armyGoal:Infinity,guard:0,threat:1,stripHunt:0};
 const PROFILE_NAMES=Object.keys(PROFILES);
 // a strategy for one game: a name from PROFILES (or null for any of them, drawn with `rand`), with its
 // onset fixed for the game. Without rand the onset is the middle of its range.
@@ -226,6 +233,16 @@ function evaluate(s,me,P){
     if(seekers.has(i)||held.has(i))continue;   // the tile-holders and the pawns on their way stay out at the tiles
     const d=E.cheb(s,i,myKing);
     if(d<=3)score+=P.guard*Math.sqrt(full(B[i]))*(4-d)/4;
+  }
+  // a bishop with the mana for a Strip, drawn to the nearest enemy helmet (stripHunt): within reach (2 squares)
+  // it can take it off next turn
+  if(P.stripHunt){
+    const helmets=theirs.filter(i=>B[i].type==='pawn'&&B[i].fortified);
+    if(helmets.length)for(const i of mine){
+      const p=B[i];if(p.type!=='bishop'||(p.mana||0)<E.STRIP_MANA)continue;
+      let d=99;for(const h of helmets)d=Math.min(d,E.cheb(s,i,h));
+      if(d<=5)score+=P.stripHunt*(6-d);
+    }
   }
   // two of mine side by side that could merge into something dearer (Elixir and helmets counted): half of
   // what the merge would gain, so making it is always a step forward. Each piece is in at most one such

@@ -13,10 +13,10 @@ const NETAI_VERSION=((document.currentScript&&/[?&]v=([^&]+)/.exec(document.curr
 // of that day (a bishop's Strip reaches any square within 2), trained mostly by self-play with Master in 15%
 // of games under fading bonuses for merging and for Bishops: it builds an army of Queens (Knight + Bishop) and
 // holds the gold mines, and stopped buying helmets; at update 31,000 it beat Master 60%, Hard 99%. Rush is
-// the same run's last network (update 34,556): once the bonuses had faded it went back to a march of
-// helmeted pawns by delayed orders, now holding the gold mines nearly all game — the strongest network yet:
-// Master 94% (every strategy 81% or better), Hard and Easy 100%, Trained 24-0 and the Rush before it (v3-merge
-// update 28,600) 18-6 in head-to-head games. The user keeps a rusher as a difficulty of its own.
+// run v3-elite's last network (update 40,132, 2026-10-04), the strongest yet: once that run's bonuses for
+// strips and Elixir units had faded it went back to a march of helmeted pawns by delayed orders, holding the
+// gold mines nearly all game — Master 91-96%, Hard 100%, Trained 20-4 and the Rush before it (v3-strip2
+// update 34,556) 13-11 in head-to-head games. The user keeps a rusher as a difficulty of its own.
 // Strip is run v3-elite at update 36,000 (2026-10-04), caught mid-way through fading bonuses for stripping
 // helmets and for Elixir units: it builds bishops (about ten a game, three on the board) and strips about four
 // helmets a game against Master — but plays slow and draws: 1 win, 7 losses and 16 draws in 24 games against

@@ -9,10 +9,13 @@ const NETAI_VERSION=((document.currentScript&&/[?&]v=([^&]+)/.exec(document.curr
 // the network behind each difficulty and its sampling temperature (1 plays as in training, 0 always the most
 // likely move); for Hard, 0.25 scored best of 0, 0.05, 0.25, 0.5 and 1 over 1,000 games each, and keeps some
 // variety. `model:null` (Master) has no weights and no temperature: it's rl/scripted.js, always its one best
-// move. Trained is rl/train.py's run v3-strip2 at update 32,000 (2026-10-03), on encoding 3 and the rules
-// of that day (a bishop's Strip reaches any square within 2), trained mostly by self-play with Master in 15%
-// of games under fading bonuses for merging and for Bishops: it builds an army of Queens (Knight + Bishop) and
-// holds the gold mines, and stopped buying helmets; at update 31,000 it beat Master 60%, Hard 99%. Rush is
+// move. Trained is the run in training now, v3-halfturn at update 40,500 (2026-10-04): Rush retrained under
+// the half-turn order rule (after a pawn's order, only another pawn's order or the end of the turn), mostly by
+// self-play with Master in 15% of games, early in fading bonuses for strips, Bishops and Elixir units. It
+// holds the springs (1.6 tiles a turn to Master's 0.4) and builds an army of Paladins (about 8 a game, 3 on
+// the board) instead of marching pawns, but hardly strips: 11 wins, 6 losses, 7 draws in 24 games against
+// Master; 40-21-39 against Rush in the run's own evaluation. (Before it: v3-strip2 update 32,000, the Queen
+// army, which beat Rush 19-4-1 under the half-turn rule.) Rush is
 // run v3-elite's last network (update 40,132, 2026-10-04), the strongest yet: once that run's bonuses for
 // strips and Elixir units had faded it went back to a march of helmeted pawns by delayed orders, holding the
 // gold mines nearly all game — Master 91-96%, Hard 100%, Trained 20-4 and the Rush before it (v3-strip2

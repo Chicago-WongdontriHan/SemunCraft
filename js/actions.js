@@ -42,6 +42,7 @@ function toggleTargetMode(){
 
 function unsiegePiece(i){
   const p=pieces[i];if(!p||p.type!=='siege'||p.color!==myColor())return;
+  if(ordersOnly(p.color)){setStatus(HALF_TURN_MSG);return;}
   const empties=adj8(i).filter(j=>!pieces[j]&&!isTileBlocked(j));
   const dest=empties.length?empties[0]:null;
   // both rooks keep the siege tower's current HP (clamped to rook max)
@@ -59,11 +60,13 @@ function handleRightClick(i,e){
   if(trainEditing()){trainErase(i);return;}
   if(over||thinking||!isMyTurn())return;
   const p=pieces[i];const mc=myColor();
+  if(ordersOnly(mc)){setStatus(HALF_TURN_MSG);return;}
   if(p&&p.color===mc&&p.type==='siege'){unsiegePiece(i);return;}
   if(p&&p.color===mc){targetSrc=i;targetMode=true;syncUI();render();setStatus('Click the target for '+p.type+(p.type==='bishop'?' (friendly)':' (enemy)'));}
 }
 
 function handleTargetClick(i){
+  if(ordersOnly(myColor())){setStatus(HALF_TURN_MSG);return;}
   if(targetSrc<0){
     const p=pieces[i];if(p&&p.color===myColor()){targetSrc=i;render();setStatus('Now click target for '+p.type);}
     return;
@@ -108,6 +111,12 @@ function mergeResultType(pa,pb){
 
 function executeDrop(from,to,dests){
   if(!dests){render();return;}
+  // half the turn spent on a pawn's order: a pawn with no order out may be ordered too, nothing else moves
+  if(pieces[from]&&ordersOnly(pieces[from].color)){
+    const q=pieces[from];
+    if(q.type==='pawn'&&!q.order&&isMyTurn()&&orderTargets(from).has(to)){placeOrder(from,to,Math.max(1,orderTurns));return;}
+    setStatus(HALF_TURN_MSG);render();return;
+  }
   // the Delay counter stands — or the piece is a siege tower, which only ever moves a turn ahead:
   // this move is written down for later instead of being made now
   // A square with a friend in it can be reserved too: the order is a move for later, not a merge now —
@@ -370,12 +379,14 @@ function handleClick(i,additive,pt){
     return;
   }
   if(p&&p.color===mc&&p.type==='king'){
+    if(ordersOnly(mc)){setStatus(HALF_TURN_MSG);return;}   // a King neither spawns nor moves on top of an order
     // tapping the king again puts it down; otherwise it opens in spawn mode while pawns are left
     if(kingSelected||selectedPieces.has(i)){kingSelected=false;selectedPieces=new Set();render();setStatus('Your turn');return;}
     setKingMode(i,spawnRemaining()>=1?'spawn':'move');
     return;
   }
   if(!p&&kingSelected){
+    if(ordersOnly(mc)){kingSelected=false;render();setStatus(HALF_TURN_MSG);return;}
     if(ki>=0&&adj8(ki).includes(i)){
       const rs=spawnRemaining();
       if(rs<1){setStatus('Not enough Gold for a pawn');kingSelected=false;render();return;}
@@ -415,7 +426,7 @@ function handleClick(i,additive,pt){
 // the pawn's turn, as spawning takes the King's. ('fortify' in engine.js)
 function fortifyAt(i){
   const p=pieces[i];
-  if(!p||p.type!=='pawn'||p.fortified||p.stripped||!goldAllowed()||spawnRemaining()<1)return;
+  if(!p||p.type!=='pawn'||p.fortified||p.stripped||ordersOnly(p.color)||!goldAllowed()||spawnRemaining()<1)return;
   p.fortified=true;p.hp=FORTIFIED_HP;p.maxHp=FORTIFIED_HP;
   goldSpent[p.color]++;
   movedThisTurn=i;
@@ -429,6 +440,7 @@ function doFortify(){
   const p=i<0?null:pieces[i];
   if(!p||p.color!==myColor()||p.type!=='pawn'){setStatus('Select one of your pawns to fortify it');return;}
   if(p.fortified){setStatus('That pawn is already fortified');return;}
+  if(ordersOnly(p.color)){setStatus(HALF_TURN_MSG);return;}
   if(p.stripped){setStatus("A bishop stripped that pawn's helmet — it can't be fortified again");return;}
   if(!goldAllowed()||spawnRemaining()<1){setStatus('Not enough Gold to fortify (1 Gold)');return;}
   fortifyAt(i);
@@ -450,6 +462,7 @@ function startScry(){
   const i=[...selectedPieces][0];
   const p=i===undefined?null:pieces[i];
   if(!p||p.color!==myColor()||p.type!=='bishop'||(p.mana||0)<2){setStatus('Select a bishop with full mana');return;}
+  if(ordersOnly(p.color)){setStatus(HALF_TURN_MSG);return;}
   scryMode=true;scrySrc=i;targetMode=false;meteorMode=false;stripMode=false;
   render();syncUI();
   setStatus('Tap any square: the bishop lights the 3x3 around it (2 mana)');
@@ -519,6 +532,7 @@ function startStrip(){
   const i=[...selectedPieces][0];
   const p=i===undefined?null:pieces[i];
   if(!p||p.color!==myColor()||p.type!=='bishop'||(p.mana||0)<STRIP_MANA){setStatus('Select a bishop with mana');return;}
+  if(ordersOnly(p.color)){setStatus(HALF_TURN_MSG);return;}
   if(!stripTargets(i).size){setStatus('No enemy helmet within the bishop\'s reach');return;}
   stripMode=true;stripSrc=i;targetMode=false;scryMode=false;meteorMode=false;
   render();syncUI();
@@ -550,6 +564,7 @@ function startMeteor(){
   const i=[...selectedPieces][0];
   const p=i===undefined?null:pieces[i];
   if(!p||p.color!==myColor()||p.type!=='mage'||(p.mana||0)<METEOR_MANA){setStatus('Select a Mage with full mana');return;}
+  if(ordersOnly(p.color)){setStatus(HALF_TURN_MSG);return;}
   meteorMode=true;meteorSrc=i;targetMode=false;scryMode=false;stripMode=false;
   render();syncUI();
   setStatus('Tap the corner where four squares meet: the meteor lands on those four in '+METEOR_TURNS+' turns ('+METEOR_MANA+' mana) \u2014 any 2x2 inside the lit squares');
@@ -679,7 +694,7 @@ function placeOrder(from,to,turns){
     return;
   }
   render();syncUI();
-  setStatus('Order set — half a turn of orders left');
+  setStatus('Order set — order another pawn, or end the turn');
 }
 
 // ── A CHOICE WHERE A PIECE WAS DROPPED ──────────────────────────────────────
@@ -713,6 +728,11 @@ function closePieceChooser(){if(pieceChooser){pieceChooser.remove();pieceChooser
 function pieceChoices(i){
   const p=pieces[i],out=[];
   if(!p)return out;
+  // half the turn spent on an order: another pawn's order is all there is (ordersOnly)
+  if(ordersOnly(p.color)){
+    if(p.type==='pawn'&&(canOrder(i)||orderTurns>0))out.push(['delay','Delay '+delayShown(),true,()=>bumpDelay()]);
+    return out;
+  }
   if(p.type==='pawn'){
     if(p.stripped)out.push(['strip','Helmet stripped',false,()=>{}]);   // says why there's no Fortify
     else if(!p.fortified&&goldAllowed())out.push(['fortify','Fortify (1 Gold)',spawnRemaining()>=1,()=>fortifyAt(i)]);
@@ -767,6 +787,7 @@ function syncPieceChooser(){
 function doSpawn(){
   if(over||thinking||!isMyTurn())return;
   const mc=myColor();
+  if(ordersOnly(mc)){setStatus(HALF_TURN_MSG);return;}
   if(spawnRemaining()<1){setStatus('Not enough Gold for a pawn (+1/'+GOLD_TURNS+' a turn)');return;}
   const ki=pieces.findIndex(p=>p&&p.color===mc&&p.type==='king');
   const bKi=pieces.findIndex(p=>p&&p.color!==mc&&p.type==='king');
@@ -786,6 +807,7 @@ function moveAll(dr,dc){
 
 function doMergeAll(){
   if(over||thinking||!isMyTurn())return;
+  if(ordersOnly(myColor())){setStatus(HALF_TURN_MSG);return;}
   if(orderTurns>0){setStatus('A delayed order is a move or a strike \u2014 set the Delay back to 0 to merge');return;}
   if(campaignLevel&&campaignLevel.noMerge){setStatus('No merge this round');return;}
   const mc=myColor();

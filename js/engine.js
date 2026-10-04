@@ -756,9 +756,10 @@ function legalActions(s,opts){
       for(let j=0;j<B.length;j++)if(B[j]&&B[j].color!==color&&!concealed(s,j,color)&&(!blindTo||visible(s,j,color)))out.push({type:'target',from:i,to:j});
     }else d.attack.forEach(j=>out.push({type:'target',from:i,to:j}));
   }
-  // An order reserves a square a few turns ahead and leaves the turn to be used — unless it takes the
-  // last of the order budget, in which case the turn passes (applyAction). The square may be one an
-  // enemy holds today: it may be gone by then, and if it is not the move becomes a strike (runOrders).
+  // An order reserves a square a few turns ahead. A pawn's takes half the turn, and what is left of the turn
+  // is another pawn's order or nothing (below); anything else's takes the whole turn (applyAction). The square
+  // may be one an enemy holds today: it may be gone by then, and if it is not the move becomes a strike
+  // (runOrders).
   // The reach is worked out with the enemy taken off the board, as orderTargets does in js/actions.js.
   if(s.orderLeft[color]>=ORDER_MIN){
     const all=[];
@@ -778,6 +779,10 @@ function legalActions(s,opts){
   if(king>=0&&goldAllowed&&spawnRemaining(s,color)>=1)
     g.adj8[king].forEach(j=>{if(!B[j]&&!s.blocked[j])out.push({type:'spawn',from:king,to:j});});
   out.push({type:'skip'});
+  // Half the turn spent on a pawn's order: what is left of it is another pawn's order — a pawn with no order
+  // out yet — or nothing. No spawn, move, helmet, merge or anything else on top of an order: those take a
+  // whole turn of their own (the user, 2026-10-04; ordersOnly in js/state.js)
+  if(s.orderLeft[color]<ORDER_BUDGET)return out.filter(a=>a.type==='skip'||(a.type==='order'&&B[a.from].type==='pawn'&&!B[a.from].order));
   return out;
 }
 
@@ -1007,7 +1012,7 @@ function applyAction(s,a,events){
       p.order={to:a.to,turns:a.turns};
       s.orderLeft[color]-=orderCost(p.type);
       events.push({type:'order',from:a.from,to:a.to,turns:a.turns});
-      // the budget is the turn: while half of it is left (a second pawn), the turn goes on
+      // the budget is the turn: while half of it is left the turn goes on, for a second pawn's order only
       return s.orderLeft[color]>=ORDER_MIN;
     case'strip':{
       // the pawn is a plain pawn again, for good; the bishop spends its mana and its turn, as a heal does
@@ -1653,7 +1658,7 @@ const SemunEngine={
   newGame,legalActions,step,botTurn,clone,isLegal,fromSnapshot,act,
   // rule queries
   getDests,computeActions,holdsFire,stripReach,applyAttacks,upkeep,spawnRemaining,heldTiles,visible,fogFor,sightLimited,inCover,concealed,campaignResult,sangTrajectories,sangLineFor,mageRange,
-  mergeResultType,elixirCost,freshSprings,SPRING_CAP,SPRING_REFILL,STRIP_MANA,
+  mergeResultType,elixirCost,freshSprings,SPRING_CAP,SPRING_REFILL,STRIP_MANA,ORDER_BUDGET,
   // helpers and data
   generateMap,makeRandom,nextRandom,sqName,cheb,geo,STATS,STRATEGIES,THEME_TILES,
 };

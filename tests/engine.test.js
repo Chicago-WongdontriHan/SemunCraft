@@ -400,6 +400,28 @@ section('a bishop strips the helmet off an enemy fortified pawn within 2 squares
   if(JSON.stringify(strips(s))!==JSON.stringify(left))fail('with 1 mana the other helmets should be strippable: '+strips(s));
 });
 
+section("half a turn on a pawn's order leaves another pawn's order or the end of the turn, nothing else",()=>{
+  const s=E.newGame({seed:5,mode:'classic',theme:'forest'});
+  const spawn=E.legalActions(s).find(a=>a.type==='spawn');
+  const first=E.legalActions(s).find(a=>a.type==='order'&&s.board[a.from].type==='pawn'&&a.turns===1);
+  if(!spawn||!first){fail('setup: no spawn or pawn order at the start');return;}
+  E.step(s,first);
+  if(s.turn!=='w')fail("a pawn's order should leave half the turn");
+  const acts=E.legalActions(s),kinds=[...new Set(acts.map(a=>a.type))].sort();
+  if(JSON.stringify(kinds)!==JSON.stringify(['order','skip']))fail("after a pawn's order the turn offers "+kinds);
+  if(acts.some(a=>a.type==='order'&&(s.board[a.from].type!=='pawn'||a.from===first.from)))fail("the second order should be another pawn's");
+  if(E.isLegal(s,spawn))fail('a spawn on top of an order was legal');
+  E.step(s,acts.find(a=>a.type==='order'));
+  if(s.turn!=='b')fail('two pawn orders should end the turn');
+  // one order and then nothing: the turn passes
+  const t=E.newGame({seed:5,mode:'classic',theme:'forest'});
+  E.step(t,first);E.step(t,{type:'skip'});
+  if(t.turn!=='b')fail('skipping after an order should end the turn');
+  // a fresh turn after it offers everything again
+  E.step(t,{type:'skip'});
+  if(t.turn!=='w'||!E.legalActions(t).some(a=>a.type==='spawn'))fail('the next turn should offer spawning again');
+});
+
 section('speed',()=>{
   const pick=E.makeRandom(1);
   let steps=0,games=0;const t0=Date.now();

@@ -48,7 +48,8 @@ function elixirTag(type){return elixirCost(type)?' ('+elixirCost(type)+' Elixir)
 const FORTIFIED_MEND=5;   // and its armour mends 1 HP five turns after the last hit it took
 // Delayed orders: an order given now happens a few turns from now, and giving one does not use up the
 // turn — it spends part of an order budget instead, so several can be lined up to land together. A
-// pawn's order takes half the budget, so two of them go out in one turn. ('order' in js/engine.js)
+// pawn's order takes half the budget, so two of them go out in one turn — and with half of it spent, a
+// second pawn's order is all the turn has left (ordersOnly). ('order' in js/engine.js)
 const MAX_DELAY=3, ORDER_BUDGET=1;
 const ORDER_COST={pawn:.5};          // every other piece spends a whole turn's worth of orders
 const ORDER_MIN=ORDER_COST.pawn;     // with less than this left the turn is spent and passes on its own
@@ -80,8 +81,14 @@ function pieceInHand(){
 const NO_ORDER_TYPES=new Set(['paladin','guardian','mage','king']);
 function canOrder(i){
   const p=pieces[i];
-  return !!p&&!NO_ORDER_TYPES.has(p.type)&&p.color===myColor()&&orderLeft[p.color]>=orderCost(p.type)&&orderTargets(i).size>0;
+  return !!p&&!NO_ORDER_TYPES.has(p.type)&&p.color===myColor()&&orderLeft[p.color]>=orderCost(p.type)&&orderTargets(i).size>0
+    &&(!ordersOnly(p.color)||!p.order);   // the second half goes to another pawn, not the one just ordered
 }
+// Half the turn spent on a pawn's order: what is left of it is another pawn's order (one with no order out yet)
+// or nothing — no spawn, move, helmet, merge, lock, Scry, Meteor, Strip or unsiege on top of an order; each of
+// those takes a whole turn of its own (the user, 2026-10-04; legalActions in js/engine.js closes the same way)
+function ordersOnly(color){return orderLeft[color]<ORDER_BUDGET;}
+const HALF_TURN_MSG='Half this turn went on an order: order another pawn, or end the turn';
 // the mines (or springs) a side holds: only a plain pawn works one, a fortified pawn can't (heldTiles in engine.js)
 function heldTiles(color,tile){ const out=[]; pieces.forEach((p,i)=>{if(p&&p.color===color&&p.type==='pawn'&&!p.fortified&&tileData[i]===tile)out.push(i);}); return out; }
 function minesHeld(color){ return heldTiles(color,'mine').length; }

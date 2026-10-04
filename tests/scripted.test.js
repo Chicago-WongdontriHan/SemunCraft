@@ -138,8 +138,10 @@ section('it Scrys a square it cannot see, so that its Siege can fire at it',()=>
   }
 });
 
-section('it gives delayed orders: a pawn walks on its order while the turn goes on',()=>{
-  const c={orders:0,turnsWithOrderAndMore:0,turns:0};
+// since 2026-10-04 an order's other half can go only on a second pawn's order: two pawns walk in a turn
+// that could have spawned, moved or merged instead, and nothing else ever goes beside an order
+section('it gives delayed orders, two pawns to a turn, and nothing beside them',()=>{
+  const c={orders:0,pairs:0,turnsWithOrderAndMore:0,turns:0};
   for(let seed=1;seed<=8;seed++){
     const s=E.newGame({seed,mode:'pvp',theme:THEMES[seed%4],aiSight:true,maxTurns:120}),pick=E.makeRandom(seed);
     while(!s.over&&s.turnCount.w<30){
@@ -147,14 +149,16 @@ section('it gives delayed orders: a pawn walks on its order while the turn goes 
         const events=S.playTurn(s);
         c.turns++;
         const kinds=events.map(e=>e.type);
-        c.orders+=kinds.filter(k=>k==='order').length;
-        if(kinds.includes('order')&&kinds.some(k=>k!=='order'&&k!=='attack'&&k!=='move'&&k!=='heal'))c.turnsWithOrderAndMore++;
+        const n=kinds.filter(k=>k==='order').length;
+        c.orders+=n;if(n>1)c.pairs++;
+        if(n&&kinds.some(k=>k!=='order'&&k!=='skip'&&k!=='attack'&&k!=='move'&&k!=='heal'))c.turnsWithOrderAndMore++;
       }else{const acts=E.legalActions(s);E.step(s,acts[Math.floor(pick()*acts.length)],{trusted:true});}
     }
   }
-  if(c.orders<c.turns*.3)fail('gave only '+c.orders+' orders in '+c.turns+' turns');
-  if(!c.turnsWithOrderAndMore)fail('never combined an order with a spawn, merge or other action in one turn');
-  return c.orders+' orders in '+c.turns+' turns, '+c.turnsWithOrderAndMore+' of them beside another action';
+  if(c.orders<c.turns*.03)fail('gave only '+c.orders+' orders in '+c.turns+' turns');
+  if(!c.pairs)fail('never sent two pawns on orders in one turn');
+  if(c.turnsWithOrderAndMore)fail(c.turnsWithOrderAndMore+' turns put a spawn, merge or other action beside an order');
+  return c.orders+' orders in '+c.turns+' turns, '+c.pairs+' turns with two';
 });
 
 section("opts.orders:false keeps its orders out (training leaves Black's out at first)",()=>{

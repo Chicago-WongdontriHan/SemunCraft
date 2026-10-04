@@ -59,6 +59,7 @@ function anyMergeReady(){
 const PIECE_BTNS=['btn-spawn','btn-fortify','btn-merge','btn-special','delay-box','btn-skip'];
 function syncPieceButtons(){
   const locked=over||thinking||!isMyTurn();
+  const half=ordersOnly(turn);   // half the turn spent on an order: Delay (another pawn) and Next turn only
   // the King in spawn mode holds no selection of its own, but it is still the piece in hand
   const selIdx=pieceInHand();
   const sel=selIdx>=0?pieces[selIdx]:null;
@@ -72,20 +73,20 @@ function syncPieceButtons(){
   const kingUp=kingSelected||(!!sel&&sel.type==='king');
   const spawnBtn=show('btn-spawn',kingUp&&canSpawn);
   if(spawnBtn){
-    spawnBtn.disabled=locked||spawnRemaining()<1;
+    spawnBtn.disabled=locked||half||spawnRemaining()<1;
     spawnBtn.innerHTML=uiLabel('spawn','Spawn');
   }
   // Fortify is a plain pawn's — not one whose helmet a bishop stripped, which stays bare for good
   const fortBtn=show('btn-fortify',!!sel&&sel.type==='pawn'&&!sel.fortified&&!sel.stripped&&goldAllowed());
   if(fortBtn){
-    fortBtn.disabled=locked||!canFortify(selIdx);
+    fortBtn.disabled=locked||half||!canFortify(selIdx);
     fortBtn.innerHTML=uiLabel('fortify','Fortify');
   }
   // the piece's own action: a bishop scries, a Mage summons a meteor
   const scry=!!sel&&sel.type==='bishop',meteor=!!sel&&sel.type==='mage';
   const spBtn=show('btn-special',scry||meteor);
   if(spBtn){
-    spBtn.disabled=locked||!((scry&&(sel.mana||0)>=2)||(meteor&&(sel.mana||0)>=METEOR_MANA));
+    spBtn.disabled=locked||half||!((scry&&(sel.mana||0)>=2)||(meteor&&(sel.mana||0)>=METEOR_MANA));
     spBtn.classList.toggle('active-mode',!!scryMode||!!meteorMode);
     const label=scry?'Scry (2)':'Meteor ('+METEOR_MANA+')';
     spBtn.innerHTML=uiLabel(meteor?'meteor':'scry',meteorMode?'Pick a corner':scryMode?'Pick a square':label);
@@ -107,7 +108,7 @@ function syncPieceButtons(){
   const mergeBtn=show('btn-merge',!(campaignLevel&&campaignLevel.noMerge)&&(sel?getDragDests(selIdx).merge.size>0:anyMergeReady()));
   if(mergeBtn){
     // a standing Delay makes every command an order, and an order is a move or a strike
-    mergeBtn.disabled=locked||orderTurns>0;
+    mergeBtn.disabled=locked||half||orderTurns>0;
     mergeBtn.innerHTML=uiLabel('merge','Merge');
     mergeBtn.title=orderTurns>0?'Set the Delay back to 0 to merge: an order is a move or a strike':'';
   }

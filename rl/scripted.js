@@ -29,10 +29,10 @@
 // a Siege shooting three or four squares out needs a spotter beside the target or a Bishop's Scry, and it
 // casts a Scry when the 3x3 it lights, with an enemy in it, is worth the turn.
 //
-// It also gives delayed orders. A pawn's order costs half the turn's budget and leaves the turn free, so
-// each turn a pawn walks a square on its order while the King spawns or two pieces merge; the Siege moves
-// no other way. An order is judged by what it changes once the turn is over and the opponent has passed,
-// against not giving it.
+// It also gives delayed orders. A pawn's order costs half the turn's budget, and the other half can go only
+// on a second pawn's order (since 2026-10-04), so two pawns walk a square each where the turn could have
+// spawned, moved or merged instead; the Siege moves no other way. An order is judged by what it changes once
+// the turn is over and the opponent has passed, and the pair of them against the best ordinary action.
 //
 // It plays the standard game for either side in either turn order. It doesn't chase a campaign level's
 // objective, and keeps its King at home. Loads as a classic <script> after js/engine.js (global
@@ -94,8 +94,10 @@ const isSide=p=>!!p&&(p.color==='w'||p.color==='b');   // not the training groun
 const PROFILES={
   balanced:  {label:'Balanced',threat:1.5},
   rush:      {label:'Rush',tech:{knight:1.3,fortified:.8},eco:.6,seek:.6,attack:1.6,threat:1.5},   // all forward, so it needs a sharper eye on home
+  // its springs held harder since orders stopped sharing a turn (2026-10-04): with one action a turn its
+  // Knights won before the Elixir for a Paladin came in, in 7 games of 12
   knights:   {label:'Knights & Paladins',tech:{knight:1.5,paladin:1.7,fortified:.75,rook:.85,bishop:.9},only:['paladin'],
-              eco:1.8,seek:1.4,onset:[25,50],early:.12,guard:.15,armyGoal:28},
+              eco:2.2,seek:2,onset:[25,50],early:.12,guard:.15,armyGoal:28},
   arcane:    {label:'Bishops & Mages',tech:{knight:1.3,bishop:2,mage:2,fortified:.75,rook:.85},only:['mage'],
               eco:2,seek:1.5,onset:[25,55],early:.12,guard:.15,armyGoal:30},
   royal:     {label:'Queens & Bishops',tech:{knight:1.25,bishop:1.55,queen:2.4,fortified:.75,rook:.75},only:['queen'],
@@ -313,7 +315,7 @@ function noise(s,a){
 //          seeing it, and a side of normal sight (aiSight) can attack only what it sees
 //   orders only a pawn's, and the Siege's (its only way to move), for the next turn: a piece the engine
 //          would let move now is better moved now, but a pawn's order costs half the turn's budget
-//          and so leaves the turn for something else
+//          and so two pawns walk in one turn
 function candidates(s,opts){
   const out=[],me=s.turn,you=me==='w'?'b':'w',B=s.board,orders=!(opts&&opts.orders===false);
   const only=resolveProfile(opts&&opts.profile).only;   // the top tier this game's strategy builds (PROFILES)
@@ -381,24 +383,33 @@ function chooseAction(s,opts){
   scored.sort((x,y)=>y.v1-x.v1);
   const top=scored.slice(0,TOP),pass=scored.find(x=>x.a.type==='skip');
   if(pass&&!top.includes(pass))top.push(pass);
-  let best=null,bv=-Infinity,v0=null;
+  let best=null,bv=-Infinity,v0=null,bestRaw=-Infinity;
   for(const t of top){
     if(!t.c.over&&t.c.turn!==me)E.step(t.c,{type:'skip'},{trusted:true});   // and the opponent passes
     const raw=evaluate(t.c,me,P),v=raw+.2*t.v1;
     if(t.a.type==='skip')v0=raw;              // passing now, and the opponent passing: what an order is measured against
-    if(v>bv){bv=v;best=t.a;}
+    if(v>bv){bv=v;best=t.a;bestRaw=raw;}
   }
-  // the order that gains most over doing without one goes first, and the rest of the turn follows it
+  // the order that gains most over passing goes first. Since 2026-10-04 an order's other half can only be
+  // another pawn's order, so on a fresh turn giving one means giving up the turn's move, spawn or merge: the
+  // two orders the turn can hold (the best two, from different pawns, their gains added) must together beat
+  // the best ordinary action. With the turn half spent already, an order only has to beat passing.
   if(orders.length){
     if(v0===null)v0=evaluate(afterPass(s,me,null),me,P);
-    let bo=null,bg=ORDER_GAIN;
+    const gains=[];
     for(const{a,c}of orders){
       if(!c.over&&c.turn===me)E.step(c,{type:'skip'},{trusted:true});
       if(!c.over&&c.turn!==me)E.step(c,{type:'skip'},{trusted:true});
-      const g=evaluate(c,me,P)-v0+noise(s,a);
-      if(g>bg){bg=g;bo=a;}
+      gains.push({a,g:evaluate(c,me,P)-v0+noise(s,a)});
     }
-    if(bo)return bo;
+    gains.sort((x,y)=>y.g-x.g);
+    const bo=gains[0];
+    if(bo.g>ORDER_GAIN){
+      if(s.orderLeft[me]<E.ORDER_BUDGET)return bo.a;
+      const pal=s.board[bo.a.from].type==='pawn'&&gains.find(x=>x.a.from!==bo.a.from&&s.board[x.a.from].type==='pawn');
+      const pair=bo.g+(pal&&pal.g>0?pal.g:0);
+      if(pair>Math.max(0,bestRaw-v0)+ORDER_GAIN)return bo.a;
+    }
   }
   return best;
 }

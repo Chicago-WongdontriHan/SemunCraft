@@ -1,12 +1,12 @@
 // ── AI VS AI ─────────────────────────────────────────────────────────────────
 // Watch two of Single Player's difficulties play each other: White and Black each pick theirs, Trained (the
-// current network), Master (the scripted AI) or Rush (the network before, a march of helmeted pawns) — the
-// same one on both sides too — on the buttons right under
+// current network), Master (the scripted AI), Rush (a march of helmeted pawns) or Strip (a network that builds
+// bishops and strips helmets) — the same one on both sides too — on the buttons right under
 // the resources (#aivsai-pick). Each pick is a NETAI_LEVELS entry (js/netai.js); AIVSAI_CHOICES lists the
 // ones offered. Matches run in the headless engine (js/engine.js: the game's rules, checked against this game
 // by tests/parity.test.js) and are drawn on the normal board. Both sides play at temperature 1 ("as
 // trained"), not each difficulty's own tuned value. Code and weights load through js/netai.js the first time.
-const AIVSAI_CHOICES=['trained','master','rush'];
+const AIVSAI_CHOICES=['trained','master','rush','strip'];
 const AIVSAI_SPEEDS=[1,2,4,8];
 const AIVSAI_DELAY=700; // ms between moves at 1× speed
 const AIVSAI_STORE='semuncraft-aivsai-picks';

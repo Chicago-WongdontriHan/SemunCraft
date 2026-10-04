@@ -17,12 +17,18 @@ const NETAI_VERSION=((document.currentScript&&/[?&]v=([^&]+)/.exec(document.curr
 // helmeted pawns by delayed orders, now holding the gold mines nearly all game — the strongest network yet:
 // Master 94% (every strategy 81% or better), Hard and Easy 100%, Trained 24-0 and the Rush before it (v3-merge
 // update 28,600) 18-6 in head-to-head games. The user keeps a rusher as a difficulty of its own.
+// Strip is run v3-elite at update 36,000 (2026-10-04), caught mid-way through fading bonuses for stripping
+// helmets and for Elixir units: it builds bishops (about ten a game, three on the board) and strips about four
+// helmets a game against Master — but plays slow and draws: 1 win, 7 losses and 16 draws in 24 games against
+// Master. On the link so the user can watch the bishops' Strip in use; once the bonuses had faded, the same run
+// went back to the march.
 const NETAI_LEVELS={
   easy:{model:'easy',temperature:1},
   medium:{model:'medium',temperature:1},
   hard:{model:'ai-1',temperature:0.25},
   trained:{model:'trained',temperature:0.5},
   rush:{model:'rush',temperature:0.5},
+  strip:{model:'strip',temperature:0.5},
   master:{model:null},
 };
 const NETAI_CODE=[

@@ -13,8 +13,10 @@ const NETAI_VERSION=((document.currentScript&&/[?&]v=([^&]+)/.exec(document.curr
 // of that day (a bishop's Strip reaches any square within 2), trained mostly by self-play with Master in 15%
 // of games under fading bonuses for merging and for Bishops: it builds an army of Queens (Knight + Bishop) and
 // holds the gold mines, and stopped buying helmets; at update 31,000 it beat Master 60%, Hard 99%. Rush is
-// the Trained network before it (v3-merge update 28,600): a march of helmeted pawns by delayed orders, a
-// Knight from its two starting pawns, beating Master 84% — kept on the user's word as a difficulty of its own.
+// the same run's last network (update 34,556): once the bonuses had faded it went back to a march of
+// helmeted pawns by delayed orders, now holding the gold mines nearly all game — the strongest network yet:
+// Master 94% (every strategy 81% or better), Hard and Easy 100%, Trained 24-0 and the Rush before it (v3-merge
+// update 28,600) 18-6 in head-to-head games. The user keeps a rusher as a difficulty of its own.
 const NETAI_LEVELS={
   easy:{model:'easy',temperature:1},
   medium:{model:'medium',temperature:1},

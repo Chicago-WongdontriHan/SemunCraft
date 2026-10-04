@@ -65,7 +65,7 @@ MIX = {
 }
 NEXT_STAGE = {"easy": "hard", "hard": "league"}
 LOG_FIELDS = ["minutes", "update", "steps", "steps_per_s", "stage", "black_orders", "shaping", "resource_bonus", "merge_bonus",
-              "bishop_bonus", "lr",
+              "bishop_bonus", "strip_bonus", "elixir_unit_bonus", "lr",
               "entropy_coef", "games",
               "win_easy", "win_hard", "win_scripted", "win_self_w", "win_self_b", "draws", "moves_per_game", "entropy",
               "value_loss", "approx_kl", "clip_frac"]
@@ -88,15 +88,16 @@ def game_kind(info):
     return "self_" + info["agent"]
 
 
-def env_config(kind, args, shaping, black=None, resource=0.0, merge=0.0, bishop=0.0):
+def env_config(kind, args, shaping, black=None, resource=0.0, merge=0.0, bishop=0.0, strip=0.0, elixir_unit=0.0):
     """Env config for a kind of opponent; `black` is the agent's share of Black games where the opponent
-    allows either color (default --black-share; evaluations pass 0.5), `resource`, `merge` and `bishop` the
-    current weights of --resource-bonus, --merge-bonus and --bishop-bonus. Whether Black may give orders is
+    allows either color (default --black-share; evaluations pass 0.5), `resource`, `merge`, `bishop`, `strip`
+    and `elixir_unit` the current weights of the --*-bonus options. Whether Black may give orders is
     args.orders_for_black, which the trainer switches on."""
     black = args.black_share if black is None else black
     config = {"mode": "classic", "maxTurns": args.max_turns, "shaping": shaping, "gamma": args.gamma, "aiSight": True,
               "blackOrders": args.orders_for_black, "drawPenalty": args.draw_penalty, "turnPenalty": args.turn_penalty,
-              "resourceBonus": resource, "mergeBonus": merge, "bishopBonus": bishop}
+              "resourceBonus": resource, "mergeBonus": merge, "bishopBonus": bishop, "stripBonus": strip,
+              "elixirUnitBonus": elixir_unit}
     if kind == "self":
         config.update(opponent="external", agentColor="random", agentBlack=black)
     elif kind == "scripted":
@@ -231,6 +232,7 @@ class Trainer:
         self.resource_bonus, self.resource_start = args.resource_bonus, c.get("update", 0)
         self.merge_bonus = args.merge_bonus   # (the same: full weight at the start of each run, then fading)
         self.bishop_bonus = args.bishop_bonus   # (fading with the merge bonus, over --merge-anneal)
+        self.strip_bonus, self.elixir_unit_bonus = args.strip_bonus, args.elixir_unit_bonus   # (and these too)
         # may Black give orders yet? A checkpoint remembers; one from before this existed (its run let Black
         # give orders from the start) is treated like a new run
         args.orders_for_black = c.get("orders_for_black", args.black_orders == "always")
@@ -240,7 +242,8 @@ class Trainer:
         self.rng = np.random.default_rng(args.seed + self.update)
         self.kinds = split(args.envs, MIX[self.stage])
         self.env = SemunCraftVecEnv(args.envs, [env_config(k, args, self.shaping, resource=self.resource_bonus,
-                                                           merge=self.merge_bonus, bishop=self.bishop_bonus)
+                                                           merge=self.merge_bonus, bishop=self.bishop_bonus,
+                                                           strip=self.strip_bonus, elixir_unit=self.elixir_unit_bonus)
                                                 for k in self.kinds],
                                     num_workers=args.workers, seed=args.seed + self.update, encoding=args.encoding)
         self.layout = {"channels": self.env.channels, "slots": self.env.slots, "on_board": self.env.on_board}
@@ -365,7 +368,8 @@ class Trainer:
         self.kinds[:] = split(args.envs, MIX[self.stage])
         for kind in sorted(set(self.kinds)):
             self.env.configure(env_config(kind, args, self.shaping, resource=self.resource_bonus, merge=self.merge_bonus,
-                                          bishop=self.bishop_bonus),
+                                          bishop=self.bishop_bonus, strip=self.strip_bonus,
+                                          elixir_unit=self.elixir_unit_bonus),
                                [i for i, k in enumerate(self.kinds) if k == kind])
         if self.stage == "league":
             path = os.path.join(args.out, "snapshots", "league_start.pt")
@@ -394,12 +398,15 @@ class Trainer:
             self.env.configure({"resourceBonus": self.resource_bonus})
 
     def schedule_merge_bonus(self):
-        """--merge-bonus and --bishop-bonus fade linearly to 0 over --merge-anneal updates from this run's start."""
+        """--merge-bonus, --bishop-bonus, --strip-bonus and --elixir-unit-bonus fade linearly to 0 over --merge-anneal
+        updates from this run's start."""
         args = self.args
-        if not (args.merge_bonus or args.bishop_bonus):
+        knobs = (("merge_bonus", "mergeBonus", args.merge_bonus), ("bishop_bonus", "bishopBonus", args.bishop_bonus),
+                 ("strip_bonus", "stripBonus", args.strip_bonus), ("elixir_unit_bonus", "elixirUnitBonus", args.elixir_unit_bonus))
+        if not any(full for _, _, full in knobs):
             return
         left = max(0.0, 1.0 - (self.update - self.resource_start) / max(1, args.merge_anneal))
-        for name, key, full in (("merge_bonus", "mergeBonus", args.merge_bonus), ("bishop_bonus", "bishopBonus", args.bishop_bonus)):
+        for name, key, full in knobs:
             now, target = getattr(self, name), full * left
             if full and (abs(target - now) >= 0.02 * full or (target == 0.0 and now != 0.0)):
                 setattr(self, name, round(target, 6))
@@ -429,7 +436,8 @@ class Trainer:
         row = {"minutes": (time.time() - start) / 60, "update": self.update, "steps": self.steps,
                "steps_per_s": round(speed), "stage": self.stage, "black_orders": int(self.args.orders_for_black),
                "shaping": self.shaping, "resource_bonus": self.resource_bonus, "merge_bonus": self.merge_bonus,
-               "bishop_bonus": self.bishop_bonus,
+               "bishop_bonus": self.bishop_bonus, "strip_bonus": self.strip_bonus,
+               "elixir_unit_bonus": self.elixir_unit_bonus,
                "lr": self.opt.param_groups[0]["lr"], "entropy_coef": self.entropy_coef, "games": self.games,
                "win_easy": rate(r["easy"]), "win_hard": rate(r["hard"]), "win_scripted": rate(r["scripted"]),
                "win_self_w": rate(r["self_w"]), "win_self_b": rate(r["self_b"]),
@@ -446,7 +454,9 @@ class Trainer:
                  row["moves_per_game"], stats["entropy"], stats["approx_kl"],
                  (" | resource bonus %.4f" % self.resource_bonus if self.args.resource_bonus else "")
                  + (" | merge bonus %.4f" % self.merge_bonus if self.args.merge_bonus else "")
-                 + (" | bishop bonus %.4f" % self.bishop_bonus if self.args.bishop_bonus else "")), flush=True)
+                 + (" | bishop bonus %.4f" % self.bishop_bonus if self.args.bishop_bonus else "")
+                 + (" | strip bonus %.4f" % self.strip_bonus if self.args.strip_bonus else "")
+                 + (" | elixir-unit bonus %.4f" % self.elixir_unit_bonus if self.args.elixir_unit_bonus else "")), flush=True)
 
     def evaluate(self, start):
         args = self.args
@@ -531,6 +541,11 @@ def parse_args():
     p.add_argument("--bishop-bonus", type=float, default=0.0,
                    help="what a merge that makes a Bishop pays instead of --merge-bonus's tier (worker.js bishopBonus): "
                         "the bishop is the piece that strips helmets; fades with --merge-bonus. 0 = off")
+    p.add_argument("--strip-bonus", type=float, default=0.0,
+                   help="reward for each helmet the agent strips with a bishop (worker.js stripBonus); fades with --merge-bonus. 0 = off")
+    p.add_argument("--elixir-unit-bonus", type=float, default=0.0,
+                   help="reward for each merge that makes a unit costing Elixir, times its Elixir (worker.js elixirUnitBonus: a "
+                        "Paladin 3, a Mage 2, a Guardian or Siege 1); fades with --merge-bonus. 0 = off")
     p.add_argument("--window", type=int, default=400, help="recent games per opponent kind for promotion and logs")
     p.add_argument("--promote-easy", type=float, default=0.9, help="win rate against Easy needed to move on")
     p.add_argument("--promote-hard", type=float, default=0.75, help="win rate against Hard needed to move on")

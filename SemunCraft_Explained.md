@@ -27,7 +27,7 @@ The goal: **destroy the enemy King** while building up your army through a merge
 | **Fortified Pawn** | ♙/♟ in a helmet | 3 | As a pawn | As a pawn |
 | **Knight** | ♘/♞ | 4 | L-shape jump (2+1), jumps over pieces | L-shape range |
 | **Paladin** | ♘/♞ (twin knights) | 3 | L-shape jump (2+1), jumps over pieces | L-shape range; **always destroys** the target, and the Paladin **leaps onto the cleared square** as part of the attack. **Never fires on its own** — it only strikes a target the player has locked themselves (drag or right-click), unlike every other piece, which auto-fires at whatever's in range. No merges, no delayed orders |
-| **Bishop** | ♗/♝ | 2 | Diagonal up to 2 squares (sliding) | Diagonal up to 2 (sliding); also heals allies, and strips enemy helmets, with mana |
+| **Bishop** | ♗/♝ | 3 (2 until 2026-10-04: at 3 Gold, a Knight and a pawn, it had half a Knight's HP) | Diagonal up to 2 squares (sliding) | Diagonal up to 2 (sliding); also heals allies, and strips enemy helmets, with mana |
 | **Rook** | ♖/♜ | 4 | Cardinal up to 2 squares (sliding) | Cardinal up to 3 squares, **piercing** (goes through pieces) |
 | **Guardian** | ♖/♞ (knight in a tower) | 5 | Cardinal up to 2 squares (sliding), like a rook | **Every square a rook or a knight could hit from there** — a straight cardinal shot **flies clear to the farthest tile it can reach and damages every piece along that whole line** (friendlies spared), not only the one it was aimed at; a knight's-reach shot hits only the target. Keeps a **farther watch than most pieces (3 squares, not 2)**. No merges, no delayed orders |
 | **Queen** | ♛ | 5 | All 8 directions up to 2 squares (sliding) | All 8 directions up to 2 squares (not L-shapes); not blocked by pieces or obstacles |

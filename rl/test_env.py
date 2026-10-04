@@ -173,7 +173,10 @@ def bad_config_rejected():
                          ({"blackOrders": "no"}, "blackOrders"), ({"drawPenalty": -1}, "drawPenalty"),
                          ({"turnPenalty": -1}, "turnPenalty"), ({"resourceBonus": -1}, "resourceBonus"),
                          ({"mergeBonus": -1}, "mergeBonus"), ({"bishopBonus": -1}, "bishopBonus"),
-                         ({"stripBonus": -1}, "stripBonus"), ({"elixirUnitBonus": -1}, "elixirUnitBonus")):
+                         ({"stripBonus": -1}, "stripBonus"), ({"elixirUnitBonus": -1}, "elixirUnitBonus"),
+                         ({"elixirUnitWeights": {"queen": 1}}, "elixirUnitWeights"),
+                         ({"elixirUnitWeights": {"mage": -1}}, "elixirUnitWeights"),
+                         ({"elixirUnitWeights": [1, 2]}, "elixirUnitWeights")):
         try:
             SemunCraftVecEnv(1, config, num_workers=1).close()
             check(False, "accepted %s" % config)

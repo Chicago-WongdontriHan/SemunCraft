@@ -67,10 +67,14 @@ const DEFAULTS={
                         // helmets; rl/train.py's --bishop-bonus fades it out with --merge-bonus. 0 = off
   stripBonus:0,         // paid for each helmet the agent strips with a bishop (the user: "strip has not been properly
                         // used so far"); rl/train.py's --strip-bonus fades it out with --merge-bonus. 0 = off
-  elixirUnitBonus:0,    // paid for each merge that makes a unit costing Elixir, times its Elixir (a Paladin 3, a Mage 2,
-                        // a Guardian or a Siege 1), on top of any merge bonus; unsieging takes a Siege's back.
-                        // rl/train.py's --elixir-unit-bonus fades it out with --merge-bonus. 0 = off
+  elixirUnitBonus:0,    // paid for each merge that makes a unit costing Elixir, times its weight (elixirUnitWeights), on
+                        // top of any merge bonus; unsieging takes a Siege's back. rl/train.py's --elixir-unit-bonus
+                        // fades it out with --merge-bonus. 0 = off
+  elixirUnitWeights:null,   // {paladin, mage, guardian, siege}: what each counts for in elixirUnitBonus; null = its Elixir
+                        // (a Paladin 3, a Mage 2, a Guardian or a Siege 1). Weighted by Elixir, the bonus paid most for
+                        // the Paladin, also the cheapest to build, and the networks built nothing else (2026-10-04)
 };
+const ELIXIR_UNITS=['paladin','mage','guardian','siege'];
 const MERGE_TIER={knight:1,rook:1,bishop:2,queen:3,siege:3,guardian:3,paladin:3,mage:3};
 
 function withDefaults(base,config){
@@ -94,6 +98,14 @@ function withDefaults(base,config){
   if(!(typeof c.bishopBonus==='number'&&isFinite(c.bishopBonus)&&c.bishopBonus>=0))throw new Error('bishopBonus must be a non-negative number');
   if(!(typeof c.stripBonus==='number'&&isFinite(c.stripBonus)&&c.stripBonus>=0))throw new Error('stripBonus must be a non-negative number');
   if(!(typeof c.elixirUnitBonus==='number'&&isFinite(c.elixirUnitBonus)&&c.elixirUnitBonus>=0))throw new Error('elixirUnitBonus must be a non-negative number');
+  if(c.elixirUnitWeights!==null){
+    const w=c.elixirUnitWeights;
+    if(typeof w!=='object'||Array.isArray(w))throw new Error('elixirUnitWeights must be null or {paladin, mage, guardian, siege}');
+    for(const k of Object.keys(w)){
+      if(!ELIXIR_UNITS.includes(k))throw new Error('elixirUnitWeights: unknown unit '+k);
+      if(!(typeof w[k]==='number'&&isFinite(w[k])&&w[k]>=0))throw new Error('elixirUnitWeights.'+k+' must be a non-negative number');
+    }
+  }
   if(c.opponent==='scripted'&&c.levels&&c.levels.some(l=>l!==null))throw new Error('the scripted opponent plays standard games, not campaign levels');
   if(c.scriptedProfile!=='random'&&!Scripted.PROFILES[c.scriptedProfile])throw new Error('unknown scriptedProfile '+c.scriptedProfile);
   return c;
@@ -113,6 +125,9 @@ class Env{
   }
 
   configure(config){this.nextConfig=withDefaults(this.nextConfig||this.config,config);}
+
+  // what a unit counts for in elixirUnitBonus: its weight, if the config gives weights, else its Elixir
+  unitWeight(type){const w=this.config.elixirUnitWeights;return w?(w[type]||0):E.elixirCost(type);}
 
   reset(){
     if(this.nextConfig){this.config=this.nextConfig;this.nextConfig=null;}
@@ -158,9 +173,9 @@ class Env{
           if(e.type==='strip')this.merged+=sb;
           if(e.type!=='merge'||!MERGE_TIER[e.piece])continue;
           this.merged+=e.piece==='bishop'&&bb?bb:mb*MERGE_TIER[e.piece];
-          this.merged+=eb*E.elixirCost(e.piece);
+          this.merged+=eb*this.unitWeight(e.piece);
         }
-        if(a.type==='unsiege')this.merged-=mb*MERGE_TIER.siege+eb*E.elixirCost('siege');
+        if(a.type==='unsiege')this.merged-=mb*MERGE_TIER.siege+eb*this.unitWeight('siege');
       }
     }
     return this.advance();

@@ -88,6 +88,20 @@ def game_kind(info):
     return "self_" + info["agent"]
 
 
+def parse_unit_weights(text):
+    """--elixir-unit-weights: "paladin=1,mage=4" -> {"paladin": 1.0, "mage": 4.0}."""
+    out = {}
+    for part in text.split(","):
+        name, _, value = part.partition("=")
+        name = name.strip()
+        if name not in ("paladin", "mage", "guardian", "siege") or not value:
+            raise argparse.ArgumentTypeError("expected unit=weight for paladin, mage, guardian or siege, got %r" % part)
+        out[name] = float(value)
+        if out[name] < 0:
+            raise argparse.ArgumentTypeError("a weight can't be negative: %r" % part)
+    return out
+
+
 def env_config(kind, args, shaping, black=None, resource=0.0, merge=0.0, bishop=0.0, strip=0.0, elixir_unit=0.0):
     """Env config for a kind of opponent; `black` is the agent's share of Black games where the opponent
     allows either color (default --black-share; evaluations pass 0.5), `resource`, `merge`, `bishop`, `strip`
@@ -97,7 +111,7 @@ def env_config(kind, args, shaping, black=None, resource=0.0, merge=0.0, bishop=
     config = {"mode": "classic", "maxTurns": args.max_turns, "shaping": shaping, "gamma": args.gamma, "aiSight": True,
               "blackOrders": args.orders_for_black, "drawPenalty": args.draw_penalty, "turnPenalty": args.turn_penalty,
               "resourceBonus": resource, "mergeBonus": merge, "bishopBonus": bishop, "stripBonus": strip,
-              "elixirUnitBonus": elixir_unit}
+              "elixirUnitBonus": elixir_unit, "elixirUnitWeights": args.elixir_unit_weights}
     if kind == "self":
         config.update(opponent="external", agentColor="random", agentBlack=black)
     elif kind == "scripted":
@@ -544,8 +558,12 @@ def parse_args():
     p.add_argument("--strip-bonus", type=float, default=0.0,
                    help="reward for each helmet the agent strips with a bishop (worker.js stripBonus); fades with --merge-bonus. 0 = off")
     p.add_argument("--elixir-unit-bonus", type=float, default=0.0,
-                   help="reward for each merge that makes a unit costing Elixir, times its Elixir (worker.js elixirUnitBonus: a "
-                        "Paladin 3, a Mage 2, a Guardian or Siege 1); fades with --merge-bonus. 0 = off")
+                   help="reward for each merge that makes a unit costing Elixir, times its weight (worker.js elixirUnitBonus; "
+                        "--elixir-unit-weights, by default its Elixir: a Paladin 3, a Mage 2, a Guardian or Siege 1); fades "
+                        "with --merge-bonus. 0 = off")
+    p.add_argument("--elixir-unit-weights", type=parse_unit_weights, default=None,
+                   help="what each unit counts for in --elixir-unit-bonus, e.g. paladin=1,siege=2,guardian=3,mage=4 (worker.js "
+                        "elixirUnitWeights; a unit left out counts 0). Default: its Elixir")
     p.add_argument("--window", type=int, default=400, help="recent games per opponent kind for promotion and logs")
     p.add_argument("--promote-easy", type=float, default=0.9, help="win rate against Easy needed to move on")
     p.add_argument("--promote-hard", type=float, default=0.75, help="win rate against Hard needed to move on")

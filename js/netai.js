@@ -28,6 +28,12 @@ const NETAI_VERSION=((document.currentScript&&/[?&]v=([^&]+)/.exec(document.curr
 // helmets a game against Master — but plays slow and draws: 1 win, 7 losses and 16 draws in 24 games against
 // Master. On the link so the user can watch the bishops' Strip in use; once the bonuses had faded, the same run
 // went back to the march.
+// Guardians is run v3-rook at update 47,700 (2026-10-05), caught just as its fading bonuses for Rooks, Mages,
+// Guardians, Sieges, Bishops and strips ran out: an army of Guardians (about three a game, two on the board),
+// holding more mines and springs than any network before it (1.4 tiles a turn). 10 wins and 2 draws in 12
+// games against Master; 8-7-1 against Rush (v3-elite update 40,132) and 9-5-2 against Trained (update 44,800)
+// head to head. On the link so the user can watch the Guardian army; on wins alone the same run went back to
+// the march (Rush, update 51,467, beats it 14-2).
 const NETAI_LEVELS={
   easy:{model:'easy',temperature:1},
   medium:{model:'medium',temperature:1},
@@ -35,6 +41,7 @@ const NETAI_LEVELS={
   trained:{model:'trained',temperature:0.5},
   rush:{model:'rush',temperature:0.5},
   strip:{model:'strip',temperature:0.5},
+  guardians:{model:'guardians',temperature:0.5},
   master:{model:null},
 };
 const NETAI_CODE=[

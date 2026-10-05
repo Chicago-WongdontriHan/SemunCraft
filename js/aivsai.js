@@ -6,7 +6,7 @@
 // ones offered. Matches run in the headless engine (js/engine.js: the game's rules, checked against this game
 // by tests/parity.test.js) and are drawn on the normal board. Both sides play at temperature 1 ("as
 // trained"), not each difficulty's own tuned value. Code and weights load through js/netai.js the first time.
-const AIVSAI_CHOICES=['trained','master','rush','strip'];
+const AIVSAI_CHOICES=['trained','master','rush','strip','guardians'];
 const AIVSAI_SPEEDS=[1,2,4,8];
 const AIVSAI_DELAY=700; // ms between moves at 1× speed
 const AIVSAI_STORE='semuncraft-aivsai-picks';

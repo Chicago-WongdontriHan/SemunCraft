@@ -72,7 +72,7 @@ function applyOriginal(a,s){
 
 const stats={},t0=Date.now();
 for(let n=0;n<GAMES;n++){
-  const seed=n+1,theme=['forest','jungle','desert','ocean'][n%4],difficulty=['easy','medium','hard','trained','rush','strip','master'][n%7],fog=n%4===0;
+  const seed=n+1,theme=['forest','jungle','desert','ocean'][n%4],difficulty=['easy','medium','hard','trained','rush','strip','guardians','master'][n%8],fog=n%4===0;
   game.created.length=0;
   game.setRandom(E.makeRandom(seed));
   const pickBlack=E.makeRandom(seed*104729+7);
@@ -145,6 +145,7 @@ function randomModel(version,seed){
   if(game.get('NETAI_LEVELS.trained.model')!=='trained'){failures++;console.log('  FAIL NETAI_LEVELS.trained does not point at models/trained.js');}
   if(game.get('NETAI_LEVELS.rush.model')!=='rush'){failures++;console.log('  FAIL NETAI_LEVELS.rush does not point at models/rush.js');}
   if(game.get('NETAI_LEVELS.strip.model')!=='strip'){failures++;console.log('  FAIL NETAI_LEVELS.strip does not point at models/strip.js');}
+  if(game.get('NETAI_LEVELS.guardians.model')!=='guardians'){failures++;console.log('  FAIL NETAI_LEVELS.guardians does not point at models/guardians.js');}
   if(game.get('NETAI_LEVELS.master.model')!=null){failures++;console.log('  FAIL NETAI_LEVELS.master should have no model (it is the scripted AI)');}
   // it plays one strategy a game (drawn on its first move, cleared by initGame's netAiResetProfile), and
   // under that strategy chooses exactly what rl/scripted.js would

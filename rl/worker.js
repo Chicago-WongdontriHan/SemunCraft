@@ -65,6 +65,10 @@ const DEFAULTS={
   bishopBonus:0,        // what a merge that makes a Bishop pays instead, when this is set: the networks took mergeBonus's
                         // Knight (two starting pawns, one merge) and stopped there, never making the Bishop that strips
                         // helmets; rl/train.py's --bishop-bonus fades it out with --merge-bonus. 0 = off
+  rookBonus:0,          // what a merge that makes a Rook pays instead, when this is set: a Mage, a Guardian and a Siege
+                        // all start from a Rook, a Rook from a helmeted pawn, and the networks had long stopped buying
+                        // helmets, so bishops piled up one Rook short of a Mage (2026-10-04); rl/train.py's
+                        // --rook-bonus fades it out with --merge-bonus. 0 = off
   stripBonus:0,         // paid for each helmet the agent strips with a bishop (the user: "strip has not been properly
                         // used so far"); rl/train.py's --strip-bonus fades it out with --merge-bonus. 0 = off
   elixirUnitBonus:0,    // paid for each merge that makes a unit costing Elixir, times its weight (elixirUnitWeights), on
@@ -96,6 +100,7 @@ function withDefaults(base,config){
   if(!(typeof c.resourceBonus==='number'&&isFinite(c.resourceBonus)&&c.resourceBonus>=0))throw new Error('resourceBonus must be a non-negative number');
   if(!(typeof c.mergeBonus==='number'&&isFinite(c.mergeBonus)&&c.mergeBonus>=0))throw new Error('mergeBonus must be a non-negative number');
   if(!(typeof c.bishopBonus==='number'&&isFinite(c.bishopBonus)&&c.bishopBonus>=0))throw new Error('bishopBonus must be a non-negative number');
+  if(!(typeof c.rookBonus==='number'&&isFinite(c.rookBonus)&&c.rookBonus>=0))throw new Error('rookBonus must be a non-negative number');
   if(!(typeof c.stripBonus==='number'&&isFinite(c.stripBonus)&&c.stripBonus>=0))throw new Error('stripBonus must be a non-negative number');
   if(!(typeof c.elixirUnitBonus==='number'&&isFinite(c.elixirUnitBonus)&&c.elixirUnitBonus>=0))throw new Error('elixirUnitBonus must be a non-negative number');
   if(c.elixirUnitWeights!==null){
@@ -167,12 +172,12 @@ class Env{
     const events=E.step(this.s,a,{trusted:true});
     if(side===this.agent){
       this.length++;
-      const mb=this.config.mergeBonus,bb=this.config.bishopBonus,sb=this.config.stripBonus,eb=this.config.elixirUnitBonus;
-      if(mb||bb||sb||eb){
+      const mb=this.config.mergeBonus,bb=this.config.bishopBonus,rb=this.config.rookBonus,sb=this.config.stripBonus,eb=this.config.elixirUnitBonus;
+      if(mb||bb||rb||sb||eb){
         for(const e of events){
           if(e.type==='strip')this.merged+=sb;
           if(e.type!=='merge'||!MERGE_TIER[e.piece])continue;
-          this.merged+=e.piece==='bishop'&&bb?bb:mb*MERGE_TIER[e.piece];
+          this.merged+=e.piece==='bishop'&&bb?bb:e.piece==='rook'&&rb?rb:mb*MERGE_TIER[e.piece];
           this.merged+=eb*this.unitWeight(e.piece);
         }
         if(a.type==='unsiege')this.merged-=mb*MERGE_TIER.siege+eb*this.unitWeight('siege');

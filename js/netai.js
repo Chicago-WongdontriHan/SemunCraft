@@ -16,11 +16,13 @@ const NETAI_VERSION=((document.currentScript&&/[?&]v=([^&]+)/.exec(document.curr
 // Paladin's hit, which takes all of whatever it strikes, kills a King outright: two Knights, 3 Elixir from a
 // spring, a Paladin by about its tenth turn, and a target lock on the King. 23 wins, 1 draw in 24 games
 // against Master (about 23 of its turns a game), 17-7 against Rush. (Before it: update 40,500, the Paladin
-// army; v3-strip2 update 32,000, the Queen army.) Rush is
-// run v3-elite's last network (update 40,132, 2026-10-04), the strongest yet: once that run's bonuses for
-// strips and Elixir units had faded it went back to a march of helmeted pawns by delayed orders, holding the
-// gold mines nearly all game — Master 91-96%, Hard 100%, Trained 20-4 and the Rush before it (v3-strip2
-// update 34,556) 13-11 in head-to-head games. The user keeps a rusher as a difficulty of its own.
+// army; v3-strip2 update 32,000, the Queen army.) Rush is the strongest network yet: run v3-rook2's last
+// (update 51,467, 2026-10-05), trained under the half-turn order rule and the 3-HP Bishop. Its run paid fading
+// bonuses for Rooks, Mages, Guardians, Sieges, Bishops and strips, and for a while it built them (a Guardian
+// army at update 47,700); once they were gone it went back to the march of helmeted pawns, now two pawn
+// orders a turn: 24 wins in 24 games against Master in about 49 turns each, 23-1 against the Rush before it
+// (v3-elite update 40,132) and 23-1 against Trained (update 44,800). The user keeps a rusher as a difficulty
+// of its own.
 // Strip is run v3-elite at update 36,000 (2026-10-04), caught mid-way through fading bonuses for stripping
 // helmets and for Elixir units: it builds bishops (about ten a game, three on the board) and strips about four
 // helmets a game against Master — but plays slow and draws: 1 win, 7 losses and 16 draws in 24 games against
